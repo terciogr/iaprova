@@ -1210,7 +1210,7 @@ function renderEmailVerification(email, message, showResend = false) {
             <i class="fas fa-info-circle mr-2"></i>
             ${message}
           </p>
-          ${email ? `<p class="text-xs text-blue-600 mt-2">Email: <strong>${email}</strong></p>` : ''}
+          ${email ? `<p class="text-xs text-[#122D6A] mt-2">Email: <strong>${email}</strong></p>` : ''}
         </div>
         
         <!-- Botões -->
@@ -1599,7 +1599,7 @@ function renderLogin() {
           ${isLoginMode ? `
             <div class="mt-4 text-center">
               <button type="button" onclick="showForgotPassword()" 
-                class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                class="text-sm text-[#122D6A] hover:text-blue-700 font-medium">
                 <i class="fas fa-key mr-1"></i>
                 Esqueceu sua senha?
               </button>
@@ -2005,9 +2005,9 @@ function renderConcursoEspecifico() {
                     <p class="text-[8px] md:text-[10px] text-gray-400 hidden md:block">Mais rápido</p>
                   </div>
                   <div class="p-2 rounded-lg hover:bg-green-50 transition border border-green-200 bg-green-50/50">
-                    <i class="fas fa-file-excel text-green-600 text-lg md:text-xl mb-1"></i>
+                    <i class="fas fa-file-excel text-[#2A4A9F] text-lg md:text-xl mb-1"></i>
                     <p class="text-[9px] md:text-xs text-green-700 font-medium">XLSX</p>
-                    <p class="text-[8px] md:text-[10px] text-green-600 hidden md:block">✨ Recomendado!</p>
+                    <p class="text-[8px] md:text-[10px] text-[#2A4A9F] hidden md:block">✨ Recomendado!</p>
                   </div>
                 </div>
               </div>
@@ -2136,7 +2136,7 @@ async function processarEditalAntesDeStep2() {
     };
     
     const corEtapa = (num) => {
-      if (num < etapaAtual) return 'text-green-600';
+      if (num < etapaAtual) return 'text-[#2A4A9F]';
       if (num === etapaAtual) return 'text-[#1A3A7F] font-semibold';
       return 'text-gray-400';
     };
@@ -2203,7 +2203,7 @@ async function processarEditalAntesDeStep2() {
               ${logMensagens.slice(-10).map(log => `
                 <div class="flex items-start gap-2 ${
                   log.tipo === 'error' ? 'text-red-600' : 
-                  log.tipo === 'success' ? 'text-green-600' : 
+                  log.tipo === 'success' ? 'text-[#2A4A9F]' : 
                   'text-gray-600'
                 }">
                   <span class="text-gray-400">[${log.timestamp}]</span>
@@ -3037,7 +3037,7 @@ async function renderEntrevistaStep3() {
           <!-- Legenda do peso - Compacta -->
           <div class="text-[10px] md:text-xs text-gray-500 mb-2 md:mb-3 flex items-center gap-3 md:gap-4">
             <span class="flex items-center gap-1">
-              <span class="w-2.5 h-2.5 md:w-3 md:h-3 bg-green-100 border border-green-300 rounded"></span>
+              <span class="w-2.5 h-2.5 md:w-3 md:h-3 bg-[#2A4A9F]/10 border border-green-300 rounded"></span>
               <span class="hidden md:inline">Peso do edital</span>
               <span class="md:hidden">Edital</span>
             </span>
@@ -3080,7 +3080,7 @@ async function renderEntrevistaStep3() {
                   <!-- Peso (editável) -->
                   <div class="flex items-center gap-1 flex-shrink-0" onclick="event.stopPropagation()">
                     ${disc.peso ? `
-                      <span class="text-xs text-green-600 font-medium">Peso:</span>
+                      <span class="text-xs text-[#2A4A9F] font-medium">Peso:</span>
                       <input type="number" id="peso_${disc.id}" 
                         min="1" max="20" 
                         value="${disc.peso}"
@@ -3114,7 +3114,7 @@ async function renderEntrevistaStep3() {
                         class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-dominio"
                         oninput="atualizarDominio(${disc.id}, this.value)"
                         style="accent-color: #122D6A;">
-                      <span class="text-[10px] text-green-600 font-medium w-12 text-right">Domino</span>
+                      <span class="text-[10px] text-[#2A4A9F] font-medium w-12 text-right">Domino</span>
                     </div>
                     <div class="flex justify-between text-[9px] text-gray-400 px-12">
                       <span>0</span>
@@ -3135,7 +3135,7 @@ async function renderEntrevistaStep3() {
                       Tópicos do Edital (${disc.topicos?.length || 0})
                     </h5>
                     <button type="button" onclick="event.stopPropagation();adicionarTopico(${disc.id})" 
-                      class="text-xs text-green-600 hover:text-green-700 flex items-center gap-1">
+                      class="text-xs text-[#2A4A9F] hover:text-green-700 flex items-center gap-1">
                       <i class="fas fa-plus-circle"></i> Adicionar
                     </button>
                   </div>
@@ -3268,7 +3268,7 @@ async function renderEntrevistaStep3() {
     } else if (valor <= 6) {
       valorSpan.className = 'text-sm font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700';
     } else {
-      valorSpan.className = 'text-sm font-bold px-2 py-0.5 rounded bg-green-100 text-green-700';
+      valorSpan.className = 'text-sm font-bold px-2 py-0.5 rounded bg-[#2A4A9F]/10 text-green-700';
     }
   };
   
@@ -3290,7 +3290,7 @@ async function renderEntrevistaStep3() {
       if (selecionadas === 0) {
         contador.className = 'px-3 py-1.5 bg-gray-100 text-gray-600 rounded-full text-sm font-medium';
       } else if (selecionadas <= 15) {
-        contador.className = 'px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm font-medium';
+        contador.className = 'px-3 py-1.5 bg-[#2A4A9F]/10 text-green-800 rounded-full text-sm font-medium';
       } else {
         contador.className = 'px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm font-medium';
       }
@@ -4072,7 +4072,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 <div class="w-px h-4 ${themes[currentTheme].border}"></div>
                 <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-white/50 dark:hover:bg-gray-700/50 transition cursor-pointer" title="Score geral">
                   <i class="fas fa-trophy ${scoreData.score >= 7 ? 'text-green-500' : scoreData.score >= 4 ? 'text-amber-500' : 'text-gray-400'} text-[10px]"></i>
-                  <span class="text-xs font-semibold ${scoreData.score >= 7 ? 'text-green-600 dark:text-green-400' : scoreData.score >= 4 ? 'text-amber-600 dark:text-amber-400' : themes[currentTheme].text}">${scoreData.score}/10</span>
+                  <span class="text-xs font-semibold ${scoreData.score >= 7 ? 'text-[#2A4A9F] dark:text-green-400' : scoreData.score >= 4 ? 'text-amber-600 dark:text-amber-400' : themes[currentTheme].text}">${scoreData.score}/10</span>
                 </div>
                 <div class="w-px h-4 ${themes[currentTheme].border}"></div>
                 <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-white/50 dark:hover:bg-gray-700/50 transition cursor-pointer" title="Dias estudados">
@@ -4086,11 +4086,11 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
             <div class="flex items-center gap-1.5">
               <!-- Atalhos Rápidos (apenas ícones) -->
               <div class="hidden md:flex items-center gap-1">
-                <button onclick="window.renderDashboardSimulados()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-cyan-100 dark:hover:bg-cyan-900/30 transition group" title="Simulados">
+                <button onclick="window.renderDashboardSimulados()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#6BB6FF]/10 dark:hover:bg-cyan-900/30 transition group" title="Simulados">
                   <i class="fas fa-edit text-cyan-600 dark:text-cyan-400 text-sm group-hover:scale-110 transition-transform"></i>
                 </button>
-                <button onclick="renderPortfolioDisciplinas()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/30 transition group" title="Disciplinas">
-                  <i class="fas fa-book-open text-blue-600 dark:text-blue-400 text-sm group-hover:scale-110 transition-transform"></i>
+                <button onclick="renderPortfolioDisciplinas()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#122D6A]/10 dark:hover:bg-blue-900/30 transition group" title="Disciplinas">
+                  <i class="fas fa-book-open text-[#122D6A] dark:text-blue-400 text-sm group-hover:scale-110 transition-transform"></i>
                 </button>
                 <button onclick="renderCalendario()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition group" title="Calendário">
                   <i class="fas fa-calendar-alt text-emerald-600 dark:text-emerald-400 text-sm group-hover:scale-110 transition-transform"></i>
@@ -4221,7 +4221,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                       <i class="fas fa-trophy text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
-                      <p class="text-base font-bold ${scoreData.score >= 7 ? 'text-green-600 dark:text-green-400' : scoreData.score >= 4 ? 'text-amber-600 dark:text-amber-400' : themes[currentTheme].text} leading-tight">${scoreData.score}</p>
+                      <p class="text-base font-bold ${scoreData.score >= 7 ? 'text-[#2A4A9F] dark:text-green-400' : scoreData.score >= 4 ? 'text-amber-600 dark:text-amber-400' : themes[currentTheme].text} leading-tight">${scoreData.score}</p>
                       <p class="text-[9px] ${themes[currentTheme].textSecondary} uppercase tracking-wide">Score</p>
                     </div>
                   </div>
@@ -4328,7 +4328,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   </div>
                   <div class="text-left flex-1 min-w-0">
                     <div class="flex items-baseline gap-1 md:gap-2">
-                      <span class="text-base md:text-xl font-bold text-green-600">DIA DA PROVA!</span>
+                      <span class="text-base md:text-xl font-bold text-[#2A4A9F]">DIA DA PROVA!</span>
                     </div>
                     <p class="text-[10px] md:text-xs text-green-500 mt-0.5 md:mt-1 font-semibold">
                       🎯 Boa sorte!
@@ -4358,7 +4358,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                     </div>
                     <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5 md:mt-1">
                       ${viabilidade && viabilidade.viabilidade !== 'sem_data' ? `
-                        <span class="${viabilidade.viabilidade === 'confortavel' || viabilidade.viabilidade === 'adequado' ? 'text-green-600' : 
+                        <span class="${viabilidade.viabilidade === 'confortavel' || viabilidade.viabilidade === 'adequado' ? 'text-[#2A4A9F]' : 
                           viabilidade.viabilidade === 'apertado' ? 'text-amber-600' : 
                           viabilidade.viabilidade === 'critico' ? 'text-orange-600' : 'text-red-600'}">${
                             viabilidade.viabilidade === 'confortavel' ? '✓ Tempo confortável' : 
@@ -4442,8 +4442,8 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 </div>
                 <p class="text-[9px] md:text-[10px] ${themes[currentTheme].textSecondary} mt-0.5">
                   <span class="${
-                    progressoGeral?.progresso_percentual >= 70 ? 'text-green-600' :
-                    progressoGeral?.progresso_percentual >= 50 ? 'text-blue-600' :
+                    progressoGeral?.progresso_percentual >= 70 ? 'text-[#2A4A9F]' :
+                    progressoGeral?.progresso_percentual >= 50 ? 'text-[#122D6A]' :
                     progressoGeral?.progresso_percentual >= 25 ? 'text-amber-600' :
                     'text-purple-600'
                   } font-medium">${progressoGeral?.topicos_estudados || 0}</span>/${progressoGeral?.total_topicos || 0} tópicos
@@ -4772,10 +4772,10 @@ async function marcarMetaConcluida(metaId) {
       
       <div class="mb-4">
         <div class="flex items-center justify-center gap-2">
-          <button onclick="setTempoRapido(15)" class="px-3 py-2 text-sm bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition">15min</button>
-          <button onclick="setTempoRapido(30)" class="px-3 py-2 text-sm bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition">30min</button>
-          <button onclick="setTempoRapido(45)" class="px-3 py-2 text-sm bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition">45min</button>
-          <button onclick="setTempoRapido(60)" class="px-3 py-2 text-sm bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition">1h</button>
+          <button onclick="setTempoRapido(15)" class="px-3 py-2 text-sm bg-gray-100 hover:bg-[#122D6A]/10 hover:text-blue-700 rounded-lg transition">15min</button>
+          <button onclick="setTempoRapido(30)" class="px-3 py-2 text-sm bg-gray-100 hover:bg-[#122D6A]/10 hover:text-blue-700 rounded-lg transition">30min</button>
+          <button onclick="setTempoRapido(45)" class="px-3 py-2 text-sm bg-gray-100 hover:bg-[#122D6A]/10 hover:text-blue-700 rounded-lg transition">45min</button>
+          <button onclick="setTempoRapido(60)" class="px-3 py-2 text-sm bg-gray-100 hover:bg-[#122D6A]/10 hover:text-blue-700 rounded-lg transition">1h</button>
         </div>
         <div class="mt-3">
           <input type="number" id="tempo-concluir-meta" value="30" min="1" max="240" 
@@ -5134,8 +5134,8 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
           
           <div class="${themes[currentTheme].card} p-2 md:p-4 rounded-lg shadow border ${themes[currentTheme].border}">
             <div class="flex items-center gap-2 md:gap-3">
-              <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-list-ul text-blue-600 text-sm md:text-base"></i>
+              <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#122D6A]/10 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-list-ul text-[#122D6A] text-sm md:text-base"></i>
               </div>
               <div class="min-w-0">
                 <p class="text-lg md:text-2xl font-bold ${themes[currentTheme].text}">${totalTopicosGeral}</p>
@@ -5146,8 +5146,8 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
           
           <div class="${themes[currentTheme].card} p-2 md:p-4 rounded-lg shadow border ${themes[currentTheme].border}">
             <div class="flex items-center gap-2 md:gap-3">
-              <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-check-circle text-green-600 text-sm md:text-base"></i>
+              <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#2A4A9F]/10 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-check-circle text-[#2A4A9F] text-sm md:text-base"></i>
               </div>
               <div class="min-w-0">
                 <p class="text-lg md:text-2xl font-bold ${themes[currentTheme].text}">${totalRevisadosGeral}</p>
@@ -5158,7 +5158,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
           
           <div class="${themes[currentTheme].card} p-2 md:p-4 rounded-lg shadow border ${themes[currentTheme].border}">
             <div class="flex items-center gap-2 md:gap-3">
-              <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-cyan-100 flex items-center justify-center flex-shrink-0">
+              <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#6BB6FF]/10 flex items-center justify-center flex-shrink-0">
                 <i class="fas fa-chart-pie text-[#122D6A] text-sm md:text-base"></i>
               </div>
               <div class="min-w-0">
@@ -5194,7 +5194,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                         <span class="${themes[currentTheme].textSecondary} text-xs md:text-sm">
                           <i class="fas fa-list-ul mr-1"></i>${disc.totalTopicos} <span class="hidden sm:inline">tópicos</span>
                         </span>
-                        <span class="text-green-600 text-xs md:text-sm font-medium">
+                        <span class="text-[#2A4A9F] text-xs md:text-sm font-medium">
                           <i class="fas fa-check-circle mr-1"></i>${disc.topicosRevisados} <span class="hidden sm:inline">revisados</span>
                         </span>
                       </div>
@@ -5274,7 +5274,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                             <div class="flex items-center gap-3 mt-0.5 flex-wrap">
                               ${topico.peso ? `<span class="text-xs text-gray-500">Peso: ${topico.peso}</span>` : ''}
                               ${topico.vezes_estudado > 0 ? `
-                                <span class="text-xs text-green-600 font-medium">
+                                <span class="text-xs text-[#2A4A9F] font-medium">
                                   <i class="fas fa-redo mr-1"></i>${topico.vezes_estudado}x revisado
                                 </span>
                               ` : `
@@ -5293,15 +5293,15 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                           <!-- Botões de ação -->
                           <div class="flex items-center gap-1 flex-shrink-0">
                             <button onclick="event.stopPropagation(); verMateriaisTopico(${topico.id}, '${(topico.nome || '').replace(/'/g, "\\'")}', '${disc.nome.replace(/'/g, "\\'")}')"
-                                    class="p-2 text-green-600 hover:bg-green-100 rounded-lg transition" title="Ver materiais salvos">
+                                    class="p-2 text-[#2A4A9F] hover:bg-[#2A4A9F]/10 rounded-lg transition" title="Ver materiais salvos">
                               <i class="fas fa-folder-open text-sm"></i>
                             </button>
                             <button onclick="event.stopPropagation(); gerarConteudoTopico(${topico.id}, '${(topico.nome || '').replace(/'/g, "\\'")}', '${disc.nome.replace(/'/g, "\\'")}')"
-                                    class="p-2 text-[#122D6A] hover:bg-cyan-100 rounded-lg transition" title="Gerar conteúdo com IA">
+                                    class="p-2 text-[#122D6A] hover:bg-[#6BB6FF]/10 rounded-lg transition" title="Gerar conteúdo com IA">
                               <i class="fas fa-magic text-sm"></i>
                             </button>
                             <button onclick="event.stopPropagation(); editarTopicoGestao(${topico.id}, '${(topico.nome || '').replace(/'/g, "\\'")}', ${topico.peso || 1})"
-                                    class="p-2 text-blue-500 hover:bg-blue-100 rounded-lg transition" title="Editar">
+                                    class="p-2 text-blue-500 hover:bg-[#122D6A]/10 rounded-lg transition" title="Editar">
                               <i class="fas fa-edit text-sm"></i>
                             </button>
                             <button onclick="event.stopPropagation(); excluirTopicoGestao(${topico.id}, ${disc.disciplina_id})"
@@ -5706,8 +5706,8 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
                     id="btn-tipo-teoria"
                     class="p-4 border-2 ${themes[currentTheme].border} rounded-xl hover:border-[#122D6A] hover:bg-blue-50 transition text-left ${themes[currentTheme].card}">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <i class="fas fa-book text-blue-600"></i>
+                <div class="w-10 h-10 rounded-full bg-[#122D6A]/10 flex items-center justify-center">
+                  <i class="fas fa-book text-[#122D6A]"></i>
                 </div>
                 <div>
                   <p class="font-semibold ${themes[currentTheme].text}">Teoria</p>
@@ -5720,8 +5720,8 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
                     id="btn-tipo-exercicios"
                     class="p-4 border-2 ${themes[currentTheme].border} rounded-xl hover:border-[#122D6A] hover:bg-green-50 transition text-left ${themes[currentTheme].card}">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <i class="fas fa-tasks text-green-600"></i>
+                <div class="w-10 h-10 rounded-full bg-[#2A4A9F]/10 flex items-center justify-center">
+                  <i class="fas fa-tasks text-[#2A4A9F]"></i>
                 </div>
                 <div>
                   <p class="font-semibold ${themes[currentTheme].text}">Exercícios</p>
@@ -5734,8 +5734,8 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
                     id="btn-tipo-resumo"
                     class="p-4 border-2 ${themes[currentTheme].border} rounded-xl hover:border-[#122D6A] hover:bg-yellow-50 transition text-left ${themes[currentTheme].card}">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                  <i class="fas fa-sticky-note text-yellow-600"></i>
+                <div class="w-10 h-10 rounded-full bg-[#4A90E2]/10 flex items-center justify-center">
+                  <i class="fas fa-sticky-note text-[#4A90E2]"></i>
                 </div>
                 <div>
                   <p class="font-semibold ${themes[currentTheme].text}">Resumo</p>
@@ -5748,7 +5748,7 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
                     id="btn-tipo-flashcards"
                     class="p-4 border-2 ${themes[currentTheme].border} rounded-xl hover:border-[#122D6A] hover:bg-cyan-50 transition text-left ${themes[currentTheme].card}">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-full bg-[#6BB6FF]/10 flex items-center justify-center">
                   <i class="fas fa-clone text-[#122D6A]"></i>
                 </div>
                 <div>
@@ -6950,8 +6950,8 @@ async function renderMateriais() {
                   <p class="text-sm ${themes[currentTheme].textSecondary}">Total</p>
                   <p class="text-2xl font-bold ${themes[currentTheme].text}">${totalMateriais}</p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                  <i class="fas fa-file text-blue-600 text-xl"></i>
+                <div class="w-12 h-12 rounded-full bg-[#122D6A]/10 flex items-center justify-center">
+                  <i class="fas fa-file text-[#122D6A] text-xl"></i>
                 </div>
               </div>
             </div>
@@ -6962,8 +6962,8 @@ async function renderMateriais() {
                   <p class="text-sm ${themes[currentTheme].textSecondary}">Favoritos</p>
                   <p class="text-2xl font-bold ${themes[currentTheme].text}">${favoritos}</p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center">
-                  <i class="fas fa-star text-yellow-600 text-xl"></i>
+                <div class="w-12 h-12 rounded-full bg-[#4A90E2]/10 flex items-center justify-center">
+                  <i class="fas fa-star text-[#4A90E2] text-xl"></i>
                 </div>
               </div>
             </div>
@@ -6974,7 +6974,7 @@ async function renderMateriais() {
                   <p class="text-sm ${themes[currentTheme].textSecondary}">IA Gerados</p>
                   <p class="text-2xl font-bold ${themes[currentTheme].text}">${porTipo.teoria.length + porTipo.exercicios.length + porTipo.resumo.length + porTipo.flashcards.length}</p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-cyan-100 flex items-center justify-center">
+                <div class="w-12 h-12 rounded-full bg-[#6BB6FF]/10 flex items-center justify-center">
                   <i class="fas fa-magic text-[#122D6A] text-xl"></i>
                 </div>
               </div>
@@ -6986,8 +6986,8 @@ async function renderMateriais() {
                   <p class="text-sm ${themes[currentTheme].textSecondary}">Uploads</p>
                   <p class="text-2xl font-bold ${themes[currentTheme].text}">${porTipo.upload.length}</p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                  <i class="fas fa-upload text-green-600 text-xl"></i>
+                <div class="w-12 h-12 rounded-full bg-[#2A4A9F]/10 flex items-center justify-center">
+                  <i class="fas fa-upload text-[#2A4A9F] text-xl"></i>
                 </div>
               </div>
             </div>
@@ -7191,7 +7191,7 @@ window.renderDashboardSimulados = async function() {
                   <p class="text-sm ${themes[currentTheme].textSecondary}">Total Realizados</p>
                   <p class="text-2xl font-bold ${themes[currentTheme].text}">${simulados.length}</p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-cyan-100 flex items-center justify-center">
+                <div class="w-12 h-12 rounded-full bg-[#6BB6FF]/10 flex items-center justify-center">
                   <i class="fas fa-clipboard-list text-[#122D6A] text-xl"></i>
                 </div>
               </div>
@@ -7205,8 +7205,8 @@ window.renderDashboardSimulados = async function() {
                     ${simulados.length > 0 ? Math.round(simulados.reduce((acc, s) => acc + s.percentual_acerto, 0) / simulados.length) : 0}%
                   </p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                  <i class="fas fa-chart-bar text-blue-600 text-xl"></i>
+                <div class="w-12 h-12 rounded-full bg-[#122D6A]/10 flex items-center justify-center">
+                  <i class="fas fa-chart-bar text-[#122D6A] text-xl"></i>
                 </div>
               </div>
             </div>
@@ -7215,12 +7215,12 @@ window.renderDashboardSimulados = async function() {
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm ${themes[currentTheme].textSecondary}">Melhor Resultado</p>
-                  <p class="text-2xl font-bold text-green-600">
+                  <p class="text-2xl font-bold text-[#2A4A9F]">
                     ${simulados.length > 0 ? Math.max(...simulados.map(s => s.percentual_acerto)) : 0}%
                   </p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                  <i class="fas fa-trophy text-green-600 text-xl"></i>
+                <div class="w-12 h-12 rounded-full bg-[#2A4A9F]/10 flex items-center justify-center">
+                  <i class="fas fa-trophy text-[#2A4A9F] text-xl"></i>
                 </div>
               </div>
             </div>
@@ -7284,7 +7284,7 @@ window.renderDashboardSimulados = async function() {
                   <tbody>
                     ${simulados.map(sim => {
                       const data = new Date(sim.data_realizacao).toLocaleDateString('pt-BR');
-                      const percentualClass = sim.percentual_acerto >= 70 ? 'text-green-600' : sim.percentual_acerto >= 50 ? 'text-amber-600' : 'text-red-600';
+                      const percentualClass = sim.percentual_acerto >= 70 ? 'text-[#2A4A9F]' : sim.percentual_acerto >= 50 ? 'text-amber-600' : 'text-red-600';
                       
                       return `
                         <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50 dark:hover:bg-gray-800">
@@ -7295,7 +7295,7 @@ window.renderDashboardSimulados = async function() {
                           <td class="text-center py-3 px-4 font-bold ${percentualClass}">${sim.percentual_acerto}%</td>
                           <td class="text-center py-3 px-4 ${themes[currentTheme].textSecondary}">${sim.tempo_gasto || '-'}</td>
                           <td class="text-center py-3 px-4">
-                            <button onclick="verDetalhesSimulado(${sim.id})" class="text-blue-600 hover:text-blue-800">
+                            <button onclick="verDetalhesSimulado(${sim.id})" class="text-[#122D6A] hover:text-blue-800">
                               <i class="fas fa-eye"></i>
                             </button>
                           </td>
@@ -7758,11 +7758,11 @@ function renderCalendarioUI(historico, stats, mes, ano) {
 
     if (hist) {
       if (hist.status === 'completo') {
-        corClasse = 'bg-green-100 border-green-400';
-        icone = '<i class="fas fa-check text-green-600"></i>';
+        corClasse = 'bg-[#2A4A9F]/10 border-green-400';
+        icone = '<i class="fas fa-check text-[#2A4A9F]"></i>';
         titulo = `${hist.percentual_conclusao}% - ${Math.round(hist.tempo_estudado_minutos / 60 * 10) / 10}h`;
       } else if (hist.status === 'parcial') {
-        corClasse = 'bg-yellow-100 border-yellow-400';
+        corClasse = 'bg-[#4A90E2]/10 border-yellow-400';
         icone = '<i class="fas fa-clock text-[#1A3A7F]"></i>';
         titulo = `${hist.percentual_conclusao}% - ${Math.round(hist.tempo_estudado_minutos / 60 * 10) / 10}h`;
       } else {
@@ -7830,7 +7830,7 @@ function renderCalendarioUI(historico, stats, mes, ano) {
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-gray-500 text-sm">Média de Conclusão</p>
-                <p class="text-3xl font-bold text-green-600">${stats.media_conclusao}%</p>
+                <p class="text-3xl font-bold text-[#2A4A9F]">${stats.media_conclusao}%</p>
               </div>
               <i class="fas fa-chart-line text-4xl text-green-200"></i>
             </div>
@@ -7844,11 +7844,11 @@ function renderCalendarioUI(historico, stats, mes, ano) {
           <!-- Legenda -->
           <div class="flex justify-center space-x-6 mb-6 text-sm">
             <div class="flex items-center">
-              <div class="w-4 h-4 bg-green-100 border-2 border-green-400 rounded mr-2"></div>
+              <div class="w-4 h-4 bg-[#2A4A9F]/10 border-2 border-green-400 rounded mr-2"></div>
               <span>Completo</span>
             </div>
             <div class="flex items-center">
-              <div class="w-4 h-4 bg-yellow-100 border-2 border-yellow-400 rounded mr-2"></div>
+              <div class="w-4 h-4 bg-[#4A90E2]/10 border-2 border-yellow-400 rounded mr-2"></div>
               <span>Parcial</span>
             </div>
             <div class="flex items-center">
@@ -7964,8 +7964,8 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
           <button onclick="gerarConteudoTipo('teoria')" 
             class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] hover:bg-[#E8EDF5] transition-all text-left group">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-[#122D6A] transition-colors">
-                <i class="fas fa-book text-blue-600 group-hover:text-white transition-colors"></i>
+              <div class="w-10 h-10 bg-[#122D6A]/10 rounded-lg flex items-center justify-center group-hover:bg-[#122D6A] transition-colors">
+                <i class="fas fa-book text-[#122D6A] group-hover:text-white transition-colors"></i>
               </div>
               <div>
                 <p class="font-semibold text-gray-800">Teoria</p>
@@ -8003,7 +8003,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
           <button onclick="gerarConteudoTipo('flashcards')" 
             class="p-4 border-2 border-gray-200 rounded-xl hover:border-cyan-500 hover:bg-cyan-50 transition-all text-left group">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center group-hover:bg-cyan-500 transition-colors">
+              <div class="w-10 h-10 bg-[#6BB6FF]/10 rounded-lg flex items-center justify-center group-hover:bg-cyan-500 transition-colors">
                 <i class="fas fa-clone text-cyan-600 group-hover:text-white transition-colors"></i>
               </div>
               <div>
@@ -8276,7 +8276,7 @@ window.abrirModalResumoPersonalizado = function(metaId) {
               <div class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full border-blue-500 border-t-transparent"></div>
               <div>
                 <p class="font-medium text-blue-700">Processando documento...</p>
-                <p class="text-sm text-blue-600 mt-1" id="status-message">Extraindo texto do arquivo...</p>
+                <p class="text-sm text-[#122D6A] mt-1" id="status-message">Extraindo texto do arquivo...</p>
               </div>
             </div>
           </div>
@@ -9072,7 +9072,7 @@ function visualizarConteudo(conteudo, meta = null) {
     if (percentual >= 90) {
       emoji = '🏆';
       mensagem = 'Excelente! Você domina o conteúdo!';
-      cor = 'text-green-600';
+      cor = 'text-[#2A4A9F]';
     } else if (percentual >= 70) {
       emoji = '😊';
       mensagem = 'Muito bom! Continue assim!';
@@ -9100,8 +9100,8 @@ function visualizarConteudo(conteudo, meta = null) {
       </div>
       
       <div class="grid grid-cols-3 gap-4 mb-6">
-        <div class="bg-green-100 rounded-lg p-4 text-center">
-          <p class="text-3xl font-bold text-green-600">${acertos}</p>
+        <div class="bg-[#2A4A9F]/10 rounded-lg p-4 text-center">
+          <p class="text-3xl font-bold text-[#2A4A9F]">${acertos}</p>
           <p class="text-sm text-gray-600">Acertos</p>
         </div>
         <div class="bg-red-100 rounded-lg p-4 text-center">
@@ -9297,7 +9297,7 @@ function renderSecaoConteudo(conteudo, tipo) {
             <ul class="space-y-2">
               ${foco.map(f => `
                 <li class="flex items-start">
-                  <i class="fas fa-bullseye text-green-600 mr-2 mt-1"></i>
+                  <i class="fas fa-bullseye text-[#2A4A9F] mr-2 mt-1"></i>
                   <span class="text-gray-800">${f}</span>
                 </li>
               `).join('')}
@@ -9618,7 +9618,7 @@ function mostrarModalUltimoPlano(planoId, nomePlano) {
       
       <div class="${currentTheme === 'light' ? 'bg-[#E8EDF5] border-green-200' : 'bg-green-900/20 border-green-700'} border-2 rounded-lg p-3 mb-6">
         <p class="${themes[currentTheme].text} text-sm">
-          <i class="fas fa-lightbulb mr-2 text-green-600"></i>
+          <i class="fas fa-lightbulb mr-2 text-[#2A4A9F]"></i>
           <strong>Dica:</strong> Isso é útil quando você mudou de concurso ou quer reorganizar completamente seus estudos.
         </p>
       </div>
@@ -10224,8 +10224,8 @@ const diasSemanaCompletos = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta',
 // Cores por tipo de meta
 const coresTipo = {
   teoria: { bg: 'bg-[#D0D9EB] dark:bg-[#0A1839]/30', border: 'border-[#8FA4CC] dark:border-[#1A3A7F]', text: 'text-[#122D6A] dark:text-[#6B83B5]', icon: '📖' },
-  exercicios: { bg: 'bg-green-100 dark:bg-green-900/30', border: 'border-green-300 dark:border-green-700', text: 'text-green-700 dark:text-green-300', icon: '✏️' },
-  revisao: { bg: 'bg-cyan-100 dark:bg-cyan-900/30', border: 'border-cyan-300 dark:border-[#0D1F4D]', text: 'text-[#0D1F4D] dark:text-cyan-300', icon: '🔄' }
+  exercicios: { bg: 'bg-[#2A4A9F]/10 dark:bg-green-900/30', border: 'border-green-300 dark:border-green-700', text: 'text-green-700 dark:text-green-300', icon: '✏️' },
+  revisao: { bg: 'bg-[#6BB6FF]/10 dark:bg-cyan-900/30', border: 'border-cyan-300 dark:border-[#0D1F4D]', text: 'text-[#0D1F4D] dark:text-cyan-300', icon: '🔄' }
 }
 
 // ✅ NOVO: Função para abrir modal de semanas anteriores
@@ -10623,7 +10623,7 @@ function renderCalendarioSemanal() {
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mt-3">
                 ${metasDoDia.map(meta => {
                   const tipoIcon = meta.tipo === 'teoria' ? 'fa-book' : meta.tipo === 'exercicios' ? 'fa-pencil-alt' : 'fa-sync'
-                  const tipoBg = meta.tipo === 'teoria' ? 'bg-[#E8EDF5] text-[#122D6A]' : meta.tipo === 'exercicios' ? 'bg-cyan-100 text-cyan-700' : 'bg-amber-100 text-amber-700'
+                  const tipoBg = meta.tipo === 'teoria' ? 'bg-[#E8EDF5] text-[#122D6A]' : meta.tipo === 'exercicios' ? 'bg-[#6BB6FF]/10 text-cyan-700' : 'bg-amber-100 text-amber-700'
                   const tipoLabel = meta.tipo === 'teoria' ? 'Teoria' : meta.tipo === 'exercicios' ? 'Exercícios' : 'Revisão'
                   
                   return `
@@ -11407,7 +11407,7 @@ async function abrirDetalhesMetaCelula(metaId) {
             <label class="text-sm font-semibold ${themes[currentTheme].textSecondary}">Status</label>
             <div class="flex items-center gap-2 mt-1">
               ${meta.concluida ? `
-                <span class="inline-flex items-center gap-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-semibold">
+                <span class="inline-flex items-center gap-2 bg-[#2A4A9F]/10 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-semibold">
                   <i class="fas fa-check-circle"></i>
                   Concluída
                 </span>
@@ -11964,8 +11964,8 @@ function mostrarModalTempoEstudo(disciplina, tempoSugerido) {
     modal.innerHTML = `
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6">
         <div class="text-center mb-6">
-          <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
-            <i class="fas fa-clock text-green-600 dark:text-green-400 text-3xl"></i>
+          <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-[#2A4A9F]/10 dark:bg-green-900/30 mb-4">
+            <i class="fas fa-clock text-[#2A4A9F] dark:text-green-400 text-3xl"></i>
           </div>
           <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Parabéns! 🎉</h3>
           <p class="text-gray-600 dark:text-gray-300 text-sm mb-4">${disciplina}</p>
@@ -12469,9 +12469,9 @@ function renderExercicioModal(questaoIndex) {
           
           <!-- Feedback após verificar -->
           ${jaVerificada ? `
-            <div class="mt-4 p-4 rounded-xl ${acertouQuestao ? 'bg-green-100 border border-green-300' : 'bg-red-100 border border-red-300'}">
+            <div class="mt-4 p-4 rounded-xl ${acertouQuestao ? 'bg-[#2A4A9F]/10 border border-green-300' : 'bg-red-100 border border-red-300'}">
               <div class="flex items-center gap-2 mb-2">
-                <i class="fas ${acertouQuestao ? 'fa-check-circle text-green-600' : 'fa-times-circle text-red-600'}"></i>
+                <i class="fas ${acertouQuestao ? 'fa-check-circle text-[#2A4A9F]' : 'fa-times-circle text-red-600'}"></i>
                 <span class="font-bold ${acertouQuestao ? 'text-green-700' : 'text-red-700'}">
                   ${acertouQuestao ? 'Parabéns! Você acertou! 🎉' : 'Resposta incorreta'}
                 </span>
@@ -12678,14 +12678,14 @@ function renderResultadoExercicios(resultados, acertos, total, percentual, tempo
                 <div class="ml-11 space-y-2">
                   ${r.respostaUsuario ? `
                     <div class="flex items-center gap-2 text-sm">
-                      <span class="${r.acertou ? 'text-green-600' : 'text-red-600'} font-medium">
+                      <span class="${r.acertou ? 'text-[#2A4A9F]' : 'text-red-600'} font-medium">
                         Sua resposta: ${r.respostaUsuario.toUpperCase()}) ${r.alternativas.find(a => a.letra === r.respostaUsuario)?.texto || ''}
                       </span>
                     </div>
                   ` : '<p class="text-sm text-gray-500 italic">Não respondida</p>'}
                   
                   ${!r.acertou ? `
-                    <div class="flex items-center gap-2 text-sm text-green-600">
+                    <div class="flex items-center gap-2 text-sm text-[#2A4A9F]">
                       <i class="fas fa-check-circle"></i>
                       <span class="font-medium">Correta: ${r.correta.toUpperCase()}) ${r.alternativas.find(a => a.letra === r.correta)?.texto || ''}</span>
                     </div>
@@ -12890,7 +12890,7 @@ function renderFlashcardsModal(flashcards, topicoNome, disciplinaNome, cardIndex
             <!-- Frente (TERMO/CONCEITO) -->
             <div class="absolute inset-0 bg-white rounded-3xl shadow-2xl p-8 backface-hidden flex flex-col justify-center items-center text-center border-4 border-cyan-200">
               <div class="absolute top-4 right-4">
-                <span class="px-3 py-1 bg-cyan-100 text-[#122D6A] rounded-full text-xs font-semibold">
+                <span class="px-3 py-1 bg-[#6BB6FF]/10 text-[#122D6A] rounded-full text-xs font-semibold">
                   <i class="fas fa-tag mr-1"></i>Conceito
                 </span>
               </div>
@@ -13171,7 +13171,7 @@ window.toggleDisciplinaSimulado = async function(disciplinaId, disciplinaNome) {
     // Adicionar disciplina
     simuladoConfig.disciplinasSelecionadas.push({ id: disciplinaId, nome: disciplinaNome });
     checkDiv.innerHTML = '<i class="fas fa-check text-[#122D6A] text-sm"></i>';
-    checkDiv.classList.add('bg-cyan-100', 'border-[#122D6A]');
+    checkDiv.classList.add('bg-[#6BB6FF]/10', 'border-[#122D6A]');
     
     // Carregar e mostrar tópicos
     topicosDiv.classList.remove('hidden');
@@ -13208,7 +13208,7 @@ window.toggleDisciplinaSimulado = async function(disciplinaId, disciplinaNome) {
     simuladoConfig.topicosSelecionados = simuladoConfig.topicosSelecionados.filter(t => t.disciplinaId !== disciplinaId);
     
     checkDiv.innerHTML = '';
-    checkDiv.classList.remove('bg-cyan-100', 'border-[#122D6A]');
+    checkDiv.classList.remove('bg-[#6BB6FF]/10', 'border-[#122D6A]');
     topicosDiv.classList.add('hidden');
     chevron.classList.remove('rotate-180');
   }
@@ -13223,11 +13223,11 @@ window.toggleTopicoSimulado = function(topicoId, topicoNome, disciplinaId) {
   
   if (index === -1) {
     simuladoConfig.topicosSelecionados.push({ id: topicoId, nome: topicoNome, disciplinaId });
-    btn.classList.add('border-[#122D6A]', 'bg-cyan-100', 'dark:bg-cyan-900/50', 'text-[#0D1F4D]');
+    btn.classList.add('border-[#122D6A]', 'bg-[#6BB6FF]/10', 'dark:bg-cyan-900/50', 'text-[#0D1F4D]');
     btn.classList.remove('border-gray-300', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-300');
   } else {
     simuladoConfig.topicosSelecionados.splice(index, 1);
-    btn.classList.remove('border-[#122D6A]', 'bg-cyan-100', 'dark:bg-cyan-900/50', 'text-[#0D1F4D]');
+    btn.classList.remove('border-[#122D6A]', 'bg-[#6BB6FF]/10', 'dark:bg-cyan-900/50', 'text-[#0D1F4D]');
     btn.classList.add('border-gray-300', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-300');
   }
   
@@ -13613,7 +13613,7 @@ window.renderDashboardSimulados = async function() {
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="${themes[currentTheme].card} p-6 rounded-lg shadow border ${themes[currentTheme].border}">
               <div class="flex items-center justify-between mb-2">
-                <div class="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center">
+                <div class="w-12 h-12 bg-[#6BB6FF]/10 rounded-lg flex items-center justify-center">
                   <i class="fas fa-clipboard-list text-[#122D6A] text-xl"></i>
                 </div>
                 <span class="text-3xl font-bold ${themes[currentTheme].text}">${totalSimulados}</span>
@@ -13623,8 +13623,8 @@ window.renderDashboardSimulados = async function() {
             
             <div class="${themes[currentTheme].card} p-6 rounded-lg shadow border ${themes[currentTheme].border}">
               <div class="flex items-center justify-between mb-2">
-                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                <div class="w-12 h-12 bg-[#2A4A9F]/10 rounded-lg flex items-center justify-center">
+                  <i class="fas fa-check-circle text-[#2A4A9F] text-xl"></i>
                 </div>
                 <span class="text-3xl font-bold ${themes[currentTheme].text}">${simuladosCompletos}</span>
               </div>
@@ -13633,8 +13633,8 @@ window.renderDashboardSimulados = async function() {
             
             <div class="${themes[currentTheme].card} p-6 rounded-lg shadow border ${themes[currentTheme].border}">
               <div class="flex items-center justify-between mb-2">
-                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <i class="fas fa-percentage text-blue-600 text-xl"></i>
+                <div class="w-12 h-12 bg-[#122D6A]/10 rounded-lg flex items-center justify-center">
+                  <i class="fas fa-percentage text-[#122D6A] text-xl"></i>
                 </div>
                 <span class="text-3xl font-bold ${themes[currentTheme].text}">${acertoMedio}%</span>
               </div>
@@ -13698,7 +13698,7 @@ window.renderDashboardSimulados = async function() {
                           ${new Date(simulado.data_realizacao).toLocaleDateString('pt-BR')}
                         </td>
                         <td class="py-2 px-4">
-                          <span class="px-2 py-1 bg-cyan-100 text-[#0D1F4D] rounded-full text-xs">
+                          <span class="px-2 py-1 bg-[#6BB6FF]/10 text-[#0D1F4D] rounded-full text-xs">
                             ${simulado.tipo || 'Padrão'}
                           </span>
                         </td>
@@ -13706,7 +13706,7 @@ window.renderDashboardSimulados = async function() {
                           ${simulado.total_questoes || 0}
                         </td>
                         <td class="py-2 px-4">
-                          <span class="${simulado.percentual_acerto >= 70 ? 'text-green-600' : simulado.percentual_acerto >= 50 ? 'text-yellow-600' : 'text-red-600'} font-semibold">
+                          <span class="${simulado.percentual_acerto >= 70 ? 'text-[#2A4A9F]' : simulado.percentual_acerto >= 50 ? 'text-[#4A90E2]' : 'text-red-600'} font-semibold">
                             ${simulado.percentual_acerto || 0}%
                           </span>
                         </td>
@@ -13837,7 +13837,7 @@ function renderSimuladoQuestao() {
             </div>
             
             <!-- Timer -->
-            <div id="timer-simulado" class="flex items-center gap-2 bg-cyan-100 dark:bg-cyan-900/30 px-4 py-2 rounded-lg">
+            <div id="timer-simulado" class="flex items-center gap-2 bg-[#6BB6FF]/10 dark:bg-cyan-900/30 px-4 py-2 rounded-lg">
               <i class="fas fa-clock text-[#122D6A]"></i>
               <span class="font-mono font-bold text-[#122D6A]" id="tempo-restante">--:--</span>
             </div>
@@ -13854,10 +13854,10 @@ function renderSimuladoQuestao() {
       <div class="max-w-4xl mx-auto px-4 py-6">
         <!-- Info da questão -->
         <div class="flex items-center justify-between mb-4">
-          <span class="px-3 py-1 bg-cyan-100 dark:bg-cyan-900/30 text-[#0D1F4D] dark:text-cyan-300 rounded-full text-sm font-medium">
+          <span class="px-3 py-1 bg-[#6BB6FF]/10 dark:bg-cyan-900/30 text-[#0D1F4D] dark:text-cyan-300 rounded-full text-sm font-medium">
             ${questao.disciplina}
           </span>
-          <span class="px-3 py-1 ${questao.dificuldade === 'facil' ? 'bg-green-100 text-green-700' : questao.dificuldade === 'dificil' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'} rounded-full text-xs">
+          <span class="px-3 py-1 ${questao.dificuldade === 'facil' ? 'bg-[#2A4A9F]/10 text-green-700' : questao.dificuldade === 'dificil' ? 'bg-red-100 text-red-700' : 'bg-[#4A90E2]/10 text-yellow-700'} rounded-full text-xs">
             ${questao.dificuldade === 'facil' ? 'Fácil' : questao.dificuldade === 'dificil' ? 'Difícil' : 'Médio'}
           </span>
         </div>
@@ -13877,7 +13877,7 @@ function renderSimuladoQuestao() {
           ${Object.entries(questao.alternativas).map(([letra, texto]) => `
             <button onclick="selecionarResposta('${letra}')" 
               class="w-full text-left p-4 rounded-xl border-2 transition-all ${respostaSelecionada === letra 
-                ? 'border-[#122D6A] bg-blue-100 dark:bg-blue-900/40 shadow-md' 
+                ? 'border-[#122D6A] bg-[#122D6A]/10 dark:bg-blue-900/40 shadow-md' 
                 : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:border-[#122D6A] hover:bg-blue-50 dark:hover:bg-blue-900/20'}">
               <div class="flex items-start gap-3">
                 <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-sm ${respostaSelecionada === letra 
@@ -13949,7 +13949,7 @@ function renderSimuladoQuestao() {
                       ? 'bg-[#122D6A] text-white ring-2 ring-cyan-300 shadow-md' 
                       : respondida 
                         ? 'bg-emerald-500 text-white shadow-sm' 
-                        : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-cyan-100 hover:text-[#122D6A]'}">
+                        : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-[#6BB6FF]/10 hover:text-[#122D6A]'}">
                     ${idx + 1}
                   </button>
                 `;
@@ -14020,13 +14020,13 @@ function iniciarTimerSimulado() {
       // Alertas visuais
       if (restante < 60000) {
         timerEl.parentElement.classList.add('bg-red-100', 'dark:bg-red-900/30');
-        timerEl.parentElement.classList.remove('bg-cyan-100', 'dark:bg-cyan-900/30');
+        timerEl.parentElement.classList.remove('bg-[#6BB6FF]/10', 'dark:bg-cyan-900/30');
         timerEl.classList.add('text-red-600');
         timerEl.classList.remove('text-[#122D6A]');
       } else if (restante < 300000) {
-        timerEl.parentElement.classList.add('bg-yellow-100', 'dark:bg-yellow-900/30');
-        timerEl.parentElement.classList.remove('bg-cyan-100', 'dark:bg-cyan-900/30');
-        timerEl.classList.add('text-yellow-600');
+        timerEl.parentElement.classList.add('bg-[#4A90E2]/10', 'dark:bg-yellow-900/30');
+        timerEl.parentElement.classList.remove('bg-[#6BB6FF]/10', 'dark:bg-cyan-900/30');
+        timerEl.classList.add('text-[#4A90E2]');
         timerEl.classList.remove('text-[#122D6A]');
       }
     }
@@ -14230,7 +14230,7 @@ function renderResultadoSimulado(acertos, total, percentual, tempo, detalhes) {
           <div class="p-6">
             <div class="grid grid-cols-3 gap-4 mb-6">
               <div class="text-center p-4 ${themes[currentTheme].bgAlt} rounded-xl">
-                <div class="text-3xl font-bold ${cor === 'green' ? 'text-green-600' : cor === 'yellow' ? 'text-yellow-600' : 'text-red-600'}">${percentual}%</div>
+                <div class="text-3xl font-bold ${cor === 'green' ? 'text-[#2A4A9F]' : cor === 'yellow' ? 'text-[#4A90E2]' : 'text-red-600'}">${percentual}%</div>
                 <div class="${themes[currentTheme].textSecondary} text-sm">Aproveitamento</div>
               </div>
               <div class="text-center p-4 ${themes[currentTheme].bgAlt} rounded-xl">
@@ -14318,14 +14318,14 @@ window.verGabaritoSimulado = function() {
                       </div>
                       <div>
                         <span class="font-medium ${themes[currentTheme].text}">${questao.disciplina}</span>
-                        <span class="ml-2 px-2 py-0.5 text-xs rounded ${questao.dificuldade === 'facil' ? 'bg-green-100 text-green-700' : questao.dificuldade === 'dificil' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}">
+                        <span class="ml-2 px-2 py-0.5 text-xs rounded ${questao.dificuldade === 'facil' ? 'bg-[#2A4A9F]/10 text-green-700' : questao.dificuldade === 'dificil' ? 'bg-red-100 text-red-700' : 'bg-[#4A90E2]/10 text-yellow-700'}">
                           ${questao.dificuldade === 'facil' ? 'Fácil' : questao.dificuldade === 'dificil' ? 'Difícil' : 'Médio'}
                         </span>
                       </div>
                     </div>
                     <div class="flex items-center gap-2">
                       ${correto 
-                        ? '<span class="text-green-600 font-medium"><i class="fas fa-check-circle mr-1"></i>Correta</span>' 
+                        ? '<span class="text-[#2A4A9F] font-medium"><i class="fas fa-check-circle mr-1"></i>Correta</span>' 
                         : '<span class="text-red-600 font-medium"><i class="fas fa-times-circle mr-1"></i>Incorreta</span>'}
                     </div>
                   </div>
@@ -14341,15 +14341,15 @@ window.verGabaritoSimulado = function() {
                       const isCorreta = letra === questao.resposta_correta;
                       const isResposta = letra === resposta;
                       let classe = themes[currentTheme].bgAlt;
-                      if (isCorreta) classe = 'bg-green-100 dark:bg-green-900/30 border-green-500';
+                      if (isCorreta) classe = 'bg-[#2A4A9F]/10 dark:bg-green-900/30 border-green-500';
                       else if (isResposta && !isCorreta) classe = 'bg-red-100 dark:bg-red-900/30 border-red-500';
                       
                       return `
                         <div class="p-3 rounded-lg border ${isCorreta || isResposta ? 'border-2' : themes[currentTheme].border} ${classe}">
                           <div class="flex items-start gap-2">
-                            <span class="font-bold ${isCorreta ? 'text-green-600' : isResposta ? 'text-red-600' : themes[currentTheme].text}">${letra})</span>
+                            <span class="font-bold ${isCorreta ? 'text-[#2A4A9F]' : isResposta ? 'text-red-600' : themes[currentTheme].text}">${letra})</span>
                             <span class="${themes[currentTheme].text}">${texto}</span>
-                            ${isCorreta ? '<i class="fas fa-check text-green-600 ml-auto"></i>' : ''}
+                            ${isCorreta ? '<i class="fas fa-check text-[#2A4A9F] ml-auto"></i>' : ''}
                             ${isResposta && !isCorreta ? '<i class="fas fa-times text-red-600 ml-auto"></i>' : ''}
                           </div>
                         </div>
@@ -14423,7 +14423,7 @@ window.verDetalhesSimulado = async function(simuladoId) {
           <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} p-6 mb-6">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div class="text-center">
-                <div class="text-3xl font-bold ${simulado.percentual_acerto >= 70 ? 'text-green-600' : simulado.percentual_acerto >= 50 ? 'text-yellow-600' : 'text-red-600'}">${simulado.percentual_acerto}%</div>
+                <div class="text-3xl font-bold ${simulado.percentual_acerto >= 70 ? 'text-[#2A4A9F]' : simulado.percentual_acerto >= 50 ? 'text-[#4A90E2]' : 'text-red-600'}">${simulado.percentual_acerto}%</div>
                 <div class="${themes[currentTheme].textSecondary} text-sm">Aproveitamento</div>
               </div>
               <div class="text-center">
@@ -14446,7 +14446,7 @@ window.verDetalhesSimulado = async function(simuladoId) {
             <h3 class="font-bold ${themes[currentTheme].text} mb-4">Disciplinas Abordadas</h3>
             <div class="flex flex-wrap gap-2">
               ${disciplinas.map(d => `
-                <span class="px-3 py-1 bg-cyan-100 dark:bg-cyan-900/30 text-[#0D1F4D] dark:text-cyan-300 rounded-full text-sm">${d}</span>
+                <span class="px-3 py-1 bg-[#6BB6FF]/10 dark:bg-cyan-900/30 text-[#0D1F4D] dark:text-cyan-300 rounded-full text-sm">${d}</span>
               `).join('')}
             </div>
           </div>
@@ -15355,7 +15355,7 @@ window.openFAQ = function() {
                     <div class="hidden mt-2 text-sm text-gray-600 space-y-2">
                       <p>A viabilidade indica se você tem tempo suficiente para estudar todo o conteúdo:</p>
                       <p>• <strong class="text-[#122D6A]">✓ Tempo confortável:</strong> Sobra tempo para revisões</p>
-                      <p>• <strong class="text-blue-600">✓ Tempo adequado:</strong> Tempo justo para cobrir tudo</p>
+                      <p>• <strong class="text-[#122D6A]">✓ Tempo adequado:</strong> Tempo justo para cobrir tudo</p>
                       <p>• <strong class="text-gray-600">⚠️ Tempo apertado:</strong> Precisa otimizar estudos</p>
                       <p>• <strong class="text-gray-800">⚠️ Tempo crítico:</strong> Foque nos tópicos principais</p>
                     </div>
@@ -16149,7 +16149,7 @@ function mostrarBancaDetectada(banca) {
   if (!banca) return;
   
   const alertDiv = document.createElement('div');
-  alertDiv.className = 'fixed top-4 right-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-lg z-50';
+  alertDiv.className = 'fixed top-4 right-4 bg-[#2A4A9F]/10 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-lg z-50';
   alertDiv.innerHTML = `
     <div class="flex items-center">
       <i class="fas fa-check-circle mr-2"></i>
