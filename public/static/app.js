@@ -2004,7 +2004,7 @@ function renderConcursoEspecifico() {
                     <p class="text-[9px] md:text-xs text-gray-600 font-medium">TXT</p>
                     <p class="text-[8px] md:text-[10px] text-gray-400 hidden md:block">Mais rápido</p>
                   </div>
-                  <div class="p-2 rounded-lg hover:bg-green-50 transition border border-green-200 bg-green-50/50">
+                  <div class="p-2 rounded-lg hover:bg-[#2A4A9F]/5 transition border border-green-200 bg-green-50/50">
                     <i class="fas fa-file-excel text-[#2A4A9F] text-lg md:text-xl mb-1"></i>
                     <p class="text-[9px] md:text-xs text-green-700 font-medium">XLSX</p>
                     <p class="text-[8px] md:text-[10px] text-[#2A4A9F] hidden md:block">✨ Recomendado!</p>
@@ -4266,7 +4266,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 
                 <button onclick="window.renderDashboardSimulados()" class="group ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-cyan-500 hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center flex-shrink-0 group-hover:bg-cyan-500 transition-colors shadow-sm">
+                    <div class="w-8 h-8 rounded-lg bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center flex-shrink-0 group-hover:bg-[#6BB6FF]/50 transition-colors shadow-sm">
                       <i class="fas fa-edit text-cyan-600 dark:text-cyan-400 group-hover:text-white text-xs transition-colors"></i>
                     </div>
                     <div class="min-w-0 text-left">
@@ -8001,9 +8001,9 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
           </button>
           
           <button onclick="gerarConteudoTipo('flashcards')" 
-            class="p-4 border-2 border-gray-200 rounded-xl hover:border-cyan-500 hover:bg-cyan-50 transition-all text-left group">
+            class="p-4 border-2 border-gray-200 rounded-xl hover:border-cyan-500 hover:bg-[#6BB6FF]/5 transition-all text-left group">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-[#6BB6FF]/10 rounded-lg flex items-center justify-center group-hover:bg-cyan-500 transition-colors">
+              <div class="w-10 h-10 bg-[#6BB6FF]/10 rounded-lg flex items-center justify-center group-hover:bg-[#6BB6FF]/50 transition-colors">
                 <i class="fas fa-clone text-cyan-600 group-hover:text-white transition-colors"></i>
               </div>
               <div>
@@ -8968,7 +8968,7 @@ function visualizarConteudo(conteudo, meta = null) {
                     
                     <div class="space-y-3">
                       ${q.alternativas.map((alt, altIdx) => `
-                        <label class="flex items-start p-4 rounded-xl cursor-pointer bg-gray-100 dark:bg-gray-700 border-2 border-transparent hover:border-[#122D6A] hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-200 group">
+                        <label class="flex items-start p-4 rounded-xl cursor-pointer bg-gray-100 dark:bg-gray-700 border-2 border-transparent hover:border-[#122D6A] hover:bg-[#122D6A]/5 dark:hover:bg-blue-900/30 transition-all duration-200 group">
                           <input type="radio" 
                             name="questao_${secIdx}_${qIdx}" 
                             value="${altIdx}"
@@ -12429,7 +12429,7 @@ function renderExercicioModal(questaoIndex) {
           <!-- Alternativas com tema correto -->
           <div class="space-y-3" id="alternativas-container">
             ${questao.alternativas.map((alt, idx) => {
-              let btnClass = 'bg-white border-gray-200 hover:border-[#122D6A] hover:bg-blue-50';
+              let btnClass = 'bg-white border-gray-200 hover:border-[#122D6A] hover:bg-[#122D6A]/5';
               let circleClass = 'bg-gray-100 text-gray-700';
               let textClass = 'text-gray-800';
               
@@ -13189,7 +13189,7 @@ window.toggleDisciplinaSimulado = async function(disciplinaId, disciplinaNome) {
             ${topicos.slice(0, 15).map(t => `
               <button onclick="toggleTopicoSimulado(${t.id}, '${t.nome.replace(/'/g, "\\'")}', ${disciplinaId})"
                       id="topico-simulado-${t.id}"
-                      class="px-3 py-1.5 text-sm rounded-full border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-900/30 transition">
+                      class="px-3 py-1.5 text-sm rounded-full border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-cyan-500 hover:bg-[#6BB6FF]/5 dark:hover:bg-cyan-900/30 transition">
                 ${t.nome.length > 30 ? t.nome.substring(0, 30) + '...' : t.nome}
               </button>
             `).join('')}
@@ -13650,7 +13650,7 @@ window.renderDashboardSimulados = async function() {
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button onclick="iniciarSimulado('rapido')" 
-                class="p-4 border-2 border-cyan-200 rounded-xl hover:bg-cyan-50 hover:border-cyan-400 transition-all group">
+                class="p-4 border-2 border-cyan-200 rounded-xl hover:bg-[#6BB6FF]/5 hover:border-cyan-400 transition-all group">
                 <i class="fas fa-bolt text-cyan-500 text-2xl mb-2 group-hover:scale-110 transition-transform"></i>
                 <h3 class="font-semibold ${themes[currentTheme].text}">Simulado Rápido</h3>
                 <p class="${themes[currentTheme].textSecondary} text-sm mt-1">10 questões • 15 minutos</p>
@@ -13878,7 +13878,7 @@ function renderSimuladoQuestao() {
             <button onclick="selecionarResposta('${letra}')" 
               class="w-full text-left p-4 rounded-xl border-2 transition-all ${respostaSelecionada === letra 
                 ? 'border-[#122D6A] bg-[#122D6A]/10 dark:bg-blue-900/40 shadow-md' 
-                : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:border-[#122D6A] hover:bg-blue-50 dark:hover:bg-blue-900/20'}">
+                : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:border-[#122D6A] hover:bg-[#122D6A]/5 dark:hover:bg-blue-900/20'}">
               <div class="flex items-start gap-3">
                 <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-sm ${respostaSelecionada === letra 
                   ? 'bg-[#122D6A] text-white shadow-lg' 
@@ -15024,7 +15024,7 @@ window.createHelpButton = function() {
       <div class="space-y-1">
         <button 
           onclick="startTutorial(true); toggleHelpMenu()"
-          class="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 rounded-xl transition-all group"
+          class="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#122D6A]/5 rounded-xl transition-all group"
         >
           <div class="w-10 h-10 bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
             <i class="fas fa-graduation-cap text-white text-sm"></i>
@@ -15037,7 +15037,7 @@ window.createHelpButton = function() {
         
         <button 
           onclick="openFAQ(); toggleHelpMenu()"
-          class="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 rounded-xl transition-all group"
+          class="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#122D6A]/5 rounded-xl transition-all group"
         >
           <div class="w-10 h-10 bg-gradient-to-br from-[#2A4A9F] to-[#3A5AB0] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
             <i class="fas fa-question-circle text-white text-sm"></i>
@@ -15445,7 +15445,7 @@ function addHelpToHeader() {
     <div class="p-2">
       <button 
         onclick="startTutorial(true); toggleHelpMenu()"
-        class="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-lg transition-all group"
+        class="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#122D6A]/5 dark:hover:bg-gray-700 rounded-lg transition-all group"
       >
         <div class="w-10 h-10 bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
           <i class="fas fa-graduation-cap text-white text-sm"></i>
@@ -15458,7 +15458,7 @@ function addHelpToHeader() {
       
       <button 
         onclick="openFAQ(); toggleHelpMenu()"
-        class="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-lg transition-all group"
+        class="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#122D6A]/5 dark:hover:bg-gray-700 rounded-lg transition-all group"
       >
         <div class="w-10 h-10 bg-gradient-to-br from-[#2A4A9F] to-[#3A5AB0] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
           <i class="fas fa-question-circle text-white text-sm"></i>
@@ -16164,4 +16164,37 @@ function mostrarBancaDetectada(banca) {
   setTimeout(() => {
     alertDiv.remove();
   }, 5000);
+}
+
+
+// Função melhorada para mostrar tooltip
+function showTooltip(metaId) {
+  const tooltip = document.getElementById(`tooltip-${metaId}`);
+  const button = event.currentTarget;
+  
+  if (tooltip && button) {
+    tooltip.classList.remove('hidden');
+    
+    // Posicionar tooltip
+    const btnRect = button.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    
+    // Calcular posição
+    let left = btnRect.left + (btnRect.width / 2) - (tooltipRect.width / 2);
+    let top = btnRect.bottom + 8;
+    
+    // Ajustar se sair da tela pela esquerda
+    if (left < 10) {
+      left = 10;
+    }
+    // Ajustar se sair da tela pela direita
+    if (left + tooltipRect.width > window.innerWidth - 10) {
+      left = window.innerWidth - tooltipRect.width - 10;
+    }
+    
+    tooltip.style.position = 'fixed';
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
+    tooltip.style.zIndex = '9999';
+  }
 }
