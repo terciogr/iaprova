@@ -20,7 +20,7 @@ export class EmailService {
   constructor(apiKey: string) {
     this.config = {
       apiKey: apiKey || 'demo_key', // Use uma chave real em produção
-      fromEmail: 'noreply@iaprova.com.br',
+      fromEmail: 'onboarding@resend.dev',
       fromName: 'IAprova - Preparação para Concursos'
     };
   }
@@ -53,6 +53,9 @@ export class EmailService {
         }),
       });
 
+      console.log('📧 Enviando email para:', params.to);
+      console.log('📧 Resposta Resend:', response.status);
+      
       if (!response.ok) {
         const error = await response.text();
         console.error('Erro ao enviar email:', error);

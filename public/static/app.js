@@ -8092,7 +8092,7 @@ async function atualizarIconesConteudoMeta(metaId) {
     
     window.conteudosMetaCache[metaId] = data;
     
-    const tipos = ['teoria', 'exercicios', 'resumo', 'flashcards'];
+    const tipos = ['teoria', 'exercicios', 'resumo', 'flashcards', 'resumo_personalizado'];
     tipos.forEach(tipo => {
       const btn = document.getElementById(`icon-${tipo}-${metaId}`);
       if (btn) {
