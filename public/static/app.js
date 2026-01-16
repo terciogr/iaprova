@@ -8012,6 +8012,20 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
               </div>
             </div>
           </button>
+          
+          <!-- 5ª Opção: Resumo Personalizado -->
+          <button onclick="gerarConteudoTipo('resumo_personalizado')" 
+            class="col-span-2 p-4 border-2 border-gray-200 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all text-left group">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center group-hover:bg-orange-500 transition-colors">
+                <i class="fas fa-file-upload text-orange-600 group-hover:text-white transition-colors"></i>
+              </div>
+              <div>
+                <p class="font-semibold text-gray-800">Resumo Personalizado</p>
+                <p class="text-xs text-gray-500">Upload de PDF para gerar resumo com IA</p>
+              </div>
+            </div>
+          </button>
         </div>
         
         <!-- Botão Cancelar -->
