@@ -5704,56 +5704,56 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
           <div class="grid grid-cols-2 gap-3 mb-4">
             <button onclick="selecionarTipoConteudo('teoria')"
                     id="btn-tipo-teoria"
-                    class="p-4 border-2 ${themes[currentTheme].border} rounded-xl hover:border-[#122D6A] hover:bg-blue-50 transition text-left ${themes[currentTheme].card}">
+                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] hover:bg-[#122D6A]/5 transition text-left bg-white">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-[#122D6A]/10 flex items-center justify-center">
                   <i class="fas fa-book text-[#122D6A]"></i>
                 </div>
                 <div>
-                  <p class="font-semibold ${themes[currentTheme].text}">Teoria</p>
-                  <p class="text-xs ${themes[currentTheme].textSecondary}">Conteúdo completo</p>
+                  <p class="font-semibold text-gray-800">Teoria</p>
+                  <p class="text-xs text-gray-500">Conteúdo completo</p>
                 </div>
               </div>
             </button>
             
             <button onclick="selecionarTipoConteudo('exercicios')"
                     id="btn-tipo-exercicios"
-                    class="p-4 border-2 ${themes[currentTheme].border} rounded-xl hover:border-[#122D6A] hover:bg-green-50 transition text-left ${themes[currentTheme].card}">
+                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#2A4A9F] hover:bg-[#2A4A9F]/5 transition text-left bg-white">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-[#2A4A9F]/10 flex items-center justify-center">
                   <i class="fas fa-tasks text-[#2A4A9F]"></i>
                 </div>
                 <div>
-                  <p class="font-semibold ${themes[currentTheme].text}">Exercícios</p>
-                  <p class="text-xs ${themes[currentTheme].textSecondary}">Questões de concurso</p>
+                  <p class="font-semibold text-gray-800">Exercícios</p>
+                  <p class="text-xs text-gray-500">Questões de concurso</p>
                 </div>
               </div>
             </button>
             
             <button onclick="selecionarTipoConteudo('resumo')"
                     id="btn-tipo-resumo"
-                    class="p-4 border-2 ${themes[currentTheme].border} rounded-xl hover:border-[#122D6A] hover:bg-yellow-50 transition text-left ${themes[currentTheme].card}">
+                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#4A90E2] hover:bg-[#4A90E2]/5 transition text-left bg-white">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-[#4A90E2]/10 flex items-center justify-center">
                   <i class="fas fa-sticky-note text-[#4A90E2]"></i>
                 </div>
                 <div>
-                  <p class="font-semibold ${themes[currentTheme].text}">Resumo</p>
-                  <p class="text-xs ${themes[currentTheme].textSecondary}">Esquematizado</p>
+                  <p class="font-semibold text-gray-800">Resumo</p>
+                  <p class="text-xs text-gray-500">Esquematizado</p>
                 </div>
               </div>
             </button>
             
             <button onclick="selecionarTipoConteudo('flashcards')"
                     id="btn-tipo-flashcards"
-                    class="p-4 border-2 ${themes[currentTheme].border} rounded-xl hover:border-[#122D6A] hover:bg-cyan-50 transition text-left ${themes[currentTheme].card}">
+                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#6BB6FF] hover:bg-[#6BB6FF]/5 transition text-left bg-white">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-[#6BB6FF]/10 flex items-center justify-center">
-                  <i class="fas fa-clone text-[#122D6A]"></i>
+                  <i class="fas fa-clone text-[#6BB6FF]"></i>
                 </div>
                 <div>
-                  <p class="font-semibold ${themes[currentTheme].text}">Flashcards</p>
-                  <p class="text-xs ${themes[currentTheme].textSecondary}">Cards de revisão</p>
+                  <p class="font-semibold text-gray-800">Flashcards</p>
+                  <p class="text-xs text-gray-500">Cards de revisão</p>
                 </div>
               </div>
             </button>
@@ -5761,14 +5761,14 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
             <!-- 5ª Opção: Resumo Personalizado -->
             <button onclick="selecionarTipoConteudo('resumo_personalizado')"
                     id="btn-tipo-resumo-personalizado"
-                    class="p-4 border-2 ${themes[currentTheme].border} rounded-xl hover:border-[#122D6A] transition text-left ${themes[currentTheme].card} col-span-2">
+                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#FF6B35] hover:bg-[#FF6B35]/5 transition text-left bg-white col-span-2">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center">
-                  <i class="fas fa-file-upload text-white"></i>
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF6B35]/20 to-[#FF8C42]/20 flex items-center justify-center">
+                  <i class="fas fa-file-upload text-[#FF6B35]"></i>
                 </div>
                 <div class="flex-1">
-                  <p class="font-semibold ${themes[currentTheme].text}">Resumo Personalizado</p>
-                  <p class="text-xs ${themes[currentTheme].textSecondary}">Upload de PDF ou documento para gerar resumo com IA</p>
+                  <p class="font-semibold text-gray-800">Resumo Personalizado</p>
+                  <p class="text-xs text-gray-500">Upload de PDF ou documento para gerar resumo com IA</p>
                 </div>
               </div>
             </button>
