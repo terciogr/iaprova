@@ -1,242 +1,221 @@
-# 🧠 IAprova - Sistema Inteligente de Preparação para Concursos Públicos
+# IAprova - Sistema Inteligente de Preparação para Concursos Públicos 🎯
 
-[![Status](https://img.shields.io/badge/Status-Pronto%20para%20Deploy-success)](https://github.com/terciogomesrabelo/iaprova)
-[![Versão](https://img.shields.io/badge/Versão-v20.7-blue)](https://github.com/terciogomesrabelo/iaprova)
-[![Framework](https://img.shields.io/badge/Framework-Hono-orange)](https://hono.dev)
-[![Deploy](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-f38020)](https://pages.cloudflare.com)
-[![IA](https://img.shields.io/badge/IA-Groq%20Llama%203.3-green)](https://groq.com)
+Sistema web completo para preparação inteligente para concursos públicos, utilizando IA para análise de editais, geração de conteúdo personalizado e planos de estudo adaptativos.
 
-## 📋 Visão Geral
+## 🌟 Principais Funcionalidades
 
-Plataforma brasileira completa de preparação personalizada para concursos públicos, com inteligência artificial adaptada ao perfil do candidato e cargo pretendido.
+### 📋 Análise Inteligente de Editais
+- **Upload de PDF/TXT** com extração automática de conteúdo
+- **Detecção automática de banca organizadora** (15 bancas brasileiras)
+- **Identificação de disciplinas e tópicos** do edital
+- **Peso por disciplina** baseado na análise do edital
 
-**Sistema 100% migrado e configurado - Pronto para deploy!**
+### 🤖 Geração de Conteúdo com IA
+- **5 tipos de conteúdo:**
+  - 📘 **Teoria Completa** - Explicações detalhadas
+  - 📗 **Exercícios** - Questões no estilo da banca
+  - 📙 **Resumos** - Esquematizados e objetivos
+  - 🎯 **Flashcards** - Para memorização rápida
+  - 📄 **Resumo Personalizado** - Upload de PDF para gerar resumo
 
-## 🚀 Demonstração
+### 🏛️ Adaptação por Banca Organizadora
+Sistema reconhece e adapta conteúdo para 15 bancas:
+- CEBRASPE (Cespe/UnB)
+- FCC - Fundação Carlos Chagas
+- FGV - Fundação Getúlio Vargas
+- VUNESP
+- CESGRANRIO
+- IDECAN
+- INSTITUTO AOCP
+- QUADRIX
+- CONSULPLAN
+- IBFC
+- IADES
+- CESPE CEBRASPE
+- FUNCAB
+- COPS-UEL
+- NÚCLEO DE CONCURSOS UFPR
 
-- **Sandbox (Funcionando)**: https://3000-id12ekrieaebwye022748-18e660f9.sandbox.novita.ai
-- **Produção**: `https://iaprova.pages.dev` (aguardando deploy)
+### 📅 Plano de Estudos Personalizado
+- **Entrevista inicial** para conhecer o perfil do candidato
+- **Cronograma semanal** com metas diárias
+- **Tracking de progresso** por disciplina
+- **Ajuste automático** baseado no desempenho
 
-### Credenciais de Teste
-- **Email**: teste@iaprova.com
-- **Senha**: 123456
+### 📊 Dashboard Completo
+- **Visão geral** do progresso
+- **Estatísticas** de estudo
+- **Calendário** com metas semanais
+- **Histórico** de conteúdos estudados
 
-## ✨ Funcionalidades Principais
-
-### 1. 🎯 Entrevista Inicial Inteligente
-- Upload de editais (PDF, TXT, XLSX)
-- Extração automática de disciplinas e tópicos
-- Avaliação personalizada por matéria
-- Identificação de dificuldades e lacunas
-
-### 2. 📚 Gerador de Planos de Estudo
-- Planos semanais personalizados
-- Distribuição inteligente de tempo
-- Ciclos adaptados (teoria/exercícios/revisão)
-- Baseado no nível de conhecimento
-
-### 3. 📊 Dashboard Interativo
-- KPIs principais (Streak, Dias, Horas, Média)
-- Calendário compacto integrado
-- Metas diárias com checklist
-- Acompanhamento em tempo real
-
-### 4. 🤖 Geração de Conteúdo com IA
-- Integração com Groq (Llama 3.3 70B)
-- Geração de resumos personalizados
-- Exercícios e simulados
-- Conteúdo adaptado ao cargo
-
-### 5. 📅 Sistema de Metas Semanais
-- Geração automática de metas
-- Tracking de progresso
-- Histórico de estudos
-- Estatísticas detalhadas
-
-## 🛠️ Tecnologias Utilizadas
+## 🛠️ Stack Tecnológico
 
 ### Backend
-- **[Hono](https://hono.dev)** - Web framework ultrarrápido
-- **[Cloudflare Workers](https://workers.cloudflare.com)** - Edge runtime
-- **[Cloudflare D1](https://developers.cloudflare.com/d1/)** - Banco de dados SQLite
+- **Hono Framework** - Web framework ultrarrápido
+- **Cloudflare Workers** - Edge computing
 - **TypeScript** - Type safety
 
 ### Frontend
-- **HTML5/CSS3** - Interface responsiva
-- **[TailwindCSS](https://tailwindcss.com)** - Estilização moderna
-- **JavaScript Vanilla** - Sem frameworks pesados
-- **[Chart.js](https://www.chartjs.org)** - Gráficos e visualizações
+- **HTML5/CSS3** - Interface moderna
+- **Tailwind CSS** - Estilização responsiva
+- **JavaScript Vanilla** - Sem dependências pesadas
+- **Chart.js** - Gráficos e visualizações
+
+### Banco de Dados
+- **Cloudflare D1** - SQLite distribuído globalmente
+- **Migrations** - Versionamento de schema
 
 ### Integrações
-- **[Groq API](https://groq.com)** - LLM principal (Llama 3.3 70B) - GRÁTIS!
-- **[Resend](https://resend.com)** - Serviço de email
-- **Cloudflare R2** - Storage de arquivos
+- **Groq AI** - LLM Llama 3.3 70B para geração de conteúdo
+- **Google Gemini** - Fallback e análise avançada
+- **Resend** - Sistema de email transacional
 
-## 📦 Instalação
+## 🚀 Instalação e Configuração
 
 ### Pré-requisitos
 - Node.js 18+
 - npm ou yarn
 - Conta Cloudflare (para deploy)
+- Chaves de API (Groq, Gemini, Resend)
 
-### Configuração Local
+### Instalação Local
 
-1. **Clone o repositório**
+1. **Clone o repositório:**
 ```bash
-git clone https://github.com/terciogomesrabelo/iaprova.git
+git clone https://github.com/terciogr/iaprova.git
 cd iaprova
 ```
 
-2. **Instale as dependências**
+2. **Instale as dependências:**
 ```bash
 npm install
 ```
 
-3. **Configure as variáveis de ambiente**
+3. **Configure as variáveis de ambiente:**
 ```bash
 cp .dev.vars.example .dev.vars
 ```
 
-Edite `.dev.vars` e adicione suas chaves:
-```env
-# IA - Groq (GRÁTIS em https://console.groq.com/)
-GROQ_API_KEY=gsk_sua_chave_aqui
-
-# Email - Resend
-RESEND_API_KEY=re_sua_chave_aqui
-
-# JWT Secret
-JWT_SECRET=seu_secret_jwt_aqui
+Edite `.dev.vars` com suas chaves:
+```
+GROQ_API_KEY=seu_token_aqui
+GEMINI_API_KEY=seu_token_aqui
+RESEND_API_KEY=seu_token_aqui
 ```
 
-4. **Configure o banco de dados local**
+4. **Configure o banco de dados D1:**
 ```bash
-npx wrangler d1 migrations apply iaprova-db --local
+# Criar banco de dados de produção
+npx wrangler d1 create webapp-production
+
+# Aplicar migrations localmente
+npx wrangler d1 migrations apply webapp-production --local
 ```
 
-5. **Build e inicie o servidor**
+5. **Inicie o servidor de desenvolvimento:**
 ```bash
 npm run build
 npm run dev:sandbox
 ```
 
-6. **Acesse**
-```
-http://localhost:3000
-```
+Acesse: http://localhost:3000
 
-## 🚀 Deploy para Produção
+## 📦 Deploy para Produção
 
-### Opção 1: Deploy via CLI (Requer Cloudflare Token)
+### Cloudflare Pages
 
+1. **Configure o Cloudflare:**
 ```bash
-# Configure seu token
-export CLOUDFLARE_API_TOKEN="seu_token_aqui"
+# Login no Cloudflare
+npx wrangler login
 
-# Execute o script de deploy
-./deploy.sh
+# Configure o projeto
+npx wrangler pages project create iaprova --production-branch main
 ```
 
-### Opção 2: Deploy Manual via Dashboard
+2. **Build e Deploy:**
+```bash
+npm run build
+npx wrangler pages deploy dist --project-name iaprova
+```
 
-1. Build o projeto: `npm run build`
-2. Acesse [Cloudflare Dashboard](https://dash.cloudflare.com/)
-3. Vá em **Pages** > **Create a project**
-4. Escolha **Upload assets**
-5. Arraste a pasta `dist/`
-6. Configure as variáveis de ambiente
-7. Deploy!
+3. **Configure secrets em produção:**
+```bash
+npx wrangler pages secret put GROQ_API_KEY --project-name iaprova
+npx wrangler pages secret put GEMINI_API_KEY --project-name iaprova
+npx wrangler pages secret put RESEND_API_KEY --project-name iaprova
+```
 
-Veja [DEPLOY_VIA_INTERFACE.md](./DEPLOY_VIA_INTERFACE.md) para instruções detalhadas.
+## 🔧 Scripts Disponíveis
+
+```json
+{
+  "dev": "Servidor de desenvolvimento com Vite",
+  "dev:sandbox": "Desenvolvimento com Wrangler",
+  "build": "Build para produção",
+  "deploy": "Deploy para Cloudflare Pages",
+  "db:migrate:local": "Aplicar migrations localmente",
+  "db:migrate:prod": "Aplicar migrations em produção"
+}
+```
 
 ## 📁 Estrutura do Projeto
 
 ```
 iaprova/
 ├── src/
-│   ├── index.tsx           # Backend principal (Hono)
-│   ├── types.ts            # TypeScript types
-│   └── services/           # Serviços
+│   ├── index.tsx           # Servidor principal Hono
+│   ├── banca-analyzer.ts   # Análise de bancas
+│   ├── gemini_prompt_master.ts # Prompts otimizados
+│   └── services/
+│       └── email.service.ts # Serviço de email
 ├── public/
-│   ├── index.html          # Frontend
-│   └── static/             # Assets
-├── migrations/             # 30+ migrações SQL
-├── dist/                   # Build de produção
-├── .dev.vars              # Variáveis locais
-├── wrangler.jsonc         # Config Cloudflare
-└── ecosystem.config.cjs   # Config PM2
+│   ├── index.html          # Frontend principal
+│   └── static/
+│       ├── app.js          # Lógica do frontend
+│       └── style.css       # Estilos customizados
+├── migrations/             # Migrations do banco
+├── wrangler.jsonc         # Configuração Cloudflare
+├── package.json           # Dependências
+└── README.md             # Este arquivo
 ```
 
-## 🗄️ Banco de Dados
+## 🎨 Personalização
 
-- **100+ disciplinas** cadastradas
-- **5000+ tópicos** de estudo detalhados
-- **30+ migrações** aplicadas
-- Dataset completo de concursos públicos
+### Temas
+O sistema suporta temas claro/escuro. Para personalizar cores, edite:
+- `public/static/app.js` - Objeto `themes`
+- `public/static/style.css` - Variáveis CSS
 
-## 📊 Status do Sistema
+### Bancas
+Para adicionar novas bancas, edite:
+- `src/banca-analyzer.ts` - Adicione no array `BANCAS_CONFIG`
+- `migrations/0024_add_banca_organizadora.sql` - Adicione na tabela
 
-| Componente | Status | Observação |
-|------------|--------|------------|
-| Backend | ✅ Funcionando | Hono + TypeScript |
-| Frontend | ✅ Funcionando | HTML + TailwindCSS |
-| Banco de Dados | ✅ Configurado | D1 SQLite |
-| IA (Groq) | ✅ Testado | 447K tokens/seg |
-| Email (Resend) | ✅ Testado | Funcionando |
-| Build | ✅ Pronto | dist/ gerada |
-| Deploy | ⏳ Aguardando | Manual via Dashboard |
+## 🔒 Segurança
 
-## 🔑 APIs Necessárias
+- **Nunca commite** arquivos `.dev.vars` ou chaves de API
+- Use **secrets do Cloudflare** para produção
+- **Validação** de entrada em todos os endpoints
+- **Rate limiting** automático pelo Cloudflare
 
-### Groq (IA) - GRÁTIS
-1. Acesse: https://console.groq.com/
-2. Crie conta gratuita
-3. Gere API Key
-4. Use no `.dev.vars`
+## 📝 Licença
 
-### Resend (Email)
-1. Acesse: https://resend.com/
-2. Crie conta
-3. Gere API Key
-4. Use no `.dev.vars`
+MIT License - Veja [LICENSE](LICENSE) para detalhes.
 
-## 📝 Documentação
-
-- [README.md](./README.md) - Documentação original completa
-- [GUIA_USUARIO_FINAL.md](./GUIA_USUARIO_FINAL.md) - Manual do usuário
-- [DEPLOY_VIA_INTERFACE.md](./DEPLOY_VIA_INTERFACE.md) - Deploy manual
-- [INSTRUCOES_DEPLOY.md](./INSTRUCOES_DEPLOY.md) - Deploy via CLI
-
-## 🤝 Contribuindo
+## 🤝 Contribuições
 
 Contribuições são bem-vindas! Por favor:
-
 1. Fork o projeto
-2. Crie sua feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
+2. Crie uma branch para sua feature
+3. Commit suas mudanças
+4. Push para a branch
 5. Abra um Pull Request
 
-## 📄 Licença
+## 📧 Contato
 
-Este projeto está sob licença MIT. Veja [LICENSE](LICENSE) para mais detalhes.
-
-## 👨‍💻 Autor
-
-**Tercio Gomes Rabelo**
-- GitHub: [@terciogomesrabelo](https://github.com/terciogomesrabelo)
-- Email: terciogomesrabelo@gmail.com
-
-## 🙏 Agradecimentos
-
-- Cloudflare pela infraestrutura edge
-- Groq pela API de IA gratuita
-- Comunidade Hono pelo framework incrível
+Para dúvidas ou sugestões sobre o sistema IAprova.
 
 ---
 
-**⭐ Se este projeto te ajudou, considere dar uma estrela!**
-
----
-
-<p align="center">Desenvolvido com ❤️ para ajudar candidatos brasileiros em concursos públicos</p>
+**Desenvolvido com ❤️ para democratizar a preparação para concursos públicos no Brasil**
