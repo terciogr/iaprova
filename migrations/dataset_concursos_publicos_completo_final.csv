@@ -1,0 +1,2602 @@
+ÁREA,DISCIPLINA,TÓPICO,NÍVEL_SUPERIOR_INDICADO,FREQUÊNCIA_EDITAIS
+TRIBUNAL,Língua Portuguesa,Compreensão e interpretação de textos,Não,Comum
+TRIBUNAL,Língua Portuguesa,Significado contextual e substituição de palavras,Não,Comum
+TRIBUNAL,Língua Portuguesa,Vocabulário e semântica,Não,Comum
+TRIBUNAL,Língua Portuguesa,Ortografia e acentuação,Não,Comum
+TRIBUNAL,Língua Portuguesa,Pontuação e efeitos de sentido,Não,Comum
+TRIBUNAL,Língua Portuguesa,Sintaxe: períodos e orações,Não,Comum
+TRIBUNAL,Língua Portuguesa,Concordância verbal e nominal,Não,Comum
+TRIBUNAL,Língua Portuguesa,Regência verbal e nominal,Não,Comum
+TRIBUNAL,Língua Portuguesa,Colocação pronominal,Não,Comum
+TRIBUNAL,Língua Portuguesa,Coesão textual e progressão temática,Não,Comum
+TRIBUNAL,Língua Portuguesa,Estrutura argumentativa,Não,Comum
+TRIBUNAL,Língua Portuguesa,Reescrita de frases,Não,Comum
+TRIBUNAL,Língua Portuguesa,Variação linguística,Não,Comum
+TRIBUNAL,Língua Portuguesa,Denotação e conotação,Não,Comum
+TRIBUNAL,Língua Portuguesa,Figuras de linguagem,Não,Comum
+TRIBUNAL,Direito Constitucional,Constituição Federal de 1988,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Preâmbulo e princípios fundamentais,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Direitos e garantias fundamentais,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Direitos individuais e coletivos,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Direitos sociais,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Direitos políticos,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Organização do Estado,Sim,Frequente
+TRIBUNAL,Direito Constitucional,"União, Estados, Distrito Federal e Municípios",Sim,Frequente
+TRIBUNAL,Direito Constitucional,"Poderes (Executivo, Legislativo, Judiciário)",Sim,Frequente
+TRIBUNAL,Direito Constitucional,Processo Legislativo,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Poder Executivo,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Poder Judiciário,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Conselho Nacional de Justiça (CNJ),Sim,Frequente
+TRIBUNAL,Direito Constitucional,Ministério Público,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Defensoria Pública,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Advocacia,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Controle de constitucionalidade,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Ação Direta de Inconstitucionalidade (ADI),Sim,Frequente
+TRIBUNAL,Direito Constitucional,Ação Declaratória de Constitucionalidade (ADC),Sim,Frequente
+TRIBUNAL,Direito Constitucional,Arguição de Descumprimento de Preceito Fundamental (ADPF),Sim,Frequente
+TRIBUNAL,Direito Constitucional,Mandado de Segurança,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Habeas Corpus,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Mandado de Injunção,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Ação Popular,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Habeas Data,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Direitos Humanos e Constituição,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Sistema tributário nacional,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Ordem social e políticas públicas,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Ordem econômica,Sim,Frequente
+TRIBUNAL,Direito Constitucional,Emendas constitucionais,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Princípios da administração pública,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Legalidade,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Moralidade,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Impessoalidade,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Publicidade,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Eficiência,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Finalidade,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Motivação,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Razoabilidade,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Proporcionalidade,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Supremacia do interesse público,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Autotutela administrativa,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Organização da Administração Pública,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Administração direta,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Administração indireta,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Autarquias,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Fundações,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Empresas públicas,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Sociedades de economia mista,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Atos administrativos,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Conceito e características,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Requisitos dos atos administrativos,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Atributos dos atos administrativos,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Classificação dos atos administrativos,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Validade e eficácia,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Vício de legalidade,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Invalidação de atos,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Anulação,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Revogação,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Convalidação,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Processo administrativo,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Lei nº 9.784/1999,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Princípios do processo administrativo,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Direitos e deveres do administrado,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Prazos processuais,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Recursos administrativos,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Agentes públicos,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Servidores públicos,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Lei nº 8.112/1990,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Regime jurídico,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Direitos e deveres,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Responsabilidades,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Impedimento e suspeição,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Poderes administrativos,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Poder vinculado,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Poder discricionário,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Poder de polícia,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Poder disciplinar,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Poder hierárquico,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Poder regulamentador,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Controle e responsabilização,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Controle administrativo,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Controle judicial,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Controle legislativo,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Tribunais de Contas,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Improbidade administrativa,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Lei nº 8.429/1992,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Enriquecimento ilícito,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Desvio de finalidade,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Dano ao erário,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Sanções,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Responsabilidade civil do Estado,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Teoria do risco,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Nexo causal,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Dano,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Lei de Licitações,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Lei nº 14.133/2021,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Princípios das licitações,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Modalidades de licitação,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Pregão,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Concorrência,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Tomada de preços,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Convite,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Dispensa de licitação,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Inexigibilidade de licitação,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Procedimento licitatório,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Lei Anticorrupção,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Lei nº 12.846/2013,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Responsabilidade das pessoas jurídicas,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Programa de integridade,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Lei de Acesso à Informação,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Lei nº 12.527/2011,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Direito à informação,Sim,Frequente
+TRIBUNAL,Direito Administrativo,Sigilo de informações,Sim,Frequente
+TRIBUNAL,Direito Civil,Lei de Introdução às normas do Direito Brasileiro (LINDB),Sim,Frequente
+TRIBUNAL,Direito Civil,Aplicação da lei no tempo,Sim,Frequente
+TRIBUNAL,Direito Civil,Aplicação da lei no espaço,Sim,Frequente
+TRIBUNAL,Direito Civil,Interpretação da lei,Sim,Frequente
+TRIBUNAL,Direito Civil,Integração de lacunas,Sim,Frequente
+TRIBUNAL,Direito Civil,Pessoas naturais,Sim,Frequente
+TRIBUNAL,Direito Civil,Personalidade,Sim,Frequente
+TRIBUNAL,Direito Civil,Capacidade,Sim,Frequente
+TRIBUNAL,Direito Civil,Incapacidade,Sim,Frequente
+TRIBUNAL,Direito Civil,Curatela,Sim,Frequente
+TRIBUNAL,Direito Civil,Tutela,Sim,Frequente
+TRIBUNAL,Direito Civil,Emancipação,Sim,Frequente
+TRIBUNAL,Direito Civil,Direitos da personalidade,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito à vida,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito ao nome,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito à honra,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito à imagem,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito à privacidade,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito ao próprio corpo,Sim,Frequente
+TRIBUNAL,Direito Civil,Pessoas jurídicas,Sim,Frequente
+TRIBUNAL,Direito Civil,Associações,Sim,Frequente
+TRIBUNAL,Direito Civil,Fundações,Sim,Frequente
+TRIBUNAL,Direito Civil,Sociedades,Sim,Frequente
+TRIBUNAL,Direito Civil,Domicílio,Sim,Frequente
+TRIBUNAL,Direito Civil,Domicílio civil,Sim,Frequente
+TRIBUNAL,Direito Civil,Domicílio profissional,Sim,Frequente
+TRIBUNAL,Direito Civil,Multidomicílio,Sim,Frequente
+TRIBUNAL,Direito Civil,Bens,Sim,Frequente
+TRIBUNAL,Direito Civil,Classificação dos bens,Sim,Frequente
+TRIBUNAL,Direito Civil,Bens móveis,Sim,Frequente
+TRIBUNAL,Direito Civil,Bens imóveis,Sim,Frequente
+TRIBUNAL,Direito Civil,Bens públicos,Sim,Frequente
+TRIBUNAL,Direito Civil,Bens privados,Sim,Frequente
+TRIBUNAL,Direito Civil,Bens divisíveis,Sim,Frequente
+TRIBUNAL,Direito Civil,Bens indivisíveis,Sim,Frequente
+TRIBUNAL,Direito Civil,Bens consumíveis,Sim,Frequente
+TRIBUNAL,Direito Civil,Bens não consumíveis,Sim,Frequente
+TRIBUNAL,Direito Civil,Bens fungíveis,Sim,Frequente
+TRIBUNAL,Direito Civil,Bens não fungíveis,Sim,Frequente
+TRIBUNAL,Direito Civil,Fatos jurídicos,Sim,Frequente
+TRIBUNAL,Direito Civil,Atos jurídicos,Sim,Frequente
+TRIBUNAL,Direito Civil,Fatos naturais,Sim,Frequente
+TRIBUNAL,Direito Civil,Negócio jurídico,Sim,Frequente
+TRIBUNAL,Direito Civil,Vontade,Sim,Frequente
+TRIBUNAL,Direito Civil,Manifestação da vontade,Sim,Frequente
+TRIBUNAL,Direito Civil,Vício da vontade,Sim,Frequente
+TRIBUNAL,Direito Civil,Erro,Sim,Frequente
+TRIBUNAL,Direito Civil,Dolo,Sim,Frequente
+TRIBUNAL,Direito Civil,Coação,Sim,Frequente
+TRIBUNAL,Direito Civil,Lesão,Sim,Frequente
+TRIBUNAL,Direito Civil,Forma,Sim,Frequente
+TRIBUNAL,Direito Civil,Objeto,Sim,Frequente
+TRIBUNAL,Direito Civil,Lícito,Sim,Frequente
+TRIBUNAL,Direito Civil,Possível,Sim,Frequente
+TRIBUNAL,Direito Civil,Determinado,Sim,Frequente
+TRIBUNAL,Direito Civil,Determinável,Sim,Frequente
+TRIBUNAL,Direito Civil,Formação do negócio jurídico,Sim,Frequente
+TRIBUNAL,Direito Civil,Elementos essenciais,Sim,Frequente
+TRIBUNAL,Direito Civil,Elementos acidentais,Sim,Frequente
+TRIBUNAL,Direito Civil,Condição,Sim,Frequente
+TRIBUNAL,Direito Civil,Termo,Sim,Frequente
+TRIBUNAL,Direito Civil,Encargo,Sim,Frequente
+TRIBUNAL,Direito Civil,Validade do negócio jurídico,Sim,Frequente
+TRIBUNAL,Direito Civil,Nulidade,Sim,Frequente
+TRIBUNAL,Direito Civil,Anulabilidade,Sim,Frequente
+TRIBUNAL,Direito Civil,Prescrição,Sim,Frequente
+TRIBUNAL,Direito Civil,Decadência,Sim,Frequente
+TRIBUNAL,Direito Civil,Prescrição intercorrente,Sim,Frequente
+TRIBUNAL,Direito Civil,Suspensão da prescrição,Sim,Frequente
+TRIBUNAL,Direito Civil,Interrupção da prescrição,Sim,Frequente
+TRIBUNAL,Direito Civil,Prova,Sim,Frequente
+TRIBUNAL,Direito Civil,Meios de prova,Sim,Frequente
+TRIBUNAL,Direito Civil,Ônus da prova,Sim,Frequente
+TRIBUNAL,Direito Civil,Obrigações,Sim,Frequente
+TRIBUNAL,Direito Civil,Conceito,Sim,Frequente
+TRIBUNAL,Direito Civil,Elementos,Sim,Frequente
+TRIBUNAL,Direito Civil,Sujeito ativo,Sim,Frequente
+TRIBUNAL,Direito Civil,Sujeito passivo,Sim,Frequente
+TRIBUNAL,Direito Civil,Objeto,Sim,Frequente
+TRIBUNAL,Direito Civil,Vínculo jurídico,Sim,Frequente
+TRIBUNAL,Direito Civil,Classificação das obrigações,Sim,Frequente
+TRIBUNAL,Direito Civil,Obrigação de dar,Sim,Frequente
+TRIBUNAL,Direito Civil,Obrigação de fazer,Sim,Frequente
+TRIBUNAL,Direito Civil,Obrigação de não fazer,Sim,Frequente
+TRIBUNAL,Direito Civil,Obrigação genérica,Sim,Frequente
+TRIBUNAL,Direito Civil,Obrigação específica,Sim,Frequente
+TRIBUNAL,Direito Civil,Obrigação alternativa,Sim,Frequente
+TRIBUNAL,Direito Civil,Obrigação divisível,Sim,Frequente
+TRIBUNAL,Direito Civil,Obrigação indivisível,Sim,Frequente
+TRIBUNAL,Direito Civil,Obrigação solidária,Sim,Frequente
+TRIBUNAL,Direito Civil,Solidariedade ativa,Sim,Frequente
+TRIBUNAL,Direito Civil,Solidariedade passiva,Sim,Frequente
+TRIBUNAL,Direito Civil,Adimplemento,Sim,Frequente
+TRIBUNAL,Direito Civil,Mora,Sim,Frequente
+TRIBUNAL,Direito Civil,Inadimplemento,Sim,Frequente
+TRIBUNAL,Direito Civil,Perdas e danos,Sim,Frequente
+TRIBUNAL,Direito Civil,Juros de mora,Sim,Frequente
+TRIBUNAL,Direito Civil,Extinção da obrigação,Sim,Frequente
+TRIBUNAL,Direito Civil,Pagamento,Sim,Frequente
+TRIBUNAL,Direito Civil,Compensação,Sim,Frequente
+TRIBUNAL,Direito Civil,Confusão,Sim,Frequente
+TRIBUNAL,Direito Civil,Remissão,Sim,Frequente
+TRIBUNAL,Direito Civil,Novação,Sim,Frequente
+TRIBUNAL,Direito Civil,Dação em pagamento,Sim,Frequente
+TRIBUNAL,Direito Civil,Contratos,Sim,Frequente
+TRIBUNAL,Direito Civil,Conceito,Sim,Frequente
+TRIBUNAL,Direito Civil,Elementos,Sim,Frequente
+TRIBUNAL,Direito Civil,Formação,Sim,Frequente
+TRIBUNAL,Direito Civil,Validade,Sim,Frequente
+TRIBUNAL,Direito Civil,Eficácia,Sim,Frequente
+TRIBUNAL,Direito Civil,Cláusulas contratuais,Sim,Frequente
+TRIBUNAL,Direito Civil,Cláusula ouro,Sim,Frequente
+TRIBUNAL,Direito Civil,Cláusula penal,Sim,Frequente
+TRIBUNAL,Direito Civil,Cláusula de reajuste,Sim,Frequente
+TRIBUNAL,Direito Civil,Cláusulas gerais de contratação,Sim,Frequente
+TRIBUNAL,Direito Civil,Abusividade,Sim,Frequente
+TRIBUNAL,Direito Civil,Extraordinária onerosidade,Sim,Frequente
+TRIBUNAL,Direito Civil,Revisão contratual,Sim,Frequente
+TRIBUNAL,Direito Civil,Resolução,Sim,Frequente
+TRIBUNAL,Direito Civil,Rescisão,Sim,Frequente
+TRIBUNAL,Direito Civil,Nulidade contratual,Sim,Frequente
+TRIBUNAL,Direito Civil,Anulabilidade contratual,Sim,Frequente
+TRIBUNAL,Direito Civil,Espécies de contratos,Sim,Frequente
+TRIBUNAL,Direito Civil,Compra e venda,Sim,Frequente
+TRIBUNAL,Direito Civil,Locação,Sim,Frequente
+TRIBUNAL,Direito Civil,Empreitada,Sim,Frequente
+TRIBUNAL,Direito Civil,Parceria,Sim,Frequente
+TRIBUNAL,Direito Civil,Doação,Sim,Frequente
+TRIBUNAL,Direito Civil,Comodato,Sim,Frequente
+TRIBUNAL,Direito Civil,Mútuo,Sim,Frequente
+TRIBUNAL,Direito Civil,Depósito,Sim,Frequente
+TRIBUNAL,Direito Civil,Mandato,Sim,Frequente
+TRIBUNAL,Direito Civil,Agência,Sim,Frequente
+TRIBUNAL,Direito Civil,Distribuição,Sim,Frequente
+TRIBUNAL,Direito Civil,Representação comercial,Sim,Frequente
+TRIBUNAL,Direito Civil,Responsabilidade civil,Sim,Frequente
+TRIBUNAL,Direito Civil,Responsabilidade contratual,Sim,Frequente
+TRIBUNAL,Direito Civil,Responsabilidade extracontratual,Sim,Frequente
+TRIBUNAL,Direito Civil,Culpa,Sim,Frequente
+TRIBUNAL,Direito Civil,Negligência,Sim,Frequente
+TRIBUNAL,Direito Civil,Imprudência,Sim,Frequente
+TRIBUNAL,Direito Civil,Imperícia,Sim,Frequente
+TRIBUNAL,Direito Civil,Dano,Sim,Frequente
+TRIBUNAL,Direito Civil,Nexo causal,Sim,Frequente
+TRIBUNAL,Direito Civil,Indenização,Sim,Frequente
+TRIBUNAL,Direito Civil,Lucros cessantes,Sim,Frequente
+TRIBUNAL,Direito Civil,Danos morais,Sim,Frequente
+TRIBUNAL,Direito Civil,Direitos reais,Sim,Frequente
+TRIBUNAL,Direito Civil,Posse,Sim,Frequente
+TRIBUNAL,Direito Civil,Propriedade,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito de superfície,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito de usufruto,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito de uso,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito de habitação,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito de penhor,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito de hipoteca,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito de anticrese,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito de propriedade fiduciária,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito de família,Sim,Frequente
+TRIBUNAL,Direito Civil,Casamento,Sim,Frequente
+TRIBUNAL,Direito Civil,Requisitos,Sim,Frequente
+TRIBUNAL,Direito Civil,Impedimentos,Sim,Frequente
+TRIBUNAL,Direito Civil,Vícios do consentimento,Sim,Frequente
+TRIBUNAL,Direito Civil,Efeitos pessoais,Sim,Frequente
+TRIBUNAL,Direito Civil,Efeitos patrimoniais,Sim,Frequente
+TRIBUNAL,Direito Civil,Comunhão de bens,Sim,Frequente
+TRIBUNAL,Direito Civil,Separação de bens,Sim,Frequente
+TRIBUNAL,Direito Civil,Participação final dos aquestos,Sim,Frequente
+TRIBUNAL,Direito Civil,Direitos sucessórios,Sim,Frequente
+TRIBUNAL,Direito Civil,Dissolution do casamento,Sim,Frequente
+TRIBUNAL,Direito Civil,Divórcio,Sim,Frequente
+TRIBUNAL,Direito Civil,Nulidade do casamento,Sim,Frequente
+TRIBUNAL,Direito Civil,Dissolução da união estável,Sim,Frequente
+TRIBUNAL,Direito Civil,Regime de bens,Sim,Frequente
+TRIBUNAL,Direito Civil,Comunhão universal,Sim,Frequente
+TRIBUNAL,Direito Civil,Comunhão parcial,Sim,Frequente
+TRIBUNAL,Direito Civil,Separação obrigatória,Sim,Frequente
+TRIBUNAL,Direito Civil,Participação final,Sim,Frequente
+TRIBUNAL,Direito Civil,Relações entre pais e filhos,Sim,Frequente
+TRIBUNAL,Direito Civil,Filiação,Sim,Frequente
+TRIBUNAL,Direito Civil,Reconhecimento de filho,Sim,Frequente
+TRIBUNAL,Direito Civil,Investigação de paternidade,Sim,Frequente
+TRIBUNAL,Direito Civil,Posse de estado de filho,Sim,Frequente
+TRIBUNAL,Direito Civil,Pátrio poder,Sim,Frequente
+TRIBUNAL,Direito Civil,Guarda,Sim,Frequente
+TRIBUNAL,Direito Civil,Direito de visita,Sim,Frequente
+TRIBUNAL,Direito Civil,Alimentos,Sim,Frequente
+TRIBUNAL,Direito Civil,Adoção,Sim,Frequente
+TRIBUNAL,Direito Civil,Herança,Sim,Frequente
+TRIBUNAL,Direito Civil,Sucessão legítima,Sim,Frequente
+TRIBUNAL,Direito Civil,Sucessão testamentária,Sim,Frequente
+TRIBUNAL,Direito Civil,Ordem de vocação hereditária,Sim,Frequente
+TRIBUNAL,Direito Civil,Testamento,Sim,Frequente
+TRIBUNAL,Direito Civil,Espécies de testamento,Sim,Frequente
+TRIBUNAL,Direito Civil,Testamento público,Sim,Frequente
+TRIBUNAL,Direito Civil,Testamento cerrado,Sim,Frequente
+TRIBUNAL,Direito Civil,Testamento hológrafo,Sim,Frequente
+TRIBUNAL,Direito Civil,Testamento marítimo,Sim,Frequente
+TRIBUNAL,Direito Civil,Testamento militar,Sim,Frequente
+TRIBUNAL,Direito Civil,Partilha,Sim,Frequente
+TRIBUNAL,Direito Civil,Inventário,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Princípios processuais,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Acesso à Justiça,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Igualdade das partes,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Dispositivo,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Contraditório,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Ampla defesa,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Celeridade,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Economia processual,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Publicidade,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Imediatidade,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Concentração,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Oralidade,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Lealdade e boa-fé,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Jurisdição,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Conceito,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Características,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Elementos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Competência,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Competência absoluta,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Competência relativa,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Competência territorial,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Competência material,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Competência funcional,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Modificação de competência,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Perpetuatio jurisdictionis,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Prorrogação,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Incompetência,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Ação,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Conceito,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Elementos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Requisitos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Condições da ação,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Legitimidade ativa,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Legitimidade passiva,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Interesse de agir,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Possibilidade jurídica do pedido,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Espécies de ações,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Ações constitutivas,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Ações condenatórias,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Ações declaratórias,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Sujeitos do processo,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Partes,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Capacidade processual,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Capacidade postulatória,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Legitimidade,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Substituição processual,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Litisconsórcio,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Litisconsórcio ativo,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Litisconsórcio passivo,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Litisconsórcio facultativo,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Litisconsórcio necessário,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Intervenção de terceiros,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Assistência,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Assistência simples,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Assistência litisconsorcial,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Oposição,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Nomeação à autoria,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Denunciação da lide,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Chamamento ao processo,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Atos processuais,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Conceito,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Tempo,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Lugar,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Prazos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Contagem de prazos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Suspensão de prazos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Interrupção de prazos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Comunicação dos atos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Citação,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Intimação,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Notificação,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Petição inicial,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Requisitos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Vícios,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Indeferimento,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Resposta do réu,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Contestação,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Exceções,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Reconvenção,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Revelia,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Efeitos da revelia,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Tutela provisória,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Tutela de urgência,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Tutela da evidência,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Medidas cautelares,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Penhora,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Arresto,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Sequestro,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Busca e apreensão,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Provas,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Ônus da prova,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Inversão do ônus da prova,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Meios de prova,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Prova testemunhal,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Prova documental,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Prova pericial,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Prova por inspeção,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Confissão,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Interrogatório,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Admissibilidade da prova,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Oitiva das partes,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Julgamento conforme o estado do processo,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Sentença,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Conceito,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Estrutura,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Partes da sentença,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Relatório,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Fundamentação,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Dispositivo,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Efeitos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Coisa julgada,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Coisa julgada material,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Coisa julgada formal,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Recursos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Apelação,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Agravo de instrumento,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Agravo interno,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Recurso ordinário,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Recurso extraordinário,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Recurso especial,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Embargos de declaração,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Embargos de terceiro,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Ação rescisória,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Execução,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Títulos executivos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Títulos executivos extrajudiciais,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Títulos executivos judiciais,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Fase de cumprimento,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Meios coercitivos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Penhora,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Arresto,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Sequestro,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Ações coletivas,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Ação civil pública,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Ação popular,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Mandado de segurança,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Mandado de injunção,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Habeas data,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Habeas corpus,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Procedimentos especiais,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Procedimento sumário,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Procedimento sumaríssimo,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Medidas cautelares,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Alimentos,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Herança,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Arrecadação,Sim,Frequente
+TRIBUNAL,Direito Processual Civil,Interdição,Sim,Frequente
+TRIBUNAL,Direito Penal,Aplicação da lei penal,Sim,Frequente
+TRIBUNAL,Direito Penal,Princípio da legalidade,Sim,Frequente
+TRIBUNAL,Direito Penal,Irretroatividade,Sim,Frequente
+TRIBUNAL,Direito Penal,Retroatividade benéfica,Sim,Frequente
+TRIBUNAL,Direito Penal,Princípio da igualdade,Sim,Frequente
+TRIBUNAL,Direito Penal,Princípio da culpabilidade,Sim,Frequente
+TRIBUNAL,Direito Penal,Lei penal no tempo,Sim,Frequente
+TRIBUNAL,Direito Penal,Lei penal no espaço,Sim,Frequente
+TRIBUNAL,Direito Penal,Imunidades,Sim,Frequente
+TRIBUNAL,Direito Penal,Fato típico,Sim,Frequente
+TRIBUNAL,Direito Penal,Ação ou omissão,Sim,Frequente
+TRIBUNAL,Direito Penal,Resultado,Sim,Frequente
+TRIBUNAL,Direito Penal,Nexo causal,Sim,Frequente
+TRIBUNAL,Direito Penal,Tipicidade,Sim,Frequente
+TRIBUNAL,Direito Penal,Tipo penal,Sim,Frequente
+TRIBUNAL,Direito Penal,Elementos do tipo,Sim,Frequente
+TRIBUNAL,Direito Penal,Objetivos,Sim,Frequente
+TRIBUNAL,Direito Penal,Subjetivos,Sim,Frequente
+TRIBUNAL,Direito Penal,Normativos,Sim,Frequente
+TRIBUNAL,Direito Penal,Dolo,Sim,Frequente
+TRIBUNAL,Direito Penal,Dolo direto,Sim,Frequente
+TRIBUNAL,Direito Penal,Dolo eventual,Sim,Frequente
+TRIBUNAL,Direito Penal,Culpa,Sim,Frequente
+TRIBUNAL,Direito Penal,Culpa consciente,Sim,Frequente
+TRIBUNAL,Direito Penal,Culpa inconsciente,Sim,Frequente
+TRIBUNAL,Direito Penal,Tipos qualificados,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes de resultado,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes de conduta,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes omissivos,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes comissivos,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes próprios,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes impróprios,Sim,Frequente
+TRIBUNAL,Direito Penal,Antijuridicidade,Sim,Frequente
+TRIBUNAL,Direito Penal,Excludentes de antijuridicidade,Sim,Frequente
+TRIBUNAL,Direito Penal,Legítima defesa,Sim,Frequente
+TRIBUNAL,Direito Penal,Estado de necessidade,Sim,Frequente
+TRIBUNAL,Direito Penal,Exercício regular de direito,Sim,Frequente
+TRIBUNAL,Direito Penal,Estrito cumprimento de dever legal,Sim,Frequente
+TRIBUNAL,Direito Penal,Consentimento do ofendido,Sim,Frequente
+TRIBUNAL,Direito Penal,Culpabilidade,Sim,Frequente
+TRIBUNAL,Direito Penal,Imputabilidade,Sim,Frequente
+TRIBUNAL,Direito Penal,Maioridade penal,Sim,Frequente
+TRIBUNAL,Direito Penal,Sanidade mental,Sim,Frequente
+TRIBUNAL,Direito Penal,Potencial consciência da ilicitude,Sim,Frequente
+TRIBUNAL,Direito Penal,Exigibilidade de conduta diversa,Sim,Frequente
+TRIBUNAL,Direito Penal,Concurso de crimes,Sim,Frequente
+TRIBUNAL,Direito Penal,Concurso material,Sim,Frequente
+TRIBUNAL,Direito Penal,Concurso formal,Sim,Frequente
+TRIBUNAL,Direito Penal,Crime continuado,Sim,Frequente
+TRIBUNAL,Direito Penal,Circunstâncias agravantes,Sim,Frequente
+TRIBUNAL,Direito Penal,Circunstâncias atenuantes,Sim,Frequente
+TRIBUNAL,Direito Penal,Agravantes genéricas,Sim,Frequente
+TRIBUNAL,Direito Penal,Agravantes específicas,Sim,Frequente
+TRIBUNAL,Direito Penal,Atenuantes genéricas,Sim,Frequente
+TRIBUNAL,Direito Penal,Atenuantes específicas,Sim,Frequente
+TRIBUNAL,Direito Penal,Causas de aumento de pena,Sim,Frequente
+TRIBUNAL,Direito Penal,Causas de diminuição de pena,Sim,Frequente
+TRIBUNAL,Direito Penal,Penas,Sim,Frequente
+TRIBUNAL,Direito Penal,Espécies de pena,Sim,Frequente
+TRIBUNAL,Direito Penal,Pena privativa de liberdade,Sim,Frequente
+TRIBUNAL,Direito Penal,Prisão,Sim,Frequente
+TRIBUNAL,Direito Penal,Reclusão,Sim,Frequente
+TRIBUNAL,Direito Penal,Detenção,Sim,Frequente
+TRIBUNAL,Direito Penal,Pena restritiva de direitos,Sim,Frequente
+TRIBUNAL,Direito Penal,Pena de multa,Sim,Frequente
+TRIBUNAL,Direito Penal,Pena de prestação de serviço à comunidade,Sim,Frequente
+TRIBUNAL,Direito Penal,Pena de interdição,Sim,Frequente
+TRIBUNAL,Direito Penal,Pena de perda de bens,Sim,Frequente
+TRIBUNAL,Direito Penal,Determinação da pena,Sim,Frequente
+TRIBUNAL,Direito Penal,Fixação da pena,Sim,Frequente
+TRIBUNAL,Direito Penal,Terceira fase,Sim,Frequente
+TRIBUNAL,Direito Penal,Segunda fase,Sim,Frequente
+TRIBUNAL,Direito Penal,Primeira fase,Sim,Frequente
+TRIBUNAL,Direito Penal,Cumprimento da pena,Sim,Frequente
+TRIBUNAL,Direito Penal,Regime aberto,Sim,Frequente
+TRIBUNAL,Direito Penal,Regime semiaberto,Sim,Frequente
+TRIBUNAL,Direito Penal,Regime fechado,Sim,Frequente
+TRIBUNAL,Direito Penal,Livramento condicional,Sim,Frequente
+TRIBUNAL,Direito Penal,Remição,Sim,Frequente
+TRIBUNAL,Direito Penal,Progressão de regime,Sim,Frequente
+TRIBUNAL,Direito Penal,Regressão de regime,Sim,Frequente
+TRIBUNAL,Direito Penal,Extinção da punibilidade,Sim,Frequente
+TRIBUNAL,Direito Penal,Morte do agente,Sim,Frequente
+TRIBUNAL,Direito Penal,Anistia,Sim,Frequente
+TRIBUNAL,Direito Penal,Indulto,Sim,Frequente
+TRIBUNAL,Direito Penal,Graça,Sim,Frequente
+TRIBUNAL,Direito Penal,Reabilitação,Sim,Frequente
+TRIBUNAL,Direito Penal,Medidas de segurança,Sim,Frequente
+TRIBUNAL,Direito Penal,Internação,Sim,Frequente
+TRIBUNAL,Direito Penal,Tratamento ambulatorial,Sim,Frequente
+TRIBUNAL,Direito Penal,Periculosidade,Sim,Frequente
+TRIBUNAL,Direito Penal,Imputabilidade diminuída,Sim,Frequente
+TRIBUNAL,Direito Penal,Inimputabilidade,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes contra a pessoa,Sim,Frequente
+TRIBUNAL,Direito Penal,Homicídio,Sim,Frequente
+TRIBUNAL,Direito Penal,Homicídio simples,Sim,Frequente
+TRIBUNAL,Direito Penal,Homicídio qualificado,Sim,Frequente
+TRIBUNAL,Direito Penal,Homicídio privilegiado,Sim,Frequente
+TRIBUNAL,Direito Penal,Lesão corporal,Sim,Frequente
+TRIBUNAL,Direito Penal,Lesão corporal leve,Sim,Frequente
+TRIBUNAL,Direito Penal,Lesão corporal grave,Sim,Frequente
+TRIBUNAL,Direito Penal,Lesão corporal gravíssima,Sim,Frequente
+TRIBUNAL,Direito Penal,Perigo de contágio,Sim,Frequente
+TRIBUNAL,Direito Penal,Maus-tratos,Sim,Frequente
+TRIBUNAL,Direito Penal,Abuso de autoridade contra pessoa,Sim,Frequente
+TRIBUNAL,Direito Penal,Ameaça,Sim,Frequente
+TRIBUNAL,Direito Penal,Constrangimento ilegal,Sim,Frequente
+TRIBUNAL,Direito Penal,Abandono de incapaz,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes contra a honra,Sim,Frequente
+TRIBUNAL,Direito Penal,Calúnia,Sim,Frequente
+TRIBUNAL,Direito Penal,Difamação,Sim,Frequente
+TRIBUNAL,Direito Penal,Injúria,Sim,Frequente
+TRIBUNAL,Direito Penal,Exceção da verdade,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes contra o patrimônio,Sim,Frequente
+TRIBUNAL,Direito Penal,Furto,Sim,Frequente
+TRIBUNAL,Direito Penal,Roubo,Sim,Frequente
+TRIBUNAL,Direito Penal,Extorsão,Sim,Frequente
+TRIBUNAL,Direito Penal,Estelionato,Sim,Frequente
+TRIBUNAL,Direito Penal,Receptação,Sim,Frequente
+TRIBUNAL,Direito Penal,Apropriação indébita,Sim,Frequente
+TRIBUNAL,Direito Penal,Sequestro,Sim,Frequente
+TRIBUNAL,Direito Penal,Dano,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes contra a administração pública,Sim,Frequente
+TRIBUNAL,Direito Penal,Concussão,Sim,Frequente
+TRIBUNAL,Direito Penal,Corrupção passiva,Sim,Frequente
+TRIBUNAL,Direito Penal,Facilitação de contrabando,Sim,Frequente
+TRIBUNAL,Direito Penal,Prevaricação,Sim,Frequente
+TRIBUNAL,Direito Penal,Conduta diversa da legal,Sim,Frequente
+TRIBUNAL,Direito Penal,Negliegência,Sim,Frequente
+TRIBUNAL,Direito Penal,Excesso de execução,Sim,Frequente
+TRIBUNAL,Direito Penal,Violência arbitrária,Sim,Frequente
+TRIBUNAL,Direito Penal,Abuso de autoridade,Sim,Frequente
+TRIBUNAL,Direito Penal,Peculato,Sim,Frequente
+TRIBUNAL,Direito Penal,Desvio de recursos,Sim,Frequente
+TRIBUNAL,Direito Penal,Malversação,Sim,Frequente
+TRIBUNAL,Direito Penal,Usurpação de função,Sim,Frequente
+TRIBUNAL,Direito Penal,Falsidade de documentos,Sim,Frequente
+TRIBUNAL,Direito Penal,Falsificação de documentos,Sim,Frequente
+TRIBUNAL,Direito Penal,Falsidade ideológica,Sim,Frequente
+TRIBUNAL,Direito Penal,Uso de documento falso,Sim,Frequente
+TRIBUNAL,Direito Penal,Certificação de documento falso,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes contra a moralidade e os bons costumes,Sim,Frequente
+TRIBUNAL,Direito Penal,Lenocínio,Sim,Frequente
+TRIBUNAL,Direito Penal,Favorecimento da prostituição,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes sexuais,Sim,Frequente
+TRIBUNAL,Direito Penal,Estupro,Sim,Frequente
+TRIBUNAL,Direito Penal,Atentado ao pudor,Sim,Frequente
+TRIBUNAL,Direito Penal,Assédio sexual,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes contra a segurança pública,Sim,Frequente
+TRIBUNAL,Direito Penal,Associação criminosa,Sim,Frequente
+TRIBUNAL,Direito Penal,Quadrilha ou bando,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes de trânsito,Sim,Frequente
+TRIBUNAL,Direito Penal,Homicídio culposo na direção de veículo,Sim,Frequente
+TRIBUNAL,Direito Penal,Embriaguez ao volante,Sim,Frequente
+TRIBUNAL,Direito Penal,Direção temerária,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes hediondos,Sim,Frequente
+TRIBUNAL,Direito Penal,Tortura,Sim,Frequente
+TRIBUNAL,Direito Penal,Genocídio,Sim,Frequente
+TRIBUNAL,Direito Penal,Tráfico de drogas,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes ambientais,Sim,Frequente
+TRIBUNAL,Direito Penal,Destruição de florestas,Sim,Frequente
+TRIBUNAL,Direito Penal,Poluição,Sim,Frequente
+TRIBUNAL,Direito Penal,Caça ilegal,Sim,Frequente
+TRIBUNAL,Direito Penal,Pesca ilegal,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes de lavagem de dinheiro,Sim,Frequente
+TRIBUNAL,Direito Penal,Ocultação de bens,Sim,Frequente
+TRIBUNAL,Direito Penal,Integração em organização criminosa,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes de corrupção de menores,Sim,Frequente
+TRIBUNAL,Direito Penal,Exploração sexual de menores,Sim,Frequente
+TRIBUNAL,Direito Penal,Pornografia infantil,Sim,Frequente
+TRIBUNAL,Direito Penal,Crimes de terrorismo,Sim,Frequente
+TRIBUNAL,Direito Penal,Tráfico internacional de drogas,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Princípios do processo penal,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Legalidade,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Acusatoriedade,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Devido processo legal,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Contraditório,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Ampla defesa,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Presunção de inocência,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Publicidade,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Fundamentação das decisões,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Celeridade,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Economia processual,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Jurisdição,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Competência,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Competência ratione materiae,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Competência ratione personae,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Competência ratione loci,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Competência funcional,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Determinação de competência,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Conflito de competência,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Perpetuatio jurisdictionis,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Sujeitos do processo penal,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Ministério Público,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Atribuições,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Poderes,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Acusação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Fiscalização,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Defesa,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Querelante,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Vítima,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Denunciante,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Juiz,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Imparcialidade,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Suspeição,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Impedimento,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Ação penal,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Ação penal pública,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Ação penal pública incondicionada,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Ação penal pública condicionada,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Ação penal privada,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Denúncia,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Queixa-crime,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Requisitos da denúncia,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Elementos da denúncia,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Descrição do fato,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Qualificação do crime,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Indicação da pena aplicável,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Vítimas,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Investigação policial,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Inquérito policial,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Fase investigatória,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Polícia Federal,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Polícia Civil,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Procedimentos de investigação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Perícia,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Interrogatório,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Confissão,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Delação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Depoimento testemunhal,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Confrontação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Busca e apreensão,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Revista,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Vistoria,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Reconstituição de crime,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Interceptação telefônica,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Monitoramento de comunicação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Vigilância e observação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Prisão,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Prisão em flagrante,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Prisão preventiva,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Prisão por pronúncia,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Auto de prisão em flagrante,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Flagrante,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Flagrante próprio,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Flagrante presumido,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Liberdade provisória,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Liberdade provisória com fiança,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Liberdade provisória sem fiança,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Fiança,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Quantum de fiança,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Circunstâncias para fixação de fiança,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Medidas cautelares,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Proibição de frequentar determinados lugares,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Proibição de ausentar-se do Brasil,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Repouso noturno em casa,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Monitoração eletrônica,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Suspensão de direitos,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Internação provisória,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Competência para recebimento de denúncia,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Audiência preliminar,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Recebimento de denúncia,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Rejeição de denúncia,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Arquivamento,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Procedimento comum ordinário,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Procedimento comum sumário,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Provas,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Meios de prova,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Testemunha,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Testemunha informante,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Testemunha de defesa,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Testemunha da acusação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Rol de testemunhas,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Depoimento testemunhal,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Contrainterrogação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Confrontação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Careia,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Perito,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Perícia,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Perícia complementar,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Parecer técnico,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Exame de corpo de delito,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Documentos,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Autenticidade,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Integridade,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Confissão,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Confissão espontânea,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Confissão provocada,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Retratação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Interrogatório,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Direitos do acusado no interrogatório,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Silêncio do acusado,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Efeitos do silêncio,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Inspeção judicial,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Reconstituição de crime,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Acareação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Julgamento,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Sentença,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Decisão condenatória,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Decisão absolutória,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Decisão desclassificatória,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Coisa julgada,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Coisa julgada material,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Efeitos da condenação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Ressarcimento de danos,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Recursos,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Apelação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Agravo em execução,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Recurso especial,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Recurso extraordinário,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Embargos infringentes,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Habeas corpus,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Mandado de segurança,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Ação rescisória,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Execução de sentença,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Liquidação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Fase de execução,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Direitos do condenado,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Livramento condicional,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Progressão de regime,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Remição,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Indulto,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Graça,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Anistia,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Revisão criminal,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Procedimentos especiais,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Ação penal privada,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Crime de responsabilidade,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Crimes contra honra de agentes públicos,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Procedimentos com participação popular,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Júri,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Composição do júri,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Competência do júri,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Plenário do júri,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Votação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Condenação,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Absolvição,Sim,Frequente
+TRIBUNAL,Direito Processual Penal,Voto,Sim,Frequente
+FISCAL,Língua Portuguesa,Compreensão e interpretação de textos,Não,Comum
+FISCAL,Língua Portuguesa,Significado contextual e substituição de palavras,Não,Comum
+FISCAL,Língua Portuguesa,Ortografia,Não,Comum
+FISCAL,Língua Portuguesa,Pontuação,Não,Comum
+FISCAL,Língua Portuguesa,Semântica,Não,Comum
+FISCAL,Língua Portuguesa,Morfologia,Não,Comum
+FISCAL,Língua Portuguesa,Sintaxe,Não,Comum
+FISCAL,Língua Portuguesa,Concordância,Não,Comum
+FISCAL,Língua Portuguesa,Regência,Não,Comum
+FISCAL,Língua Portuguesa,Colocação pronominal,Não,Comum
+FISCAL,Língua Portuguesa,Coesão textual,Não,Comum
+FISCAL,Língua Portuguesa,Reescrita de frases,Não,Comum
+FISCAL,Matemática Financeira,Capitalização simples,Não,Comum
+FISCAL,Matemática Financeira,Capitalização composta,Não,Comum
+FISCAL,Matemática Financeira,Juros simples,Não,Comum
+FISCAL,Matemática Financeira,Juros compostos,Não,Comum
+FISCAL,Matemática Financeira,Taxa efetiva,Não,Comum
+FISCAL,Matemática Financeira,Taxa nominal,Não,Comum
+FISCAL,Matemática Financeira,Desconto simples,Não,Comum
+FISCAL,Matemática Financeira,Desconto composto,Não,Comum
+FISCAL,Matemática Financeira,Séries de pagamentos,Não,Comum
+FISCAL,Matemática Financeira,Anuidades,Não,Comum
+FISCAL,Matemática Financeira,Rendas certas,Não,Comum
+FISCAL,Matemática Financeira,VPL (Valor Presente Líquido),Não,Comum
+FISCAL,Matemática Financeira,TIR (Taxa Interna de Retorno),Não,Comum
+FISCAL,Matemática Financeira,Payback,Não,Comum
+FISCAL,Matemática Financeira,Análise de investimentos,Não,Comum
+FISCAL,Matemática Financeira,Amortização,Não,Comum
+FISCAL,Matemática Financeira,Sistema Price,Não,Comum
+FISCAL,Matemática Financeira,Sistema SAC,Não,Comum
+FISCAL,Estatística,Conceitos fundamentais,Não,Comum
+FISCAL,Estatística,População,Não,Comum
+FISCAL,Estatística,Amostra,Não,Comum
+FISCAL,Estatística,Variável,Não,Comum
+FISCAL,Estatística,Dados,Não,Comum
+FISCAL,Estatística,Distribuição de frequências,Não,Comum
+FISCAL,Estatística,Gráficos,Não,Comum
+FISCAL,Estatística,Histograma,Não,Comum
+FISCAL,Estatística,Polígono de frequências,Não,Comum
+FISCAL,Estatística,Medidas de tendência central,Não,Comum
+FISCAL,Estatística,Média,Não,Comum
+FISCAL,Estatística,Mediana,Não,Comum
+FISCAL,Estatística,Moda,Não,Comum
+FISCAL,Estatística,Medidas de dispersão,Não,Comum
+FISCAL,Estatística,Amplitude,Não,Comum
+FISCAL,Estatística,Variância,Não,Comum
+FISCAL,Estatística,Desvio padrão,Não,Comum
+FISCAL,Estatística,Coeficiente de variação,Não,Comum
+FISCAL,Estatística,Correlação,Não,Comum
+FISCAL,Estatística,Regressão,Não,Comum
+FISCAL,Estatística,Regressão linear,Não,Comum
+FISCAL,Estatística,Análise de regressão,Não,Comum
+FISCAL,Estatística,Probabilidade,Não,Comum
+FISCAL,Estatística,Espaço amostral,Não,Comum
+FISCAL,Estatística,Evento,Não,Comum
+FISCAL,Estatística,Regras de probabilidade,Não,Comum
+FISCAL,Estatística,Distribuição binomial,Não,Comum
+FISCAL,Estatística,Distribuição normal,Não,Comum
+FISCAL,Estatística,Distribuição de Poisson,Não,Comum
+FISCAL,Estatística,Distribuição t de Student,Não,Comum
+FISCAL,Estatística,Qui-quadrado,Não,Comum
+FISCAL,Estatística,Inferência estatística,Não,Comum
+FISCAL,Estatística,Estimação,Não,Comum
+FISCAL,Estatística,Teste de hipóteses,Não,Comum
+FISCAL,Estatística,Intervalo de confiança,Não,Comum
+FISCAL,Estatística,Amostragem,Não,Comum
+FISCAL,Estatística,Amostragem aleatória,Não,Comum
+FISCAL,Estatística,Amostragem sistemática,Não,Comum
+FISCAL,Estatística,Amostragem estratificada,Não,Comum
+FISCAL,Estatística,Amostragem por conglomerados,Não,Comum
+FISCAL,Raciocínio Lógico,Proposições,Não,Comum
+FISCAL,Raciocínio Lógico,Conectivos lógicos,Não,Comum
+FISCAL,Raciocínio Lógico,Tabelas-verdade,Não,Comum
+FISCAL,Raciocínio Lógico,Tautologia,Não,Comum
+FISCAL,Raciocínio Lógico,Contradição,Não,Comum
+FISCAL,Raciocínio Lógico,Contingência,Não,Comum
+FISCAL,Raciocínio Lógico,Conjuntos,Não,Comum
+FISCAL,Raciocínio Lógico,Operações com conjuntos,Não,Comum
+FISCAL,Raciocínio Lógico,Diagramas de Venn,Não,Comum
+FISCAL,Raciocínio Lógico,Argumentação,Não,Comum
+FISCAL,Raciocínio Lógico,Inferência,Não,Comum
+FISCAL,Raciocínio Lógico,Dedução,Não,Comum
+FISCAL,Raciocínio Lógico,Indução,Não,Comum
+FISCAL,Raciocínio Lógico,Silogismo,Não,Comum
+FISCAL,Raciocínio Lógico,Falácias,Não,Comum
+FISCAL,Raciocínio Lógico,Análise combinatória,Não,Comum
+FISCAL,Raciocínio Lógico,Princípio fundamental da contagem,Não,Comum
+FISCAL,Raciocínio Lógico,Permutação,Não,Comum
+FISCAL,Raciocínio Lógico,Combinação,Não,Comum
+FISCAL,Raciocínio Lógico,Arranjo,Não,Comum
+FISCAL,Raciocínio Lógico,Probabilidade,Não,Comum
+FISCAL,Raciocínio Lógico,Sequências,Não,Comum
+FISCAL,Raciocínio Lógico,Série,Não,Comum
+FISCAL,Raciocínio Lógico,Progressão aritmética,Não,Comum
+FISCAL,Raciocínio Lógico,Progressão geométrica,Não,Comum
+FISCAL,Raciocínio Lógico,Lógica proposicional,Não,Comum
+FISCAL,Direito Tributário,Conceitos fundamentais,Sim,Frequente
+FISCAL,Direito Tributário,Tributo,Sim,Frequente
+FISCAL,Direito Tributário,Imposto,Sim,Frequente
+FISCAL,Direito Tributário,Taxa,Sim,Frequente
+FISCAL,Direito Tributário,Contribuição de melhoria,Sim,Frequente
+FISCAL,Direito Tributário,Empréstimo compulsório,Sim,Frequente
+FISCAL,Direito Tributário,Contribuições especiais,Sim,Frequente
+FISCAL,Direito Tributário,Fonte do direito tributário,Sim,Frequente
+FISCAL,Direito Tributário,Constituição Federal,Sim,Frequente
+FISCAL,Direito Tributário,Lei complementar,Sim,Frequente
+FISCAL,Direito Tributário,Lei ordinária,Sim,Frequente
+FISCAL,Direito Tributário,Resolução do Senado Federal,Sim,Frequente
+FISCAL,Direito Tributário,Decreto-lei,Sim,Frequente
+FISCAL,Direito Tributário,Decreto,Sim,Frequente
+FISCAL,Direito Tributário,Interpretação da legislação tributária,Sim,Frequente
+FISCAL,Direito Tributário,Interpretação literal,Sim,Frequente
+FISCAL,Direito Tributário,Interpretação teleológica,Sim,Frequente
+FISCAL,Direito Tributário,Interpretação sistemática,Sim,Frequente
+FISCAL,Direito Tributário,Integração de lacunas,Sim,Frequente
+FISCAL,Direito Tributário,Analogia,Sim,Frequente
+FISCAL,Direito Tributário,Princípios tributários,Sim,Frequente
+FISCAL,Direito Tributário,Princípio da legalidade,Sim,Frequente
+FISCAL,Direito Tributário,Princípio da anterioridade,Sim,Frequente
+FISCAL,Direito Tributário,Princípio da irretroatividade,Sim,Frequente
+FISCAL,Direito Tributário,Princípio da igualdade,Sim,Frequente
+FISCAL,Direito Tributário,Princípio da capacidade contributiva,Sim,Frequente
+FISCAL,Direito Tributário,Princípio da vedação de confisco,Sim,Frequente
+FISCAL,Direito Tributário,Princípio da isenção heterônoma,Sim,Frequente
+FISCAL,Direito Tributário,Classificação dos tributos,Sim,Frequente
+FISCAL,Direito Tributário,Impostos federais,Sim,Frequente
+FISCAL,Direito Tributário,Imposto de Renda Pessoa Física (IRPF),Sim,Frequente
+FISCAL,Direito Tributário,Imposto de Renda Pessoa Jurídica (IRPJ),Sim,Frequente
+FISCAL,Direito Tributário,Imposto sobre Produtos Industrializados (IPI),Sim,Frequente
+FISCAL,Direito Tributário,Imposto sobre Importação,Sim,Frequente
+FISCAL,Direito Tributário,Imposto sobre Exportação,Sim,Frequente
+FISCAL,Direito Tributário,"Imposto sobre Operações de Crédito, Câmbio e Seguros (IOF)",Sim,Frequente
+FISCAL,Direito Tributário,Imposto sobre a Propriedade Territorial Rural (ITR),Sim,Frequente
+FISCAL,Direito Tributário,Imposto sobre a Renda Agropecuária,Sim,Frequente
+FISCAL,Direito Tributário,Impostos estaduais,Sim,Frequente
+FISCAL,Direito Tributário,Imposto sobre Circulação de Mercadorias e Serviços (ICMS),Sim,Frequente
+FISCAL,Direito Tributário,Imposto sobre a Propriedade de Veículos Automotores (IPVA),Sim,Frequente
+FISCAL,Direito Tributário,Imposto sobre Transmissão Causa Mortis e Doação (ITCMD),Sim,Frequente
+FISCAL,Direito Tributário,Imposto sobre Operações Relativas à Circulação de Combustíveis,Sim,Frequente
+FISCAL,Direito Tributário,Impostos municipais,Sim,Frequente
+FISCAL,Direito Tributário,Imposto sobre a Propriedade Predial e Territorial Urbana (IPTU),Sim,Frequente
+FISCAL,Direito Tributário,Imposto sobre a Transmissão Inter vivos de Bens Imóveis (ITBI),Sim,Frequente
+FISCAL,Direito Tributário,Imposto sobre Serviços de Qualquer Natureza (ISS),Sim,Frequente
+FISCAL,Direito Tributário,Contribuições federais,Sim,Frequente
+FISCAL,Direito Tributário,Contribuição para o Programa de Integração Social (PIS),Sim,Frequente
+FISCAL,Direito Tributário,Contribuição para o Financiamento da Seguridade Social (COFINS),Sim,Frequente
+FISCAL,Direito Tributário,Contribuição Social sobre o Lucro Líquido (CSLL),Sim,Frequente
+FISCAL,Direito Tributário,Contribuição Sindical Urbana,Sim,Frequente
+FISCAL,Direito Tributário,Contribuição Sindical Rural,Sim,Frequente
+FISCAL,Direito Tributário,Obrigação tributária,Sim,Frequente
+FISCAL,Direito Tributário,Obrigação principal,Sim,Frequente
+FISCAL,Direito Tributário,Obrigação acessória,Sim,Frequente
+FISCAL,Direito Tributário,Relação jurídica tributária,Sim,Frequente
+FISCAL,Direito Tributário,Sujeito ativo,Sim,Frequente
+FISCAL,Direito Tributário,Sujeito passivo,Sim,Frequente
+FISCAL,Direito Tributário,Responsabilidade tributária,Sim,Frequente
+FISCAL,Direito Tributário,Responsabilidade pessoal,Sim,Frequente
+FISCAL,Direito Tributário,Responsabilidade solidária,Sim,Frequente
+FISCAL,Direito Tributário,Responsabilidade subsidiária,Sim,Frequente
+FISCAL,Direito Tributário,Sucesão tributária,Sim,Frequente
+FISCAL,Direito Tributário,Fato gerador,Sim,Frequente
+FISCAL,Direito Tributário,Características,Sim,Frequente
+FISCAL,Direito Tributário,Ocorrência,Sim,Frequente
+FISCAL,Direito Tributário,Base de cálculo,Sim,Frequente
+FISCAL,Direito Tributário,Alíquota,Sim,Frequente
+FISCAL,Direito Tributário,Cálculo do tributo,Sim,Frequente
+FISCAL,Direito Tributário,Débito tributário,Sim,Frequente
+FISCAL,Direito Tributário,Crédito tributário,Sim,Frequente
+FISCAL,Direito Tributário,Constituição do crédito tributário,Sim,Frequente
+FISCAL,Direito Tributário,Lançamento,Sim,Frequente
+FISCAL,Direito Tributário,Lançamento de ofício,Sim,Frequente
+FISCAL,Direito Tributário,Lançamento por declaração,Sim,Frequente
+FISCAL,Direito Tributário,Lançamento por homologação,Sim,Frequente
+FISCAL,Direito Tributário,Suspensão do crédito tributário,Sim,Frequente
+FISCAL,Direito Tributário,Moratória,Sim,Frequente
+FISCAL,Direito Tributário,Parcelamento,Sim,Frequente
+FISCAL,Direito Tributário,Depósito em juízo,Sim,Frequente
+FISCAL,Direito Tributário,Extinção do crédito tributário,Sim,Frequente
+FISCAL,Direito Tributário,Pagamento,Sim,Frequente
+FISCAL,Direito Tributário,Compensação,Sim,Frequente
+FISCAL,Direito Tributário,Transação,Sim,Frequente
+FISCAL,Direito Tributário,Remissão,Sim,Frequente
+FISCAL,Direito Tributário,Prescrição,Sim,Frequente
+FISCAL,Direito Tributário,Decadência,Sim,Frequente
+FISCAL,Direito Tributário,Anistia,Sim,Frequente
+FISCAL,Direito Tributário,Inadimplemento da obrigação tributária,Sim,Frequente
+FISCAL,Direito Tributário,Multa,Sim,Frequente
+FISCAL,Direito Tributário,Juros de mora,Sim,Frequente
+FISCAL,Direito Tributário,Correção monetária,Sim,Frequente
+FISCAL,Direito Tributário,Infrações,Sim,Frequente
+FISCAL,Direito Tributário,Infrações formais,Sim,Frequente
+FISCAL,Direito Tributário,Infrações materiais,Sim,Frequente
+FISCAL,Direito Tributário,Processo administrativo tributário,Sim,Frequente
+FISCAL,Direito Tributário,Autos de infração,Sim,Frequente
+FISCAL,Direito Tributário,Autuação,Sim,Frequente
+FISCAL,Direito Tributário,Notificação,Sim,Frequente
+FISCAL,Direito Tributário,Defesa,Sim,Frequente
+FISCAL,Direito Tributário,Recurso administrativo,Sim,Frequente
+FISCAL,Direito Tributário,Consulta fiscal,Sim,Frequente
+FISCAL,Direito Tributário,Processo judicial tributário,Sim,Frequente
+FISCAL,Direito Tributário,Ação popular,Sim,Frequente
+FISCAL,Direito Tributário,Mandado de segurança,Sim,Frequente
+FISCAL,Direito Tributário,Ação ordinária,Sim,Frequente
+FISCAL,Direito Tributário,Ação anulatória,Sim,Frequente
+FISCAL,Direito Tributário,Exceção de pré-executividade,Sim,Frequente
+FISCAL,Direito Tributário,Execução fiscal,Sim,Frequente
+FISCAL,Direito Tributário,Sigilo fiscal,Sim,Frequente
+FISCAL,Direito Tributário,Sigilo de informação,Sim,Frequente
+FISCAL,Direito Tributário,Exceções ao sigilo,Sim,Frequente
+FISCAL,Direito Constitucional,Constituição Federal,Sim,Frequente
+FISCAL,Direito Constitucional,Princípios fundamentais,Sim,Frequente
+FISCAL,Direito Constitucional,Direitos e garantias fundamentais,Sim,Frequente
+FISCAL,Direito Constitucional,Direitos individuais,Sim,Frequente
+FISCAL,Direito Constitucional,Direitos sociais,Sim,Frequente
+FISCAL,Direito Constitucional,Direitos políticos,Sim,Frequente
+FISCAL,Direito Constitucional,Nacionalidade,Sim,Frequente
+FISCAL,Direito Constitucional,Cidadania,Sim,Frequente
+FISCAL,Direito Constitucional,Direitos políticos,Sim,Frequente
+FISCAL,Direito Constitucional,Direito de voto,Sim,Frequente
+FISCAL,Direito Constitucional,Elegibilidade,Sim,Frequente
+FISCAL,Direito Constitucional,Incompatibilidade,Sim,Frequente
+FISCAL,Direito Constitucional,Partidos políticos,Sim,Frequente
+FISCAL,Direito Constitucional,Sistema tributário,Sim,Frequente
+FISCAL,Direito Constitucional,Princípios gerais,Sim,Frequente
+FISCAL,Direito Constitucional,Limites do poder de tributar,Sim,Frequente
+FISCAL,Direito Constitucional,Imunidades tributárias,Sim,Frequente
+FISCAL,Direito Constitucional,Imunidade de templós,Sim,Frequente
+FISCAL,Direito Constitucional,Imunidade de partidos políticos,Sim,Frequente
+FISCAL,Direito Constitucional,Imunidade de sindicatos,Sim,Frequente
+FISCAL,Direito Constitucional,Imunidade de instituições de educação,Sim,Frequente
+FISCAL,Direito Constitucional,Imunidade de instituições de assistência social,Sim,Frequente
+FISCAL,Direito Constitucional,Impostos da União,Sim,Frequente
+FISCAL,Direito Constitucional,Impostos dos Estados,Sim,Frequente
+FISCAL,Direito Constitucional,Impostos dos Municípios,Sim,Frequente
+FISCAL,Direito Constitucional,Contribuições federais,Sim,Frequente
+FISCAL,Direito Constitucional,Contribuições estaduais,Sim,Frequente
+FISCAL,Direito Constitucional,Contribuições municipais,Sim,Frequente
+FISCAL,Direito Constitucional,Distribuição de receitas tributárias,Sim,Frequente
+FISCAL,Direito Constitucional,Fundo de Participação dos Estados,Sim,Frequente
+FISCAL,Direito Constitucional,Fundo de Participação dos Municípios,Sim,Frequente
+FISCAL,Direito Constitucional,Organização do Estado,Sim,Frequente
+FISCAL,Direito Constitucional,Organização dos Poderes,Sim,Frequente
+FISCAL,Direito Constitucional,Poder Executivo,Sim,Frequente
+FISCAL,Direito Constitucional,Poder Legislativo,Sim,Frequente
+FISCAL,Direito Constitucional,Poder Judiciário,Sim,Frequente
+FISCAL,Direito Administrativo,Princípios da administração pública,Sim,Frequente
+FISCAL,Direito Administrativo,Legalidade,Sim,Frequente
+FISCAL,Direito Administrativo,Moralidade,Sim,Frequente
+FISCAL,Direito Administrativo,Impessoalidade,Sim,Frequente
+FISCAL,Direito Administrativo,Publicidade,Sim,Frequente
+FISCAL,Direito Administrativo,Eficiência,Sim,Frequente
+FISCAL,Direito Administrativo,Atos administrativos,Sim,Frequente
+FISCAL,Direito Administrativo,Conceito,Sim,Frequente
+FISCAL,Direito Administrativo,Requisitos,Sim,Frequente
+FISCAL,Direito Administrativo,Atributos,Sim,Frequente
+FISCAL,Direito Administrativo,Classificação,Sim,Frequente
+FISCAL,Direito Administrativo,Validade,Sim,Frequente
+FISCAL,Direito Administrativo,Eficácia,Sim,Frequente
+FISCAL,Direito Administrativo,Vício de legalidade,Sim,Frequente
+FISCAL,Direito Administrativo,Invalidação,Sim,Frequente
+FISCAL,Direito Administrativo,Controle e responsabilização,Sim,Frequente
+FISCAL,Direito Administrativo,Controle administrativo,Sim,Frequente
+FISCAL,Direito Administrativo,Controle judicial,Sim,Frequente
+FISCAL,Direito Administrativo,Improbidade administrativa,Sim,Frequente
+FISCAL,Direito Administrativo,Responsabilidade civil do Estado,Sim,Frequente
+FISCAL,Direito Administrativo,Lei de Licitações,Sim,Frequente
+FISCAL,Direito Administrativo,Lei nº 14.133/2021,Sim,Frequente
+FISCAL,Direito Administrativo,Princípios,Sim,Frequente
+FISCAL,Direito Administrativo,Modalidades,Sim,Frequente
+FISCAL,Direito Administrativo,Procedimento,Sim,Frequente
+FISCAL,Direito Administrativo,Dispensa e inexigibilidade,Sim,Frequente
+FISCAL,Direito Administrativo,Lei Anticorrupção,Sim,Frequente
+FISCAL,Direito Administrativo,Lei nº 12.846/2013,Sim,Frequente
+FISCAL,Contabilidade Geral,Conceitos fundamentais,Sim,Frequente
+FISCAL,Contabilidade Geral,Patrimônio,Sim,Frequente
+FISCAL,Contabilidade Geral,Ativo,Sim,Frequente
+FISCAL,Contabilidade Geral,Passivo,Sim,Frequente
+FISCAL,Contabilidade Geral,Patrimônio líquido,Sim,Frequente
+FISCAL,Contabilidade Geral,Equação patrimonial,Sim,Frequente
+FISCAL,Contabilidade Geral,Contas,Sim,Frequente
+FISCAL,Contabilidade Geral,Débito e crédito,Sim,Frequente
+FISCAL,Contabilidade Geral,Partidas dobradas,Sim,Frequente
+FISCAL,Contabilidade Geral,Diário,Sim,Frequente
+FISCAL,Contabilidade Geral,Razão,Sim,Frequente
+FISCAL,Contabilidade Geral,Balancete de verificação,Sim,Frequente
+FISCAL,Contabilidade Geral,Demonstrações financeiras,Sim,Frequente
+FISCAL,Contabilidade Geral,Balanço patrimonial,Sim,Frequente
+FISCAL,Contabilidade Geral,Demonstração de resultado do exercício,Sim,Frequente
+FISCAL,Contabilidade Geral,Fluxo de caixa,Sim,Frequente
+FISCAL,Contabilidade Geral,Demonstração de mutações do patrimônio líquido,Sim,Frequente
+FISCAL,Contabilidade Geral,Demonstração de valor adicionado,Sim,Frequente
+FISCAL,Contabilidade Geral,Avaliação de ativos,Sim,Frequente
+FISCAL,Contabilidade Geral,Ativo imobilizado,Sim,Frequente
+FISCAL,Contabilidade Geral,Depreciação,Sim,Frequente
+FISCAL,Contabilidade Geral,Amortização,Sim,Frequente
+FISCAL,Contabilidade Geral,Exaustão,Sim,Frequente
+FISCAL,Contabilidade Geral,Método linear,Sim,Frequente
+FISCAL,Contabilidade Geral,Método de unidades produzidas,Sim,Frequente
+FISCAL,Contabilidade Geral,Método da soma dos dígitos,Sim,Frequente
+FISCAL,Contabilidade Geral,Método da redução de saldo,Sim,Frequente
+FISCAL,Contabilidade Geral,Contas do ativo,Sim,Frequente
+FISCAL,Contabilidade Geral,Ativo circulante,Sim,Frequente
+FISCAL,Contabilidade Geral,Ativo não circulante,Sim,Frequente
+FISCAL,Contabilidade Geral,Caixa,Sim,Frequente
+FISCAL,Contabilidade Geral,Bancos,Sim,Frequente
+FISCAL,Contabilidade Geral,Clientes,Sim,Frequente
+FISCAL,Contabilidade Geral,Estoques,Sim,Frequente
+FISCAL,Contabilidade Geral,Despesas antecipadas,Sim,Frequente
+FISCAL,Contabilidade Geral,Investimentos,Sim,Frequente
+FISCAL,Contabilidade Geral,Imobilizado,Sim,Frequente
+FISCAL,Contabilidade Geral,Intangível,Sim,Frequente
+FISCAL,Contabilidade Geral,Diferido,Sim,Frequente
+FISCAL,Contabilidade Geral,Contas do passivo,Sim,Frequente
+FISCAL,Contabilidade Geral,Passivo circulante,Sim,Frequente
+FISCAL,Contabilidade Geral,Passivo não circulante,Sim,Frequente
+FISCAL,Contabilidade Geral,Fornecedores,Sim,Frequente
+FISCAL,Contabilidade Geral,Contas a pagar,Sim,Frequente
+FISCAL,Contabilidade Geral,Empréstimos,Sim,Frequente
+FISCAL,Contabilidade Geral,Financiamentos,Sim,Frequente
+FISCAL,Contabilidade Geral,Imposto a pagar,Sim,Frequente
+FISCAL,Contabilidade Geral,Salários a pagar,Sim,Frequente
+FISCAL,Contabilidade Geral,Contas do patrimônio líquido,Sim,Frequente
+FISCAL,Contabilidade Geral,Capital social,Sim,Frequente
+FISCAL,Contabilidade Geral,Reservas de capital,Sim,Frequente
+FISCAL,Contabilidade Geral,Ajustes de avaliação patrimonial,Sim,Frequente
+FISCAL,Contabilidade Geral,Reservas de lucros,Sim,Frequente
+FISCAL,Contabilidade Geral,Lucros ou prejuízos acumulados,Sim,Frequente
+FISCAL,Contabilidade Geral,Receitas,Sim,Frequente
+FISCAL,Contabilidade Geral,Receita bruta,Sim,Frequente
+FISCAL,Contabilidade Geral,Deduções da receita,Sim,Frequente
+FISCAL,Contabilidade Geral,Devoluções,Sim,Frequente
+FISCAL,Contabilidade Geral,Abatimentos,Sim,Frequente
+FISCAL,Contabilidade Geral,Descontos,Sim,Frequente
+FISCAL,Contabilidade Geral,Impostos sobre vendas,Sim,Frequente
+FISCAL,Contabilidade Geral,Receita líquida,Sim,Frequente
+FISCAL,Contabilidade Geral,Receitas operacionais,Sim,Frequente
+FISCAL,Contabilidade Geral,Receitas não operacionais,Sim,Frequente
+FISCAL,Contabilidade Geral,Despesas,Sim,Frequente
+FISCAL,Contabilidade Geral,Despesas operacionais,Sim,Frequente
+FISCAL,Contabilidade Geral,Custo de mercadorias vendidas,Sim,Frequente
+FISCAL,Contabilidade Geral,Custo dos serviços prestados,Sim,Frequente
+FISCAL,Contabilidade Geral,Despesas de vendas,Sim,Frequente
+FISCAL,Contabilidade Geral,Despesas administrativas,Sim,Frequente
+FISCAL,Contabilidade Geral,Despesas financeiras,Sim,Frequente
+FISCAL,Contabilidade Geral,Despesas não operacionais,Sim,Frequente
+FISCAL,Contabilidade Geral,Impostos e contribuições,Sim,Frequente
+FISCAL,Contabilidade Geral,Imposto de renda,Sim,Frequente
+FISCAL,Contabilidade Geral,Contribuição social,Sim,Frequente
+FISCAL,Contabilidade Geral,Participações,Sim,Frequente
+FISCAL,Contabilidade Geral,Lucro líquido,Sim,Frequente
+FISCAL,Contabilidade Geral,Resultado do exercício,Sim,Frequente
+FISCAL,Contabilidade de Custos,Conceitos fundamentais,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custos,Sim,Frequente
+FISCAL,Contabilidade de Custos,Despesas,Sim,Frequente
+FISCAL,Contabilidade de Custos,Perdas,Sim,Frequente
+FISCAL,Contabilidade de Custos,Investimentos,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custos diretos,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custos indiretos,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custos fixos,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custos variáveis,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custos semivariáveis,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custos controlável,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custos não controláveis,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custos de produção,Sim,Frequente
+FISCAL,Contabilidade de Custos,Matéria-prima,Sim,Frequente
+FISCAL,Contabilidade de Custos,Mão de obra,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custos indiretos de fabricação,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custos de operação,Sim,Frequente
+FISCAL,Contabilidade de Custos,Método de custeio,Sim,Frequente
+FISCAL,Contabilidade de Custos,Absorção,Sim,Frequente
+FISCAL,Contabilidade de Custos,Variável,Sim,Frequente
+FISCAL,Contabilidade de Custos,ABC,Sim,Frequente
+FISCAL,Contabilidade de Custos,RKW,Sim,Frequente
+FISCAL,Contabilidade de Custos,Padrão,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custo padrão,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custo real,Sim,Frequente
+FISCAL,Contabilidade de Custos,Variação de custo,Sim,Frequente
+FISCAL,Contabilidade de Custos,Variação de quantidade,Sim,Frequente
+FISCAL,Contabilidade de Custos,Variação de preço,Sim,Frequente
+FISCAL,Contabilidade de Custos,Variação de volume,Sim,Frequente
+FISCAL,Contabilidade de Custos,Análise de variações,Sim,Frequente
+FISCAL,Contabilidade de Custos,Custeio por departamento,Sim,Frequente
+FISCAL,Contabilidade de Custos,Departamentos de produção,Sim,Frequente
+FISCAL,Contabilidade de Custos,Departamentos administrativos,Sim,Frequente
+FISCAL,Contabilidade de Custos,Rateio de custos,Sim,Frequente
+FISCAL,Contabilidade de Custos,Centros de custos,Sim,Frequente
+FISCAL,Contabilidade de Custos,Alocação de custos,Sim,Frequente
+FISCAL,Contabilidade de Custos,Transferência interna,Sim,Frequente
+FISCAL,Contabilidade de Custos,Ponto de equilíbrio,Sim,Frequente
+FISCAL,Contabilidade de Custos,Break-even,Sim,Frequente
+FISCAL,Contabilidade de Custos,Margem de contribuição,Sim,Frequente
+FISCAL,Contabilidade de Custos,Margem de segurança,Sim,Frequente
+FISCAL,Contabilidade de Custos,Análise de rentabilidade,Sim,Frequente
+FISCAL,Contabilidade de Custos,Lucro bruto,Sim,Frequente
+FISCAL,Contabilidade de Custos,Lucro operacional,Sim,Frequente
+FISCAL,Contabilidade de Custos,ROI (Retorno sobre Investimento),Sim,Frequente
+FISCAL,Contabilidade de Custos,Análise de desperdício,Sim,Frequente
+FISCAL,Contabilidade de Custos,Eficiência,Sim,Frequente
+FISCAL,Contabilidade de Custos,Eficácia,Sim,Frequente
+FISCAL,Contabilidade de Custos,Produtividade,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Conceitos fundamentais,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Administração financeira,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Gestão de caixa,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Gestão de recebíveis,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Gestão de pagáveis,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Gestão de estoques,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Gestão de investimentos,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Gestão de financiamentos,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Planejamento financeiro,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Orçamento,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Orçamento operacional,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Orçamento de capital,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Orçamento financeiro,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Plano Plurianual,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Lei de Diretrizes Orçamentárias,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Lei de Orçamentos Anuais,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Créditos adicionais,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Suplementares,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Especiais,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Extraordinários,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Blocagem de recursos,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Contingenciamento,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Execução orçamentária,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Empenho,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Liquidação,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Pagamento,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Receitas orçamentárias,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Receitas correntes,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Receitas de capital,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Receitas tributárias,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Receitas de contribuições,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Despesas orçamentárias,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Despesas correntes,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Despesas de capital,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Custeio,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Investimentos,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Inversões financeiras,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Transferências correntes,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Transferências de capital,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Amortização da dívida,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Equilíbrio orçamentário,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Superávit,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Déficit,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Controle orçamentário,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Variação orçamentária,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Eficiência orçamentária,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Transparência,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Participação pública,Sim,Frequente
+FISCAL,Administração Financeira e Orçamentária,Accountability,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Conceitos fundamentais,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Auditoria,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Auditoria interna,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Auditoria externa,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Auditoria independente,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Auditoria fiscal,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Auditoria operacional,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Auditoria de conformidade,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Normas de auditoria,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,ISA (International Standards on Auditing),Sim,Frequente
+FISCAL,Auditoria e Fiscalização,ISSAI (International Standards of Supreme Audit Institutions),Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Normas técnicas brasileiras,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Planejamento da auditoria,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Procedimentos de auditoria,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Testes de controle,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Testes substantivos,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Seleção de amostra,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Amostragem não estatística,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Amostragem estatística,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Evidência de auditoria,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Qualidade da evidência,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Suficiência,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Relevância,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Confiabilidade,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Papéis de trabalho,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Documentação,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Relatório de auditoria,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Opinião de auditoria,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Opinião sem ressalva,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Opinião com ressalva,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Opinião adversa,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Abstenção de opinião,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Assuntos-chave de auditoria,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Continuidade da entidade,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Risco de auditoria,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Risco inerente,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Risco de controle,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Risco de detecção,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Controles internos,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Avaliação de controles,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Fraquezas de controle,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Recomendações de auditoria,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Fiscalização tributária,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Fiscalização de conformidade,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Autos de infração,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Laudo de fiscalização,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Procedimentos fisccais,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Denúncia,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Delação,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Auditoria governamental,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Auditoria de legalidade,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Auditoria de economia,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Auditoria de eficiência,Sim,Frequente
+FISCAL,Auditoria e Fiscalização,Auditoria de eficácia,Sim,Frequente
+FISCAL,Legislação Tributária,Constituição Federal - Sistema Tributário,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 5.172/1966 - Código Tributário Nacional,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 8.212/1991 - Contribuição para Seguridade Social,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 8.213/1991 - Previdência Social,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 8.666/1993 - Licitações,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 9.249/1995 - Imposto de Renda Pessoa Jurídica,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 9.250/1995 - Imposto de Renda Pessoa Física,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 9.431/1996 - Saúde Suplementar,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 9.504/1997 - Processo Eleitoral,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 9.718/1998 - Tributação do PIS e COFINS,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 10.336/2001 - IPI,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 10.637/2002 - Não Cumulatividade do PIS,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 10.833/2003 - Não Cumulatividade da COFINS,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 11.196/2005 - Incentivos Fiscais,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 12.114/2009 - Empresa Pública de Radiodifusão,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 12.593/2012 - Plano Plurianual,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 13.102/2015 - Simples Nacional,Sim,Frequente
+FISCAL,Legislação Tributária,Lei 14.133/2021 - Licitações e Contratos,Sim,Frequente
+FISCAL,Legislação Tributária,Decreto nº 9.580/2018 - Regulamento do Imposto de Renda,Sim,Frequente
+FISCAL,Legislação Tributária,Instrução Normativa RFB,Sim,Frequente
+FISCAL,Legislação Tributária,Portarias da Secretaria da Receita Federal,Sim,Frequente
+FISCAL,Legislação Tributária,Resoluções do Senado Federal,Sim,Frequente
+FISCAL,Legislação Tributária,Leis Estaduais de ICMS,Sim,Frequente
+FISCAL,Legislação Tributária,Leis Municipais de ISS e IPTU,Sim,Frequente
+FISCAL,Legislação Tributária,Legislação tributária específica de cada estado,Sim,Frequente
+FISCAL,Legislação Tributária,Legislação tributária municipal,Sim,Frequente
+FISCAL,Legislação Tributária,Tratados internacionais,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Macroeconomia,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Produto Interno Bruto,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Crescimento econômico,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Inflação,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Deflação,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Desemprego,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Taxa de desemprego,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Ciclos econômicos,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Crises econômicas,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Microeconomia,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Oferta e demanda,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Elasticidade,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Mercado,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Concorrência perfeita,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Monopólio,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Oligopólio,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Concorrência monopolística,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Política fiscal,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Receita do governo,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Tributação,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Despesa do governo,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Gastos públicos,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Investimento público,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Transferências,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Orçamento governamental,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Déficit orçamentário,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Superávit orçamentário,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Dívida pública,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Financiamento do déficit,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Títulos públicos,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Política monetária,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Banco Central,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Taxa de juros,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Agregados monetários,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,M1,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,M2,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,M3,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Oferta de moeda,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Demanda de moeda,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Inflação,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Teorias da inflação,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Inflação de demanda,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Inflação de custo,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Inflação estrutural,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Deflação,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Desinflação,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Estagflação,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Comércio internacional,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Exportações,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Importações,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Taxa de câmbio,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Câmbio fixo,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Câmbio flutuante,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Câmbio administrado,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Balanço de pagamentos,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Conta corrente,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Conta capital,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Reservas internacionais,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Desenvolvimento econômico,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Desigualdade de renda,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Pobreza,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Indicadores de desenvolvimento,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,IDH,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,GINI,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Políticas de desenvolvimento,Sim,Frequente
+FISCAL,Economia e Finanças Públicas,Sustentabilidade econômica,Sim,Frequente
+FISCAL,Governança e Tecnologia da Informação,Conceitos de governança,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Governança corporativa,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Governança pública,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Princípios de governança,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Transparência,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Accountability,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Conformidade,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Integridade,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Gestão de riscos,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Identificação de riscos,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Análise de riscos,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Mitigação de riscos,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Monitoramento de riscos,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Controle interno,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,COSO Framework,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Ambiente de controle,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Avaliação de riscos,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Atividades de controle,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Informação e comunicação,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Monitoramento,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Sistemas de informação,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Conceitos básicos de TI,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Hardware,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Software,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Redes,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Internet,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Bancos de dados,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Estrutura de dados,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Banco de dados relacional,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Banco de dados não relacional,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,SQL,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Linguagens de programação,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Segurança da informação,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Confidencialidade,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Integridade,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Disponibilidade,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Autenticação,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Autorização,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Criptografia,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Firewalls,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Antivírus,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Proteção contra malware,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Backup e recuperação,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Plano de continuidade,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Recuperação de desastres,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Lei Geral de Proteção de Dados (LGPD),Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Privacidade,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Direitos dos titulares,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Deveres dos controladores,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Transferência de dados,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Incidentes de segurança,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Auditoria de TI,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,COBIT,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,ITIL,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Gestão de projetos,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,PMBOK,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Agile,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,DevOps,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Cloud Computing,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Infraestrutura como Serviço (IaaS),Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Plataforma como Serviço (PaaS),Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Software como Serviço (SaaS),Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Big Data,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Análise de dados,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Machine Learning,Não,Comum
+FISCAL,Governança e Tecnologia da Informação,Inteligência Artificial,Não,Comum
+FISCAL,Análise de Dados,Estatística descritiva,Sim,Frequente
+FISCAL,Análise de Dados,Coleta de dados,Sim,Frequente
+FISCAL,Análise de Dados,Organização de dados,Sim,Frequente
+FISCAL,Análise de Dados,Resumo de dados,Sim,Frequente
+FISCAL,Análise de Dados,Visualização de dados,Sim,Frequente
+FISCAL,Análise de Dados,Gráficos,Sim,Frequente
+FISCAL,Análise de Dados,Tabelas,Sim,Frequente
+FISCAL,Análise de Dados,Inferência estatística,Sim,Frequente
+FISCAL,Análise de Dados,Estimação de parâmetros,Sim,Frequente
+FISCAL,Análise de Dados,Teste de hipóteses,Sim,Frequente
+FISCAL,Análise de Dados,Intervalo de confiança,Sim,Frequente
+FISCAL,Análise de Dados,Regressão,Sim,Frequente
+FISCAL,Análise de Dados,Análise de correlação,Sim,Frequente
+FISCAL,Análise de Dados,Análise de variância,Sim,Frequente
+FISCAL,Análise de Dados,ANOVA,Sim,Frequente
+FISCAL,Análise de Dados,Testes não paramétricos,Sim,Frequente
+FISCAL,Análise de Dados,Chi-quadrado,Sim,Frequente
+FISCAL,Análise de Dados,Teste de Mann-Whitney,Sim,Frequente
+FISCAL,Análise de Dados,Teste de Kruskal-Wallis,Sim,Frequente
+FISCAL,Análise de Dados,Séries temporais,Sim,Frequente
+FISCAL,Análise de Dados,Tendência,Sim,Frequente
+FISCAL,Análise de Dados,Sazonalidade,Sim,Frequente
+FISCAL,Análise de Dados,Autocorrelação,Sim,Frequente
+FISCAL,Análise de Dados,Previsão,Sim,Frequente
+FISCAL,Análise de Dados,Análise de cluster,Sim,Frequente
+FISCAL,Análise de Dados,Análise fatorial,Sim,Frequente
+FISCAL,Análise de Dados,Análise multivariada,Sim,Frequente
+FISCAL,Análise de Dados,Análise discriminante,Sim,Frequente
+FISCAL,Análise de Dados,Data Mining,Sim,Frequente
+FISCAL,Análise de Dados,Mineração de regras,Sim,Frequente
+FISCAL,Análise de Dados,Árvores de decisão,Sim,Frequente
+FISCAL,Análise de Dados,Redes neurais,Sim,Frequente
+FISCAL,Análise de Dados,Algoritmos de aprendizado,Sim,Frequente
+FISCAL,Análise de Dados,Aprendizado supervisionado,Sim,Frequente
+FISCAL,Análise de Dados,Aprendizado não supervisionado,Sim,Frequente
+FISCAL,Análise de Dados,Aprendizado por reforço,Sim,Frequente
+FISCAL,Análise de Dados,Validação de modelos,Sim,Frequente
+FISCAL,Análise de Dados,Cross-validation,Sim,Frequente
+FISCAL,Análise de Dados,Matriz de confusão,Sim,Frequente
+FISCAL,Análise de Dados,Métricas de desempenho,Sim,Frequente
+FISCAL,Análise de Dados,Acurácia,Sim,Frequente
+FISCAL,Análise de Dados,Precisão,Sim,Frequente
+FISCAL,Análise de Dados,Recall,Sim,Frequente
+FISCAL,Análise de Dados,F1-Score,Sim,Frequente
+FISCAL,Análise de Dados,ROC Curve,Sim,Frequente
+FISCAL,Análise de Dados,AUC,Sim,Frequente
+FISCAL,Análise de Dados,Visualização e comunicação de resultados,Sim,Frequente
+FISCAL,Análise de Dados,Dashboard,Sim,Frequente
+FISCAL,Análise de Dados,BI (Business Intelligence),Sim,Frequente
+FISCAL,Análise de Dados,PowerBI,Sim,Frequente
+FISCAL,Análise de Dados,Tableau,Sim,Frequente
+FISCAL,Análise de Dados,Excel avançado,Sim,Frequente
+FISCAL,Análise de Dados,Programação em Python,Sim,Frequente
+FISCAL,Análise de Dados,Programação em R,Sim,Frequente
+FISCAL,Análise de Dados,SQL,Sim,Frequente
+FISCAL,Análise de Dados,Preparação de dados,Sim,Frequente
+FISCAL,Análise de Dados,Limpeza de dados,Sim,Frequente
+FISCAL,Análise de Dados,Transformação de dados,Sim,Frequente
+FISCAL,Análise de Dados,Integração de dados,Sim,Frequente
+SAÚDE,Português,Interpretação e compreensão de textos,Não,Comum
+SAÚDE,Português,Ortografia,Não,Comum
+SAÚDE,Português,Pontuação,Não,Comum
+SAÚDE,Português,Semântica,Não,Comum
+SAÚDE,Português,Morfologia,Não,Comum
+SAÚDE,Português,Sintaxe,Não,Comum
+SAÚDE,Português,Concordância,Não,Comum
+SAÚDE,Português,Regência,Não,Comum
+SAÚDE,Português,Colocação pronominal,Não,Comum
+SAÚDE,Anatomia,"Sistema cardiovascular: coração, estrutura, funções",Sim,Frequente
+SAÚDE,Anatomia,Artérias e veias sistêmicas,Sim,Frequente
+SAÚDE,Anatomia,Sistema respiratório: estrutura das vias aéreas,Sim,Frequente
+SAÚDE,Anatomia,Pulmões e trocas gasosas,Sim,Frequente
+SAÚDE,Anatomia,"Sistema nervoso central: cérebro, medula",Sim,Frequente
+SAÚDE,Anatomia,Sistema nervoso periférico,Sim,Frequente
+SAÚDE,Anatomia,"Sistema digestório: cavidade oral, esôfago",Sim,Frequente
+SAÚDE,Anatomia,"Estômago, intestino delgado, intestino grosso",Sim,Frequente
+SAÚDE,Anatomia,Pâncreas e fígado,Sim,Frequente
+SAÚDE,Anatomia,"Sistema urinário: rins, bexiga, uretra",Sim,Frequente
+SAÚDE,Anatomia,Sistema endócrino: glândulas e hormônios,Sim,Frequente
+SAÚDE,Anatomia,"Hipófise, tireóide, pâncreas",Sim,Frequente
+SAÚDE,Anatomia,Adrenais e gônadas,Sim,Frequente
+SAÚDE,Anatomia,"Sistema imunológico: células, órgãos",Sim,Frequente
+SAÚDE,Anatomia,Anticorpos e antígenos,Sim,Frequente
+SAÚDE,Anatomia,"Esqueleto: ossos, articulações",Sim,Frequente
+SAÚDE,Anatomia,Músculos e contrações,Sim,Frequente
+SAÚDE,Anatomia,Cavidade bucal: estrutura e funções,Sim,Frequente
+SAÚDE,Anatomia,Dentes e gengiva,Sim,Frequente
+SAÚDE,Fisiologia,Fisiologia cardiovascular: bomba cardíaca,Sim,Comum
+SAÚDE,Fisiologia,Débito cardíaco e pressão arterial,Sim,Comum
+SAÚDE,Fisiologia,Circulação sistêmica e pulmonar,Sim,Comum
+SAÚDE,Fisiologia,Fisiologia respiratória: ventilação pulmonar,Sim,Comum
+SAÚDE,Fisiologia,Difusão e transporte de gases,Sim,Comum
+SAÚDE,Fisiologia,Regulação da respiração,Sim,Comum
+SAÚDE,Fisiologia,Fisiologia do sistema nervoso,Sim,Comum
+SAÚDE,Fisiologia,Potencial elétrico e sinapses,Sim,Comum
+SAÚDE,Fisiologia,Reflexos espinhais,Sim,Comum
+SAÚDE,Fisiologia,Fisiologia gastrointestinal: deglutição,Sim,Comum
+SAÚDE,Fisiologia,Secreção ácida gástrica,Sim,Comum
+SAÚDE,Fisiologia,Absorção intestinal,Sim,Comum
+SAÚDE,Fisiologia,Metabolismo de carboidratos,Sim,Comum
+SAÚDE,Fisiologia,Metabolismo de lipídios,Sim,Comum
+SAÚDE,Fisiologia,Metabolismo proteico,Sim,Comum
+SAÚDE,Fisiologia,Fisiologia renal: filtração,Sim,Comum
+SAÚDE,Fisiologia,Reabsorção tubular,Sim,Comum
+SAÚDE,Fisiologia,Secreção tubular,Sim,Comum
+SAÚDE,Fisiologia,Fisiologia da reprodução,Sim,Comum
+SAÚDE,Fisiologia,Ciclo menstrual,Sim,Comum
+SAÚDE,Fisiologia,Fisiologia da lactação,Sim,Comum
+SAÚDE,Farmacologia,Conceitos de farmacocinética,Sim,Frequente
+SAÚDE,Farmacologia,Absorção de fármacos,Sim,Frequente
+SAÚDE,Farmacologia,Distribuição e metabolismo,Sim,Frequente
+SAÚDE,Farmacologia,Excreção de fármacos,Sim,Frequente
+SAÚDE,Farmacologia,Farmacodinâmica: mecanismo de ação,Sim,Frequente
+SAÚDE,Farmacologia,Receptores celulares,Sim,Frequente
+SAÚDE,Farmacologia,Agonistas e antagonistas,Sim,Frequente
+SAÚDE,Farmacologia,Vias de administração: oral,Sim,Frequente
+SAÚDE,Farmacologia,"Intramuscular, intravenosa, tópica",Sim,Frequente
+SAÚDE,Farmacologia,Transdermal,Sim,Frequente
+SAÚDE,Farmacologia,Grupos farmacológicos: antibióticos,Sim,Frequente
+SAÚDE,Farmacologia,Antifúngicos,Sim,Frequente
+SAÚDE,Farmacologia,Antivirais,Sim,Frequente
+SAÚDE,Farmacologia,Analgésicos,Sim,Frequente
+SAÚDE,Farmacologia,Anti-inflamatórios,Sim,Frequente
+SAÚDE,Farmacologia,Antitérmicos,Sim,Frequente
+SAÚDE,Farmacologia,Antiarrítmicos,Sim,Frequente
+SAÚDE,Farmacologia,Antihipertensivos,Sim,Frequente
+SAÚDE,Farmacologia,Diuréticos,Sim,Frequente
+SAÚDE,Farmacologia,Laxantes,Sim,Frequente
+SAÚDE,Farmacologia,Antiácidos,Sim,Frequente
+SAÚDE,Farmacologia,Antidiarreicos,Sim,Frequente
+SAÚDE,Farmacologia,Antieméticos,Sim,Frequente
+SAÚDE,Farmacologia,Efeitos colaterais e adversos,Sim,Frequente
+SAÚDE,Farmacologia,Interações medicamentosas,Sim,Frequente
+SAÚDE,Farmacologia,Contraindicações,Sim,Frequente
+SAÚDE,Farmacologia,Reações alérgicas,Sim,Frequente
+SAÚDE,Farmacologia,Farmacovigilância,Sim,Frequente
+SAÚDE,Patologia,Lesão celular reversível,Sim,Comum
+SAÚDE,Patologia,Lesão celular irreversível,Sim,Comum
+SAÚDE,Patologia,Inflamação: fases,Sim,Comum
+SAÚDE,Patologia,Mediadores inflamatórios,Sim,Comum
+SAÚDE,Patologia,Inflamação aguda e crônica,Sim,Comum
+SAÚDE,Patologia,Reparação tecidual,Sim,Comum
+SAÚDE,Patologia,Cicatrização de feridas,Sim,Comum
+SAÚDE,Patologia,Infecção bacteriana,Sim,Comum
+SAÚDE,Patologia,Infecção viral,Sim,Comum
+SAÚDE,Patologia,Infecção fúngica,Sim,Comum
+SAÚDE,Patologia,Infecção parasitária,Sim,Comum
+SAÚDE,Patologia,Processos degenerativos,Sim,Comum
+SAÚDE,Patologia,Aterosclerose,Sim,Comum
+SAÚDE,Patologia,Neoplasia: conceitos,Sim,Comum
+SAÚDE,Patologia,Carcinogênese,Sim,Comum
+SAÚDE,Patologia,Tumores malignos,Sim,Comum
+SAÚDE,Patologia,Tumores benignos,Sim,Comum
+SAÚDE,Patologia,Metástase,Sim,Comum
+SAÚDE,Patologia,Distúrbios da circulação: edema,Sim,Comum
+SAÚDE,Patologia,Congestão,Sim,Comum
+SAÚDE,Patologia,Trombose,Sim,Comum
+SAÚDE,Patologia,Embolia,Sim,Comum
+SAÚDE,Patologia,Isquemia,Sim,Comum
+SAÚDE,Patologia,Hemostasia: coagulação,Sim,Comum
+SAÚDE,Patologia,Sangramentos,Sim,Comum
+SAÚDE,Patologia,Coagulopatias,Sim,Comum
+SAÚDE,Patologia,Distúrbios eletrolíticos,Sim,Comum
+SAÚDE,Patologia,Acidose e alcalose,Sim,Comum
+SAÚDE,Semiologia,Conceitos de semiologia,Sim,Comum
+SAÚDE,Semiologia,Anamnese: técnica,Sim,Comum
+SAÚDE,Semiologia,Queixa principal,Sim,Comum
+SAÚDE,Semiologia,História da doença atual,Sim,Comum
+SAÚDE,Semiologia,Antecedentes pessoais,Sim,Comum
+SAÚDE,Semiologia,Antecedentes familiares,Sim,Comum
+SAÚDE,Semiologia,Fatores de risco,Sim,Comum
+SAÚDE,Semiologia,Hábitos e vícios,Sim,Comum
+SAÚDE,Semiologia,Exame físico: inspeção,Sim,Comum
+SAÚDE,Semiologia,Palpação,Sim,Comum
+SAÚDE,Semiologia,Percussão,Sim,Comum
+SAÚDE,Semiologia,Ausculta,Sim,Comum
+SAÚDE,Semiologia,Sinais vitais: temperatura,Sim,Comum
+SAÚDE,Semiologia,Frequência cardíaca,Sim,Comum
+SAÚDE,Semiologia,Pressão arterial,Sim,Comum
+SAÚDE,Semiologia,Frequência respiratória,Sim,Comum
+SAÚDE,Semiologia,Saturação de oxigênio,Sim,Comum
+SAÚDE,Semiologia,Semiotécnica respiratória,Sim,Comum
+SAÚDE,Semiologia,Semiotécnica cardiovascular,Sim,Comum
+SAÚDE,Semiologia,Semiotécnica abdominal,Sim,Comum
+SAÚDE,Semiologia,Semiotécnica neurológica,Sim,Comum
+SAÚDE,Semiologia,Semiotécnica dermatológica,Sim,Comum
+SAÚDE,Semiologia,Documentação clínica,Sim,Comum
+SAÚDE,Procedimentos Técnicos,Higiene do paciente: banho no leito,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Higiene perineal,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Higiene oral,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Cuidados com cabelos,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Cuidados com unhas,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Conforto do paciente,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Mudanças de posição,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Posições no leito,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Úlceras de pressão: prevenção,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Úlceras de pressão: tratamento,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Sinais vitais: aferição de temperatura,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Aferição de pulso,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Aferição de pressão arterial,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Aferição de frequência respiratória,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Coleta de amostras: sangue,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Coleta de urina,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Coleta de fezes,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Coleta de escarro,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Coleta de líquor,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Administração de medicamentos: via oral,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Via intramuscular,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Via intravenosa,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Via subcutânea,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Via tópica,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Curativos: técnica asséptica,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Limpeza de ferida,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Aplicação de cobertura,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Tipos de cobertura,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Drenagem de ferida,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Cateterismo venoso,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Sondagem nasogástrica,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Sondagem vesical,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Enema,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Colostomia,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Traqueostomia,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Monitoramento cardíaco,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Oxigenoterapia,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Inalação,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Nebulização,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Imobilizações,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Bandagens,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Primeiros socorros: reanimação,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Compressão cardíaca,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Suporte básico de vida,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Manobra de Heimlich,Não,Frequente
+SAÚDE,Procedimentos Técnicos,Controle de hemorragia,Não,Frequente
+SAÚDE,Saúde Pública,Conceitos de saúde,Não,Comum
+SAÚDE,Saúde Pública,Conceitos de doença,Não,Comum
+SAÚDE,Saúde Pública,Conceitos de cura,Não,Comum
+SAÚDE,Saúde Pública,História natural da doença,Não,Comum
+SAÚDE,Saúde Pública,Período de incubação,Não,Comum
+SAÚDE,Saúde Pública,Período prodômico,Não,Comum
+SAÚDE,Saúde Pública,Período clínico,Não,Comum
+SAÚDE,Saúde Pública,Período de recuperação,Não,Comum
+SAÚDE,Saúde Pública,Epidemiologia: conceito,Não,Comum
+SAÚDE,Saúde Pública,Epidemiologia clínica,Não,Comum
+SAÚDE,Saúde Pública,Epidemiologia descritiva,Não,Comum
+SAÚDE,Saúde Pública,Epidemiologia analítica,Não,Comum
+SAÚDE,Saúde Pública,Epidemiologia experimental,Não,Comum
+SAÚDE,Saúde Pública,Doenças transmissíveis,Não,Comum
+SAÚDE,Saúde Pública,Modos de transmissão: direto,Não,Comum
+SAÚDE,Saúde Pública,Indireto,Não,Comum
+SAÚDE,Saúde Pública,Por vetor,Não,Comum
+SAÚDE,Saúde Pública,Por via aérea,Não,Comum
+SAÚDE,Saúde Pública,Por contaminação fecal-oral,Não,Comum
+SAÚDE,Saúde Pública,Doenças imunopreveníveis,Não,Comum
+SAÚDE,Saúde Pública,Varicela,Não,Comum
+SAÚDE,Saúde Pública,Sarampo,Não,Comum
+SAÚDE,Saúde Pública,Caxumba,Não,Comum
+SAÚDE,Saúde Pública,Rubéola,Não,Comum
+SAÚDE,Saúde Pública,Difteria,Não,Comum
+SAÚDE,Saúde Pública,Coqueluche,Não,Comum
+SAÚDE,Saúde Pública,Tétano,Não,Comum
+SAÚDE,Saúde Pública,Tuberculose,Não,Comum
+SAÚDE,Saúde Pública,Hanseníase,Não,Comum
+SAÚDE,Saúde Pública,Hepatite B,Não,Comum
+SAÚDE,Saúde Pública,Poliomielite,Não,Comum
+SAÚDE,Saúde Pública,Raiva,Não,Comum
+SAÚDE,Saúde Pública,Esquistossomose,Não,Comum
+SAÚDE,Saúde Pública,Ancilostomose,Não,Comum
+SAÚDE,Saúde Pública,Ascaridíase,Não,Comum
+SAÚDE,Saúde Pública,Dengue,Não,Comum
+SAÚDE,Saúde Pública,Zika,Não,Comum
+SAÚDE,Saúde Pública,Febre amarela,Não,Comum
+SAÚDE,Saúde Pública,Malária,Não,Comum
+SAÚDE,Saúde Pública,Doença de Chagas,Não,Comum
+SAÚDE,Epidemiologia,Medidas epidemiológicas: incidência,Não,Comum
+SAÚDE,Epidemiologia,Prevalência,Não,Comum
+SAÚDE,Epidemiologia,Letalidade,Não,Comum
+SAÚDE,Epidemiologia,Morbidade,Não,Comum
+SAÚDE,Epidemiologia,Mortalidade,Não,Comum
+SAÚDE,Epidemiologia,Taxa bruta,Não,Comum
+SAÚDE,Epidemiologia,Taxa específica,Não,Comum
+SAÚDE,Epidemiologia,Taxa de ataque,Não,Comum
+SAÚDE,Epidemiologia,Risco relativo,Não,Comum
+SAÚDE,Epidemiologia,Razão de chances,Não,Comum
+SAÚDE,Epidemiologia,Odds ratio,Não,Comum
+SAÚDE,Epidemiologia,Vigilância epidemiológica,Não,Comum
+SAÚDE,Epidemiologia,Notificação de casos,Não,Comum
+SAÚDE,Epidemiologia,Investigação de caso,Não,Comum
+SAÚDE,Epidemiologia,Surtos,Não,Comum
+SAÚDE,Epidemiologia,Epidemias,Não,Comum
+SAÚDE,Epidemiologia,Pandemias,Não,Comum
+SAÚDE,Epidemiologia,Endemia,Não,Comum
+SAÚDE,Epidemiologia,Vigilância de contatos,Não,Comum
+SAÚDE,Epidemiologia,Rastreamento de casos,Não,Comum
+SAÚDE,Epidemiologia,Educação em saúde,Não,Comum
+SAÚDE,Epidemiologia,Comunicação de risco,Não,Comum
+SAÚDE,Epidemiologia,Controle de transmissão,Não,Comum
+SAÚDE,Ética e Legislação,Conceitos de ética,Sim,Comum
+SAÚDE,Ética e Legislação,Bioética,Sim,Comum
+SAÚDE,Ética e Legislação,Princípios éticos: autonomia,Sim,Comum
+SAÚDE,Ética e Legislação,Beneficência,Sim,Comum
+SAÚDE,Ética e Legislação,Não-maleficência,Sim,Comum
+SAÚDE,Ética e Legislação,Justiça,Sim,Comum
+SAÚDE,Ética e Legislação,Código de Ética da Enfermagem,Sim,Comum
+SAÚDE,Ética e Legislação,Sigilo profissional,Sim,Comum
+SAÚDE,Ética e Legislação,Consentimento informado,Sim,Comum
+SAÚDE,Ética e Legislação,Direito do paciente,Sim,Comum
+SAÚDE,Ética e Legislação,Privacidade,Sim,Comum
+SAÚDE,Ética e Legislação,Dignidade humana,Sim,Comum
+SAÚDE,Ética e Legislação,Respeito à vontade,Sim,Comum
+SAÚDE,Ética e Legislação,Confidencialidade,Sim,Comum
+SAÚDE,Ética e Legislação,Lei de Privacidade de Dados Genéticos,Sim,Comum
+SAÚDE,Ética e Legislação,Direito à informação,Sim,Comum
+SAÚDE,Ética e Legislação,Direitos das vítimas,Sim,Comum
+SAÚDE,Ética e Legislação,Direito ao esquecimento,Sim,Comum
+SAÚDE,Ética e Legislação,Estatuto do Idoso,Sim,Comum
+SAÚDE,Ética e Legislação,Estatuto da Criança,Sim,Comum
+SAÚDE,Ética e Legislação,Lei de Combate à Violência,Sim,Comum
+SAÚDE,Biossegurança,Conceitos de biossegurança,Não,Comum
+SAÚDE,Biossegurança,Risco biológico,Não,Comum
+SAÚDE,Biossegurança,Risco químico,Não,Comum
+SAÚDE,Biossegurança,Risco físico,Não,Comum
+SAÚDE,Biossegurança,Exposição ocupacional,Não,Comum
+SAÚDE,Biossegurança,Precauções-padrão,Não,Comum
+SAÚDE,Biossegurança,Higiene das mãos,Não,Comum
+SAÚDE,Biossegurança,Equipamento de proteção individual,Não,Comum
+SAÚDE,Biossegurança,Avental,Não,Comum
+SAÚDE,Biossegurança,Luvas,Não,Comum
+SAÚDE,Biossegurança,Máscara,Não,Comum
+SAÚDE,Biossegurança,Óculos de proteção,Não,Comum
+SAÚDE,Biossegurança,Gorro,Não,Comum
+SAÚDE,Biossegurança,Proteção de pés,Não,Comum
+SAÚDE,Biossegurança,Manejo de agulhas,Não,Comum
+SAÚDE,Biossegurança,Descarte de material pérfurocortante,Não,Comum
+SAÚDE,Biossegurança,Limpeza e desinfecção,Não,Comum
+SAÚDE,Biossegurança,Tipos de desinfetantes,Não,Comum
+SAÚDE,Biossegurança,Esterilização,Não,Comum
+SAÚDE,Biossegurança,Método de esterilização por vapor,Não,Comum
+SAÚDE,Biossegurança,Método de esterilização a seco,Não,Comum
+SAÚDE,Biossegurança,Esterilização química,Não,Comum
+SAÚDE,Biossegurança,Vacinação de profissionais,Não,Comum
+SAÚDE,Biossegurança,Exposição a material biológico,Não,Comum
+SAÚDE,Biossegurança,Pós-exposição,Não,Comum
+SAÚDE,Biossegurança,Precauções específicas: contato,Não,Comum
+SAÚDE,Biossegurança,Gotícula,Não,Comum
+SAÚDE,Biossegurança,Via aérea,Não,Comum
+SAÚDE,Biossegurança,Isolamento de paciente,Não,Comum
+EDUCAÇÃO,Português,Compreensão e interpretação,Não,Comum
+EDUCAÇÃO,Português,Significado contextual,Não,Comum
+EDUCAÇÃO,Português,Semântica,Não,Comum
+EDUCAÇÃO,Português,Ortografia,Não,Comum
+EDUCAÇÃO,Português,Acentuação,Não,Comum
+EDUCAÇÃO,Português,Pontuação,Não,Comum
+EDUCAÇÃO,Português,Estrutura morfo-sintática,Não,Comum
+EDUCAÇÃO,Português,Concordância verbal,Não,Comum
+EDUCAÇÃO,Português,Concordância nominal,Não,Comum
+EDUCAÇÃO,Português,Regência verbal,Não,Comum
+EDUCAÇÃO,Português,Regência nominal,Não,Comum
+EDUCAÇÃO,Português,Colocação pronominal,Não,Comum
+EDUCAÇÃO,Português,Variação linguística,Não,Comum
+EDUCAÇÃO,Português,Figuras de linguagem,Não,Comum
+EDUCAÇÃO,Português,Coesão textual,Não,Comum
+EDUCAÇÃO,Português,Coerência textual,Não,Comum
+EDUCAÇÃO,Português,Argumentação,Não,Comum
+EDUCAÇÃO,Português,Tipos de texto,Não,Comum
+EDUCAÇÃO,Português,Gêneros textuais,Não,Comum
+EDUCAÇÃO,Português,Denotação e conotação,Não,Comum
+EDUCAÇÃO,LDB,Lei 9.394/1996: histórico,Sim,Frequente
+EDUCAÇÃO,LDB,Princípios e fins da educação,Sim,Frequente
+EDUCAÇÃO,LDB,Educação básica: infantil,Sim,Frequente
+EDUCAÇÃO,LDB,Ensino fundamental,Sim,Frequente
+EDUCAÇÃO,LDB,Ensino médio,Sim,Frequente
+EDUCAÇÃO,LDB,Educação superior,Sim,Frequente
+EDUCAÇÃO,LDB,Graduação,Sim,Frequente
+EDUCAÇÃO,LDB,Pós-graduação,Sim,Frequente
+EDUCAÇÃO,LDB,Pesquisa,Sim,Frequente
+EDUCAÇÃO,LDB,Extensão,Sim,Frequente
+EDUCAÇÃO,LDB,Educação de jovens e adultos,Sim,Frequente
+EDUCAÇÃO,LDB,Educação especial,Sim,Frequente
+EDUCAÇÃO,LDB,Educação profissional,Sim,Frequente
+EDUCAÇÃO,LDB,Educação indígena,Sim,Frequente
+EDUCAÇÃO,LDB,Educação do campo,Sim,Frequente
+EDUCAÇÃO,LDB,Currículo nacional,Sim,Frequente
+EDUCAÇÃO,LDB,Diretrizes curriculares,Sim,Frequente
+EDUCAÇÃO,LDB,Avaliação da educação,Sim,Frequente
+EDUCAÇÃO,LDB,ENEM,Sim,Frequente
+EDUCAÇÃO,LDB,Avaliação de aprendizado,Sim,Frequente
+EDUCAÇÃO,LDB,Professores: formação,Sim,Frequente
+EDUCAÇÃO,LDB,Carreira,Sim,Frequente
+EDUCAÇÃO,LDB,Remuneração,Sim,Frequente
+EDUCAÇÃO,LDB,Financiamento da educação,Sim,Frequente
+EDUCAÇÃO,LDB,Vinculação orçamentária,Sim,Frequente
+EDUCAÇÃO,LDB,Salário educação,Sim,Frequente
+EDUCAÇÃO,LDB,Fundo de Manutenção,Sim,Frequente
+EDUCAÇÃO,LDB,Gestão democrática,Sim,Frequente
+EDUCAÇÃO,LDB,Conselho escolar,Sim,Frequente
+EDUCAÇÃO,LDB,Participação comunitária,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Desenvolvimento cognitivo: Piaget,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Estágio sensório-motor,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Estágio pré-operatório,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Estágio operatório concreto,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Estágio operatório formal,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Vygotsky: zona de desenvolvimento proximal,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Mediação,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Internalização,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Interacionismo,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Construtivismo,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Aprendizagem significativa: Ausubel,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Conhecimento prévio,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Diferenciação progressiva,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Reconciliação integradora,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Teoria de Bruner: aprendizagem por descoberta,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Currículo espiral,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Estilos de aprendizagem: visual,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Auditivo,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Sinestésico,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Inteligências múltiplas: Gardner,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Inteligência linguística,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Lógico-matemática,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Espacial,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Musical,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Corporal-sinestésica,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Interpessoal,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Intrapessoal,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Naturalística,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Motivação: intrínseca,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Extrínseca,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Locus de controle,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Autoeficácia,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Necessidades de aprendizagem,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Dificuldades de aprendizado,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Dislexia,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Discalculia,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,TDAH,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Altas habilidades,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Superdotação,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Criatividade,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Socioafetividade,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Bullying,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Violência escolar,Sim,Frequente
+EDUCAÇÃO,Psicologia da Educação,Drogas na escola,Sim,Frequente
+EDUCAÇÃO,Didática,Conceitos: educação,Sim,Frequente
+EDUCAÇÃO,Didática,Ensino,Sim,Frequente
+EDUCAÇÃO,Didática,Aprendizagem,Sim,Frequente
+EDUCAÇÃO,Didática,Didática,Sim,Frequente
+EDUCAÇÃO,Didática,Objetivos educacionais: cognitivos,Sim,Frequente
+EDUCAÇÃO,Didática,Afetivos,Sim,Frequente
+EDUCAÇÃO,Didática,Psicomotores,Sim,Frequente
+EDUCAÇÃO,Didática,Bloom,Sim,Frequente
+EDUCAÇÃO,Didática,Anderson e Krathwohl,Sim,Frequente
+EDUCAÇÃO,Didática,Planejamento educacional,Sim,Frequente
+EDUCAÇÃO,Didática,Plano de ensino,Sim,Frequente
+EDUCAÇÃO,Didática,Plano de aula,Sim,Frequente
+EDUCAÇÃO,Didática,Estratégias de ensino: aula expositiva,Sim,Frequente
+EDUCAÇÃO,Didática,Aula dialogada,Sim,Frequente
+EDUCAÇÃO,Didática,Seminário,Sim,Frequente
+EDUCAÇÃO,Didática,Projeto,Sim,Frequente
+EDUCAÇÃO,Didática,Problema,Sim,Frequente
+EDUCAÇÃO,Didática,Caso,Sim,Frequente
+EDUCAÇÃO,Didática,Dramatização,Sim,Frequente
+EDUCAÇÃO,Didática,Jogo,Sim,Frequente
+EDUCAÇÃO,Didática,Simulação,Sim,Frequente
+EDUCAÇÃO,Didática,Recursos didáticos,Sim,Frequente
+EDUCAÇÃO,Didática,Livro didático,Sim,Frequente
+EDUCAÇÃO,Didática,Audiovisual,Sim,Frequente
+EDUCAÇÃO,Didática,Computador,Sim,Frequente
+EDUCAÇÃO,Didática,Slides,Sim,Frequente
+EDUCAÇÃO,Didática,Vídeo,Sim,Frequente
+EDUCAÇÃO,Didática,Áudio,Sim,Frequente
+EDUCAÇÃO,Didática,Quadro,Sim,Frequente
+EDUCAÇÃO,Didática,Modelos,Sim,Frequente
+EDUCAÇÃO,Didática,Avaliação: conceitos,Sim,Frequente
+EDUCAÇÃO,Didática,Objetivos da avaliação,Sim,Frequente
+EDUCAÇÃO,Didática,Diagnóstica,Sim,Frequente
+EDUCAÇÃO,Didática,Formativa,Sim,Frequente
+EDUCAÇÃO,Didática,Somativa,Sim,Frequente
+EDUCAÇÃO,Didática,Avaliação de aprendizagem,Sim,Frequente
+EDUCAÇÃO,Didática,Instrumentos: prova,Sim,Frequente
+EDUCAÇÃO,Didática,Portfólio,Sim,Frequente
+EDUCAÇÃO,Didática,Seminário,Sim,Frequente
+EDUCAÇÃO,Didática,Trabalho em grupo,Sim,Frequente
+EDUCAÇÃO,Didática,Observação,Sim,Frequente
+EDUCAÇÃO,Didática,Autoavaliação,Sim,Frequente
+EDUCAÇÃO,Didática,Avaliação por competências,Sim,Frequente
+EDUCAÇÃO,Didática,Rubricas,Sim,Frequente
+EDUCAÇÃO,Inclusão e Educação Especial,Conceitos de inclusão,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Integração,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Segregação,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Educação inclusiva,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Deficiência visual,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Educação de cegos,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Educação de baixa visão,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Deficiência auditiva,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Educação de surdos,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Surdocegueira,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Deficiência intelectual,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Educação de portadores,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Deficiência motora,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Paralisia cerebral,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Distúrbios do movimento,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Deficiência múltipla,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Transtornos globais do desenvolvimento,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Autismo,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Síndrome de Asperger,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Altas habilidades,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Superdotação,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Criatividade,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Transtorno de déficit de atenção,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,TDAH,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Transtorno de conduta,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Transtorno de aprendizagem,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Dislexia,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Discalculia,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Disgrafia,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Disgrafos,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Necessidades educacionais especiais,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,AEE,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Atendimento educacional especializado,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Sala de recursos,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Professor de educação especial,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Intérprete,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Tecnologia assistiva,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Acessibilidade,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Acessibilidade arquitetônica,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Acessibilidade comunicacional,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Acessibilidade metodológica,Sim,Comum
+EDUCAÇÃO,Inclusão e Educação Especial,Programa de ação afirmativa,Sim,Comum
+EDUCAÇÃO,Currículo,Conceitos de currículo,Sim,Comum
+EDUCAÇÃO,Currículo,Currículo prescrito,Sim,Comum
+EDUCAÇÃO,Currículo,Currículo real,Sim,Comum
+EDUCAÇÃO,Currículo,Currículo oculto,Sim,Comum
+EDUCAÇÃO,Currículo,Planejamento curricular,Sim,Comum
+EDUCAÇÃO,Currículo,Reforma curricular,Sim,Comum
+EDUCAÇÃO,Currículo,BNCC: Base Nacional,Sim,Comum
+EDUCAÇÃO,Currículo,Competências gerais,Sim,Comum
+EDUCAÇÃO,Currículo,Competências específicas,Sim,Comum
+EDUCAÇÃO,Currículo,Habilidades,Sim,Comum
+EDUCAÇÃO,Currículo,Aprendizagens essenciais,Sim,Comum
+EDUCAÇÃO,Currículo,Educação infantil,Sim,Comum
+EDUCAÇÃO,Currículo,Ensino fundamental,Sim,Comum
+EDUCAÇÃO,Currículo,Ensino médio,Sim,Comum
+EDUCAÇÃO,Currículo,Ensino superior,Sim,Comum
+EDUCAÇÃO,Currículo,Educação integrada,Sim,Comum
+EDUCAÇÃO,Currículo,Interdisciplinaridade,Sim,Comum
+EDUCAÇÃO,Currículo,Transversalidade,Sim,Comum
+EDUCAÇÃO,Currículo,Temas transversais: ética,Sim,Comum
+EDUCAÇÃO,Currículo,Saúde,Sim,Comum
+EDUCAÇÃO,Currículo,Pluralidade cultural,Sim,Comum
+EDUCAÇÃO,Currículo,Meio ambiente,Sim,Comum
+EDUCAÇÃO,Currículo,Trabalho e consumo,Sim,Comum
+EDUCAÇÃO,Currículo,Orientação sexual,Sim,Comum
+EDUCAÇÃO,Currículo,Flexibilização curricular,Sim,Comum
+EDUCAÇÃO,Currículo,Currículo diferenciado,Sim,Comum
+EDUCAÇÃO,Currículo,Itinerários formativos,Sim,Comum
+EDUCAÇÃO,Currículo,Trilhas de aprendizagem,Sim,Comum
+EDUCAÇÃO,Currículo,Aprendizagem por projetos,Sim,Comum
+EDUCAÇÃO,Currículo,Temas integradores,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Métodos tradicionais: exposição,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Demonstração,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Métodos ativos: descoberta,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Investigação,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Método Montessori,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Método Waldorf,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Pedagogia da Freinet,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Métodos eletivos,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Aprendizagem cooperativa,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Aprendizagem colaborativa,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Trabalho em grupo,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Trabalho em equipe,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Tutoria,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Mentoring,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Aprendizagem significativa,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Aprendizagem baseada em problemas,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,PBL,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Aprendizagem baseada em projeto,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Aprendizagem baseada em games,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Gamificação,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Uso de TIC,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Educação a distância,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Educação híbrida,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Educação online,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Plataformas digitais,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Recursos educacionais abertos,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,REA,Sim,Comum
+EDUCAÇÃO,Metodologia do Ensino,Softwares educacionais,Sim,Comum
+EDUCAÇÃO,Avaliação,Conceitos de avaliação,Sim,Comum
+EDUCAÇÃO,Avaliação,Prognóstica,Sim,Comum
+EDUCAÇÃO,Avaliação,Diagnóstica,Sim,Comum
+EDUCAÇÃO,Avaliação,Formativa,Sim,Comum
+EDUCAÇÃO,Avaliação,Somativa,Sim,Comum
+EDUCAÇÃO,Avaliação,Avaliação interna,Sim,Comum
+EDUCAÇÃO,Avaliação,Avaliação externa,Sim,Comum
+EDUCAÇÃO,Avaliação,Avaliação em larga escala,Sim,Comum
+EDUCAÇÃO,Avaliação,Avaliação padronizada,Sim,Comum
+EDUCAÇÃO,Avaliação,Avaliação criterial,Sim,Comum
+EDUCAÇÃO,Avaliação,Avaliação normativa,Sim,Comum
+EDUCAÇÃO,Avaliação,Avaliação comparativa,Sim,Comum
+EDUCAÇÃO,Avaliação,Avaliação de desempenho,Sim,Comum
+EDUCAÇÃO,Avaliação,Avaliação de competências,Sim,Comum
+EDUCAÇÃO,Avaliação,Instrumentos de avaliação: prova,Sim,Comum
+EDUCAÇÃO,Avaliação,Teste,Sim,Comum
+EDUCAÇÃO,Avaliação,Questão aberta,Sim,Comum
+EDUCAÇÃO,Avaliação,Questão fechada,Sim,Comum
+EDUCAÇÃO,Avaliação,Múltipla escolha,Sim,Comum
+EDUCAÇÃO,Avaliação,Certo ou errado,Sim,Comum
+EDUCAÇÃO,Avaliação,Questão discursiva,Sim,Comum
+EDUCAÇÃO,Avaliação,Portfólio,Sim,Comum
+EDUCAÇÃO,Avaliação,Seminário,Sim,Comum
+EDUCAÇÃO,Avaliação,Trabalho escrito,Sim,Comum
+EDUCAÇÃO,Avaliação,Trabalho prático,Sim,Comum
+EDUCAÇÃO,Avaliação,Observação,Sim,Comum
+EDUCAÇÃO,Avaliação,Autoavaliação,Sim,Comum
+EDUCAÇÃO,Avaliação,Avaliação por pares,Sim,Comum
+EDUCAÇÃO,Avaliação,Avaliação 360,Sim,Comum
+EDUCAÇÃO,Avaliação,Diário de aprendizagem,Sim,Comum
+EDUCAÇÃO,Avaliação,Rubricas,Sim,Comum
+EDUCAÇÃO,Avaliação,Escalas de avaliação,Sim,Comum
+EDUCAÇÃO,Avaliação,Checklist,Sim,Comum
+EDUCAÇÃO,Avaliação,Matriz de avaliação,Sim,Comum
+ADMINISTRATIVO,Português,Compreensão de textos,Não,Comum
+ADMINISTRATIVO,Português,Interpretação,Não,Comum
+ADMINISTRATIVO,Português,Semântica,Não,Comum
+ADMINISTRATIVO,Português,Ortografia,Não,Comum
+ADMINISTRATIVO,Português,Acentuação,Não,Comum
+ADMINISTRATIVO,Português,Pontuação,Não,Comum
+ADMINISTRATIVO,Português,Concordância,Não,Comum
+ADMINISTRATIVO,Português,Regência,Não,Comum
+ADMINISTRATIVO,Português,Sintaxe,Não,Comum
+ADMINISTRATIVO,Português,Morfologia,Não,Comum
+ADMINISTRATIVO,Português,Colocação pronominal,Não,Comum
+ADMINISTRATIVO,Português,Coesão,Não,Comum
+ADMINISTRATIVO,Português,Coerência,Não,Comum
+ADMINISTRATIVO,Português,Figuras de linguagem,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Conceitos de administração,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Recursos,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Objetivos organizacionais,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Planejamento estratégico,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Planejamento tático,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Planejamento operacional,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Organização: estrutura,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Hierarquia,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Centralização e descentralização,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Autoridade,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Responsabilidade,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Delegação,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Direção: liderança,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Motivação,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Comunicação,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Controle,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Métricas de desempenho,Não,Comum
+ADMINISTRATIVO,Noções de Administração,KPI,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Avaliação de resultados,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Gestão de pessoas,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Recrutamento,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Seleção,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Treinamento,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Desenvolvimento,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Gestão de processos,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Reengenharia,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Processos administrativos,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Fluxogramas,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Qualidade: conceitos,Não,Comum
+ADMINISTRATIVO,Noções de Administração,ISO,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Melhoria contínua,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Kaizen,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Lean,Não,Comum
+ADMINISTRATIVO,Noções de Administração,Six Sigma,Não,Comum
+ADMINISTRATIVO,Direito Administrativo,Princípios fundamentais,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Legalidade,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Moralidade,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Impessoalidade,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Publicidade,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Eficiência,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Organização administrativa,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Órgãos,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Entidades administrativas,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Autarquias,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Fundações,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Empresas públicas,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Sociedades de economia mista,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Atos administrativos,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Requisitos,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Atributos,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Presunção de legitimidade,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Imperatividade,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Autoexecutoriedade,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Tipicidade,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Manifestação de vontade,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Motivo,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Forma,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Objeto,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Efeitos,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Validade,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Vigência,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Eficácia,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Nulidade,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Vício,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Anulação,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Revogação,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Convalidação,Sim,Frequente
+ADMINISTRATIVO,Direito Administrativo,Cassação,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Regime jurídico dos servidores,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Disposições preliminares,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Servidores públicos,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Cargo público,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Provimento de cargo,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Nomeação,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Promoção,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Readaptação,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Aproveitamento,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Reintegração,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Posse,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Exercício,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Direitos e deveres,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Vencimento,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Indenizações,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Adicionais,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Salário família,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Licenças,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Licença por motivo de doença,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Licença por motivo de doença em pessoa da família,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Licença para tratar de assuntos particulares,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Licença-gestante,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Licença-paternidade,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Afastamento,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Afastamento para servir em organismo internacional,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Afastamento para participar,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Regime de trabalho,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Jornada,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Horas extraordinárias,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Regime de escala,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Férias,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Recesso,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Concessões,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Direitos políticos,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Acumulação de cargos,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Incompatibilidade,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Impedimentos,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Suspeição,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Responsabilidades,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Civil,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Criminal,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Administrativa,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Penalidades,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Advertência,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Suspensão,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Demissão,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Cassação de aposentadoria,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Cassação de disponibilidade,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Processo administrativo disciplinar,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Apuração,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Sindicâncias,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Investigações,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Aposentadoria,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Compulsória,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Voluntária,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Benefícios,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Pensão,Sim,Frequente
+ADMINISTRATIVO,Lei 8.112/1990,Morte,Sim,Frequente
+ADMINISTRATIVO,Processo Administrativo,Lei 9.784/1999,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Disposições preliminares,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Conceitos,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Órgãos,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Administradores,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Princípios do processo administrativo,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Legalidade,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Finalidade,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Motivação,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Razoabilidade,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Proporcionalidade,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Moralidade,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Ampla defesa,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Contraditório,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Segurança jurídica,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Interesse público,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Eficiência,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Direitos e deveres dos administrados,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Direito à informação,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Direito de ser ouvido,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Direito de assistência,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Direito de recorrer,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Deveres,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Obligações,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Prescrição,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Iniciativa processual,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Requerimentos,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Forma dos requerimentos,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Prazos,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Contagem de prazos,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Recebimento de requerimento,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Início do processo,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Instrução,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Produção de prova,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Documentos,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Inspeção,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Perícia,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Testemunhas,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Interrogatório,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Direito ao contraditório,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Ressalva de direito,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Decisão,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Nulidade de ato,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Revogação de ato,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Cassação de ato,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Correção de erros,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Recursos administrativos,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Recurso ordinário,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Recurso extraordinário,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Pedido de reconsideração,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Recurso hierárquico,Sim,Comum
+ADMINISTRATIVO,Processo Administrativo,Revisão de processo,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Ética profissional,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Código de ética,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Responsabilidade social,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Transparência,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Integridade,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Conflito de interesse,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Sigilo,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Dever de informação,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Lei de Improbidade,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Atos de improbidade,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Enriquecimento ilícito,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Desvio de finalidade,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Dano ao erário,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Sanções,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Lei Anticorrupção,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Lei 12.846/2013,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Responsabilidade de pessoas jurídicas,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Condutas ilícitas,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Sanções,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Programas de integridade,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Prevenção,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Detecção,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Resposta a violações,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Lei de Acesso à Informação,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Lei 12.527/2011,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Direito de acesso,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Classificação de informações,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Sigilo,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Prazos,Sim,Comum
+ADMINISTRATIVO,Ética e Legislação,Recursos,Sim,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Conceitos fundamentais,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Arquivo,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Documento,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Acervo,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Tipos de arquivo: público,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Privado,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Corrente,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Intermediário,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Permanente,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Ativo,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Inativo,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Organização de arquivo,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Classificação de documentos,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Codificação,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Ordenação,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Arranjo,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Descrição arquivística,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Tabela de temporalidade,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Retenção,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Transferência,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Descarte,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Eliminação,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Preservação de documentos,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Limpeza,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Restauração,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Reprodução,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Microfilmagem,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Digitalização,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Sistemas informatizados,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Recuperação de informação,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Indexação,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Busca,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Protocolo,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Distribuição,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Controle de correspondência,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Gestão de documentos,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Ciclo de vida,Não,Comum
+ADMINISTRATIVO,Arquivo e Documentação,Documentação digital,Não,Comum
+POLICIAL,Português,Interpretação de textos,Não,Comum
+POLICIAL,Português,Compreensão,Não,Comum
+POLICIAL,Português,Semântica,Não,Comum
+POLICIAL,Português,Ortografia,Não,Comum
+POLICIAL,Português,Acentuação,Não,Comum
+POLICIAL,Português,Pontuação,Não,Comum
+POLICIAL,Português,Sintaxe,Não,Comum
+POLICIAL,Português,Concordância,Não,Comum
+POLICIAL,Português,Regência,Não,Comum
+POLICIAL,Português,Colocação,Não,Comum
+POLICIAL,Português,Morfologia,Não,Comum
+POLICIAL,Português,Coesão,Não,Comum
+POLICIAL,Direito Penal,Aplicação da lei penal no tempo,Sim,Frequente
+POLICIAL,Direito Penal,Retroatividade benéfica,Sim,Frequente
+POLICIAL,Direito Penal,Irretroatividade da lei maléfica,Sim,Frequente
+POLICIAL,Direito Penal,Lei penal no espaço,Sim,Frequente
+POLICIAL,Direito Penal,Territorialidade,Sim,Frequente
+POLICIAL,Direito Penal,Extraterritorialidade,Sim,Frequente
+POLICIAL,Direito Penal,Imunidades,Sim,Frequente
+POLICIAL,Direito Penal,Fato típico,Sim,Frequente
+POLICIAL,Direito Penal,Ação ou omissão,Sim,Frequente
+POLICIAL,Direito Penal,Resultado naturalístico,Sim,Frequente
+POLICIAL,Direito Penal,Nexo causal,Sim,Frequente
+POLICIAL,Direito Penal,Tipicidade,Sim,Frequente
+POLICIAL,Direito Penal,Tipo objetivo,Sim,Frequente
+POLICIAL,Direito Penal,Tipo subjetivo,Sim,Frequente
+POLICIAL,Direito Penal,Dolo,Sim,Frequente
+POLICIAL,Direito Penal,Culpa,Sim,Frequente
+POLICIAL,Direito Penal,Antijuridicidade,Sim,Frequente
+POLICIAL,Direito Penal,Causas de exclusão,Sim,Frequente
+POLICIAL,Direito Penal,Legítima defesa,Sim,Frequente
+POLICIAL,Direito Penal,Estado de necessidade,Sim,Frequente
+POLICIAL,Direito Penal,Culpabilidade,Sim,Frequente
+POLICIAL,Direito Penal,Imputabilidade,Sim,Frequente
+POLICIAL,Direito Penal,Responsabilidade,Sim,Frequente
+POLICIAL,Direito Penal,Exigibilidade,Sim,Frequente
+POLICIAL,Direito Penal,Concurso de crimes,Sim,Frequente
+POLICIAL,Direito Penal,Concurso material,Sim,Frequente
+POLICIAL,Direito Penal,Concurso formal,Sim,Frequente
+POLICIAL,Direito Penal,Crime continuado,Sim,Frequente
+POLICIAL,Direito Penal,Agravantes,Sim,Frequente
+POLICIAL,Direito Penal,Atenuantes,Sim,Frequente
+POLICIAL,Direito Penal,Qualificadoras,Sim,Frequente
+POLICIAL,Direito Penal,Privilegiadoras,Sim,Frequente
+POLICIAL,Direito Penal,Crimes contra a pessoa,Sim,Frequente
+POLICIAL,Direito Penal,Homicídio,Sim,Frequente
+POLICIAL,Direito Penal,Lesão corporal,Sim,Frequente
+POLICIAL,Direito Penal,Ameaça,Sim,Frequente
+POLICIAL,Direito Penal,Constrangimento ilegal,Sim,Frequente
+POLICIAL,Direito Penal,Crimes contra honra,Sim,Frequente
+POLICIAL,Direito Penal,Calúnia,Sim,Frequente
+POLICIAL,Direito Penal,Difamação,Sim,Frequente
+POLICIAL,Direito Penal,Injúria,Sim,Frequente
+POLICIAL,Direito Penal,Crimes contra patrimônio,Sim,Frequente
+POLICIAL,Direito Penal,Furto,Sim,Frequente
+POLICIAL,Direito Penal,Roubo,Sim,Frequente
+POLICIAL,Direito Penal,Extorsão,Sim,Frequente
+POLICIAL,Direito Penal,Estelionato,Sim,Frequente
+POLICIAL,Direito Penal,Receptação,Sim,Frequente
+POLICIAL,Direito Penal,Dano,Sim,Frequente
+POLICIAL,Direito Penal,Crimes contra administração pública,Sim,Frequente
+POLICIAL,Direito Penal,Peculato,Sim,Frequente
+POLICIAL,Direito Penal,Corrupção,Sim,Frequente
+POLICIAL,Direito Penal,Prevaricação,Sim,Frequente
+POLICIAL,Direito Penal,Abuso de autoridade,Sim,Frequente
+POLICIAL,Direito Penal,Excesso de execução,Sim,Frequente
+POLICIAL,Direito Penal,Falsidade documental,Sim,Frequente
+POLICIAL,Direito Penal,Crimes hediondos,Sim,Frequente
+POLICIAL,Direito Penal,Tortura,Sim,Frequente
+POLICIAL,Direito Penal,Tráfico de drogas,Sim,Frequente
+POLICIAL,Direito Penal,Organizações criminosas,Sim,Frequente
+POLICIAL,Direito Penal,Crimes de lavagem,Sim,Frequente
+POLICIAL,Direito Processual Penal,Princípios fundamentais,Sim,Frequente
+POLICIAL,Direito Processual Penal,Legalidade,Sim,Frequente
+POLICIAL,Direito Processual Penal,Acusatoriedade,Sim,Frequente
+POLICIAL,Direito Processual Penal,Contraditório,Sim,Frequente
+POLICIAL,Direito Processual Penal,Ampla defesa,Sim,Frequente
+POLICIAL,Direito Processual Penal,Presunção de inocência,Sim,Frequente
+POLICIAL,Direito Processual Penal,Jurisdição penal,Sim,Frequente
+POLICIAL,Direito Processual Penal,Competência,Sim,Frequente
+POLICIAL,Direito Processual Penal,Sujeitos do processo,Sim,Frequente
+POLICIAL,Direito Processual Penal,Juiz,Sim,Frequente
+POLICIAL,Direito Processual Penal,Ministério Público,Sim,Frequente
+POLICIAL,Direito Processual Penal,Defesa,Sim,Frequente
+POLICIAL,Direito Processual Penal,Querelante,Sim,Frequente
+POLICIAL,Direito Processual Penal,Vítima,Sim,Frequente
+POLICIAL,Direito Processual Penal,Investigação policial,Sim,Frequente
+POLICIAL,Direito Processual Penal,Inquérito policial,Sim,Frequente
+POLICIAL,Direito Processual Penal,Auto de prisão,Sim,Frequente
+POLICIAL,Direito Processual Penal,Flagrante,Sim,Frequente
+POLICIAL,Direito Processual Penal,Flagrante próprio,Sim,Frequente
+POLICIAL,Direito Processual Penal,Flagrante presumido,Sim,Frequente
+POLICIAL,Direito Processual Penal,Prisão preventiva,Sim,Frequente
+POLICIAL,Direito Processual Penal,Liberdade provisória,Sim,Frequente
+POLICIAL,Direito Processual Penal,Fiança,Sim,Frequente
+POLICIAL,Direito Processual Penal,Denúncia,Sim,Frequente
+POLICIAL,Direito Processual Penal,Queixa-crime,Sim,Frequente
+POLICIAL,Direito Processual Penal,Recebimento de denúncia,Sim,Frequente
+POLICIAL,Direito Processual Penal,Rejeição de denúncia,Sim,Frequente
+POLICIAL,Direito Processual Penal,Provas,Sim,Frequente
+POLICIAL,Direito Processual Penal,Testemunha,Sim,Frequente
+POLICIAL,Direito Processual Penal,Perícia,Sim,Frequente
+POLICIAL,Direito Processual Penal,Documento,Sim,Frequente
+POLICIAL,Direito Processual Penal,Confissão,Sim,Frequente
+POLICIAL,Direito Processual Penal,Interrogatório,Sim,Frequente
+POLICIAL,Direito Processual Penal,Direitos do acusado,Sim,Frequente
+POLICIAL,Direito Processual Penal,Julgamento,Sim,Frequente
+POLICIAL,Direito Processual Penal,Sentença,Sim,Frequente
+POLICIAL,Direito Processual Penal,Condenação,Sim,Frequente
+POLICIAL,Direito Processual Penal,Absolvição,Sim,Frequente
+POLICIAL,Direito Processual Penal,Recursos,Sim,Frequente
+POLICIAL,Direito Processual Penal,Apelação,Sim,Frequente
+POLICIAL,Direito Processual Penal,Habeas corpus,Sim,Frequente
+POLICIAL,Direito Processual Penal,Mandado de segurança,Sim,Frequente
+POLICIAL,Direito Processual Penal,Ação rescisória,Sim,Frequente
+POLICIAL,Direito Processual Penal,Execução de sentença,Sim,Frequente
+POLICIAL,Direito Processual Penal,Livramento condicional,Sim,Frequente
+POLICIAL,Direito Processual Penal,Progressão de regime,Sim,Frequente
+POLICIAL,Criminologia,Conceitos fundamentais,Sim,Comum
+POLICIAL,Criminologia,Natureza do crime,Sim,Comum
+POLICIAL,Criminologia,Etapas do crime,Sim,Comum
+POLICIAL,Criminologia,Perspectivas teóricas,Sim,Comum
+POLICIAL,Criminologia,Criminalística,Sim,Comum
+POLICIAL,Criminologia,Investigação criminal,Sim,Comum
+POLICIAL,Criminologia,Perícia forense,Sim,Comum
+POLICIAL,Criminologia,Análise de evidência,Sim,Comum
+POLICIAL,Criminologia,Documentoscopia,Sim,Comum
+POLICIAL,Criminologia,Balística forense,Sim,Comum
+POLICIAL,Criminologia,Toxicologia forense,Sim,Comum
+POLICIAL,Criminologia,Antropologia forense,Sim,Comum
+POLICIAL,Criminologia,Odontologia forense,Sim,Comum
+POLICIAL,Criminologia,Fotografia forense,Sim,Comum
+POLICIAL,Criminologia,Análise de cena,Sim,Comum
+POLICIAL,Criminologia,Preservação de evidência,Sim,Comum
+POLICIAL,Criminologia,Cadeia de custódia,Sim,Comum
+POLICIAL,Criminologia,Análise criminal,Sim,Comum
+POLICIAL,Criminologia,Perfil criminoso,Sim,Comum
+POLICIAL,Criminologia,Investigação de homicídios,Sim,Comum
+POLICIAL,Criminologia,Investigação de roubo,Sim,Comum
+POLICIAL,Criminologia,Investigação de furto,Sim,Comum
+POLICIAL,Criminologia,Investigação de fraude,Sim,Comum
+POLICIAL,Criminologia,Investigação de tráfico,Sim,Comum
+POLICIAL,Criminologia,Prevenção criminal,Sim,Comum
+POLICIAL,Criminologia,Redução de criminalidade,Sim,Comum
+POLICIAL,Direitos Humanos,Conceitos fundamentais,Sim,Frequente
+POLICIAL,Direitos Humanos,Direitos individuais,Sim,Frequente
+POLICIAL,Direitos Humanos,Direitos coletivos,Sim,Frequente
+POLICIAL,Direitos Humanos,Direitos sociais,Sim,Frequente
+POLICIAL,Direitos Humanos,Garantias fundamentais,Sim,Frequente
+POLICIAL,Direitos Humanos,Igualdade,Sim,Frequente
+POLICIAL,Direitos Humanos,Não discriminação,Sim,Frequente
+POLICIAL,Direitos Humanos,Liberdade,Sim,Frequente
+POLICIAL,Direitos Humanos,Direito à vida,Sim,Frequente
+POLICIAL,Direitos Humanos,Direito à integridade,Sim,Frequente
+POLICIAL,Direitos Humanos,Direito à honra,Sim,Frequente
+POLICIAL,Direitos Humanos,Direito à imagem,Sim,Frequente
+POLICIAL,Direitos Humanos,Direito à privacidade,Sim,Frequente
+POLICIAL,Direitos Humanos,Direito à informação,Sim,Frequente
+POLICIAL,Direitos Humanos,Direito à participação,Sim,Frequente
+POLICIAL,Direitos Humanos,Direito de reunião,Sim,Frequente
+POLICIAL,Direitos Humanos,Direito de associação,Sim,Frequente
+POLICIAL,Direitos Humanos,Direito de voto,Sim,Frequente
+POLICIAL,Direitos Humanos,Direitos de minoria,Sim,Frequente
+POLICIAL,Direitos Humanos,Direitos de indígenas,Sim,Frequente
+POLICIAL,Direitos Humanos,Direitos de quilombolas,Sim,Frequente
+POLICIAL,Direitos Humanos,Direitos LGBTQIA+,Sim,Frequente
+POLICIAL,Direitos Humanos,Direitos de pessoas com deficiência,Sim,Frequente
+POLICIAL,Direitos Humanos,Direitos de mulher,Sim,Frequente
+POLICIAL,Direitos Humanos,Direitos de criança,Sim,Frequente
+POLICIAL,Direitos Humanos,Direitos de idoso,Sim,Frequente
+POLICIAL,Direitos Humanos,Abuso de autoridade,Sim,Frequente
+POLICIAL,Direitos Humanos,Violência policial,Sim,Frequente
+POLICIAL,Direitos Humanos,Tortura,Sim,Frequente
+POLICIAL,Direitos Humanos,Tratamento cruel,Sim,Frequente
+POLICIAL,Direitos Humanos,Acesso à justiça,Sim,Frequente
+POLICIAL,Direitos Humanos,Direito de defesa,Sim,Frequente
+POLICIAL,Segurança Pública,Conceitos de segurança,Não,Comum
+POLICIAL,Segurança Pública,Segurança pessoal,Não,Comum
+POLICIAL,Segurança Pública,Segurança pública,Não,Comum
+POLICIAL,Segurança Pública,Segurança da comunidade,Não,Comum
+POLICIAL,Segurança Pública,Função policial,Não,Comum
+POLICIAL,Segurança Pública,Policiamento preventivo,Não,Comum
+POLICIAL,Segurança Pública,Policiamento ostensivo,Não,Comum
+POLICIAL,Segurança Pública,Policiamento comunitário,Não,Comum
+POLICIAL,Segurança Pública,Operações especiais,Não,Comum
+POLICIAL,Segurança Pública,Comando e controle,Não,Comum
+POLICIAL,Segurança Pública,Comunicação rádio,Não,Comum
+POLICIAL,Segurança Pública,Centro de operações,Não,Comum
+POLICIAL,Segurança Pública,Gestão de crise,Não,Comum
+POLICIAL,Segurança Pública,Negociação,Não,Comum
+POLICIAL,Segurança Pública,Gerenciamento de conflito,Não,Comum
+POLICIAL,Segurança Pública,Mediação,Não,Comum
+POLICIAL,Segurança Pública,Resolução de conflito,Não,Comum
+POLICIAL,Segurança Pública,Patrulhamento,Não,Comum
+POLICIAL,Segurança Pública,Rondas preventivas,Não,Comum
+POLICIAL,Segurança Pública,Vigilância,Não,Comum
+POLICIAL,Segurança Pública,Investigação,Não,Comum
+POLICIAL,Segurança Pública,Perícia,Não,Comum
+POLICIAL,Segurança Pública,Uso de força,Não,Comum
+POLICIAL,Segurança Pública,Força proporcional,Não,Comum
+POLICIAL,Segurança Pública,Força legítima,Não,Comum
+POLICIAL,Segurança Pública,Abuso de poder,Não,Comum
+POLICIAL,Segurança Pública,Desvio de conduta,Não,Comum
+POLICIAL,Segurança Pública,Responsabilidade,Não,Comum
+POLICIAL,Segurança Pública,Ética profissional,Não,Comum
+POLICIAL,Segurança Pública,Integridade,Não,Comum
+POLICIAL,Segurança Pública,Profissionalismo,Não,Comum
+POLICIAL,Segurança Pública,Comportamento esperado,Não,Comum
+POLICIAL,Segurança Pública,Código de conduta,Não,Comum
+POLICIAL,Segurança Pública,Disciplina,Não,Comum
+POLICIAL,Legislação Extravagante,Lei de Tóxicos,Não,Comum
+POLICIAL,Legislação Extravagante,Lei 11.343/2006,Não,Comum
+POLICIAL,Legislação Extravagante,Drogas ilícitas,Não,Comum
+POLICIAL,Legislação Extravagante,Tipos de drogas,Não,Comum
+POLICIAL,Legislação Extravagante,Tráfico,Não,Comum
+POLICIAL,Legislação Extravagante,Posse para consumo,Não,Comum
+POLICIAL,Legislação Extravagante,Penalidades,Não,Comum
+POLICIAL,Legislação Extravagante,Lei de Armas,Não,Comum
+POLICIAL,Legislação Extravagante,Lei 10.826/2003,Não,Comum
+POLICIAL,Legislação Extravagante,Registro de arma,Não,Comum
+POLICIAL,Legislação Extravagante,Porte de arma,Não,Comum
+POLICIAL,Legislação Extravagante,Comércio de armas,Não,Comum
+POLICIAL,Legislação Extravagante,Importação e exportação,Não,Comum
+POLICIAL,Legislação Extravagante,Lei de Violência Doméstica,Não,Comum
+POLICIAL,Legislação Extravagante,Lei 11.340/2006,Não,Comum
+POLICIAL,Legislação Extravagante,Tipos de violência,Não,Comum
+POLICIAL,Legislação Extravagante,Medidas protetivas,Não,Comum
+POLICIAL,Legislação Extravagante,Denúncia,Não,Comum
+POLICIAL,Legislação Extravagante,Investigação,Não,Comum
+POLICIAL,Legislação Extravagante,Lei de Crimes Ambientais,Não,Comum
+POLICIAL,Legislação Extravagante,Lei 9.605/1998,Não,Comum
+POLICIAL,Legislação Extravagante,Crimes ambientais,Não,Comum
+POLICIAL,Legislação Extravagante,Destruição de florestas,Não,Comum
+POLICIAL,Legislação Extravagante,Poluição,Não,Comum
+POLICIAL,Legislação Extravagante,Caça ilegal,Não,Comum
+POLICIAL,Legislação Extravagante,Pesca ilegal,Não,Comum
+POLICIAL,Legislação Extravagante,Lei de Estelionato,Não,Comum
+POLICIAL,Legislação Extravagante,Lei de Falsificação,Não,Comum
+POLICIAL,Legislação Extravagante,Lei de Fraude Eletrônica,Não,Comum
+POLICIAL,Legislação Extravagante,Lei de Cibercrime,Não,Comum
+POLICIAL,Legislação Extravagante,Lei de Assédio,Não,Comum
+POLICIAL,Legislação Extravagante,Lei de Racismo,Não,Comum
+POLICIAL,Legislação Extravagante,Lei 7.716/1989,Não,Comum
+POLICIAL,Legislação Extravagante,Crimes de racismo,Não,Comum
+POLICIAL,Legislação Extravagante,Discriminação,Não,Comum
+POLICIAL,Legislação Extravagante,Igualdade racial,Não,Comum

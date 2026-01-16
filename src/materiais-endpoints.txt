@@ -1,0 +1,138 @@
+// ============== MATERIAIS - LISTAR, SALVAR, DELETAR ==============
+
+// Listar materiais do usuário
+app.get('/api/materiais/:user_id', async (c) => {
+  const { DB } = c.env
+  const user_id = parseInt(c.req.param('user_id'))
+  const { tipo, disciplina_id, favorito, search } = c.req.query()
+  
+  try {
+    let query = 'SELECT m.*, d.nome as disciplina_nome, t.nome as topico_nome FROM materiais_salvos m LEFT JOIN disciplinas d ON m.disciplina_id = d.id LEFT JOIN topicos_edital t ON m.topico_id = t.id WHERE m.user_id = ?'
+    const params: any[] = [user_id]
+    
+    if (tipo) {
+      query += ' AND m.tipo = ?'
+      params.push(tipo)
+    }
+    
+    if (disciplina_id) {
+      query += ' AND m.disciplina_id = ?'
+      params.push(parseInt(disciplina_id as string))
+    }
+    
+    if (favorito === '1') {
+      query += ' AND m.favorito = 1'
+    }
+    
+    if (search) {
+      query += ' AND (m.titulo LIKE ? OR m.conteudo LIKE ? OR m.tags LIKE ?)'
+      const searchTerm = `%${search}%`
+      params.push(searchTerm, searchTerm, searchTerm)
+    }
+    
+    query += ' ORDER BY m.created_at DESC'
+    
+    const result = await DB.prepare(query).bind(...params).all()
+    
+    return c.json({ materiais: result.results || [] })
+  } catch (error: any) {
+    console.error('Erro ao listar materiais:', error)
+    return c.json({ error: 'Erro ao listar materiais' }, 500)
+  }
+})
+
+// Salvar novo material
+app.post('/api/materiais', async (c) => {
+  const { DB } = c.env
+  const { user_id, disciplina_id, topico_id, tipo, titulo, conteudo, arquivo_url, arquivo_nome, arquivo_tipo, arquivo_tamanho, tags } = await c.req.json()
+  
+  try {
+    const result = await DB.prepare(`
+      INSERT INTO materiais_salvos (user_id, disciplina_id, topico_id, tipo, titulo, conteudo, arquivo_url, arquivo_nome, arquivo_tipo, arquivo_tamanho, tags)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(user_id, disciplina_id || null, topico_id || null, tipo, titulo, conteudo || null, arquivo_url || null, arquivo_nome || null, arquivo_tipo || null, arquivo_tamanho || null, tags || null).run()
+    
+    return c.json({ success: true, id: result.meta.last_row_id })
+  } catch (error: any) {
+    console.error('Erro ao salvar material:', error)
+    return c.json({ error: 'Erro ao salvar material' }, 500)
+  }
+})
+
+// Atualizar material
+app.put('/api/materiais/:id', async (c) => {
+  const { DB } = c.env
+  const id = parseInt(c.req.param('id'))
+  const { titulo, conteudo, tags, favorito } = await c.req.json()
+  
+  try {
+    await DB.prepare(`
+      UPDATE materiais_salvos 
+      SET titulo = ?, conteudo = ?, tags = ?, favorito = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(titulo, conteudo, tags, favorito, id).run()
+    
+    return c.json({ success: true })
+  } catch (error: any) {
+    console.error('Erro ao atualizar material:', error)
+    return c.json({ error: 'Erro ao atualizar material' }, 500)
+  }
+})
+
+// Toggle favorito
+app.post('/api/materiais/:id/favorito', async (c) => {
+  const { DB } = c.env
+  const id = parseInt(c.req.param('id'))
+  
+  try {
+    // Buscar valor atual
+    const material = await DB.prepare('SELECT favorito FROM materiais_salvos WHERE id = ?').bind(id).first()
+    const novoValor = material?.favorito ? 0 : 1
+    
+    await DB.prepare('UPDATE materiais_salvos SET favorito = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(novoValor, id).run()
+    
+    return c.json({ success: true, favorito: novoValor })
+  } catch (error: any) {
+    console.error('Erro ao toggle favorito:', error)
+    return c.json({ error: 'Erro ao toggle favorito' }, 500)
+  }
+})
+
+// Deletar material
+app.delete('/api/materiais/:id', async (c) => {
+  const { DB } = c.env
+  const id = parseInt(c.req.param('id'))
+  
+  try {
+    await DB.prepare('DELETE FROM materiais_salvos WHERE id = ?').bind(id).run()
+    return c.json({ success: true })
+  } catch (error: any) {
+    console.error('Erro ao deletar material:', error)
+    return c.json({ error: 'Erro ao deletar material' }, 500)
+  }
+})
+
+// Obter material por ID
+app.get('/api/materiais/item/:id', async (c) => {
+  const { DB } = c.env
+  const id = parseInt(c.req.param('id'))
+  
+  try {
+    const material = await DB.prepare(`
+      SELECT m.*, d.nome as disciplina_nome, t.nome as topico_nome 
+      FROM materiais_salvos m 
+      LEFT JOIN disciplinas d ON m.disciplina_id = d.id 
+      LEFT JOIN topicos_edital t ON m.topico_id = t.id 
+      WHERE m.id = ?
+    `).bind(id).first()
+    
+    if (!material) {
+      return c.json({ error: 'Material não encontrado' }, 404)
+    }
+    
+    return c.json({ material })
+  } catch (error: any) {
+    console.error('Erro ao obter material:', error)
+    return c.json({ error: 'Erro ao obter material' }, 500)
+  }
+})

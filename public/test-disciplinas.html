@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste - Acesso a Matérias</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .box { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button { background: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2563eb; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Teste de Acesso a Matérias e Tópicos</h1>
+    
+    <div class="box">
+        <h2>1️⃣ Buscar Disciplinas do Usuário</h2>
+        <button onclick="testarDisciplinas()">Testar Disciplinas</button>
+        <div id="result-disciplinas"></div>
+    </div>
+    
+    <div class="box">
+        <h2>2️⃣ Buscar Tópicos de uma Disciplina</h2>
+        <button onclick="testarTopicos()">Testar Tópicos (Direito Constitucional)</button>
+        <div id="result-topicos"></div>
+    </div>
+    
+    <div class="box">
+        <h2>3️⃣ Testar Fluxo Completo</h2>
+        <button onclick="testarFluxoCompleto()">Executar Teste Completo</button>
+        <div id="result-completo"></div>
+    </div>
+
+    <script>
+        const userId = 1; // Usuário de teste
+        
+        async function testarDisciplinas() {
+            const result = document.getElementById('result-disciplinas');
+            result.innerHTML = '<p>⏳ Buscando...</p>';
+            
+            try {
+                const res = await axios.get(`/api/user-disciplinas/${userId}`);
+                result.innerHTML = `
+                    <p class="success">✅ ${res.data.length} disciplinas encontradas!</p>
+                    <pre>${JSON.stringify(res.data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Erro: ${error.message}</p>`;
+            }
+        }
+        
+        async function testarTopicos() {
+            const result = document.getElementById('result-topicos');
+            result.innerHTML = '<p>⏳ Buscando...</p>';
+            
+            try {
+                const discId = 2; // Direito Constitucional
+                const res = await axios.get(`/api/user-topicos/${userId}/${discId}`);
+                result.innerHTML = `
+                    <p class="success">✅ ${res.data.length} tópicos encontrados!</p>
+                    <pre>${JSON.stringify(res.data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Erro: ${error.message}</p>`;
+            }
+        }
+        
+        async function testarFluxoCompleto() {
+            const result = document.getElementById('result-completo');
+            result.innerHTML = '<p>⏳ Executando testes...</p>';
+            let html = '';
+            
+            try {
+                // 1. Buscar disciplinas
+                html += '<h3>📚 Disciplinas:</h3>';
+                const discRes = await axios.get(`/api/user-disciplinas/${userId}`);
+                html += `<p class="success">✅ ${discRes.data.length} disciplinas</p>`;
+                
+                // 2. Para cada disciplina, buscar tópicos
+                for (const disc of discRes.data.slice(0, 3)) { // Testar apenas 3
+                    html += `<h4>📖 ${disc.nome} (ID: ${disc.disciplina_id}):</h4>`;
+                    const topicosRes = await axios.get(`/api/user-topicos/${userId}/${disc.disciplina_id}`);
+                    html += `<p class="success">✅ ${topicosRes.data.length} tópicos</p>`;
+                    html += '<ul>';
+                    topicosRes.data.slice(0, 5).forEach(t => {
+                        html += `<li>${t.nome} (Peso: ${t.peso}, Estudado: ${t.vezes_estudado}x)</li>`;
+                    });
+                    html += '</ul>';
+                }
+                
+                html += '<h3 class="success">🎉 Todos os testes passaram!</h3>';
+            } catch (error) {
+                html += `<p class="error">❌ Erro: ${error.message}</p>`;
+            }
+            
+            result.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

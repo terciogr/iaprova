@@ -1,0 +1,397 @@
+
+// ============== ROTAS DE METAS SEMANAIS ==============
+
+// 1. Gerar metas para uma semana completa
+app.post('/api/metas/gerar-semana/:user_id', async (c) => {
+  const { DB } = c.env
+  const user_id = parseInt(c.req.param('user_id'))
+  const { plano_id, data_inicio } = await c.req.json()
+
+  console.log('📅 Gerando metas semanais:', { user_id, plano_id, data_inicio })
+
+  try {
+    // Calcular data_fim (domingo da mesma semana)
+    const dataInicio = new Date(data_inicio)
+    const dataFim = new Date(dataInicio)
+    dataFim.setDate(dataFim.getDate() + 6) // Adiciona 6 dias (seg->dom)
+
+    // Calcular número da semana do plano
+    const { results: semanas } = await DB.prepare(
+      'SELECT COUNT(*) as total FROM semanas_estudo WHERE user_id = ? AND plano_id = ?'
+    ).bind(user_id, plano_id).all()
+    const numeroSemana = (semanas[0]?.total || 0) + 1
+
+    // Criar registro de semana
+    const semanaResult = await DB.prepare(`
+      INSERT INTO semanas_estudo (user_id, plano_id, numero_semana, data_inicio, data_fim, status)
+      VALUES (?, ?, ?, ?, ?, 'ativa')
+    `).bind(user_id, plano_id, numeroSemana, data_inicio, dataFim.toISOString().split('T')[0]).run()
+
+    const semana_id = semanaResult.meta.last_row_id
+
+    // Buscar ciclos do plano
+    const { results: ciclos } = await DB.prepare(`
+      SELECT * FROM ciclos_estudo 
+      WHERE plano_id = ? 
+      ORDER BY ordem
+    `).bind(plano_id).all()
+
+    // Buscar disciplinas do usuário
+    const { results: userDisciplinas } = await DB.prepare(`
+      SELECT ud.*, d.nome 
+      FROM user_disciplinas ud
+      JOIN disciplinas d ON ud.disciplina_id = d.id
+      WHERE ud.user_id = ?
+      ORDER BY ud.prioridade DESC, d.nome
+    `).bind(user_id).all()
+
+    // Distribuir metas pelos 7 dias da semana
+    const metas = []
+    let diaAtual = 0 // 1=Segunda
+    let ordem = 0
+
+    for (const disciplina of userDisciplinas) {
+      for (const ciclo of ciclos) {
+        // Calcular data específica do dia
+        const dataMeta = new Date(dataInicio)
+        dataMeta.setDate(dataMeta.getDate() + (diaAtual % 7))
+        
+        const diaSemana = diaAtual % 7 === 0 ? 7 : diaAtual % 7 // 1-7 (seg-dom)
+
+        // Buscar tópicos sugeridos (simplificado - 1 tópico por meta)
+        const { results: topicos } = await DB.prepare(`
+          SELECT te.id, te.nome
+          FROM topicos_edital te
+          LEFT JOIN user_topicos_progresso utp ON te.id = utp.topico_id AND utp.user_id = ?
+          WHERE te.disciplina_id = ?
+          ORDER BY COALESCE(utp.nivel_dominio, 0) ASC, te.peso DESC
+          LIMIT 1
+        `).bind(user_id, disciplina.disciplina_id).all()
+
+        const topicosArray = topicos.map(t => ({ id: t.id, nome: t.nome }))
+
+        // Inserir meta
+        const metaResult = await DB.prepare(`
+          INSERT INTO metas_semana (
+            semana_id, user_id, disciplina_id, dia_semana, data, 
+            tipo, tempo_minutos, topicos_sugeridos, ordem
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          semana_id,
+          user_id,
+          disciplina.disciplina_id,
+          diaSemana,
+          dataMeta.toISOString().split('T')[0],
+          ciclo.tipo,
+          ciclo.tempo_minutos,
+          JSON.stringify(topicosArray),
+          ordem
+        ).run()
+
+        metas.push({
+          id: metaResult.meta.last_row_id,
+          disciplina_nome: disciplina.nome,
+          dia_semana: diaSemana,
+          data: dataMeta.toISOString().split('T')[0],
+          tipo: ciclo.tipo,
+          tempo_minutos: ciclo.tempo_minutos,
+          topicos: topicosArray
+        })
+
+        ordem++
+        diaAtual++ // Avançar para próximo dia
+      }
+    }
+
+    console.log(`✅ ${metas.length} metas geradas para semana ${numeroSemana}`)
+
+    return c.json({
+      semana_id,
+      numero_semana: numeroSemana,
+      data_inicio,
+      data_fim: dataFim.toISOString().split('T')[0],
+      metas
+    })
+
+  } catch (error) {
+    console.error('❌ Erro ao gerar metas semanais:', error)
+    return c.json({ error: 'Erro ao gerar metas semanais' }, 500)
+  }
+})
+
+// 2. Buscar metas de uma semana
+app.get('/api/metas/semana/:semana_id', async (c) => {
+  const { DB } = c.env
+  const semana_id = parseInt(c.req.param('semana_id'))
+
+  try {
+    // Buscar informações da semana
+    const semana = await DB.prepare(
+      'SELECT * FROM semanas_estudo WHERE id = ?'
+    ).bind(semana_id).first()
+
+    if (!semana) {
+      return c.json({ error: 'Semana não encontrada' }, 404)
+    }
+
+    // Buscar metas da semana
+    const { results: metas } = await DB.prepare(`
+      SELECT 
+        ms.*,
+        d.nome as disciplina_nome,
+        d.icone as disciplina_icone,
+        ce.id as conteudo_id
+      FROM metas_semana ms
+      JOIN disciplinas d ON ms.disciplina_id = d.id
+      LEFT JOIN conteudo_estudo ce ON ms.conteudo_id = ce.id
+      WHERE ms.semana_id = ?
+      ORDER BY ms.dia_semana, ms.ordem
+    `).bind(semana_id).all()
+
+    return c.json({
+      semana,
+      metas: metas.map(m => ({
+        ...m,
+        topicos_sugeridos: m.topicos_sugeridos ? JSON.parse(m.topicos_sugeridos) : []
+      }))
+    })
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar metas da semana:', error)
+    return c.json({ error: 'Erro ao buscar metas da semana' }, 500)
+  }
+})
+
+// 3. Buscar semana ativa do usuário
+app.get('/api/metas/semana-ativa/:user_id', async (c) => {
+  const { DB } = c.env
+  const user_id = parseInt(c.req.param('user_id'))
+
+  try {
+    // Buscar semana ativa (data atual dentro do range)
+    const hoje = new Date().toISOString().split('T')[0]
+    
+    const semana = await DB.prepare(`
+      SELECT * FROM semanas_estudo 
+      WHERE user_id = ? 
+      AND status = 'ativa'
+      AND date(data_inicio) <= date(?)
+      AND date(data_fim) >= date(?)
+      ORDER BY data_inicio DESC
+      LIMIT 1
+    `).bind(user_id, hoje, hoje).first()
+
+    if (!semana) {
+      return c.json({ semana: null, metas: [] })
+    }
+
+    // Buscar metas da semana
+    const { results: metas } = await DB.prepare(`
+      SELECT 
+        ms.*,
+        d.nome as disciplina_nome,
+        d.icone as disciplina_icone
+      FROM metas_semana ms
+      JOIN disciplinas d ON ms.disciplina_id = d.id
+      WHERE ms.semana_id = ?
+      ORDER BY ms.dia_semana, ms.ordem
+    `).bind(semana.id).all()
+
+    return c.json({
+      semana,
+      metas: metas.map(m => ({
+        ...m,
+        topicos_sugeridos: m.topicos_sugeridos ? JSON.parse(m.topicos_sugeridos) : []
+      }))
+    })
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar semana ativa:', error)
+    return c.json({ error: 'Erro ao buscar semana ativa' }, 500)
+  }
+})
+
+// 4. Remanejar meta (drag-and-drop)
+app.put('/api/metas/remanejar/:meta_id', async (c) => {
+  const { DB } = c.env
+  const meta_id = parseInt(c.req.param('meta_id'))
+  const { novo_dia_semana, nova_data, nova_ordem } = await c.req.json()
+
+  console.log('🔄 Remanejando meta:', { meta_id, novo_dia_semana, nova_data, nova_ordem })
+
+  try {
+    await DB.prepare(`
+      UPDATE metas_semana 
+      SET dia_semana = ?, data = ?, ordem = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(novo_dia_semana, nova_data, nova_ordem || 0, meta_id).run()
+
+    return c.json({ success: true })
+
+  } catch (error) {
+    console.error('❌ Erro ao remanejar meta:', error)
+    return c.json({ error: 'Erro ao remanejar meta' }, 500)
+  }
+})
+
+// 5. Editar meta
+app.put('/api/metas/editar/:meta_id', async (c) => {
+  const { DB } = c.env
+  const meta_id = parseInt(c.req.param('meta_id'))
+  const { tempo_minutos, tipo, topicos_sugeridos, observacoes } = await c.req.json()
+
+  console.log('✏️ Editando meta:', { meta_id, tempo_minutos, tipo })
+
+  try {
+    // Buscar meta atual para calcular diferença de tempo
+    const metaAtual = await DB.prepare('SELECT * FROM metas_semana WHERE id = ?').bind(meta_id).first()
+    
+    if (!metaAtual) {
+      return c.json({ error: 'Meta não encontrada' }, 404)
+    }
+
+    // Atualizar meta
+    await DB.prepare(`
+      UPDATE metas_semana 
+      SET 
+        tempo_minutos = ?,
+        tipo = ?,
+        topicos_sugeridos = ?,
+        observacoes = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(
+      tempo_minutos || metaAtual.tempo_minutos,
+      tipo || metaAtual.tipo,
+      topicos_sugeridos ? JSON.stringify(topicos_sugeridos) : metaAtual.topicos_sugeridos,
+      observacoes || metaAtual.observacoes,
+      meta_id
+    ).run()
+
+    // Atualizar tempo total da semana se tempo mudou
+    if (tempo_minutos && tempo_minutos !== metaAtual.tempo_minutos) {
+      const diferenca = tempo_minutos - metaAtual.tempo_minutos
+      await DB.prepare(`
+        UPDATE semanas_estudo 
+        SET tempo_total_minutos = tempo_total_minutos + ?
+        WHERE id = ?
+      `).bind(diferenca, metaAtual.semana_id).run()
+    }
+
+    return c.json({ success: true })
+
+  } catch (error) {
+    console.error('❌ Erro ao editar meta:', error)
+    return c.json({ error: 'Erro ao editar meta' }, 500)
+  }
+})
+
+// 6. Excluir meta
+app.delete('/api/metas/excluir/:meta_id', async (c) => {
+  const { DB } = c.env
+  const meta_id = parseInt(c.req.param('meta_id'))
+
+  console.log('🗑️ Excluindo meta:', meta_id)
+
+  try {
+    // Trigger já atualiza os totais da semana automaticamente
+    await DB.prepare('DELETE FROM metas_semana WHERE id = ?').bind(meta_id).run()
+
+    return c.json({ success: true })
+
+  } catch (error) {
+    console.error('❌ Erro ao excluir meta:', error)
+    return c.json({ error: 'Erro ao excluir meta' }, 500)
+  }
+})
+
+// 7. Adicionar nova meta
+app.post('/api/metas/adicionar', async (c) => {
+  const { DB } = c.env
+  const { semana_id, user_id, disciplina_id, dia_semana, data, tipo, tempo_minutos, topicos_sugeridos } = await c.req.json()
+
+  console.log('➕ Adicionando nova meta:', { semana_id, disciplina_id, dia_semana, tipo })
+
+  try {
+    // Buscar ordem máxima do dia
+    const maxOrdem = await DB.prepare(`
+      SELECT COALESCE(MAX(ordem), -1) as max_ordem
+      FROM metas_semana
+      WHERE semana_id = ? AND dia_semana = ?
+    `).bind(semana_id, dia_semana).first()
+
+    const novaOrdem = (maxOrdem?.max_ordem || 0) + 1
+
+    // Inserir meta (trigger atualiza totais automaticamente)
+    const result = await DB.prepare(`
+      INSERT INTO metas_semana (
+        semana_id, user_id, disciplina_id, dia_semana, data,
+        tipo, tempo_minutos, topicos_sugeridos, ordem
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      semana_id,
+      user_id,
+      disciplina_id,
+      dia_semana,
+      data,
+      tipo,
+      tempo_minutos,
+      JSON.stringify(topicos_sugeridos || []),
+      novaOrdem
+    ).run()
+
+    return c.json({ id: result.meta.last_row_id, success: true })
+
+  } catch (error) {
+    console.error('❌ Erro ao adicionar meta:', error)
+    return c.json({ error: 'Erro ao adicionar meta' }, 500)
+  }
+})
+
+// 8. Marcar meta como concluída
+app.put('/api/metas/concluir/:meta_id', async (c) => {
+  const { DB } = c.env
+  const meta_id = parseInt(c.req.param('meta_id'))
+  const { tempo_real_minutos } = await c.req.json()
+
+  console.log('✅ Concluindo meta:', { meta_id, tempo_real_minutos })
+
+  try {
+    // Trigger atualiza estatísticas da semana automaticamente
+    await DB.prepare(`
+      UPDATE metas_semana 
+      SET concluida = 1, tempo_real_minutos = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(tempo_real_minutos, meta_id).run()
+
+    return c.json({ success: true })
+
+  } catch (error) {
+    console.error('❌ Erro ao concluir meta:', error)
+    return c.json({ error: 'Erro ao concluir meta' }, 500)
+  }
+})
+
+// 9. Desmarcar meta como concluída
+app.put('/api/metas/desmarcar/:meta_id', async (c) => {
+  const { DB } = c.env
+  const meta_id = parseInt(c.req.param('meta_id'))
+
+  console.log('↩️ Desmarcando meta:', meta_id)
+
+  try {
+    // Trigger reverte estatísticas automaticamente
+    await DB.prepare(`
+      UPDATE metas_semana 
+      SET concluida = 0, tempo_real_minutos = NULL, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(meta_id).run()
+
+    return c.json({ success: true })
+
+  } catch (error) {
+    console.error('❌ Erro ao desmarcar meta:', error)
+    return c.json({ error: 'Erro ao desmarcar meta' }, 500)
+  }
+})
+

@@ -1,0 +1,156 @@
+const fs = require('fs');
+const path = require('path');
+
+// Ler o app.js
+const appJs = fs.readFileSync(path.join(__dirname, 'public/static/app.js'), 'utf8');
+
+// Criar HTML com JS inline
+const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IAprova - Preparação Inteligente para Concursos Públicos</title>
+    <meta name="description" content="Sistema inteligente de preparação para concursos públicos com IA">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        #app {
+            min-height: 100vh;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Fade animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        /* Scale animation */
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .animate-scale-in {
+            animation: scaleIn 0.3s ease-in-out;
+        }
+        
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            animation: slideIn 0.3s ease-in-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .toast.success {
+            background: #10b981;
+        }
+        
+        .toast.error {
+            background: #ef4444;
+        }
+        
+        .toast.info {
+            background: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <!-- App Container -->
+    <div id="app">
+        <!-- Initial Loading Screen -->
+        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700">
+            <div class="text-center">
+                <div class="mb-6">
+                    <i class="fas fa-graduation-cap text-white text-6xl mb-4"></i>
+                </div>
+                <h1 class="text-white text-4xl font-bold mb-2">IAprova</h1>
+                <p class="text-purple-200 text-lg mb-6">Preparação Inteligente para Concursos</p>
+                <div class="spinner mx-auto mb-4"></div>
+                <p class="text-purple-100 text-sm">Carregando sistema...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main App Script (Inline) -->
+    <script>
+${appJs}
+    </script>
+</body>
+</html>`;
+
+// Salvar o HTML com JS inline
+fs.writeFileSync(path.join(__dirname, 'dist/index-inline.html'), html);
+console.log('✅ HTML com JS inline criado: dist/index-inline.html');

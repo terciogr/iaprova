@@ -1,0 +1,8 @@
+# GROQ API KEY (GRATUITA)
+# Obtenha sua chave em: https://console.groq.com/keys
+# Modelo usado: Llama 3.3 70B (840 tokens/segundo)
+# Limites gratuitos: Generosos para desenvolvimento
+GROQ_API_KEY=gsk_your_groq_api_key_here
+
+# OPCIONAL: Gemini API (não mais necessária)
+# GEMINI_API_KEY=your_gemini_key_here

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test IAprova</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Test Page</h1>
+    <div id="result"></div>
+    <script>
+        console.log('Testing...');
+        axios.get('/api/disciplinas')
+            .then(r => {
+                document.getElementById('result').innerHTML = 'API OK: ' + r.data.length + ' disciplinas';
+            })
+            .catch(e => {
+                document.getElementById('result').innerHTML = 'ERROR: ' + e.message;
+            });
+    </script>
+</body>
+</html>

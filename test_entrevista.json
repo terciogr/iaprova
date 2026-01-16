@@ -1,0 +1,17 @@
+{
+  "user_id": 1,
+  "objetivo_tipo": "concurso_especifico",
+  "concurso_nome": "TCE PI 2026",
+  "cargo": "Auditor Público Externo",
+  "area_geral": "fiscal",
+  "tempo_disponivel_dia": 180,
+  "experiencia": "intermediario",
+  "ja_estudou_antes": true,
+  "prazo_prova": "2026-06-30",
+  "reprovacoes": 0,
+  "disciplinas": [
+    {"disciplina_id": 3, "ja_estudou": true, "nivel_atual": 5, "dificuldade": false},
+    {"disciplina_id": 4, "ja_estudou": true, "nivel_atual": 6, "dificuldade": false},
+    {"disciplina_id": 7, "ja_estudou": false, "nivel_atual": 2, "dificuldade": true}
+  ]
+}

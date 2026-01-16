@@ -1,0 +1,304 @@
+
+// ============== DRAG AND DROP ==============
+
+let metaArrastada = null
+
+function handleDragStart(event) {
+  metaArrastada = {
+    id: event.target.dataset.metaId,
+    diaOrigem: event.target.closest('[data-dia]').dataset.dia
+  }
+  event.target.style.opacity = '0.4'
+  event.dataTransfer.effectAllowed = 'move'
+}
+
+function handleDragEnd(event) {
+  event.target.style.opacity = '1'
+}
+
+function handleDragOver(event) {
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'move'
+  
+  const coluna = event.currentTarget
+  coluna.classList.add('bg-blue-50', 'dark:bg-blue-900/20')
+}
+
+function handleDragLeave(event) {
+  const coluna = event.currentTarget
+  coluna.classList.remove('bg-blue-50', 'dark:bg-blue-900/20')
+}
+
+async function handleDrop(event) {
+  event.preventDefault()
+  
+  const coluna = event.currentTarget
+  coluna.classList.remove('bg-blue-50', 'dark:bg-blue-900/20')
+  
+  if (!metaArrastada) return
+  
+  const novoDia = parseInt(coluna.dataset.dia)
+  const novaData = coluna.dataset.data
+  const diaOrigem = parseInt(metaArrastada.diaOrigem)
+  
+  // Se não mudou de dia, não faz nada
+  if (novoDia === diaOrigem) return
+  
+  try {
+    // Remanejar meta no backend
+    await axios.put(`/api/metas/remanejar/${metaArrastada.id}`, {
+      novo_dia_semana: novoDia,
+      nova_data: novaData,
+      nova_ordem: 0
+    })
+    
+    showSuccess(`Meta movida para ${diasSemanaCompletos[novoDia % 7]}`)
+    
+    // Recarregar calendário
+    await carregarSemanaAtiva()
+    
+  } catch (error) {
+    console.error('Erro ao remanejar meta:', error)
+    showError('Erro ao mover meta')
+  }
+  
+  metaArrastada = null
+}
+
+// ============== MODAIS ==============
+
+// Modal de Adicionar Meta
+function abrirModalAdicionar(semanaId, diaSemana, data) {
+  const modal = document.getElementById('modal-container')
+  if (!modal) return
+
+  // Buscar disciplinas do usuário
+  axios.get(`/api/user_disciplinas/${currentUser.id}`)
+    .then(response => {
+      const disciplinas = response.data
+
+      modal.innerHTML = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="fecharModal()">
+          <div class="${themes[currentTheme].card} rounded-lg shadow-2xl max-w-md w-full p-6" onclick="event.stopPropagation()">
+            <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-4">
+              ➕ Adicionar Meta - ${diasSemanaCompletos[diaSemana % 7]}
+            </h3>
+
+            <form onsubmit="salvarNovaMeta(event, ${semanaId}, ${diaSemana}, '${data}')">
+              <!-- Disciplina -->
+              <div class="mb-4">
+                <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">Disciplina</label>
+                <select id="nova-disciplina" required
+                        class="w-full px-3 py-2 ${themes[currentTheme].input} rounded-lg focus:ring-2 focus:ring-blue-500">
+                  <option value="">Selecione...</option>
+                  ${disciplinas.map(d => `<option value="${d.disciplina_id}">${d.disciplina_nome}</option>`).join('')}
+                </select>
+              </div>
+
+              <!-- Tipo -->
+              <div class="mb-4">
+                <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">Tipo</label>
+                <select id="novo-tipo" required
+                        class="w-full px-3 py-2 ${themes[currentTheme].input} rounded-lg focus:ring-2 focus:ring-blue-500">
+                  <option value="teoria">📖 Teoria</option>
+                  <option value="exercicios">✏️ Exercícios</option>
+                  <option value="revisao">🔄 Revisão</option>
+                </select>
+              </div>
+
+              <!-- Tempo -->
+              <div class="mb-4">
+                <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">Tempo (minutos)</label>
+                <input type="number" id="novo-tempo" value="60" min="15" max="240" required
+                       class="w-full px-3 py-2 ${themes[currentTheme].input} rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
+
+              <!-- Botões -->
+              <div class="flex gap-2 mt-6">
+                <button type="button" onclick="fecharModal()" 
+                        class="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-700 ${themes[currentTheme].text} rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600 transition">
+                  Cancelar
+                </button>
+                <button type="submit" 
+                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                  <i class="fas fa-plus mr-2"></i>Adicionar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `
+      modal.classList.remove('hidden')
+    })
+    .catch(error => {
+      console.error('Erro ao buscar disciplinas:', error)
+      showError('Erro ao carregar disciplinas')
+    })
+}
+
+async function salvarNovaMeta(event, semanaId, diaSemana, data) {
+  event.preventDefault()
+
+  const disciplinaId = document.getElementById('nova-disciplina').value
+  const tipo = document.getElementById('novo-tipo').value
+  const tempoMinutos = document.getElementById('novo-tempo').value
+
+  try {
+    await axios.post('/api/metas/adicionar', {
+      semana_id: semanaId,
+      user_id: currentUser.id,
+      disciplina_id: parseInt(disciplinaId),
+      dia_semana: diaSemana,
+      data: data,
+      tipo: tipo,
+      tempo_minutos: parseInt(tempoMinutos),
+      topicos_sugeridos: []
+    })
+
+    showSuccess('Meta adicionada com sucesso!')
+    fecharModal()
+    await carregarSemanaAtiva()
+
+  } catch (error) {
+    console.error('Erro ao adicionar meta:', error)
+    showError('Erro ao adicionar meta')
+  }
+}
+
+// Modal de Editar Meta
+function abrirModalEditar(metaId) {
+  const meta = semanaAtual.metas.find(m => m.id === metaId)
+  if (!meta) return
+
+  const modal = document.getElementById('modal-container')
+  if (!modal) return
+
+  modal.innerHTML = `
+    <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="fecharModal()">
+      <div class="${themes[currentTheme].card} rounded-lg shadow-2xl max-w-md w-full p-6" onclick="event.stopPropagation()">
+        <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-4">
+          ✏️ Editar Meta
+        </h3>
+
+        <form onsubmit="salvarEdicaoMeta(event, ${metaId})">
+          <!-- Disciplina (readonly) -->
+          <div class="mb-4">
+            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">Disciplina</label>
+            <input type="text" value="${meta.disciplina_nome}" readonly
+                   class="w-full px-3 py-2 ${themes[currentTheme].input} rounded-lg bg-gray-100 dark:bg-gray-800 cursor-not-allowed">
+          </div>
+
+          <!-- Tipo -->
+          <div class="mb-4">
+            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">Tipo</label>
+            <select id="editar-tipo" required
+                    class="w-full px-3 py-2 ${themes[currentTheme].input} rounded-lg focus:ring-2 focus:ring-blue-500">
+              <option value="teoria" ${meta.tipo === 'teoria' ? 'selected' : ''}>📖 Teoria</option>
+              <option value="exercicios" ${meta.tipo === 'exercicios' ? 'selected' : ''}>✏️ Exercícios</option>
+              <option value="revisao" ${meta.tipo === 'revisao' ? 'selected' : ''}>🔄 Revisão</option>
+            </select>
+          </div>
+
+          <!-- Tempo -->
+          <div class="mb-4">
+            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">Tempo (minutos)</label>
+            <input type="number" id="editar-tempo" value="${meta.tempo_minutos}" min="15" max="240" required
+                   class="w-full px-3 py-2 ${themes[currentTheme].input} rounded-lg focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <!-- Observações -->
+          <div class="mb-4">
+            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">Observações (opcional)</label>
+            <textarea id="editar-obs" rows="2"
+                      class="w-full px-3 py-2 ${themes[currentTheme].input} rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="Adicione notas ou lembretes...">${meta.observacoes || ''}</textarea>
+          </div>
+
+          <!-- Botões -->
+          <div class="flex gap-2 mt-6">
+            <button type="button" onclick="fecharModal()" 
+                    class="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-700 ${themes[currentTheme].text} rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600 transition">
+              Cancelar
+            </button>
+            <button type="submit" 
+                    class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <i class="fas fa-save mr-2"></i>Salvar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `
+  modal.classList.add('hidden')
+  setTimeout(() => modal.classList.remove('hidden'), 10)
+}
+
+async function salvarEdicaoMeta(event, metaId) {
+  event.preventDefault()
+
+  const tipo = document.getElementById('editar-tipo').value
+  const tempoMinutos = document.getElementById('editar-tempo').value
+  const observacoes = document.getElementById('editar-obs').value
+
+  try {
+    await axios.put(`/api/metas/editar/${metaId}`, {
+      tipo: tipo,
+      tempo_minutos: parseInt(tempoMinutos),
+      observacoes: observacoes
+    })
+
+    showSuccess('Meta atualizada com sucesso!')
+    fecharModal()
+    await carregarSemanaAtiva()
+
+  } catch (error) {
+    console.error('Erro ao editar meta:', error)
+    showError('Erro ao editar meta')
+  }
+}
+
+function fecharModal() {
+  const modal = document.getElementById('modal-container')
+  if (modal) {
+    modal.classList.add('hidden')
+    modal.innerHTML = ''
+  }
+}
+
+// ============== FUNÇÕES AUXILIARES ==============
+
+function showSuccess(message) {
+  // Implementação simples de toast
+  const toast = document.createElement('div')
+  toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50'
+  toast.innerHTML = `<i class="fas fa-check-circle mr-2"></i>${message}`
+  document.body.appendChild(toast)
+  setTimeout(() => toast.remove(), 3000)
+}
+
+function showError(message) {
+  const toast = document.createElement('div')
+  toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50'
+  toast.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i>${message}`
+  document.body.appendChild(toast)
+  setTimeout(() => toast.remove(), 3000)
+}
+
+function showLoading(message) {
+  const loading = document.createElement('div')
+  loading.id = 'loading-overlay'
+  loading.className = 'fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center'
+  loading.innerHTML = `
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p class="text-gray-800 dark:text-gray-200">${message}</p>
+    </div>
+  `
+  document.body.appendChild(loading)
+}
+
+function hideLoading() {
+  const loading = document.getElementById('loading-overlay')
+  if (loading) loading.remove()
+}
+

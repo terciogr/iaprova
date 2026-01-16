@@ -1,0 +1,328 @@
+
+// ============== FUNÇÕES DO SISTEMA DE METAS SEMANAIS ==============
+
+// Variável global para armazenar a semana atual
+let semanaAtual = null
+
+// Nomes dos dias da semana
+const diasSemana = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
+const diasSemanaCompletos = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+
+// Cores por tipo de meta
+const coresTipo = {
+  teoria: { bg: 'bg-blue-100 dark:bg-blue-900/30', border: 'border-blue-300 dark:border-blue-700', text: 'text-blue-700 dark:text-blue-300', icon: '📖' },
+  exercicios: { bg: 'bg-green-100 dark:bg-green-900/30', border: 'border-green-300 dark:border-green-700', text: 'text-green-700 dark:text-green-300', icon: '✏️' },
+  revisao: { bg: 'bg-purple-100 dark:bg-purple-900/30', border: 'border-purple-300 dark:border-purple-700', text: 'text-purple-700 dark:text-purple-300', icon: '🔄' }
+}
+
+// 1. Gerar metas semanais
+async function gerarMetasSemana() {
+  if (!currentUser) return
+
+  try {
+    showLoading('Gerando metas da semana...')
+
+    // Buscar plano ativo
+    const responsePlano = await axios.get(`/api/planos/ativo/${currentUser.id}`)
+    if (!responsePlano.data) {
+      alert('Você precisa ter um plano de estudos ativo para gerar metas semanais.')
+      return
+    }
+
+    const plano = responsePlano.data
+
+    // Calcular próxima segunda-feira
+    const hoje = new Date()
+    const diaSemana = hoje.getDay() // 0=Dom, 1=Seg, ...
+    const diasAteSegunda = diaSemana === 0 ? 1 : (diaSemana === 1 ? 0 : 8 - diaSemana)
+    
+    const proximaSegunda = new Date(hoje)
+    proximaSegunda.setDate(hoje.getDate() + diasAteSegunda)
+    const dataInicio = proximaSegunda.toISOString().split('T')[0]
+
+    // Gerar metas
+    const response = await axios.post(`/api/metas/gerar-semana/${currentUser.id}`, {
+      plano_id: plano.id,
+      data_inicio: dataInicio
+    })
+
+    console.log('✅ Metas semanais geradas:', response.data)
+    
+    hideLoading()
+    showSuccess('Metas da semana geradas com sucesso!')
+    
+    // Recarregar dashboard
+    await carregarSemanaAtiva()
+
+  } catch (error) {
+    console.error('Erro ao gerar metas semanais:', error)
+    hideLoading()
+    showError('Erro ao gerar metas da semana. Tente novamente.')
+  }
+}
+
+// 2. Carregar semana ativa
+async function carregarSemanaAtiva() {
+  if (!currentUser) return
+
+  try {
+    const response = await axios.get(`/api/metas/semana-ativa/${currentUser.id}`)
+    semanaAtual = response.data
+
+    console.log('📅 Semana ativa carregada:', semanaAtual)
+
+    // Renderizar calendário semanal
+    renderCalendarioSemanal()
+
+  } catch (error) {
+    console.error('Erro ao carregar semana ativa:', error)
+  }
+}
+
+// 3. Renderizar calendário semanal
+function renderCalendarioSemanal() {
+  const container = document.getElementById('calendario-semanal')
+  if (!container) return
+
+  if (!semanaAtual || !semanaAtual.semana) {
+    container.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-lg shadow-lg p-8 text-center">
+        <i class="fas fa-calendar-week text-6xl ${themes[currentTheme].textSecondary} mb-4"></i>
+        <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-2">Nenhuma semana ativa</h3>
+        <p class="${themes[currentTheme].textSecondary} mb-4">Gere suas metas semanais para começar a estudar</p>
+        <button onclick="gerarMetasSemana()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+          <i class="fas fa-calendar-plus mr-2"></i>Gerar Metas da Semana
+        </button>
+      </div>
+    `
+    return
+  }
+
+  const { semana, metas } = semanaAtual
+
+  // Agrupar metas por dia da semana
+  const metasPorDia = {}
+  for (let i = 1; i <= 7; i++) {
+    metasPorDia[i] = []
+  }
+
+  metas.forEach(meta => {
+    const dia = meta.dia_semana
+    if (metasPorDia[dia]) {
+      metasPorDia[dia].push(meta)
+    }
+  })
+
+  // Formatar datas
+  const dataInicioFormatada = new Date(semana.data_inicio).toLocaleDateString('pt-BR')
+  const dataFimFormatada = new Date(semana.data_fim).toLocaleDateString('pt-BR')
+
+  container.innerHTML = `
+    <!-- Header da Semana -->
+    <div class="${themes[currentTheme].card} rounded-lg shadow-lg p-4 mb-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold ${themes[currentTheme].text}">
+            📅 Semana ${semana.numero_semana} • ${dataInicioFormatada} a ${dataFimFormatada}
+          </h2>
+          <p class="${themes[currentTheme].textSecondary} text-sm mt-1">
+            ${semana.metas_concluidas} de ${semana.metas_totais} metas concluídas • 
+            ${semana.tempo_estudado_minutos} de ${semana.tempo_total_minutos} minutos
+          </p>
+        </div>
+        <button onclick="gerarMetasSemana()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm">
+          <i class="fas fa-plus mr-2"></i>Nova Semana
+        </button>
+      </div>
+      
+      <!-- Barra de progresso -->
+      <div class="mt-3">
+        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div class="bg-blue-600 h-2 rounded-full transition-all" 
+               style="width: ${semana.metas_totais > 0 ? (semana.metas_concluidas / semana.metas_totais * 100) : 0}%">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid do Calendário Semanal (7 colunas) -->
+    <div class="grid grid-cols-7 gap-2">
+      ${[1, 2, 3, 4, 5, 6, 7].map(diaSemana => {
+        const metasDoDia = metasPorDia[diaSemana] || []
+        const dataDia = new Date(semana.data_inicio)
+        dataDia.setDate(dataDia.getDate() + (diaSemana - 1))
+        const diaNumero = dataDia.getDate()
+        const hoje = new Date().toISOString().split('T')[0]
+        const ehHoje = dataDia.toISOString().split('T')[0] === hoje
+
+        return `
+          <div class="${themes[currentTheme].card} rounded-lg border ${themes[currentTheme].border} ${ehHoje ? 'ring-2 ring-blue-500' : ''} p-2 min-h-[200px]"
+               data-dia="${diaSemana}"
+               data-data="${dataDia.toISOString().split('T')[0]}"
+               ondrop="handleDrop(event)"
+               ondragover="handleDragOver(event)"
+               ondragleave="handleDragLeave(event)">
+            
+            <!-- Cabeçalho do Dia -->
+            <div class="text-center mb-2 pb-2 border-b ${themes[currentTheme].border}">
+              <div class="text-xs font-semibold ${themes[currentTheme].textSecondary} uppercase">
+                ${diasSemana[diaSemana % 7]}
+              </div>
+              <div class="text-lg font-bold ${ehHoje ? 'text-blue-600' : themes[currentTheme].text}">
+                ${diaNumero}
+              </div>
+            </div>
+
+            <!-- Cards de Metas -->
+            <div class="space-y-2" id="metas-dia-${diaSemana}">
+              ${metasDoDia.map(meta => renderCardMeta(meta)).join('')}
+            </div>
+
+            <!-- Botão Adicionar -->
+            <button 
+              onclick="abrirModalAdicionar(${semana.id}, ${diaSemana}, '${dataDia.toISOString().split('T')[0]}')"
+              class="w-full mt-2 py-2 text-xs ${themes[currentTheme].textSecondary} hover:${themes[currentTheme].text} border ${themes[currentTheme].border} rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition">
+              <i class="fas fa-plus"></i> Adicionar
+            </button>
+          </div>
+        `
+      }).join('')}
+    </div>
+  `
+}
+
+// 4. Renderizar card individual de meta (draggable)
+function renderCardMeta(meta) {
+  const cores = coresTipo[meta.tipo] || coresTipo.teoria
+  
+  return `
+    <div 
+      class="${cores.bg} ${cores.border} border rounded-lg p-2 cursor-move transition hover:shadow-md"
+      data-meta-id="${meta.id}"
+      draggable="true"
+      ondragstart="handleDragStart(event)"
+      ondragend="handleDragEnd(event)">
+      
+      <!-- Checkbox e Disciplina -->
+      <div class="flex items-start gap-2 mb-1">
+        <input 
+          type="checkbox" 
+          ${meta.concluida ? 'checked' : ''}
+          onchange="toggleMetaSemanal(${meta.id}, ${meta.tempo_minutos})"
+          class="mt-1 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+          onclick="event.stopPropagation()">
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-xs ${cores.text} truncate" title="${meta.disciplina_nome}">
+            ${cores.icon} ${meta.disciplina_nome}
+          </div>
+          <div class="text-xs ${themes[currentTheme].textSecondary}">
+            ${meta.tempo_minutos} min
+          </div>
+        </div>
+      </div>
+
+      <!-- Ações (mostrar no hover) -->
+      <div class="flex gap-1 mt-2 pt-2 border-t ${cores.border} opacity-0 hover:opacity-100 transition">
+        ${meta.conteudo_gerado ? `
+          <button 
+            onclick="visualizarConteudoPorId(${meta.conteudo_id}); event.stopPropagation()"
+            class="flex-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+            title="Ver conteúdo">
+            <i class="fas fa-eye"></i>
+          </button>
+        ` : `
+          <button 
+            onclick="gerarConteudoMetaSemanal(${meta.id}); event.stopPropagation()"
+            class="flex-1 text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+            title="Gerar conteúdo">
+            <i class="fas fa-magic"></i>
+          </button>
+        `}
+        <button 
+          onclick="abrirModalEditar(${meta.id}); event.stopPropagation()"
+          class="text-xs bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600"
+          title="Editar">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button 
+          onclick="excluirMetaSemanal(${meta.id}); event.stopPropagation()"
+          class="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+          title="Excluir">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+  `
+}
+
+// 5. Toggle meta semanal (concluir/desmarcar)
+async function toggleMetaSemanal(metaId, tempoMinutos) {
+  try {
+    const meta = semanaAtual.metas.find(m => m.id === metaId)
+    
+    if (meta.concluida) {
+      // Desmarcar
+      await axios.put(`/api/metas/desmarcar/${metaId}`)
+      showSuccess('Meta desmarcada')
+    } else {
+      // Marcar como concluída
+      const tempoReal = prompt(`Quanto tempo você estudou? (minutos)`, tempoMinutos)
+      if (!tempoReal) return
+      
+      await axios.put(`/api/metas/concluir/${metaId}`, {
+        tempo_real_minutos: parseInt(tempoReal)
+      })
+      showSuccess('Meta concluída! 🎉')
+    }
+
+    // Recarregar
+    await carregarSemanaAtiva()
+
+  } catch (error) {
+    console.error('Erro ao toggle meta:', error)
+    showError('Erro ao atualizar meta')
+  }
+}
+
+// 6. Gerar conteúdo para meta semanal
+async function gerarConteudoMetaSemanal(metaId) {
+  try {
+    showLoading('Gerando conteúdo...')
+    
+    const meta = semanaAtual.metas.find(m => m.id === metaId)
+    if (!meta) return
+
+    const response = await axios.post('/api/conteudo/gerar', {
+      meta_id: metaId,
+      user_id: currentUser.id,
+      disciplina_id: meta.disciplina_id,
+      tipo: meta.tipo,
+      tempo_minutos: meta.tempo_minutos,
+      topicos: meta.topicos_sugeridos || []
+    })
+
+    hideLoading()
+    showSuccess('Conteúdo gerado com sucesso!')
+    await carregarSemanaAtiva()
+
+  } catch (error) {
+    console.error('Erro ao gerar conteúdo:', error)
+    hideLoading()
+    showError('Erro ao gerar conteúdo')
+  }
+}
+
+// 7. Excluir meta semanal
+async function excluirMetaSemanal(metaId) {
+  if (!confirm('Deseja realmente excluir esta meta?')) return
+
+  try {
+    await axios.delete(`/api/metas/excluir/${metaId}`)
+    showSuccess('Meta excluída')
+    await carregarSemanaAtiva()
+  } catch (error) {
+    console.error('Erro ao excluir meta:', error)
+    showError('Erro ao excluir meta')
+  }
+}
+

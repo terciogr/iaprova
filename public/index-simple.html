@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IAprova - Preparação Inteligente para Concursos Públicos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+</head>
+<body>
+    <div id="app" class="min-h-screen bg-gray-100">
+        <!-- Container será preenchido pelo JavaScript -->
+    </div>
+    
+    <script>
+        console.log('🚀 IAprova - Iniciando aplicação simplificada...');
+        
+        // Estado da aplicação
+        let currentUser = null;
+        let currentStep = 'login';
+        
+        // Função para renderizar login
+        function renderLogin() {
+            console.log('📱 Renderizando tela de login...');
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 to-purple-700">
+                    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+                        <div class="text-center mb-8">
+                            <i class="fas fa-graduation-cap text-purple-600 text-5xl mb-4"></i>
+                            <h1 class="text-3xl font-bold text-gray-800">IAprova</h1>
+                            <p class="text-gray-600 mt-2">Preparação Inteligente para Concursos</p>
+                        </div>
+                        
+                        <div id="authForm">
+                            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Fazer Login</h2>
+                            
+                            <form onsubmit="handleLogin(event)" class="space-y-4">
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                                    <input type="email" id="email" required
+                                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                                        placeholder="seu@email.com">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-medium mb-2">Senha</label>
+                                    <input type="password" id="password" required
+                                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                                        placeholder="••••••••">
+                                </div>
+                                
+                                <button type="submit"
+                                    class="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 transition">
+                                    Entrar
+                                </button>
+                            </form>
+                            
+                            <div class="mt-6 text-center">
+                                <p class="text-gray-600">
+                                    Não tem conta? 
+                                    <a href="#" onclick="showSignup()" class="text-purple-600 hover:underline">
+                                        Criar conta
+                                    </a>
+                                </p>
+                                <p class="mt-2">
+                                    <a href="#" onclick="showForgotPassword()" class="text-sm text-purple-600 hover:underline">
+                                        Esqueceu sua senha?
+                                    </a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Função para mostrar cadastro
+        function showSignup() {
+            console.log('📝 Mostrando tela de cadastro...');
+            const authForm = document.getElementById('authForm');
+            authForm.innerHTML = `
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">Criar Conta</h2>
+                
+                <form onsubmit="handleSignup(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Nome Completo</label>
+                        <input type="text" id="name" required
+                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                            placeholder="João Silva">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                        <input type="email" id="email" required
+                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                            placeholder="seu@email.com">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Senha</label>
+                        <input type="password" id="password" required minlength="4"
+                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                            placeholder="Mínimo 4 caracteres">
+                    </div>
+                    
+                    <button type="submit"
+                        class="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 transition">
+                        Criar Conta
+                    </button>
+                </form>
+                
+                <div class="mt-6 text-center">
+                    <p class="text-gray-600">
+                        Já tem conta? 
+                        <a href="#" onclick="renderLogin()" class="text-purple-600 hover:underline">
+                            Fazer login
+                        </a>
+                    </p>
+                </div>
+            `;
+        }
+        
+        // Função para recuperar senha
+        function showForgotPassword() {
+            console.log('🔑 Mostrando recuperação de senha...');
+            const authForm = document.getElementById('authForm');
+            authForm.innerHTML = `
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">Recuperar Senha</h2>
+                
+                <form onsubmit="handleForgotPassword(event)" class="space-y-4">
+                    <p class="text-gray-600 mb-4">
+                        Digite seu email para receber o link de recuperação.
+                    </p>
+                    
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                        <input type="email" id="email" required
+                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                            placeholder="seu@email.com">
+                    </div>
+                    
+                    <button type="submit"
+                        class="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 transition">
+                        Enviar Email de Recuperação
+                    </button>
+                </form>
+                
+                <div class="mt-6 text-center">
+                    <a href="#" onclick="renderLogin()" class="text-purple-600 hover:underline">
+                        Voltar ao login
+                    </a>
+                </div>
+            `;
+        }
+        
+        // Handlers
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            console.log('🔐 Fazendo login...');
+            showMessage('Fazendo login...', 'info');
+            
+            try {
+                const response = await axios.post('/api/login', { email, password });
+                if (response.data.success) {
+                    currentUser = response.data.user;
+                    localStorage.setItem('userId', currentUser.id);
+                    localStorage.setItem('userEmail', currentUser.email);
+                    localStorage.setItem('userName', currentUser.name);
+                    showMessage('Login realizado com sucesso!', 'success');
+                    renderDashboard();
+                }
+            } catch (error) {
+                console.error('Erro no login:', error);
+                showMessage(error.response?.data?.error || 'Erro ao fazer login', 'error');
+            }
+        }
+        
+        async function handleSignup(event) {
+            event.preventDefault();
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            console.log('📝 Criando conta...');
+            showMessage('Criando conta...', 'info');
+            
+            try {
+                const response = await axios.post('/api/users', { name, email, password });
+                if (response.data.id) {
+                    showMessage('Conta criada! Verifique seu email.', 'success');
+                    setTimeout(renderLogin, 2000);
+                }
+            } catch (error) {
+                console.error('Erro no cadastro:', error);
+                showMessage(error.response?.data?.error || 'Erro ao criar conta', 'error');
+            }
+        }
+        
+        async function handleForgotPassword(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            
+            console.log('📧 Enviando email de recuperação...');
+            showMessage('Enviando email...', 'info');
+            
+            try {
+                const response = await axios.post('/api/forgot-password', { email });
+                showMessage('Email enviado! Verifique sua caixa de entrada.', 'success');
+                setTimeout(renderLogin, 3000);
+            } catch (error) {
+                console.error('Erro:', error);
+                showMessage(error.response?.data?.error || 'Erro ao enviar email', 'error');
+            }
+        }
+        
+        // Dashboard
+        function renderDashboard() {
+            console.log('🏠 Renderizando dashboard...');
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="min-h-screen bg-gray-100">
+                    <nav class="bg-purple-700 text-white p-4">
+                        <div class="container mx-auto flex justify-between items-center">
+                            <h1 class="text-2xl font-bold">
+                                <i class="fas fa-graduation-cap mr-2"></i>
+                                IAprova
+                            </h1>
+                            <div class="flex items-center gap-4">
+                                <span>Olá, ${currentUser?.name || 'Usuário'}</span>
+                                <button onclick="logout()" class="bg-purple-800 px-4 py-2 rounded hover:bg-purple-900">
+                                    <i class="fas fa-sign-out-alt mr-1"></i> Sair
+                                </button>
+                            </div>
+                        </div>
+                    </nav>
+                    
+                    <div class="container mx-auto p-6">
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                            <h2 class="text-2xl font-bold mb-4">Bem-vindo ao IAprova!</h2>
+                            <p class="text-gray-600 mb-6">
+                                Sistema inteligente de preparação para concursos públicos com 5 tipos de conteúdo:
+                            </p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                                <div class="bg-purple-100 p-4 rounded-lg text-center">
+                                    <i class="fas fa-book text-purple-600 text-3xl mb-2"></i>
+                                    <h3 class="font-semibold">Teoria</h3>
+                                </div>
+                                <div class="bg-blue-100 p-4 rounded-lg text-center">
+                                    <i class="fas fa-tasks text-blue-600 text-3xl mb-2"></i>
+                                    <h3 class="font-semibold">Exercícios</h3>
+                                </div>
+                                <div class="bg-green-100 p-4 rounded-lg text-center">
+                                    <i class="fas fa-file-alt text-green-600 text-3xl mb-2"></i>
+                                    <h3 class="font-semibold">Resumo</h3>
+                                </div>
+                                <div class="bg-yellow-100 p-4 rounded-lg text-center">
+                                    <i class="fas fa-clone text-yellow-600 text-3xl mb-2"></i>
+                                    <h3 class="font-semibold">Flashcards</h3>
+                                </div>
+                                <div class="bg-pink-100 p-4 rounded-lg text-center">
+                                    <i class="fas fa-file-upload text-pink-600 text-3xl mb-2"></i>
+                                    <h3 class="font-semibold">Upload PDF</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Logout
+        function logout() {
+            localStorage.clear();
+            currentUser = null;
+            renderLogin();
+        }
+        
+        // Mostrar mensagem
+        function showMessage(text, type = 'info') {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500'
+            };
+            
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50`;
+            toast.textContent = text;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ DOM carregado, inicializando...');
+            
+            // Verificar se há usuário salvo
+            const savedUser = localStorage.getItem('userId');
+            if (savedUser) {
+                currentUser = {
+                    id: parseInt(savedUser),
+                    email: localStorage.getItem('userEmail'),
+                    name: localStorage.getItem('userName')
+                };
+                renderDashboard();
+            } else {
+                renderLogin();
+            }
+        });
+        
+        console.log('✅ Script carregado com sucesso!');
+    </script>
+</body>
+</html>

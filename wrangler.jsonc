@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "iaprova",
+  "compatibility_date": "2025-12-01",
+  "pages_build_output_dir": "./dist",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  // Variáveis de ambiente (production)
+  // Configure em produção com: npx wrangler pages secret put GEMINI_API_KEY
+  // "vars": {
+  //   "GEMINI_API_KEY": "configure-via-secret"
+  // },
+  // "kv_namespaces": [
+  //   {
+  //     "binding": "MY_KV_NAMESPACE",
+  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  //   }
+  // ],
+  "r2_buckets": [
+    {
+      "binding": "EDITAIS",
+      "bucket_name": "iaprova-editais"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "iaprova-db",
+      "database_id": "placeholder-will-be-set-on-deploy"
+    }
+  ],
+  // "ai": {
+  //   "binding": "AI"
+  // }
+}

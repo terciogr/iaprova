@@ -1,0 +1,31 @@
+{
+  "name": "iaprova",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:sandbox": "wrangler pages dev dist --d1=iaprova-db --local --ip 0.0.0.0 --port 3000",
+    "build": "vite build",
+    "preview": "wrangler pages dev dist",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name iaprova",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "db:migrate:local": "wrangler d1 migrations apply iaprova-db --local",
+    "db:migrate:prod": "wrangler d1 migrations apply iaprova-db",
+    "db:console:local": "wrangler d1 execute iaprova-db --local",
+    "clean-port": "fuser -k 3000/tcp 2>/dev/null || true",
+    "test": "curl http://localhost:3000"
+  },
+  "dependencies": {
+    "canvas": "^3.2.0",
+    "hono": "^4.10.7",
+    "js-yaml": "^4.1.1",
+    "openai": "^6.9.1",
+    "pdfjs-dist": "^5.4.449",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@hono/vite-build": "^1.2.0",
+    "@hono/vite-dev-server": "^0.18.2",
+    "vite": "^6.3.5",
+    "wrangler": "^4.4.0"
+  }
+}
