@@ -1852,15 +1852,15 @@ ${textoParaIA}
     // Modelos ordenados por velocidade/estabilidade:
     // 1. gemini-2.0-flash-lite: Mais rápido, menor rate limit
     // 2. gemini-2.0-flash: Equilíbrio velocidade/qualidade
-    // 3. gemini-1.5-flash-8b: Estável, menor rate limit
-    // 4. gemini-1.5-flash: Mais estável, ampla disponibilidade
-    // 5. gemini-1.5-pro: Último recurso (mais lento mas confiável)
+    // 3. gemini-2.0-flash-8b: Estável, menor rate limit
+    // 4. gemini-2.0-flash: Mais estável, ampla disponibilidade
+    // 5. gemini-2.0-flash: Último recurso (mais lento mas confiável)
     const apiModels = [
       { name: 'gemini-2.0-flash-lite', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`, maxTokens: 32768 },
       { name: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, maxTokens: 65536 },
-      { name: 'gemini-1.5-flash-8b', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${geminiKey}`, maxTokens: 32768 },
-      { name: 'gemini-1.5-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, maxTokens: 65536 },
-      { name: 'gemini-1.5-pro', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiKey}`, maxTokens: 65536 }
+      { name: 'gemini-2.0-flash-8b', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-8b:generateContent?key=${geminiKey}`, maxTokens: 32768 },
+      { name: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, maxTokens: 65536 },
+      { name: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, maxTokens: 65536 }
     ]
     
     // Variáveis para controle de rate limit global

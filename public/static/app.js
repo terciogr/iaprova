@@ -2022,7 +2022,7 @@ function renderConcursoEspecifico() {
               <div class="mt-2 md:mt-3 space-y-1 md:space-y-1.5 text-[10px] md:text-xs">
                 <p class="text-[#1A3A7F] flex items-center">
                   <i class="fas fa-robot mr-1.5"></i>
-                  <span>IA Gemini extrai disciplinas automaticamente</span>
+                  <span>IA IA extrai disciplinas automaticamente</span>
                 </p>
               </div>
               
@@ -2086,7 +2086,7 @@ function renderConcursoEspecifico() {
     // ✅ Informar sobre PDFs (mas não bloquear)
     const arquivosPDF = Array.from(editaisFiles).filter(f => f.name.endsWith('.pdf'));
     if (arquivosPDF.length > 0) {
-      console.log(`📄 ${arquivosPDF.length} PDF(s) detectado(s). Gemini AI irá extrair o texto automaticamente.`);
+      console.log(`📄 ${arquivosPDF.length} PDF(s) detectado(s). IA AI irá extrair o texto automaticamente.`);
     }
     
     console.log(`📄 ${editaisFiles.length} edital(is) anexado(s)`);
@@ -2177,7 +2177,7 @@ async function processarEditalAntesDeStep2() {
             <div class="flex items-center gap-3 p-3 rounded ${etapaAtual >= 2 ? 'bg-[#E8EDF5]' : ''}">
               ${iconeEtapa(2)}
               <span class="${corEtapa(2)}">
-                2. 🤖 Analisando conteúdo com IA Gemini
+                2. 🤖 Analisando conteúdo com IA
               </span>
             </div>
             <div class="flex items-center gap-3 p-3 rounded ${etapaAtual >= 3 ? 'bg-[#E8EDF5]' : ''}">
@@ -2259,14 +2259,14 @@ async function processarEditalAntesDeStep2() {
         continue; // Pular processamento via IA
       }
       
-      console.log(`🧠 Processando edital ID ${edital.id} com IA Gemini...`);
+      console.log(`🧠 Processando edital ID ${edital.id} com IA IA...`);
       atualizarFeedbackUI(2, `🔍 Passo 1: Buscando edital no banco de dados...`);
       await new Promise(resolve => setTimeout(resolve, 300));
       atualizarFeedbackUI(2, `📝 Passo 2: Validando conteúdo do texto...`);
       await new Promise(resolve => setTimeout(resolve, 300));
       atualizarFeedbackUI(2, `📋 Passo 3: Localizando seção de CONTEÚDO PROGRAMÁTICO...`);
       await new Promise(resolve => setTimeout(resolve, 500));
-      atualizarFeedbackUI(2, `🤖 Passo 4: Enviando para análise com IA Gemini...`);
+      atualizarFeedbackUI(2, `🤖 Passo 4: Enviando para análise com IA IA...`);
       atualizarFeedbackUI(2, `⏳ Isso pode levar 30-60 segundos...`);
       
       try {
@@ -2275,7 +2275,7 @@ async function processarEditalAntesDeStep2() {
         
         // Feedback de sucesso detalhado
         const numDisciplinas = processRes.data.disciplinas?.length || 0;
-        atualizarFeedbackUI(2, `✅ IA Gemini respondeu com sucesso!`, 'success');
+        atualizarFeedbackUI(2, `✅ IA IA respondeu com sucesso!`, 'success');
         atualizarFeedbackUI(3, `📚 ${numDisciplinas} disciplinas identificadas!`, 'success');
         
         // Listar disciplinas encontradas
@@ -2586,7 +2586,7 @@ async function processarEditalAntesDeStep2() {
       if (backendError.includes('Texto do edital vazio')) {
         errorMsg += '💡 Dica: O PDF pode estar protegido ou vazio. Converta para TXT antes de anexar.';
         atualizarFeedbackUI(etapaAtual, `💡 Solução: Converta o PDF para TXT usando um conversor online.`, 'error');
-      } else if (backendError.includes('Gemini API')) {
+      } else if (backendError.includes('IA API')) {
         errorMsg += '💡 Dica: O serviço de IA pode estar temporariamente indisponível. Tente novamente.';
         atualizarFeedbackUI(etapaAtual, `💡 Solução: Aguarde alguns minutos e tente novamente.`, 'error');
       } else if (backendError.includes('não retornou JSON')) {
@@ -16182,8 +16182,7 @@ function mostrarBancaDetectada(banca) {
 
 
 // Função melhorada para mostrar tooltip
-function showTooltip(metaId) {
-  const tooltip = document.getElementById(`tooltip-${metaId}`);
+`);
   const button = event.currentTarget;
   
   if (tooltip && button) {
@@ -16212,3 +16211,261 @@ function showTooltip(metaId) {
     tooltip.style.zIndex = '9999';
   }
 }
+
+// Modal de Ajuda
+window.abrirModalAjuda = function() {
+  const modal = document.createElement('div');
+  modal.id = 'modal-ajuda';
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+  modal.innerHTML = `
+    <div class="bg-white dark:bg-gray-800 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+      <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
+            <i class="fas fa-question-circle text-blue-500 mr-2"></i>
+            Central de Ajuda
+          </h2>
+          <button onclick="document.getElementById('modal-ajuda').remove()" 
+            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div class="p-6 space-y-4">
+        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+          <h3 class="font-bold text-lg mb-2 text-blue-800 dark:text-blue-300">
+            <i class="fas fa-info-circle mr-2"></i>Como usar o IAprova?
+          </h3>
+          <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+            <li>• Faça o upload do edital do seu concurso</li>
+            <li>• Preencha a entrevista inicial com seus dados</li>
+            <li>• Receba um plano de estudos personalizado</li>
+            <li>• Gere conteúdos com IA para cada tópico</li>
+          </ul>
+        </div>
+        
+        <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+          <h3 class="font-bold text-lg mb-2 text-green-800 dark:text-green-300">
+            <i class="fas fa-graduation-cap mr-2"></i>Recursos Disponíveis
+          </h3>
+          <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+            <li>• <strong>Teoria:</strong> Conteúdo completo do tópico</li>
+            <li>• <strong>Exercícios:</strong> Questões no estilo da banca</li>
+            <li>• <strong>Resumo:</strong> Síntese do conteúdo</li>
+            <li>• <strong>Flashcards:</strong> Cards para memorização</li>
+            <li>• <strong>Resumo Personalizado:</strong> Upload de PDF para resumo</li>
+          </ul>
+        </div>
+        
+        <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
+          <h3 class="font-bold text-lg mb-2 text-yellow-800 dark:text-yellow-300">
+            <i class="fas fa-lightbulb mr-2"></i>Dicas Importantes
+          </h3>
+          <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+            <li>• Configure a IA no menu para personalizar o conteúdo</li>
+            <li>• Use o tema escuro para estudar à noite</li>
+            <li>• Acompanhe seu progresso no dashboard</li>
+            <li>• Revise regularmente com flashcards</li>
+          </ul>
+        </div>
+        
+        <div class="text-center pt-4">
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Precisa de mais ajuda? Entre em contato pelo suporte.
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+<!-- Botão de Ajuda Flutuante -->
+<div id="help-button-container" style="position: fixed; bottom: 80px; right: 20px; z-index: 9998;">
+  <button onclick="toggleHelpMenu()" 
+    class="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-300 group">
+    <i class="fas fa-question text-xl group-hover:scale-110 transition-transform"></i>
+  </button>
+  
+  <!-- Menu de Ajuda (oculto por padrão) -->
+  <div id="help-menu" class="hidden absolute bottom-16 right-0 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-72">
+    <div class="space-y-3">
+      <h3 class="font-bold text-gray-800 dark:text-white border-b pb-2">
+        <i class="fas fa-question-circle text-blue-500 mr-2"></i>
+        Central de Ajuda
+      </h3>
+      
+      <button onclick="showHelpTopic('inicio')" 
+        class="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition">
+        <i class="fas fa-play-circle text-green-500 mr-2"></i>
+        Como começar
+      </button>
+      
+      <button onclick="showHelpTopic('edital')" 
+        class="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition">
+        <i class="fas fa-file-pdf text-red-500 mr-2"></i>
+        Upload de edital
+      </button>
+      
+      <button onclick="showHelpTopic('conteudo')" 
+        class="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition">
+        <i class="fas fa-brain text-purple-500 mr-2"></i>
+        Gerar conteúdo com IA
+      </button>
+      
+      <button onclick="showHelpTopic('plano')" 
+        class="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition">
+        <i class="fas fa-calendar text-blue-500 mr-2"></i>
+        Plano de estudos
+      </button>
+      
+      <button onclick="showFullHelp()" 
+        class="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition font-semibold">
+        <i class="fas fa-book text-orange-500 mr-2"></i>
+        Ver toda ajuda
+      </button>
+    </div>
+  </div>
+</div>
+
+
+// Funções do Menu de Ajuda
+window.toggleHelpMenu = function() {
+  const menu = document.getElementById('help-menu');
+  if (menu) {
+    menu.classList.toggle('hidden');
+  }
+}
+
+window.showHelpTopic = function(topic) {
+  const helps = {
+    inicio: {
+      title: 'Como Começar',
+      content: `
+        <ol class="space-y-2 text-sm">
+          <li>1. Faça seu cadastro ou login</li>
+          <li>2. Faça upload do edital do concurso</li>
+          <li>3. Preencha a entrevista inicial</li>
+          <li>4. Receba seu plano personalizado</li>
+          <li>5. Comece a estudar com IA!</li>
+        </ol>
+      `
+    },
+    edital: {
+      title: 'Upload de Edital',
+      content: `
+        <div class="space-y-2 text-sm">
+          <p>📄 Formatos aceitos: PDF, TXT</p>
+          <p>⚠️ Se o PDF der erro, converta para TXT em:</p>
+          <p class="text-blue-600">ilovepdf.com/pt/pdf_para_texto</p>
+          <p>✅ A IA analisará automaticamente o conteúdo</p>
+        </div>
+      `
+    },
+    conteudo: {
+      title: 'Gerar Conteúdo com IA',
+      content: `
+        <div class="space-y-2 text-sm">
+          <p><strong>5 tipos disponíveis:</strong></p>
+          <p>📘 Teoria - Explicação completa</p>
+          <p>📝 Exercícios - Questões práticas</p>
+          <p>📋 Resumo - Síntese do conteúdo</p>
+          <p>🎯 Flashcards - Memorização</p>
+          <p>📄 Resumo Personalizado - Upload PDF</p>
+        </div>
+      `
+    },
+    plano: {
+      title: 'Plano de Estudos',
+      content: `
+        <div class="space-y-2 text-sm">
+          <p>📅 Cronograma semanal personalizado</p>
+          <p>⏰ Baseado no seu tempo disponível</p>
+          <p>📊 Acompanhe seu progresso</p>
+          <p>🎯 Foco nas matérias do seu cargo</p>
+        </div>
+      `
+    }
+  };
+  
+  const help = helps[topic];
+  if (help) {
+    showHelpModal(help.title, help.content);
+  }
+}
+
+window.showFullHelp = function() {
+  const content = `
+    <div class="space-y-4">
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded">
+        <h3 class="font-bold mb-2">🚀 Início Rápido</h3>
+        <ol class="space-y-1 text-sm">
+          <li>1. Cadastre-se com seu email</li>
+          <li>2. Faça upload do edital (PDF ou TXT)</li>
+          <li>3. Complete a entrevista inicial</li>
+          <li>4. Explore seu plano de estudos</li>
+          <li>5. Gere conteúdos com IA</li>
+        </ol>
+      </div>
+      
+      <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded">
+        <h3 class="font-bold mb-2">💡 Dicas Importantes</h3>
+        <ul class="space-y-1 text-sm">
+          <li>• Configure a IA no menu (3 pontinhos)</li>
+          <li>• Use tema escuro para estudar à noite</li>
+          <li>• Revise com flashcards diariamente</li>
+          <li>• Acompanhe progresso no dashboard</li>
+        </ul>
+      </div>
+      
+      <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded">
+        <h3 class="font-bold mb-2">⚠️ Problemas Comuns</h3>
+        <ul class="space-y-1 text-sm">
+          <li>• PDF não funciona? Converta para TXT</li>
+          <li>• IA lenta? Aguarde 30-60 segundos</li>
+          <li>• Email não chega? Verifique spam</li>
+        </ul>
+      </div>
+    </div>
+  `;
+  
+  showHelpModal('Central de Ajuda Completa', content);
+}
+
+window.showHelpModal = function(title, content) {
+  // Fechar menu dropdown
+  document.getElementById('help-menu')?.classList.add('hidden');
+  
+  // Criar modal
+  const modal = document.createElement('div');
+  modal.id = 'help-modal';
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4';
+  modal.innerHTML = `
+    <div class="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[80vh] overflow-y-auto">
+      <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <h2 class="text-xl font-bold text-gray-800 dark:text-white">
+          <i class="fas fa-question-circle text-blue-500 mr-2"></i>
+          ${title}
+        </h2>
+        <button onclick="document.getElementById('help-modal').remove()" 
+          class="text-gray-500 hover:text-gray-700 dark:text-gray-400">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      <div class="p-6">
+        ${content}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+// Fechar menu ao clicar fora
+document.addEventListener('click', function(e) {
+  const helpButton = document.querySelector('#help-button-container button');
+  const helpMenu = document.getElementById('help-menu');
+  if (helpMenu && !helpButton.contains(e.target) && !helpMenu.contains(e.target)) {
+    helpMenu.classList.add('hidden');
+  }
+});
