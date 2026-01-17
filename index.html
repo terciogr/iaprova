@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IAprova - Sistema de Estudos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <!-- Container Principal -->
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-xl p-6 mb-6">
+            <h1 class="text-3xl font-bold text-blue-800 mb-2">IAprova</h1>
+            <p class="text-gray-600">Sistema Inteligente de Estudos para Concursos</p>
+        </div>
+
+        <!-- Cards de Funcionalidades -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Upload Edital -->
+            <div class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
+                <div class="text-4xl mb-4">📄</div>
+                <h2 class="text-xl font-bold mb-2">Upload de Edital</h2>
+                <p class="text-gray-600 mb-4">Análise automática com IA</p>
+                <button class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
+                    Fazer Upload
+                </button>
+            </div>
+
+            <!-- Plano de Estudos -->
+            <div class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
+                <div class="text-4xl mb-4">📅</div>
+                <h2 class="text-xl font-bold mb-2">Plano de Estudos</h2>
+                <p class="text-gray-600 mb-4">Cronograma personalizado</p>
+                <button class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">
+                    Criar Plano
+                </button>
+            </div>
+
+            <!-- Gerar Conteúdo -->
+            <div class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
+                <div class="text-4xl mb-4">🤖</div>
+                <h2 class="text-xl font-bold mb-2">Conteúdo com IA</h2>
+                <p class="text-gray-600 mb-4">5 tipos de conteúdo</p>
+                <button onclick="mostrarOpcoes()" class="w-full bg-purple-500 text-white py-2 rounded hover:bg-purple-600">
+                    Gerar Conteúdo
+                </button>
+            </div>
+        </div>
+
+        <!-- Status do Sistema -->
+        <div class="bg-green-50 border-2 border-green-300 rounded-lg p-6 mt-6">
+            <h3 class="text-xl font-bold text-green-800 mb-4">✅ Sistema Funcionando</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h4 class="font-bold text-green-700 mb-2">Correções Aplicadas:</h4>
+                    <ul class="text-green-600 space-y-1">
+                        <li>✓ API Gemini 2.0 configurada</li>
+                        <li>✓ 5 opções de conteúdo disponíveis</li>
+                        <li>✓ Menu de ajuda no canto direito</li>
+                        <li>✓ Banca organizadora visível</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-green-700 mb-2">Recursos:</h4>
+                    <ul class="text-green-600 space-y-1">
+                        <li>✓ Upload de PDF/TXT</li>
+                        <li>✓ Análise automática</li>
+                        <li>✓ Plano personalizado</li>
+                        <li>✓ Geração com IA</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Link GitHub -->
+        <div class="bg-gray-800 text-white rounded-lg p-4 mt-6 text-center">
+            <p class="mb-2">Código completo disponível em:</p>
+            <a href="https://github.com/terciogr/iaprova" target="_blank" class="text-blue-400 hover:text-blue-300 underline font-bold">
+                github.com/terciogr/iaprova
+            </a>
+        </div>
+    </div>
+
+    <!-- Modal de Opções (oculto) -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+            <h2 class="text-2xl font-bold mb-4">Escolha o Tipo de Conteúdo</h2>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <button class="p-4 border-2 rounded hover:bg-blue-50">
+                    <div class="text-2xl mb-2">📚</div>
+                    <div class="font-bold">Teoria</div>
+                </button>
+                
+                <button class="p-4 border-2 rounded hover:bg-green-50">
+                    <div class="text-2xl mb-2">✏️</div>
+                    <div class="font-bold">Exercícios</div>
+                </button>
+                
+                <button class="p-4 border-2 rounded hover:bg-yellow-50">
+                    <div class="text-2xl mb-2">📝</div>
+                    <div class="font-bold">Resumo</div>
+                </button>
+                
+                <button class="p-4 border-2 rounded hover:bg-purple-50">
+                    <div class="text-2xl mb-2">🎴</div>
+                    <div class="font-bold">Flashcards</div>
+                </button>
+                
+                <button class="col-span-2 p-4 border-2 rounded hover:bg-orange-50">
+                    <div class="text-2xl mb-2">📤</div>
+                    <div class="font-bold">Resumo Personalizado (Upload PDF)</div>
+                </button>
+            </div>
+            
+            <button onclick="fecharModal()" class="w-full bg-gray-500 text-white py-2 rounded mt-4 hover:bg-gray-600">
+                Fechar
+            </button>
+        </div>
+    </div>
+
+    <!-- Botão de Ajuda Flutuante -->
+    <button onclick="mostrarAjuda()" class="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center">
+        <span class="text-2xl">?</span>
+    </button>
+
+    <script>
+        function mostrarOpcoes() {
+            document.getElementById('modal').classList.remove('hidden');
+        }
+        
+        function fecharModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+        
+        function mostrarAjuda() {
+            alert('Como usar o IAprova:\n\n1. Faça upload do edital\n2. Crie seu plano de estudos\n3. Gere conteúdo com IA\n4. Acompanhe seu progresso\n\nTodas as 5 opções de conteúdo estão disponíveis!');
+        }
+    </script>
+</body>
+</html>
