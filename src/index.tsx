@@ -376,66 +376,130 @@ async function sendPasswordResetEmail(email: string, token: string, name: string
       body: JSON.stringify({
         from: FROM_EMAIL,
         to: [email],
-        subject: '🔐 Redefinir senha - IAprova',
+        subject: '🔐 Redefinição de Senha - IAprova',
         html: `
           <!DOCTYPE html>
-          <html>
+          <html lang="pt-BR">
           <head>
             <meta charset="utf-8">
-            <title>Redefinir Senha</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Redefinir Senha - IAprova</title>
           </head>
-          <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
-            <table cellpadding="0" cellspacing="0" width="100%" style="background-color: #f4f4f4; padding: 20px;">
+          <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #E8EDF5;">
+            <table cellpadding="0" cellspacing="0" width="100%" style="background-color: #E8EDF5; padding: 40px 20px;">
               <tr>
                 <td align="center">
-                  <table cellpadding="0" cellspacing="0" width="600" style="background-color: white; border-radius: 10px;">
+                  <table cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(18, 45, 106, 0.12); overflow: hidden;">
+                    
+                    <!-- Header -->
                     <tr>
-                      <td style="padding: 40px 30px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 10px 10px 0 0;">
-                        <h1 style="color: white; text-align: center; margin: 0;">🔐 Redefinir Senha</h1>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 40px 30px;">
-                        <h2 style="color: #333; margin-bottom: 20px;">Olá, ${name}!</h2>
-                        <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
-                          Recebemos uma solicitação para redefinir a senha da sua conta no IAprova.
-                        </p>
-                        <p style="color: #666; line-height: 1.6; margin-bottom: 30px;">
-                          Se você solicitou esta alteração, clique no botão abaixo para criar uma nova senha:
-                        </p>
+                      <td style="background: linear-gradient(135deg, #122D6A 0%, #1A3A7F 50%, #2A4A9F 100%); padding: 40px 30px; text-align: center;">
                         <table cellpadding="0" cellspacing="0" width="100%">
                           <tr>
                             <td align="center">
-                              <a href="${resetUrl}" style="display: inline-block; padding: 15px 40px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                                🔐 Redefinir Minha Senha
-                              </a>
+                              <div style="background-color: rgba(255,255,255,0.15); width: 70px; height: 70px; border-radius: 16px; display: inline-block; line-height: 70px; margin-bottom: 16px;">
+                                <span style="font-size: 32px;">🔐</span>
+                              </div>
+                              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">Redefinição de Senha</h1>
+                              <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0 0; font-size: 14px;">IAprova - Preparação Inteligente</p>
                             </td>
                           </tr>
                         </table>
-                        <p style="color: #999; font-size: 14px; margin-top: 30px;">
-                          Se o botão não funcionar, copie e cole este link no seu navegador:
+                      </td>
+                    </tr>
+                    
+                    <!-- Conteúdo -->
+                    <tr>
+                      <td style="padding: 40px 40px 20px 40px;">
+                        <h2 style="color: #122D6A; margin: 0 0 8px 0; font-size: 22px; font-weight: 700;">Olá, ${name}!</h2>
+                        <p style="color: #4A6491; margin: 0; font-size: 15px; line-height: 1.6;">
+                          Recebemos uma solicitação para redefinir a senha da sua conta.
                         </p>
-                        <p style="color: #3b82f6; font-size: 14px; word-break: break-all;">
-                          ${resetUrl}
-                        </p>
-                        <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 15px; border-radius: 5px; margin-top: 30px;">
-                          <p style="color: #991b1b; font-size: 14px; margin: 0;">
-                            <strong>⚠️ Importante:</strong><br>
-                            • Este link é válido por apenas 1 hora<br>
-                            • Se você não solicitou esta alteração, ignore este email<br>
-                            • Sua senha atual permanecerá a mesma até você criar uma nova
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td style="padding: 0 40px;">
+                        <div style="background: linear-gradient(135deg, #E8EDF5 0%, #F3F6FA 100%); border-radius: 12px; padding: 20px; border-left: 4px solid #1A3A7F;">
+                          <p style="color: #122D6A; margin: 0; font-size: 14px; line-height: 1.7;">
+                            Se você fez essa solicitação, clique no botão abaixo para criar uma nova senha. Caso contrário, você pode ignorar este email com segurança.
                           </p>
                         </div>
                       </td>
                     </tr>
+                    
+                    <!-- Botão -->
                     <tr>
-                      <td style="padding: 20px 30px; background: #f9fafb; border-radius: 0 0 10px 10px;">
-                        <p style="color: #999; font-size: 12px; margin: 0; text-align: center;">
-                          © 2024 IAprova - Sistema de Preparação para Concursos<br>
-                          Este é um email automático, não responda.
+                      <td style="padding: 32px 40px; text-align: center;">
+                        <table cellpadding="0" cellspacing="0" width="100%">
+                          <tr>
+                            <td align="center">
+                              <a href="${resetUrl}" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #122D6A 0%, #1A3A7F 100%); color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 14px rgba(18, 45, 106, 0.35);">
+                                🔐 Criar Nova Senha
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <!-- Aviso importante -->
+                    <tr>
+                      <td style="padding: 0 40px 32px 40px;">
+                        <div style="background-color: #FEF3C7; border-radius: 12px; padding: 20px; border-left: 4px solid #F59E0B;">
+                          <p style="color: #92400E; font-size: 13px; font-weight: 600; margin: 0 0 8px 0;">
+                            ⚠️ Informações Importantes:
+                          </p>
+                          <ul style="color: #92400E; font-size: 13px; margin: 0; padding-left: 20px; line-height: 1.8;">
+                            <li>Este link é válido por apenas <strong>1 hora</strong></li>
+                            <li>Não compartilhe este link com ninguém</li>
+                            <li>Se você não solicitou, sua senha permanecerá a mesma</li>
+                          </ul>
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <!-- Link alternativo -->
+                    <tr>
+                      <td style="padding: 0 40px 32px 40px;">
+                        <div style="background-color: #F3F6FA; border-radius: 8px; padding: 16px;">
+                          <p style="color: #8FA4CC; font-size: 12px; margin: 0 0 8px 0;">
+                            Caso o botão não funcione, copie e cole este link no navegador:
+                          </p>
+                          <p style="color: #1A3A7F; font-size: 12px; margin: 0; word-break: break-all;">
+                            <a href="${resetUrl}" style="color: #1A3A7F; text-decoration: underline;">${resetUrl}</a>
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                      <td style="background-color: #122D6A; padding: 24px 40px;">
+                        <table cellpadding="0" cellspacing="0" width="100%">
+                          <tr>
+                            <td align="center">
+                              <p style="color: rgba(255,255,255,0.5); font-size: 11px; margin: 0;">
+                                Se você não solicitou a redefinição de senha, ignore este email.
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <!-- Copyright -->
+                    <tr>
+                      <td style="padding: 20px 40px; text-align: center;">
+                        <p style="color: #8FA4CC; font-size: 11px; margin: 0;">
+                          © 2024 IAprova - Preparação Inteligente para Concursos Públicos
+                        </p>
+                        <p style="color: #C5D1E8; font-size: 10px; margin: 8px 0 0 0;">
+                          Este é um email automático. Por favor, não responda.
                         </p>
                       </td>
                     </tr>
+                    
                   </table>
                 </td>
               </tr>
@@ -493,56 +557,177 @@ async function sendVerificationEmail(email: string, token: string, name: string,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: FROM_EMAIL, // Usar apenas o email, sem nome
-        to: [email], // Resend espera array
-        subject: 'Confirme seu email - IAprova',
+        from: FROM_EMAIL,
+        to: [email],
+        subject: '🎯 Ative sua conta no IAprova - Sua jornada de aprovação começa agora!',
         html: `
           <!DOCTYPE html>
-          <html>
+          <html lang="pt-BR">
           <head>
             <meta charset="utf-8">
-            <title>Verificação de Email</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Bem-vindo ao IAprova</title>
           </head>
-          <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
-            <table cellpadding="0" cellspacing="0" width="100%" style="background-color: #f4f4f4; padding: 20px;">
+          <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #E8EDF5;">
+            <table cellpadding="0" cellspacing="0" width="100%" style="background-color: #E8EDF5; padding: 40px 20px;">
               <tr>
                 <td align="center">
-                  <table cellpadding="0" cellspacing="0" width="600" style="background-color: white; border-radius: 10px;">
+                  <table cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(18, 45, 106, 0.12); overflow: hidden;">
+                    
+                    <!-- Header com gradiente azul marinho -->
                     <tr>
-                      <td style="padding: 40px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px 10px 0 0;">
-                        <h1 style="color: white; text-align: center; margin: 0;">IAprova</h1>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 40px 30px;">
-                        <h2 style="color: #333; margin-bottom: 20px;">Olá, ${name}!</h2>
-                        <p style="color: #666; line-height: 1.6; margin-bottom: 30px;">
-                          Bem-vindo ao IAprova! Você está a um passo de começar sua preparação inteligente para concursos públicos.
-                        </p>
-                        <p style="color: #666; line-height: 1.6; margin-bottom: 30px;">
-                          Para ativar sua conta, clique no botão abaixo:
-                        </p>
+                      <td style="background: linear-gradient(135deg, #122D6A 0%, #1A3A7F 50%, #2A4A9F 100%); padding: 40px 30px; text-align: center;">
                         <table cellpadding="0" cellspacing="0" width="100%">
                           <tr>
                             <td align="center">
-                              <a href="${verificationUrl}" style="display: inline-block; padding: 15px 40px; background-color: #667eea; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                                Verificar Email
+                              <!-- Logo/Ícone -->
+                              <div style="background-color: rgba(255,255,255,0.15); width: 70px; height: 70px; border-radius: 16px; display: inline-block; line-height: 70px; margin-bottom: 16px;">
+                                <span style="font-size: 32px;">🎯</span>
+                              </div>
+                              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">IAprova</h1>
+                              <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0 0; font-size: 14px; font-weight: 400;">Preparação Inteligente para Concursos</p>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <!-- Conteúdo principal -->
+                    <tr>
+                      <td style="padding: 40px 40px 20px 40px;">
+                        <h2 style="color: #122D6A; margin: 0 0 8px 0; font-size: 24px; font-weight: 700;">Olá, ${name}! 👋</h2>
+                        <p style="color: #4A6491; margin: 0; font-size: 16px;">Estamos muito felizes em ter você conosco!</p>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td style="padding: 0 40px;">
+                        <div style="background: linear-gradient(135deg, #E8EDF5 0%, #F3F6FA 100%); border-radius: 12px; padding: 24px; border-left: 4px solid #122D6A;">
+                          <p style="color: #122D6A; margin: 0 0 12px 0; font-size: 15px; line-height: 1.7;">
+                            <strong>Você está a um clique de iniciar sua jornada rumo à aprovação!</strong>
+                          </p>
+                          <p style="color: #4A6491; margin: 0; font-size: 14px; line-height: 1.7;">
+                            Com o IAprova, você terá acesso a um plano de estudos personalizado, conteúdos gerados por IA e ferramentas inteligentes para maximizar sua preparação.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <!-- Botão de verificação -->
+                    <tr>
+                      <td style="padding: 32px 40px; text-align: center;">
+                        <table cellpadding="0" cellspacing="0" width="100%">
+                          <tr>
+                            <td align="center">
+                              <a href="${verificationUrl}" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #122D6A 0%, #1A3A7F 100%); color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 14px rgba(18, 45, 106, 0.35); transition: all 0.3s ease;">
+                                ✅ Ativar Minha Conta
                               </a>
                             </td>
                           </tr>
                         </table>
-                        <p style="color: #999; font-size: 14px; margin-top: 30px;">
-                          Se o botão não funcionar, copie e cole este link no seu navegador:
-                        </p>
-                        <p style="color: #3b82f6; font-size: 14px; word-break: break-all;">
-                          ${verificationUrl}
-                        </p>
-                        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-                        <p style="color: #999; font-size: 12px;">
-                          Este link é válido por 24 horas. Se você não solicitou este email, pode ignorá-lo com segurança.
+                        <p style="color: #8FA4CC; font-size: 13px; margin: 16px 0 0 0;">
+                          Clique no botão acima para confirmar seu email
                         </p>
                       </td>
                     </tr>
+                    
+                    <!-- O que você terá acesso -->
+                    <tr>
+                      <td style="padding: 0 40px 32px 40px;">
+                        <p style="color: #122D6A; font-size: 14px; font-weight: 600; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                          ✨ O que você terá acesso:
+                        </p>
+                        <table cellpadding="0" cellspacing="0" width="100%">
+                          <tr>
+                            <td style="padding: 8px 0;">
+                              <table cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="width: 28px; vertical-align: top;">
+                                    <span style="color: #1A3A7F; font-size: 16px;">📚</span>
+                                  </td>
+                                  <td style="color: #4A6491; font-size: 14px; line-height: 1.5;">
+                                    <strong style="color: #122D6A;">Plano de Estudos Personalizado</strong> - Baseado no seu edital e disponibilidade
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0;">
+                              <table cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="width: 28px; vertical-align: top;">
+                                    <span style="color: #1A3A7F; font-size: 16px;">🤖</span>
+                                  </td>
+                                  <td style="color: #4A6491; font-size: 14px; line-height: 1.5;">
+                                    <strong style="color: #122D6A;">Conteúdo Gerado por IA</strong> - Teoria, exercícios e resumos personalizados
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0;">
+                              <table cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="width: 28px; vertical-align: top;">
+                                    <span style="color: #1A3A7F; font-size: 16px;">📊</span>
+                                  </td>
+                                  <td style="color: #4A6491; font-size: 14px; line-height: 1.5;">
+                                    <strong style="color: #122D6A;">Acompanhamento de Progresso</strong> - Métricas e estatísticas de desempenho
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <!-- Link alternativo -->
+                    <tr>
+                      <td style="padding: 0 40px 32px 40px;">
+                        <div style="background-color: #F3F6FA; border-radius: 8px; padding: 16px;">
+                          <p style="color: #8FA4CC; font-size: 12px; margin: 0 0 8px 0;">
+                            Caso o botão não funcione, copie e cole este link no navegador:
+                          </p>
+                          <p style="color: #1A3A7F; font-size: 12px; margin: 0; word-break: break-all;">
+                            <a href="${verificationUrl}" style="color: #1A3A7F; text-decoration: underline;">${verificationUrl}</a>
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                      <td style="background-color: #122D6A; padding: 24px 40px;">
+                        <table cellpadding="0" cellspacing="0" width="100%">
+                          <tr>
+                            <td align="center">
+                              <p style="color: rgba(255,255,255,0.7); font-size: 12px; margin: 0 0 8px 0;">
+                                Este link expira em <strong style="color: #ffffff;">24 horas</strong>
+                              </p>
+                              <p style="color: rgba(255,255,255,0.5); font-size: 11px; margin: 0;">
+                                Se você não criou uma conta no IAprova, pode ignorar este email com segurança.
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <!-- Copyright -->
+                    <tr>
+                      <td style="padding: 20px 40px; text-align: center;">
+                        <p style="color: #8FA4CC; font-size: 11px; margin: 0;">
+                          © 2024 IAprova - Preparação Inteligente para Concursos Públicos
+                        </p>
+                        <p style="color: #C5D1E8; font-size: 10px; margin: 8px 0 0 0;">
+                          Este é um email automático. Por favor, não responda.
+                        </p>
+                      </td>
+                    </tr>
+                    
                   </table>
                 </td>
               </tr>
