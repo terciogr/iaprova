@@ -2103,50 +2103,86 @@ app.post('/api/editais/processar/:id', async (c) => {
 🎯🎯🎯 CARGO DO CANDIDATO: ${cargoDesejado.toUpperCase()} 🎯🎯🎯
 ═══════════════════════════════════════════════════════════
 
-⚠️ REGRA CRÍTICA: EXTRAIA **SOMENTE** AS DISCIPLINAS DO CARGO "${cargoDesejado.toUpperCase()}"!
+⚠️ ATENÇÃO MÁXIMA:
+1. Extraia APENAS disciplinas do cargo "${cargoDesejado.toUpperCase()}"
+2. IGNORE conteúdos de outros cargos (Serviço Social, Fisioterapia, etc.)
+3. Procure seções como "NÍVEL SUPERIOR - ${cargoDesejado.toUpperCase()}" ou similar
 
-Em editais de concursos com múltiplos cargos, cada cargo tem disciplinas DIFERENTES.
-- NÃO misture disciplinas de outros cargos
-- PROCURE a seção específica: "CARGOS DE NÍVEL SUPERIOR" ou "ENFERMEIRO" ou similar
-- SE o cargo for ENFERMEIRO, extraia apenas: Português, Raciocínio Lógico, Regionais + Conhecimentos de Enfermagem
-- IGNORE disciplinas de outros cargos (Serviço Social, Fisioterapia, Nutrição, etc.)
+📌 EXEMPLO PARA CARGO ${cargoDesejado.toUpperCase()}:
+Se o edital tiver:
+- Conhecimentos Gerais: Português (10 questões), Raciocínio Lógico (5 questões)
+- Conhecimentos Específicos de ${cargoDesejado}: [lista de itens técnicos]
+- Legislação/SUS (se houver seção separada)
+
+Você deve retornar 3-4 DISCIPLINAS (não 10-15):
+1. Língua Portuguesa (peso 1) - tópicos de gramática
+2. Raciocínio Lógico (peso 1) - tópicos de lógica  
+3. Conhecimentos Específicos de ${cargoDesejado} (peso 3) - TODOS os itens técnicos como tópicos
+4. Legislação SUS (peso 2) - se for seção separada
 
 ` : '';
 
     const prompt = `Você é um ESPECIALISTA em editais de concursos públicos brasileiros.
 
-TAREFA CRÍTICA: Extrair APENAS as DISCIPLINAS do cargo específico do candidato.
 ${instrucaoCargo}
 ═══════════════════════════════════════════════════════════
-🔴 REGRAS DE EXTRAÇÃO
+🎯 TAREFA: EXTRAIR DISCIPLINAS DO CARGO "${cargoDesejado || 'Não especificado'}"
 ═══════════════════════════════════════════════════════════
 
-1. IDENTIFIQUE O CARGO: "${cargoDesejado || 'Não especificado'}"
-2. ENCONTRE A ESTRUTURA DA PROVA para esse cargo específico
-3. EXTRAIA APENAS as disciplinas que esse cargo irá fazer
+⚠️ REGRAS ABSOLUTAS - ENTENDA A DIFERENÇA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 DISCIPLINAS = matérias PRINCIPAIS (geralmente 3-6 por cargo)
+   Exemplos de DISCIPLINAS:
+   - "Língua Portuguesa"
+   - "Raciocínio Lógico" 
+   - "Conhecimentos Específicos de Enfermagem"
+   - "Legislação SUS"
+   - "Conhecimentos Regionais"
 
-ESTRUTURA TÍPICA DE PROVA (exemplo SESAPI):
-- CONHECIMENTOS GERAIS (peso 1): Português, Raciocínio Lógico, Conhecimentos Regionais
-- CONHECIMENTOS ESPECÍFICOS (peso 3): Disciplinas da área do cargo
+📝 TÓPICOS = itens DENTRO de cada disciplina (podem ser dezenas)
+   Exemplos de TÓPICOS (da disciplina Conhecimentos Específicos):
+   - "Noções de farmacologia"
+   - "Biossegurança em saúde"
+   - "Educação em saúde"
+   - "Gerenciamento de insumos"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🎯 ATRIBUIÇÃO DE PESO:
-- Conhecimentos Gerais → peso 1
-- Conhecimentos Específicos → peso 3
-- SE encontrar peso explícito no edital, USE esse valor
+🚨 ERRO COMUM A EVITAR:
+Se o edital lista "Conhecimentos Específicos: 1. Farmacologia; 2. Biossegurança; 3. Educação em saúde..."
+→ NÃO crie 3 disciplinas separadas!
+→ Crie UMA disciplina "Conhecimentos Específicos de ${cargoDesejado || 'Área'}" com esses itens como TÓPICOS
+
+📋 ESTRUTURA TÍPICA DE EDITAIS:
+1. CONHECIMENTOS GERAIS (peso 1):
+   - Língua Portuguesa → disciplina com tópicos de gramática, interpretação etc
+   - Raciocínio Lógico → disciplina com tópicos de proposições, diagramas etc
+   - Informática → disciplina (se houver)
+   - Conhecimentos Regionais → disciplina (se houver)
+
+2. CONHECIMENTOS ESPECÍFICOS (peso 2 ou 3):
+   - UMA disciplina principal do cargo (ex: "Conhecimentos de Enfermagem")
+   - Todos os itens técnicos vão como TÓPICOS dessa disciplina
+   - Pode haver "Legislação" ou "SUS" como disciplina separada SE estiver em seção distinta
+
+📊 REGRAS DE PESO:
+- Conhecimentos Gerais: peso 1
+- Conhecimentos Específicos: peso 2 ou 3 (maior se houver mais questões)
+- Procure "QUADRO DE PROVAS" para pesos exatos
 
 ═══════════════════════════════════════════════════════════
-📄 TEXTO DO EDITAL PARA ANÁLISE:
+📄 TEXTO DO EDITAL:
 ═══════════════════════════════════════════════════════════
 ${textoParaIA}
 ═══════════════════════════════════════════════════════════
 
-📤 RETORNE SOMENTE JSON VÁLIDO (sem markdown, sem \`\`\`):
+📤 RETORNE JSON VÁLIDO (sem markdown):
 {
   "cargo_identificado": "${cargoDesejado || 'Geral'}",
+  "total_disciplinas_encontradas": 4,
   "info_peso": {
-    "encontrou_tabela_peso": true,
+    "encontrou_tabela_peso": false,
     "peso_conhecimentos_gerais": 1,
-    "peso_conhecimentos_especificos": 3
+    "peso_conhecimentos_especificos": 2
   },
   "disciplinas": [
     {
@@ -2154,40 +2190,23 @@ ${textoParaIA}
       "categoria": "Conhecimentos Gerais",
       "peso": 1,
       "questoes": 10,
-      "topicos": ["Ortografia oficial", "Acentuação gráfica", "Pontuação", "..."]
-    },
-    {
-      "nome": "Raciocínio Lógico",
-      "categoria": "Conhecimentos Gerais",
-      "peso": 1,
-      "questoes": 10,
-      "topicos": ["Lógica proposicional", "Diagramas lógicos", "..."]
-    },
-    {
-      "nome": "Conhecimentos Regionais",
-      "categoria": "Conhecimentos Gerais",
-      "peso": 1,
-      "questoes": 10,
-      "topicos": ["História do estado", "Geografia regional", "..."]
+      "topicos": ["Interpretação de texto", "Concordância", "Regência", "Pontuação", "etc"]
     },
     {
       "nome": "Conhecimentos Específicos de ${cargoDesejado || 'Área'}",
       "categoria": "Conhecimentos Específicos",
       "peso": 3,
       "questoes": 30,
-      "topicos": ["Tópico 1", "Tópico 2", "..."]
+      "topicos": ["Todos os itens técnicos listados no edital para este cargo"]
     }
   ]
 }
 
-⚠️ INSTRUÇÕES OBRIGATÓRIAS:
-1. TODA disciplina DEVE ter um peso numérico (1, 2 ou 3)
-2. Categorize cada disciplina como "Conhecimentos Gerais" ou "Conhecimentos Específicos"
-3. Atribua peso baseado na CATEGORIA:
-   - Conhecimentos Gerais → peso 1
-   - Conhecimentos Específicos → peso 3 (ou 2 se explícito no edital)
-4. Extraia TODOS os tópicos separadamente (cada ponto final = novo tópico)
-5. NÃO retorne peso: null - SEMPRE atribua um valor baseado na categoria`
+⚠️ VALIDAÇÃO FINAL:
+✅ Total de disciplinas deve ser entre 3 e 6 (típico de concursos)
+✅ Cada disciplina deve ter vários tópicos (não apenas 1)
+✅ NÃO transforme tópicos em disciplinas separadas
+✅ Conhecimentos Específicos = UMA disciplina com MUITOS tópicos`
 
     // ════════════════════════════════════════════════════════════════════════
     // ✅ SISTEMA ULTRA-ROBUSTO DE CHAMADA À API GEMINI COM MÚLTIPLOS FALLBACKS
@@ -7835,9 +7854,20 @@ app.post('/api/desempenho', async (c) => {
 app.post('/api/conteudo/gerar', async (c) => {
   const { DB } = c.env
   const requestData = await c.req.json()
-  const { meta_id, user_id, disciplina_id, tipo, tempo_minutos, topicos: topicosRequest } = requestData
+  const { meta_id, user_id, disciplina_id, tipo, tempo_minutos, topicos: topicosRequest, config_ia } = requestData
+
+  // Carregar configuração de personalização da IA
+  const iaConfig = config_ia || {
+    tom: 'didatico',
+    temperatura: 0.5,
+    intensidade: 'intermediaria',
+    profundidade: 'aplicada',
+    extensao: 'medio',
+    formatoTeoria: 'completa'
+  }
 
   console.log('📥 /api/conteudo/gerar - Dados recebidos:', { meta_id, user_id, disciplina_id, tipo, tempo_minutos, topicos: topicosRequest })
+  console.log('🎆 Configuração de IA:', iaConfig)
 
   try {
     // Verificar se a meta existe (metas_diarias OU metas_semana)
@@ -7917,9 +7947,9 @@ app.post('/api/conteudo/gerar', async (c) => {
       SELECT * FROM interviews WHERE user_id = ? ORDER BY created_at DESC LIMIT 1
     `).bind(user_id).first()
 
-    // Gerar conteúdo baseado no tipo, tempo, contexto E TÓPICOS ESPECÍFICOS
+    // Gerar conteúdo baseado no tipo, tempo, contexto, TÓPICOS ESPECÍFICOS E CONFIGURAÇÃO DE IA
     console.log('🤖 Gerando conteúdo IA focado nos tópicos prioritários...')
-    const conteudo = await gerarConteudoIA(disciplina, userDisc, tipo, tempo_minutos, interview, c.env, topicosEdital)
+    const conteudo = await gerarConteudoIA(disciplina, userDisc, tipo, tempo_minutos, interview, c.env, topicosEdital, iaConfig)
     console.log('✅ Conteúdo IA gerado:', { 
       topicos: conteudo.topicos, 
       objetivos: conteudo.objetivos,
@@ -8909,7 +8939,7 @@ Agora gere o material em JSON válido:`
 }
 
 
-async function gerarConteudoIA(disciplina: any, userDisc: any, tipo: string, tempo_minutos: number, interview: any = null, env: any = null, topicosEdital: any[] = []) {
+async function gerarConteudoIA(disciplina: any, userDisc: any, tipo: string, tempo_minutos: number, interview: any = null, env: any = null, topicosEdital: any[] = [], iaConfig: any = null) {
   const nivel = userDisc?.nivel_atual || 0
   const jaEstudou = userDisc?.ja_estudou || false
   
@@ -8917,13 +8947,24 @@ async function gerarConteudoIA(disciplina: any, userDisc: any, tipo: string, tem
   if (nivel >= 7) dificuldade = 'avançado'
   else if (nivel >= 4) dificuldade = 'intermediário'
 
+  // Configuração padrão de IA se não fornecida
+  const config = iaConfig || {
+    tom: 'didatico',
+    temperatura: 0.5,
+    intensidade: 'intermediaria',
+    profundidade: 'aplicada',
+    extensao: 'medio',
+    formatoTeoria: 'completa'
+  }
+
   // Contexto do concurso/cargo para personalização
   const contexto = {
     tipo: interview?.objetivo_tipo || 'area_geral',
     concurso: interview?.concurso_nome,
     cargo: interview?.cargo,
     area: interview?.area_geral,
-    experiencia: interview?.experiencia || 'iniciante'
+    experiencia: interview?.experiencia || 'iniciante',
+    iaConfig: config // Adicionar config ao contexto
   }
 
   // Usar tópicos do edital se fornecidos, senão gerar genéricos
@@ -9920,6 +9961,25 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
     const disciplinaNome = formData.get('disciplina_nome') as string
     const metaId = formData.get('meta_id') as string
     const userIdHeader = formData.get('user_id') as string || c.req.header('X-User-ID')
+    const configIaStr = formData.get('config_ia') as string
+    
+    // Parse da configuração de IA
+    let iaConfig = {
+      tom: 'didatico',
+      intensidade: 'intermediaria',
+      profundidade: 'aplicada',
+      extensao: 'medio',
+      extensaoCustom: 2000,
+      formatoResumo: 'detalhado'
+    }
+    
+    if (configIaStr) {
+      try {
+        iaConfig = JSON.parse(configIaStr)
+      } catch (e) {
+        console.log('⚠️ Não foi possível parsear config_ia, usando padrão')
+      }
+    }
     
     if (!file) {
       return c.json({ error: 'Arquivo não fornecido' }, 400)
@@ -9971,9 +10031,48 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
     }
     
     console.log('📝 Texto extraído:', textoExtraido.length, 'caracteres')
+    console.log('🎨 Configuração IA:', JSON.stringify(iaConfig))
     
     // Gerar resumo personalizado usando Gemini
     const geminiKey = c.env.GEMINI_API_KEY || ''
+    
+    // Instruções baseadas na configuração de IA
+    const tomInstrucoes: Record<string, string> = {
+      formal: 'Use linguagem formal, acadêmica e protocolar.',
+      tecnico: 'Use terminologia técnica específica e precisa.',
+      didatico: 'Seja explicativo e pedagógico, facilitando o entendimento.',
+      direto: 'Seja objetivo e direto ao ponto, sem rodeios.',
+      casual: 'Use linguagem conversacional e amigável.'
+    }
+    
+    const intensidadeInstrucoes: Record<string, string> = {
+      superficial: 'Forneça uma visão geral básica do conteúdo.',
+      intermediaria: 'Equilibre conceitos básicos com aprofundamentos moderados.',
+      aprofundada: 'Seja detalhado e completo, cobrindo todos os aspectos.'
+    }
+    
+    const profundidadeInstrucoes: Record<string, string> = {
+      conceitual: 'Foque em definições e conceitos teóricos.',
+      aplicada: 'Combine teoria com exemplos práticos e aplicações.',
+      analitica: 'Inclua análise crítica, comparações e diferentes perspectivas.'
+    }
+    
+    const formatoResumoInstrucoes: Record<string, string> = {
+      detalhado: 'Desenvolva cada ponto com explicações completas e exemplos.',
+      topicos: 'Organize em listas de tópicos e subtópicos para fácil consulta.',
+      esquematico: 'Use esquemas visuais, tabelas e mapas mentais.',
+      executivo: 'Seja conciso e destaque apenas os pontos mais críticos.'
+    }
+    
+    // Definir limite de palavras baseado na extensão
+    let limiteResumo = 'entre 1500 e 2500 palavras'
+    if (iaConfig.extensao === 'curto') limiteResumo = 'entre 500 e 800 palavras'
+    else if (iaConfig.extensao === 'medio') limiteResumo = 'entre 1500 e 2500 palavras'
+    else if (iaConfig.extensao === 'longo') limiteResumo = 'entre 3000 e 5000 palavras'
+    else if (iaConfig.extensao === 'personalizado' && iaConfig.extensaoCustom) {
+      const palavras = Math.round(iaConfig.extensaoCustom / 5) // ~5 chars por palavra
+      limiteResumo = `aproximadamente ${palavras} palavras`
+    }
     
     const promptResumo = `
     TAREFA: Criar um RESUMO PERSONALIZADO do documento fornecido.
@@ -9983,41 +10082,51 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
     - Tópico: ${topicoNome}
     - Arquivo: ${file.name}
     
+    ═══════════════════════════════════════════════
+    🎨 PERSONALIZAÇÃO DO CONTEÚDO (seguir obrigatoriamente):
+    ═══════════════════════════════════════════════
+    - TOM: ${tomInstrucoes[iaConfig.tom] || tomInstrucoes.didatico}
+    - INTENSIDADE: ${intensidadeInstrucoes[iaConfig.intensidade] || intensidadeInstrucoes.intermediaria}
+    - PROFUNDIDADE: ${profundidadeInstrucoes[iaConfig.profundidade] || profundidadeInstrucoes.aplicada}
+    - FORMATO: ${formatoResumoInstrucoes[iaConfig.formatoResumo] || formatoResumoInstrucoes.detalhado}
+    - EXTENSÃO: ${limiteResumo}
+    
     DOCUMENTO FORNECIDO:
-    ${textoExtraido.substring(0, 50000)} // Limitar a 50k caracteres
+    ${textoExtraido.substring(0, 50000)}
     
     INSTRUÇÕES PARA O RESUMO:
-    1. Identifique os pontos principais do documento
-    2. Organize em tópicos e subtópicos claros
-    3. Destaque conceitos-chave e definições importantes
-    4. Inclua exemplos relevantes quando houver
-    5. Mantenha informações críticas e elimine redundâncias
-    6. Use formatação HTML para melhor legibilidade
+    1. SIGA as instruções de personalização acima
+    2. Identifique os pontos principais do documento
+    3. Organize em tópicos e subtópicos claros
+    4. Destaque conceitos-chave e definições importantes
+    5. Inclua exemplos relevantes quando houver
+    6. Mantenha informações críticas e elimine redundâncias
+    7. Use formatação HTML para melhor legibilidade
     
-    FORMATO DO RESUMO:
+    FORMATO DO RESUMO (use classes Tailwind com azul #122D6A):
     <div class="resumo-personalizado">
-      <h2>📄 Resumo: ${file.name}</h2>
+      <h2 class="text-2xl font-bold text-[#122D6A] mb-4">📄 Resumo: ${file.name}</h2>
       
-      <div class="info-documento bg-blue-50 p-4 rounded-lg mb-6">
+      <div class="info-documento bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
         <p><strong>Documento original:</strong> ${file.name}</p>
         <p><strong>Tamanho:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
         <p><strong>Processado em:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
       </div>
       
-      <h3 class="text-xl font-bold text-purple-700 mb-4">📌 Pontos Principais</h3>
+      <h3 class="text-xl font-bold text-[#122D6A] mb-4">📌 Pontos Principais</h3>
       [Liste os principais pontos do documento]
       
-      <h3 class="text-xl font-bold text-purple-700 mb-4 mt-6">📚 Conteúdo Detalhado</h3>
+      <h3 class="text-xl font-bold text-[#122D6A] mb-4 mt-6">📚 Conteúdo Detalhado</h3>
       [Desenvolva o resumo organizado]
       
-      <h3 class="text-xl font-bold text-purple-700 mb-4 mt-6">💡 Conceitos-Chave</h3>
+      <h3 class="text-xl font-bold text-[#122D6A] mb-4 mt-6">💡 Conceitos-Chave</h3>
       [Destaque definições e conceitos importantes]
       
-      <h3 class="text-xl font-bold text-purple-700 mb-4 mt-6">📝 Observações Importantes</h3>
+      <h3 class="text-xl font-bold text-[#122D6A] mb-4 mt-6">📝 Observações Importantes</h3>
       [Notas e destaques relevantes]
     </div>
     
-    IMPORTANTE: Mantenha o resumo entre 1000 e 3000 palavras, preservando as informações essenciais.
+    IMPORTANTE: Respeite o limite de ${limiteResumo}, preservando as informações essenciais.
     `
     
     const response = await fetch(

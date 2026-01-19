@@ -1115,8 +1115,11 @@ function checkUser() {
   };
   verificarEntrevista();
   
-  // Criar botão de ajuda após login
+  // Criar botão de ajuda flutuante após login
   setTimeout(createHelpButton, 1000);
+  
+  // Adicionar botão de ajuda no header (?) à direita
+  setTimeout(addHelpToHeader, 500);
 }
 
 // ============== TELA DE VERIFICAÇÃO DE EMAIL ==============
@@ -8103,14 +8106,14 @@ window.abrirModalResumoPersonalizado = function(metaId) {
   modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in';
   modal.innerHTML = `
     <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden animate-scale-in">
-      <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6">
+      <div class="bg-gradient-to-r from-[#122D6A] to-[#1e3a7a] text-white p-6">
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-2xl font-bold flex items-center gap-3">
               <i class="fas fa-file-upload text-3xl"></i>
               Resumo Personalizado
             </h2>
-            <p class="text-purple-100 mt-2">Upload de documento para gerar resumo com IA</p>
+            <p class="text-blue-200 mt-2">Upload de documento para gerar resumo com IA</p>
           </div>
           <button onclick="this.closest('.fixed').remove()" class="text-white/80 hover:text-white transition">
             <i class="fas fa-times text-xl"></i>
@@ -8120,9 +8123,9 @@ window.abrirModalResumoPersonalizado = function(metaId) {
       
       <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
         <!-- Informações do contexto -->
-        <div class="bg-purple-50 rounded-lg p-4 mb-6">
+        <div class="bg-blue-50 rounded-lg p-4 mb-6">
           <div class="flex items-center gap-3">
-            <i class="fas fa-info-circle text-purple-600"></i>
+            <i class="fas fa-info-circle text-[#122D6A]"></i>
             <div>
               <p class="text-sm text-gray-700">
                 <strong>Disciplina:</strong> ${meta.disciplina_nome}
@@ -8135,10 +8138,10 @@ window.abrirModalResumoPersonalizado = function(metaId) {
         </div>
         
         <!-- Área de upload -->
-        <div class="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center mb-6 hover:border-purple-500 transition-all" id="dropzone">
+        <div class="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center mb-6 hover:border-[#122D6A] transition-all" id="dropzone">
           <input type="file" id="file-upload" accept=".pdf,.txt,.doc,.docx" class="hidden">
           
-          <i class="fas fa-cloud-upload-alt text-6xl text-purple-400 mb-4"></i>
+          <i class="fas fa-cloud-upload-alt text-6xl text-[#122D6A] opacity-50 mb-4"></i>
           
           <h3 class="text-xl font-semibold text-gray-700 mb-2">
             Arraste um arquivo ou clique para selecionar
@@ -8149,7 +8152,7 @@ window.abrirModalResumoPersonalizado = function(metaId) {
           </p>
           
           <button onclick="document.getElementById('file-upload').click()" 
-            class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition font-medium">
+            class="bg-[#122D6A] text-white px-6 py-3 rounded-lg hover:bg-[#1e3a7a] transition font-medium">
             <i class="fas fa-folder-open mr-2"></i>
             Selecionar Arquivo
           </button>
@@ -8180,7 +8183,7 @@ window.abrirModalResumoPersonalizado = function(metaId) {
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="text-sm text-gray-600 mb-1 block">Tamanho do Resumo</label>
-              <select id="tamanho-resumo" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+              <select id="tamanho-resumo" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#122D6A]">
                 <option value="curto">Curto (1-2 páginas)</option>
                 <option value="medio" selected>Médio (2-3 páginas)</option>
                 <option value="longo">Longo (3-5 páginas)</option>
@@ -8189,7 +8192,7 @@ window.abrirModalResumoPersonalizado = function(metaId) {
             
             <div>
               <label class="text-sm text-gray-600 mb-1 block">Foco do Resumo</label>
-              <select id="foco-resumo" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+              <select id="foco-resumo" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#122D6A]">
                 <option value="geral" selected>Geral</option>
                 <option value="conceitos">Conceitos Principais</option>
                 <option value="pratico">Aplicação Prática</option>
@@ -8203,7 +8206,7 @@ window.abrirModalResumoPersonalizado = function(metaId) {
         <button onclick="processarResumoPersonalizado(${metaId})" 
           id="btn-processar"
           disabled
-          class="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-4 rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-700 hover:to-purple-800 transition flex items-center justify-center gap-3">
+          class="w-full bg-gradient-to-r from-[#122D6A] to-[#1e3a7a] text-white py-4 rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-[#1e3a7a] hover:to-[#264080] transition flex items-center justify-center gap-3">
           <i class="fas fa-magic"></i>
           Gerar Resumo Personalizado
         </button>
@@ -8235,16 +8238,16 @@ window.abrirModalResumoPersonalizado = function(metaId) {
   // Drag and drop
   dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    dropzone.classList.add('border-purple-500', 'bg-purple-50');
+    dropzone.classList.add('border-[#122D6A]', 'bg-blue-50');
   });
   
   dropzone.addEventListener('dragleave', () => {
-    dropzone.classList.remove('border-purple-500', 'bg-purple-50');
+    dropzone.classList.remove('border-[#122D6A]', 'bg-blue-50');
   });
   
   dropzone.addEventListener('drop', (e) => {
     e.preventDefault();
-    dropzone.classList.remove('border-purple-500', 'bg-purple-50');
+    dropzone.classList.remove('border-[#122D6A]', 'bg-blue-50');
     
     const files = e.dataTransfer.files;
     if (files.length > 0) {
@@ -8303,6 +8306,26 @@ async function processarResumoPersonalizado(metaId) {
   const tamanhoResumo = document.getElementById('tamanho-resumo').value;
   const focoResumo = document.getElementById('foco-resumo').value;
   
+  // Mapear tamanho para extensão da IA
+  const extensaoMap = { curto: 'curto', medio: 'medio', longo: 'longo' };
+  
+  // Mapear foco para profundidade da IA
+  const profundidadeMap = { 
+    geral: 'aplicada', 
+    conceitos: 'conceitual', 
+    pratico: 'aplicada', 
+    memorização: 'conceitual' 
+  };
+  
+  // Carregar configuração de IA do localStorage e ajustar com as opções do modal
+  const savedConfig = JSON.parse(localStorage.getItem('iaConfig') || '{}');
+  const configIA = {
+    ...savedConfig,
+    extensao: extensaoMap[tamanhoResumo] || 'medio',
+    profundidade: profundidadeMap[focoResumo] || 'aplicada',
+    formatoResumo: focoResumo === 'memorização' ? 'topicos' : (savedConfig.formatoResumo || 'detalhado')
+  };
+  
   // Preparar FormData
   const formData = new FormData();
   formData.append('file', window.selectedFile);
@@ -8313,6 +8336,7 @@ async function processarResumoPersonalizado(metaId) {
   formData.append('user_id', currentUser.id);
   formData.append('tamanho_resumo', tamanhoResumo);
   formData.append('foco_resumo', focoResumo);
+  formData.append('config_ia', JSON.stringify(configIA));
   
   // Mostrar status de processamento
   document.getElementById('btn-processar').disabled = true;
@@ -14930,7 +14954,7 @@ window.resetTutorial = function() {
 // 🎯 BOTÃO FLUTUANTE DE AJUDA/TUTORIAL
 // ============================================================================
 
-// Criar botão de ajuda no cabeçalho
+// Criar botão de ajuda flutuante no canto inferior direito
 window.createHelpButton = function() {
   // Remover botão existente se houver
   const existingButton = document.getElementById('help-button-container');
@@ -14938,10 +14962,85 @@ window.createHelpButton = function() {
     existingButton.remove();
   }
   
-  // NOVO: Aguardar o cabeçalho estar renderizado e adicionar lá
-  setTimeout(() => {
-    addHelpToHeader();
-  }, 100);
+  // Criar botão flutuante de ajuda (lado direito, acima do chat)
+  const helpContainer = document.createElement('div');
+  helpContainer.id = 'help-button-container';
+  helpContainer.innerHTML = `
+    <!-- Botão Principal de Ajuda - Posicionado no lado direito, acima do chat -->
+    <button 
+      id="help-button"
+      onclick="toggleHelpMenu()"
+      class="fixed bottom-24 right-6 z-[9990] w-14 h-14 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 group hover:scale-110 flex items-center justify-center"
+      title="Central de Ajuda"
+    >
+      <i class="fas fa-question text-white text-xl group-hover:rotate-12 transition-transform"></i>
+    </button>
+    
+    <!-- Menu de Opções de Ajuda - Abre acima do botão -->
+    <div id="help-menu" class="hidden fixed bottom-44 right-6 z-[9991] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-3 min-w-[260px] border border-gray-200 dark:border-gray-700" style="animation: slideUp 0.3s ease-out;">
+      <div class="mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-sm font-bold text-[#122D6A] dark:text-blue-400 flex items-center gap-2">
+          <i class="fas fa-life-ring"></i> Central de Ajuda
+        </h3>
+      </div>
+      <div class="space-y-1">
+        <button 
+          onclick="startTutorial(true); toggleHelpMenu()"
+          class="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#122D6A]/10 dark:hover:bg-gray-700 rounded-xl transition-all group"
+        >
+          <div class="w-10 h-10 bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+            <i class="fas fa-graduation-cap text-white text-sm"></i>
+          </div>
+          <div class="text-left">
+            <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">Tour Guiado</p>
+            <p class="text-xs text-gray-500">Aprenda a usar o sistema</p>
+          </div>
+        </button>
+        
+        <button 
+          onclick="openFAQ(); toggleHelpMenu()"
+          class="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#122D6A]/10 dark:hover:bg-gray-700 rounded-xl transition-all group"
+        >
+          <div class="w-10 h-10 bg-gradient-to-br from-[#2A4A9F] to-[#3A5AB0] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+            <i class="fas fa-question-circle text-white text-sm"></i>
+          </div>
+          <div class="text-left">
+            <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">Perguntas Frequentes</p>
+            <p class="text-xs text-gray-500">Dúvidas comuns</p>
+          </div>
+        </button>
+        
+        <button 
+          onclick="window.abrirModalAjuda && window.abrirModalAjuda(); toggleHelpMenu()"
+          class="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#122D6A]/10 dark:hover:bg-gray-700 rounded-xl transition-all group"
+        >
+          <div class="w-10 h-10 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+            <i class="fas fa-book-open text-white text-sm"></i>
+          </div>
+          <div class="text-left">
+            <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">Documentação</p>
+            <p class="text-xs text-gray-500">Como usar cada recurso</p>
+          </div>
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(helpContainer);
+  
+  // Adicionar estilos CSS
+  if (!document.querySelector('#help-button-styles')) {
+    const styles = document.createElement('style');
+    styles.id = 'help-button-styles';
+    styles.innerHTML = \`
+      @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      #help-button:hover { transform: scale(1.1); }
+    \`;
+    document.head.appendChild(styles);
+  }
   return;
   
   // Criar container do botão
@@ -15363,28 +15462,53 @@ function addHelpToHeader() {
   // Verificar se já existe
   if (document.getElementById('header-help-button')) return;
   
+  // Criar container posicionado relativamente
+  const helpContainer = document.createElement('div');
+  helpContainer.className = 'relative';
+  helpContainer.id = 'header-help-container';
+  
   // Criar botão de ajuda
   const helpBtn = document.createElement('button');
   helpBtn.id = 'header-help-button';
-  helpBtn.onclick = toggleHelpMenu;
-  helpBtn.className = 'relative group p-2 hover:bg-[#E8EDF5] dark:hover:bg-gray-700 rounded-lg transition-all';
+  helpBtn.onclick = function(e) {
+    e.stopPropagation();
+    const menu = document.getElementById('header-help-menu');
+    if (menu) {
+      menu.classList.toggle('hidden');
+      
+      // Fechar ao clicar fora
+      if (!menu.classList.contains('hidden')) {
+        setTimeout(() => {
+          document.addEventListener('click', function closeMenuOnOutside(event) {
+            if (!event.target.closest('#header-help-container')) {
+              menu.classList.add('hidden');
+              document.removeEventListener('click', closeMenuOnOutside);
+            }
+          });
+        }, 100);
+      }
+    }
+  };
+  helpBtn.className = 'group p-2.5 hover:bg-[#E8EDF5] dark:hover:bg-gray-700 rounded-lg transition-all flex items-center justify-center';
   helpBtn.innerHTML = `
-    <i class="fas fa-question-circle text-[#122D6A] dark:text-blue-400 text-lg"></i>
+    <i class="fas fa-question-circle text-[#122D6A] dark:text-blue-400 text-xl group-hover:scale-110 transition-transform"></i>
   `;
   helpBtn.title = 'Ajuda e FAQ';
-  
-  // Inserir antes do menu do usuário
-  userMenuContainer.insertBefore(helpBtn, userMenuContainer.firstChild);
   
   // Criar menu dropdown de ajuda
   const helpMenu = document.createElement('div');
   helpMenu.id = 'header-help-menu';
-  helpMenu.className = 'hidden absolute right-0 top-12 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden';
+  helpMenu.className = 'hidden absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-[9999] overflow-hidden';
   helpMenu.innerHTML = `
-    <div class="p-2">
+    <div class="p-3">
+      <div class="mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-sm font-bold text-[#122D6A] dark:text-blue-400 flex items-center gap-2">
+          <i class="fas fa-life-ring"></i> Central de Ajuda
+        </h3>
+      </div>
       <button 
-        onclick="startTutorial(true); toggleHelpMenu()"
-        class="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#122D6A]/5 dark:hover:bg-gray-700 rounded-lg transition-all group"
+        onclick="startTutorial(true); document.getElementById('header-help-menu').classList.add('hidden');"
+        class="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#122D6A]/10 dark:hover:bg-gray-700 rounded-lg transition-all group"
       >
         <div class="w-10 h-10 bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
           <i class="fas fa-graduation-cap text-white text-sm"></i>
@@ -15396,8 +15520,8 @@ function addHelpToHeader() {
       </button>
       
       <button 
-        onclick="openFAQ(); toggleHelpMenu()"
-        class="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#122D6A]/5 dark:hover:bg-gray-700 rounded-lg transition-all group"
+        onclick="openFAQ(); document.getElementById('header-help-menu').classList.add('hidden');"
+        class="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#122D6A]/10 dark:hover:bg-gray-700 rounded-lg transition-all group"
       >
         <div class="w-10 h-10 bg-gradient-to-br from-[#2A4A9F] to-[#3A5AB0] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
           <i class="fas fa-question-circle text-white text-sm"></i>
@@ -15407,11 +15531,28 @@ function addHelpToHeader() {
           <p class="text-xs text-gray-500">Dúvidas comuns</p>
         </div>
       </button>
+      
+      <button 
+        onclick="window.abrirModalAjuda && window.abrirModalAjuda(); document.getElementById('header-help-menu').classList.add('hidden');"
+        class="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#122D6A]/10 dark:hover:bg-gray-700 rounded-lg transition-all group"
+      >
+        <div class="w-10 h-10 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+          <i class="fas fa-book-open text-white text-sm"></i>
+        </div>
+        <div class="text-left">
+          <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">Documentação</p>
+          <p class="text-xs text-gray-500">Como usar cada recurso</p>
+        </div>
+      </button>
     </div>
   `;
   
-  // Adicionar menu ao container do botão
-  helpBtn.appendChild(helpMenu);
+  // Montar estrutura
+  helpContainer.appendChild(helpBtn);
+  helpContainer.appendChild(helpMenu);
+  
+  // Inserir antes do menu do usuário
+  userMenuContainer.insertBefore(helpContainer, userMenuContainer.firstChild);
 }
 
 // Atualizar toggleHelpMenu para trabalhar com o novo menu no header
