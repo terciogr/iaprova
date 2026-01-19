@@ -743,11 +743,17 @@ async function sendVerificationEmail(email: string, token: string, name: string,
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Erro do Resend:', errorText);
-    } else {
-      console.log('✅ Email enviado com sucesso!');
+      
+      // Se for erro 403, provavelmente é modo de teste
+      if (response.status === 403) {
+        console.log('⚠️ Resend em modo de teste - email só pode ser enviado para o proprietário da conta');
+      }
+      return false;
     }
-
-    return response.ok;
+    
+    const responseData = await response.json();
+    console.log('✅ Email enviado com sucesso! ID:', responseData.id);
+    return true;
   } catch (error) {
     console.error('Erro ao enviar email:', error);
     return false;
@@ -1029,6 +1035,7 @@ app.post('/api/users', async (c) => {
     
     // Gerar token de verificação
     const verificationToken = generateSecureToken()
+    const APP_URL = c.env?.APP_URL || 'https://iaprova.pages.dev'
     
     console.log('💾 Inserindo no banco:', { userName, userEmail, hasPassword: !!userPassword })
 
@@ -1044,17 +1051,21 @@ app.post('/api/users', async (c) => {
       console.warn('⚠️ Usuário criado mas email não foi enviado')
     }
 
+    // SEMPRE retornar o token para permitir verificação manual
+    // (útil quando Resend está em modo teste ou email não chega)
     return c.json({ 
       id: result.meta.last_row_id, 
       name: userName, 
       email: userEmail,
       message: emailSent 
         ? '✅ Cadastro realizado! Verifique seu email (inclusive a pasta de spam) para ativar sua conta.'
-        : '⚠️ Cadastro realizado! Em modo desenvolvimento, use o link abaixo para verificar.',
+        : '⚠️ Cadastro realizado! O serviço de email está em modo de teste. Use o link abaixo para verificar.',
       emailSent,
       needsVerification: true,
-      // Retornar o token apenas em modo dev
-      ...(emailSent === false ? { devToken: verificationToken, devMode: true } : {})
+      // SEMPRE retornar token para permitir verificação manual
+      devToken: verificationToken,
+      devMode: !emailSent,
+      verificationUrl: `${APP_URL}/verificar-email?token=${verificationToken}`
     })
   } catch (error) {
     console.error('Erro ao criar usuário:', error)
@@ -1225,15 +1236,22 @@ app.post('/api/forgot-password', async (c) => {
     
     // Enviar email de reset
     const emailSent = await sendPasswordResetEmail(email, resetToken, user.name, c.env)
+    const APP_URL = c.env?.APP_URL || 'https://iaprova.pages.dev'
+    const resetUrl = `${APP_URL}/resetar-senha?token=${resetToken}`
     
     console.log('🔐 Token de reset gerado:', resetToken)
     console.log('📧 Email de reset enviado:', emailSent)
     
+    // SEMPRE retornar o token para permitir reset manual
     return c.json({ 
-      message: 'Se o email estiver cadastrado, você receberá instruções de recuperação.',
+      message: emailSent 
+        ? 'Se o email estiver cadastrado, você receberá instruções de recuperação. Se não receber, use o link abaixo.'
+        : 'O serviço de email está em modo de teste. Use o link abaixo para redefinir sua senha.',
       success: true,
-      // Em modo dev, retornar o token
-      ...(emailSent === false ? { devToken: resetToken, devMode: true } : {})
+      // SEMPRE retornar token e URL para permitir reset manual
+      devToken: resetToken,
+      devMode: !emailSent,
+      resetUrl
     })
   } catch (error) {
     console.error('Erro ao processar recuperação de senha:', error)
@@ -1369,14 +1387,19 @@ app.post('/api/resend-verification', async (c) => {
     
     // Reenviar email
     const emailSent = await sendVerificationEmail(email, newToken, user.name, c.env)
+    const APP_URL = c.env?.APP_URL || 'https://iaprova.pages.dev'
+    const verificationUrl = `${APP_URL}/verificar-email?token=${newToken}`
     
+    // SEMPRE retornar o token para permitir verificação manual
     return c.json({ 
       message: emailSent 
-        ? '✅ Email de verificação reenviado! Verifique sua caixa de entrada (e a pasta de spam).'
-        : '⚠️ Modo Desenvolvimento: Email não foi enviado. Use o link abaixo para verificar seu email.',
+        ? '✅ Email de verificação reenviado! Verifique sua caixa de entrada (e a pasta de spam). Se não receber, use o link abaixo.'
+        : '⚠️ O serviço de email está em modo de teste. Use o link abaixo para verificar seu email.',
       emailSent,
-      // Retornar o token apenas em modo dev
-      ...(emailSent === false ? { devToken: newToken, devMode: true } : {})
+      // SEMPRE retornar token e URL para permitir verificação manual
+      devToken: newToken,
+      devMode: !emailSent,
+      verificationUrl
     })
   } catch (error) {
     console.error('Erro ao reenviar email:', error)

@@ -1359,52 +1359,59 @@ function showForgotPassword() {
       
       const response = await axios.post('/api/forgot-password', { email });
       
+      // SEMPRE mostrar link quando houver devToken (independente se email foi enviado ou não)
       if (response.data.devToken) {
-        console.log('🔐 Token de reset (DEV):', response.data.devToken);
-        const resetUrl = `${window.location.origin}/resetar-senha?token=${response.data.devToken}`;
+        console.log('🔐 Token de reset:', response.data.devToken);
+        const resetUrl = response.data.resetUrl || `${window.location.origin}/resetar-senha?token=${response.data.devToken}`;
         
-        // Em modo dev, mostrar o link
+        // Mostrar tela com link de reset
         document.getElementById('app').innerHTML = `
           <div class="min-h-screen flex items-center justify-center bg-gradient-to-br ${c('primary').gradient}">
             <div class="${themes[currentTheme].card} p-8 rounded-lg shadow-2xl w-full max-w-md">
               <div class="text-center mb-6">
-                <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
-                <h2 class="text-2xl font-bold ${themes[currentTheme].text}">Email Enviado!</h2>
+                <div class="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
+                  <i class="fas fa-key text-4xl text-red-600"></i>
+                </div>
+                <h2 class="text-2xl font-bold ${themes[currentTheme].text}">Redefinir Senha</h2>
+                <p class="text-sm text-gray-500 mt-2">${email}</p>
               </div>
               
               <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                 <p class="text-sm text-amber-800 mb-2">
-                  <i class="fas fa-exclamation-triangle mr-2"></i>
-                  <strong>Modo Desenvolvimento</strong>
+                  <i class="fas fa-info-circle mr-2"></i>
+                  <strong>Serviço de Email em Teste</strong>
                 </p>
                 <p class="text-xs text-amber-700">
-                  O email não foi enviado (modo dev). Use o link abaixo:
+                  ${response.data.message || 'Use o link abaixo para redefinir sua senha.'}
                 </p>
               </div>
               
               <div class="bg-gray-100 p-4 rounded-lg mb-4">
-                <label class="block text-xs font-medium text-gray-700 mb-2">Link de Reset:</label>
-                <div class="flex gap-2">
+                <label class="block text-xs font-medium text-gray-600 mb-2">
+                  <i class="fas fa-link mr-1"></i>
+                  Clique no botão ou copie o link:
+                </label>
+                <div class="flex gap-2 mb-3">
                   <input type="text" 
                     value="${resetUrl}"
-                    class="flex-1 p-2 text-xs border rounded bg-white"
+                    class="flex-1 p-2 text-xs border rounded bg-white font-mono"
                     onclick="this.select()"
                     readonly>
                   <button onclick="navigator.clipboard.writeText('${resetUrl}'); showToast('Link copiado!', 'success')"
-                    class="bg-blue-600 text-white px-3 py-2 rounded text-xs hover:bg-blue-700">
-                    📋
+                    class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700">
+                    <i class="fas fa-copy"></i>
                   </button>
                 </div>
               </div>
               
               <a href="${resetUrl}" 
-                class="block w-full bg-red-600 text-white text-center py-3 rounded-lg font-semibold hover:bg-red-700 transition">
+                class="block w-full bg-gradient-to-r from-red-600 to-red-700 text-white text-center py-4 rounded-lg font-bold text-lg hover:from-red-700 hover:to-red-800 transition shadow-lg mb-4">
                 <i class="fas fa-key mr-2"></i>
-                Redefinir Senha Agora
+                Redefinir Minha Senha
               </a>
               
               <button onclick="renderLogin()" 
-                class="w-full mt-3 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition">
+                class="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition">
                 <i class="fas fa-arrow-left mr-2"></i>
                 Voltar ao Login
               </button>
@@ -1653,71 +1660,27 @@ function renderLogin() {
           const response = await axios.post('/api/users', { name, email, password });
           
           if (response.data.id) {
-            // Se precisa verificação
+            // Se precisa verificação de email
             if (response.data.needsVerification) {
-              // Se está em modo dev (email não foi enviado)
-              if (response.data.devMode && response.data.devToken) {
-                console.log('🔗 Token de verificação (DEV):', response.data.devToken);
-                console.log('🔗 URL de verificação manual:', `/verificar-email?token=${response.data.devToken}`);
+              console.log('📧 Verificação necessária:', response.data);
+              
+              // SEMPRE mostrar link quando houver token (para permitir verificação manual)
+              if (response.data.devToken) {
+                const verificationUrl = response.data.verificationUrl || 
+                  `${window.location.origin}/verificar-email?token=${response.data.devToken}`;
                 
-                // Mostrar link diretamente apenas em modo dev
-                if (response.data.devMode) {
-                  const verificationUrl = `${window.location.origin}/verificar-email?token=${response.data.devToken}`;
-                  
-                  // Criar modal com link clicável
-                  document.getElementById('app').innerHTML = `
-                    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br ${c('primary').gradient}">
-                      <div class="${themes[currentTheme].card} p-8 rounded-lg shadow-2xl w-full max-w-md">
-                        <div class="text-center mb-6">
-                          <i class="fas fa-envelope-open-text text-6xl ${c('primary').icon} mb-4"></i>
-                          <h2 class="text-2xl font-bold ${themes[currentTheme].text}">Verificação de Email</h2>
-                        </div>
-                        
-                        <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                          <p class="text-sm text-amber-800 mb-2">
-                            <i class="fas fa-exclamation-triangle mr-2"></i>
-                            <strong>Modo Desenvolvimento</strong>
-                          </p>
-                          <p class="text-xs text-amber-700">
-                            O email não foi enviado porque o sistema está em modo desenvolvimento.
-                            Clique no link abaixo para verificar seu email:
-                          </p>
-                        </div>
-                        
-                        <div class="bg-gray-100 p-4 rounded-lg mb-4">
-                          <label class="block text-xs font-medium text-gray-700 mb-2">Link de Verificação:</label>
-                          <div class="flex gap-2">
-                            <input type="text" 
-                              value="${verificationUrl}"
-                              class="flex-1 p-2 text-xs border rounded bg-white"
-                              onclick="this.select()"
-                              readonly>
-                            <button onclick="navigator.clipboard.writeText('${verificationUrl}'); showToast('Link copiado!', 'success')"
-                              class="bg-blue-600 text-white px-3 py-2 rounded text-xs hover:bg-blue-700">
-                              📋
-                            </button>
-                          </div>
-                        </div>
-                        
-                        <a href="${verificationUrl}" 
-                          class="block w-full bg-green-600 text-white text-center py-3 rounded-lg font-semibold hover:bg-green-700 transition mb-3">
-                          <i class="fas fa-check-circle mr-2"></i>
-                          Verificar Email Agora
-                        </a>
-                        
-                        <button onclick="renderLogin()" 
-                          class="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition">
-                          <i class="fas fa-arrow-left mr-2"></i>
-                          Voltar ao Login
-                        </button>
-                      </div>
-                    </div>
-                  `;
-                  return;
-                }
+                console.log('🔗 URL de verificação:', verificationUrl);
+                
+                // Mostrar tela com link de verificação
+                document.getElementById('app').innerHTML = createVerificationLinkScreen(
+                  email, 
+                  verificationUrl, 
+                  response.data.message
+                );
+                return;
               }
               
-              // Mostrar tela de verificação pendente normal
+              // Fallback: mostrar tela de verificação padrão
               renderEmailVerification(email, response.data.message);
             } else {
               showModal('Cadastro realizado com sucesso! Faça login agora.', { type: 'success', title: 'Bem-vindo!' });
