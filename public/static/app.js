@@ -3719,7 +3719,7 @@ function renderNavbar() {
         <div class="flex items-center justify-between h-14">
           <div class="flex items-center gap-3">
             <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
-              <span class="text-cyan-300">IA</span>prova
+              <span class="text-[#7BC4FF]">IA</span>prova
             </button>
           </div>
           <div class="flex items-center gap-2">
@@ -4052,8 +4052,8 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
             <div class="flex items-center gap-1.5">
               <!-- Atalhos Rápidos (apenas ícones) -->
               <div class="hidden md:flex items-center gap-1">
-                <button onclick="window.renderDashboardSimulados()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#6BB6FF]/10 dark:hover:bg-cyan-900/30 transition group" title="Simulados">
-                  <i class="fas fa-edit text-cyan-600 dark:text-cyan-400 text-sm group-hover:scale-110 transition-transform"></i>
+                <button onclick="window.renderDashboardSimulados()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#6BB6FF]/10 dark:hover:bg-[#0D1F4D]/30 transition group" title="Simulados">
+                  <i class="fas fa-edit text-[#3A5AB0] dark:text-[#6BB6FF] text-sm group-hover:scale-110 transition-transform"></i>
                 </button>
                 <button onclick="renderPortfolioDisciplinas()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#122D6A]/10 dark:hover:bg-blue-900/30 transition group" title="Disciplinas">
                   <i class="fas fa-book-open text-[#122D6A] dark:text-blue-400 text-sm group-hover:scale-110 transition-transform"></i>
@@ -4169,7 +4169,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   </div>
                 </div>
                 
-                <div class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-cyan-300 hover:shadow-md transition-all">
+                <div class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#A8D4FF] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-[#122D6A] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-chart-line text-white text-xs"></i>
@@ -4230,10 +4230,10 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   </div>
                 </button>
                 
-                <button onclick="window.renderDashboardSimulados()" class="group ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-cyan-500 hover:shadow-md transition-all">
+                <button onclick="window.renderDashboardSimulados()" class="group ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#4A6AC0] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center flex-shrink-0 group-hover:bg-[#6BB6FF]/50 transition-colors shadow-sm">
-                      <i class="fas fa-edit text-cyan-600 dark:text-cyan-400 group-hover:text-white text-xs transition-colors"></i>
+                    <div class="w-8 h-8 rounded-lg bg-[#E8EDF5] dark:bg-[#0D1F4D]/20 flex items-center justify-center flex-shrink-0 group-hover:bg-[#6BB6FF]/50 transition-colors shadow-sm">
+                      <i class="fas fa-edit text-[#3A5AB0] dark:text-[#6BB6FF] group-hover:text-white text-xs transition-colors"></i>
                     </div>
                     <div class="min-w-0 text-left">
                       <p class="text-xs font-semibold ${themes[currentTheme].text} leading-tight">Fazer</p>
@@ -4411,16 +4411,16 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                     progressoGeral?.progresso_percentual >= 70 ? 'text-[#2A4A9F]' :
                     progressoGeral?.progresso_percentual >= 50 ? 'text-[#122D6A]' :
                     progressoGeral?.progresso_percentual >= 25 ? 'text-amber-600' :
-                    'text-purple-600'
+                    'text-[#4A6AC0]'
                   } font-medium">${progressoGeral?.topicos_estudados || 0}</span>/${progressoGeral?.total_topicos || 0} tópicos
                 </p>
               </div>
-              <i class="fas fa-chevron-right ${themes[currentTheme].textSecondary} group-hover:text-purple-500 transition-colors hidden md:block"></i>
+              <i class="fas fa-chevron-right ${themes[currentTheme].textSecondary} group-hover:text-[#5A7AD0] transition-colors hidden md:block"></i>
             </div>
           </div>
           
           <!-- Botão Simulados -->
-          <button onclick="window.renderDashboardSimulados()" class="group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-cyan-500 hover:shadow-xl transition-all">
+          <button onclick="window.renderDashboardSimulados()" class="group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#4A6AC0] hover:shadow-xl transition-all">
             <div class="flex items-center gap-2 md:gap-4">
               <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-[#122D6A] flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
                 <i class="fas fa-edit text-white text-sm md:text-xl"></i>
@@ -4433,7 +4433,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   Rápido • Padrão • Completo
                 </p>
               </div>
-              <i class="fas fa-chevron-right ${themes[currentTheme].textSecondary} group-hover:text-cyan-500 transition-colors hidden md:block"></i>
+              <i class="fas fa-chevron-right ${themes[currentTheme].textSecondary} group-hover:text-[#4A6AC0] transition-colors hidden md:block"></i>
             </div>
           </button>
         </div>
@@ -5791,7 +5791,7 @@ window.selecionarTipoConteudo = function(tipo) {
   ['teoria', 'exercicios', 'resumo', 'flashcards', 'resumo_personalizado'].forEach(t => {
     const btn = document.getElementById(`btn-tipo-${t}`);
     if (btn) {
-      btn.classList.remove('border-[#122D6A]', 'bg-blue-50', 'bg-green-50', 'bg-yellow-50', 'bg-cyan-50');
+      btn.classList.remove('border-[#122D6A]', 'bg-blue-50', 'bg-green-50', 'bg-yellow-50', 'bg-[#E8EDF5]');
       btn.classList.add('border-gray-200', 'dark:border-gray-700');
     }
   });
@@ -5805,7 +5805,7 @@ window.selecionarTipoConteudo = function(tipo) {
       teoria: 'bg-blue-50', 
       exercicios: 'bg-green-50', 
       resumo: 'bg-yellow-50', 
-      flashcards: 'bg-cyan-50',
+      flashcards: 'bg-[#E8EDF5]',
       resumo_personalizado: 'bg-orange-50'
     };
     btnSelecionado.classList.add(colors[tipo]);
@@ -6874,14 +6874,19 @@ function exibirConteudoTexto(data) {
 }
 window.exibirConteudoTexto = exibirConteudoTexto;
 
-// ============== MATERIAIS ==============
-async function renderMateriais() {
+// ============== MATERIAIS E HISTÓRICO ==============
+async function renderMateriais(activeTab = 'todos') {
   const app = document.getElementById('app');
   
   try {
-    // Carregar materiais do usuário
-    const response = await axios.get(`/api/materiais/${currentUser.id}`);
-    const materiais = response.data.materiais || [];
+    // Carregar materiais e histórico do usuário
+    const [materiaisRes, historicoRes] = await Promise.all([
+      axios.get(`/api/materiais/${currentUser.id}`),
+      axios.get(`/api/historico/conteudos/${currentUser.id}`)
+    ]);
+    
+    const materiais = materiaisRes.data.materiais || [];
+    const estatisticas = historicoRes.data.estatisticas || {};
     
     // Agrupar por tipo
     const porTipo = {
@@ -6889,12 +6894,14 @@ async function renderMateriais() {
       exercicios: materiais.filter(m => m.tipo === 'exercicios'),
       resumo: materiais.filter(m => m.tipo === 'resumo'),
       flashcards: materiais.filter(m => m.tipo === 'flashcards'),
+      resumo_personalizado: materiais.filter(m => m.tipo === 'resumo_personalizado'),
       upload: materiais.filter(m => m.tipo === 'upload'),
       anotacao: materiais.filter(m => m.tipo === 'anotacao')
     };
     
     const totalMateriais = materiais.length;
     const favoritos = materiais.filter(m => m.favorito).length;
+    const totalIA = porTipo.teoria.length + porTipo.exercicios.length + porTipo.resumo.length + porTipo.flashcards.length + porTipo.resumo_personalizado.length;
     
     app.innerHTML = `
       ${renderNavbar()}
@@ -6904,95 +6911,125 @@ async function renderMateriais() {
           <!-- Header -->
           <div class="mb-6">
             <h1 class="text-3xl font-bold ${themes[currentTheme].text} mb-2">
-              <i class="fas fa-folder-open mr-3"></i>
-              Meus Materiais
+              <i class="fas fa-folder-open mr-3 text-[#122D6A]"></i>
+              Meus Materiais & Histórico
             </h1>
             <p class="${themes[currentTheme].textSecondary}">
-              Gerencie seus materiais de estudo, conteúdos gerados e uploads
+              Visualize todos os conteúdos gerados pela IA e seus materiais salvos
             </p>
           </div>
           
-          <!-- Estatísticas -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border}">
+          <!-- Estatísticas em Tons de Azul -->
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition cursor-pointer" onclick="filtrarMateriaisPorTipo('todos')">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm ${themes[currentTheme].textSecondary}">Total</p>
-                  <p class="text-2xl font-bold ${themes[currentTheme].text}">${totalMateriais}</p>
+                  <p class="text-2xl font-bold text-[#122D6A]">${totalMateriais}</p>
                 </div>
                 <div class="w-12 h-12 rounded-full bg-[#122D6A]/10 flex items-center justify-center">
-                  <i class="fas fa-file text-[#122D6A] text-xl"></i>
+                  <i class="fas fa-folder text-[#122D6A] text-xl"></i>
                 </div>
               </div>
             </div>
             
-            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border}">
+            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition cursor-pointer" onclick="filtrarMateriaisPorTipo('teoria')">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm ${themes[currentTheme].textSecondary}">Teoria</p>
+                  <p class="text-2xl font-bold text-[#1A3A7F]">${porTipo.teoria.length}</p>
+                </div>
+                <div class="w-12 h-12 rounded-full bg-[#1A3A7F]/10 flex items-center justify-center">
+                  <i class="fas fa-book text-[#1A3A7F] text-xl"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition cursor-pointer" onclick="filtrarMateriaisPorTipo('exercicios')">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm ${themes[currentTheme].textSecondary}">Exercícios</p>
+                  <p class="text-2xl font-bold text-[#2A4A9F]">${porTipo.exercicios.length}</p>
+                </div>
+                <div class="w-12 h-12 rounded-full bg-[#2A4A9F]/10 flex items-center justify-center">
+                  <i class="fas fa-tasks text-[#2A4A9F] text-xl"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition cursor-pointer" onclick="filtrarMateriaisPorTipo('flashcards')">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm ${themes[currentTheme].textSecondary}">Flashcards</p>
+                  <p class="text-2xl font-bold text-[#3A5AB0]">${porTipo.flashcards.length}</p>
+                </div>
+                <div class="w-12 h-12 rounded-full bg-[#3A5AB0]/10 flex items-center justify-center">
+                  <i class="fas fa-clone text-[#3A5AB0] text-xl"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition cursor-pointer" onclick="filtrarMateriaisPorTipo('favoritos')">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm ${themes[currentTheme].textSecondary}">Favoritos</p>
-                  <p class="text-2xl font-bold ${themes[currentTheme].text}">${favoritos}</p>
+                  <p class="text-2xl font-bold text-[#4A6AC0]">${favoritos}</p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-[#4A90E2]/10 flex items-center justify-center">
-                  <i class="fas fa-star text-[#4A90E2] text-xl"></i>
-                </div>
-              </div>
-            </div>
-            
-            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border}">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm ${themes[currentTheme].textSecondary}">IA Gerados</p>
-                  <p class="text-2xl font-bold ${themes[currentTheme].text}">${porTipo.teoria.length + porTipo.exercicios.length + porTipo.resumo.length + porTipo.flashcards.length}</p>
-                </div>
-                <div class="w-12 h-12 rounded-full bg-[#6BB6FF]/10 flex items-center justify-center">
-                  <i class="fas fa-magic text-[#122D6A] text-xl"></i>
-                </div>
-              </div>
-            </div>
-            
-            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border}">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm ${themes[currentTheme].textSecondary}">Uploads</p>
-                  <p class="text-2xl font-bold ${themes[currentTheme].text}">${porTipo.upload.length}</p>
-                </div>
-                <div class="w-12 h-12 rounded-full bg-[#2A4A9F]/10 flex items-center justify-center">
-                  <i class="fas fa-upload text-[#2A4A9F] text-xl"></i>
+                <div class="w-12 h-12 rounded-full bg-[#4A6AC0]/10 flex items-center justify-center">
+                  <i class="fas fa-star text-[#4A6AC0] text-xl"></i>
                 </div>
               </div>
             </div>
           </div>
           
-          <!-- Filtros e Busca -->
-          <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} mb-6">
-            <div class="flex flex-wrap gap-3 items-center">
-              <div class="flex-1 min-w-[200px]">
-                <input 
-                  type="text" 
-                  id="search-materiais"
-                  placeholder="🔍 Buscar materiais..."
-                  class="w-full px-4 py-2 border ${themes[currentTheme].border} rounded-lg ${themes[currentTheme].bg} ${themes[currentTheme].text}"
-                  onkeyup="filtrarMateriais()"
-                />
+          <!-- Abas de Navegação -->
+          <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} mb-6 overflow-hidden">
+            <div class="flex border-b ${themes[currentTheme].border}">
+              <button onclick="mudarAbaMateriaisHistorico('todos')" id="tab-todos" 
+                class="flex-1 px-4 py-3 font-medium text-sm transition ${activeTab === 'todos' ? 'bg-[#122D6A] text-white' : themes[currentTheme].text + ' hover:bg-[#E8EDF5]'}">
+                <i class="fas fa-th-list mr-2"></i>Todos os Materiais
+              </button>
+              <button onclick="mudarAbaMateriaisHistorico('ia')" id="tab-ia"
+                class="flex-1 px-4 py-3 font-medium text-sm transition ${activeTab === 'ia' ? 'bg-[#122D6A] text-white' : themes[currentTheme].text + ' hover:bg-[#E8EDF5]'}">
+                <i class="fas fa-robot mr-2"></i>Gerados por IA (${totalIA})
+              </button>
+              <button onclick="mudarAbaMateriaisHistorico('uploads')" id="tab-uploads"
+                class="flex-1 px-4 py-3 font-medium text-sm transition ${activeTab === 'uploads' ? 'bg-[#122D6A] text-white' : themes[currentTheme].text + ' hover:bg-[#E8EDF5]'}">
+                <i class="fas fa-upload mr-2"></i>Uploads (${porTipo.upload.length})
+              </button>
+            </div>
+            
+            <!-- Filtros e Busca -->
+            <div class="p-4">
+              <div class="flex flex-wrap gap-3 items-center">
+                <div class="flex-1 min-w-[200px]">
+                  <input 
+                    type="text" 
+                    id="search-materiais"
+                    placeholder="🔍 Buscar materiais..."
+                    class="w-full px-4 py-2 border ${themes[currentTheme].border} rounded-lg ${themes[currentTheme].bg} ${themes[currentTheme].text}"
+                    onkeyup="filtrarMateriais()"
+                  />
+                </div>
+                
+                <select id="filter-tipo" onchange="filtrarMateriais()" class="px-4 py-2 border ${themes[currentTheme].border} rounded-lg ${themes[currentTheme].bg} ${themes[currentTheme].text}">
+                  <option value="">Todos os tipos</option>
+                  <option value="teoria">📖 Teoria</option>
+                  <option value="exercicios">📝 Exercícios</option>
+                  <option value="resumo">📋 Resumo</option>
+                  <option value="flashcards">🃏 Flashcards</option>
+                  <option value="resumo_personalizado">📄 Resumo Personalizado</option>
+                  <option value="upload">📤 Uploads</option>
+                </select>
+                
+                <button onclick="filtrarMateriais('favoritos')" class="px-4 py-2 bg-[#4A6AC0] text-white rounded-lg hover:bg-[#3A5AB0] transition">
+                  <i class="fas fa-star mr-2"></i>Favoritos
+                </button>
+                
+                <button onclick="abrirModalUpload()" class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition">
+                  <i class="fas fa-plus mr-2"></i>Adicionar
+                </button>
               </div>
-              
-              <select id="filter-tipo" onchange="filtrarMateriais()" class="px-4 py-2 border ${themes[currentTheme].border} rounded-lg ${themes[currentTheme].bg} ${themes[currentTheme].text}">
-                <option value="">Todos os tipos</option>
-                <option value="teoria">Teoria</option>
-                <option value="exercicios">Exercícios</option>
-                <option value="resumo">Resumo</option>
-                <option value="flashcards">Flashcards</option>
-                <option value="upload">Uploads</option>
-                <option value="anotacao">Anotações</option>
-              </select>
-              
-              <button onclick="filtrarMateriais('favoritos')" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition">
-                <i class="fas fa-star mr-2"></i>Favoritos
-              </button>
-              
-              <button onclick="abrirModalUpload()" class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition">
-                <i class="fas fa-plus mr-2"></i>Adicionar Material
-              </button>
             </div>
           </div>
           
@@ -7010,11 +7047,30 @@ async function renderMateriais() {
   }
 }
 
+// Funções auxiliares para navegação de materiais
+window.mudarAbaMateriaisHistorico = function(aba) {
+  renderMateriais(aba);
+};
+
+window.filtrarMateriaisPorTipo = function(tipo) {
+  const select = document.getElementById('filter-tipo');
+  if (select && tipo !== 'todos' && tipo !== 'favoritos') {
+    select.value = tipo;
+  } else if (select) {
+    select.value = '';
+  }
+  if (tipo === 'favoritos') {
+    filtrarMateriais('favoritos');
+  } else {
+    filtrarMateriais();
+  }
+};
+
 function renderListaMateriais(materiais) {
   if (materiais.length === 0) {
     return `
       <div class="${themes[currentTheme].card} p-12 rounded-xl border ${themes[currentTheme].border} text-center">
-        <i class="fas fa-folder-open text-6xl text-gray-300 mb-4"></i>
+        <i class="fas fa-folder-open text-6xl text-[#C5D1E8] mb-4"></i>
         <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-2">Nenhum material encontrado</h3>
         <p class="${themes[currentTheme].textSecondary} mb-4">Comece gerando conteúdo com IA ou fazendo upload de arquivos</p>
         <button onclick="abrirModalUpload()" class="px-6 py-3 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition">
@@ -7024,36 +7080,38 @@ function renderListaMateriais(materiais) {
     `;
   }
   
-  const tipoIcons = {
-    teoria: { icon: 'fa-book', color: 'blue' },
-    exercicios: { icon: 'fa-tasks', color: 'green' },
-    resumo: { icon: 'fa-sticky-note', color: 'yellow' },
-    flashcards: { icon: 'fa-clone', color: 'purple' },
-    upload: { icon: 'fa-file-upload', color: 'indigo' },
-    anotacao: { icon: 'fa-edit', color: 'gray' }
+  // Cores em tons de azul do sistema IAprova
+  const tipoConfig = {
+    teoria: { icon: 'fa-book', label: 'Teoria', bgClass: 'bg-[#122D6A]/10', textClass: 'text-[#122D6A]' },
+    exercicios: { icon: 'fa-tasks', label: 'Exercícios', bgClass: 'bg-[#1A3A7F]/10', textClass: 'text-[#1A3A7F]' },
+    resumo: { icon: 'fa-sticky-note', label: 'Resumo', bgClass: 'bg-[#2A4A9F]/10', textClass: 'text-[#2A4A9F]' },
+    flashcards: { icon: 'fa-clone', label: 'Flashcards', bgClass: 'bg-[#3A5AB0]/10', textClass: 'text-[#3A5AB0]' },
+    resumo_personalizado: { icon: 'fa-file-alt', label: 'Resumo PDF', bgClass: 'bg-[#4A6AC0]/10', textClass: 'text-[#4A6AC0]' },
+    upload: { icon: 'fa-file-upload', label: 'Upload', bgClass: 'bg-[#5A7AD0]/10', textClass: 'text-[#5A7AD0]' },
+    anotacao: { icon: 'fa-edit', label: 'Anotação', bgClass: 'bg-[#6B8AE0]/10', textClass: 'text-[#6B8AE0]' }
   };
   
   return `
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       ${materiais.map(material => {
-        const tipoInfo = tipoIcons[material.tipo] || tipoIcons.anotacao;
+        const config = tipoConfig[material.tipo] || tipoConfig.anotacao;
         const dataFormatada = new Date(material.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
         
         return `
-          <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} overflow-hidden hover:shadow-lg transition material-card" data-tipo="${material.tipo}" data-titulo="${material.titulo.toLowerCase()}">
+          <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} overflow-hidden hover:shadow-lg transition material-card" data-tipo="${material.tipo}" data-titulo="${(material.titulo || '').toLowerCase()}">
             <!-- Header do Card -->
-            <div class="bg-${tipoInfo.color}-50 p-4 border-b ${themes[currentTheme].border}">
+            <div class="${config.bgClass} p-4 border-b ${themes[currentTheme].border}">
               <div class="flex items-start justify-between">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-${tipoInfo.color}-100 flex items-center justify-center">
-                    <i class="fas ${tipoInfo.icon} text-${tipoInfo.color}-600"></i>
+                  <div class="w-10 h-10 rounded-full ${config.bgClass} flex items-center justify-center">
+                    <i class="fas ${config.icon} ${config.textClass}"></i>
                   </div>
                   <div>
-                    <p class="text-xs text-${tipoInfo.color}-600 font-medium uppercase">${material.tipo}</p>
+                    <p class="text-xs ${config.textClass} font-medium uppercase">${config.label}</p>
                     <p class="text-xs ${themes[currentTheme].textSecondary}">${dataFormatada}</p>
                   </div>
                 </div>
-                <button onclick="toggleFavorito(${material.id})" class="text-xl ${material.favorito ? 'text-yellow-500' : 'text-gray-300'} hover:text-yellow-500 transition">
+                <button onclick="toggleFavorito(${material.id})" class="text-xl ${material.favorito ? 'text-[#4A6AC0]' : 'text-gray-300'} hover:text-[#4A6AC0] transition">
                   <i class="fas fa-star"></i>
                 </button>
               </div>
@@ -7792,7 +7850,7 @@ function renderCalendarioUI(historico, stats, mes, ano) {
                 <p class="text-gray-500 text-sm">Horas Totais</p>
                 <p class="text-3xl font-bold text-[#122D6A]">${stats.horas_totais}h</p>
               </div>
-              <i class="fas fa-clock text-4xl text-cyan-200"></i>
+              <i class="fas fa-clock text-4xl text-[#A8D4FF]"></i>
             </div>
           </div>
 
@@ -7971,10 +8029,10 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
           </button>
           
           <button onclick="gerarConteudoTipo('flashcards')" 
-            class="p-4 border-2 border-gray-200 rounded-xl hover:border-cyan-500 hover:bg-[#6BB6FF]/5 transition-all text-left group">
+            class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#4A6AC0] hover:bg-[#6BB6FF]/5 transition-all text-left group">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 bg-[#6BB6FF]/10 rounded-lg flex items-center justify-center group-hover:bg-[#6BB6FF]/50 transition-colors">
-                <i class="fas fa-clone text-cyan-600 group-hover:text-white transition-colors"></i>
+                <i class="fas fa-clone text-[#3A5AB0] group-hover:text-white transition-colors"></i>
               </div>
               <div>
                 <p class="font-semibold text-gray-800">Flashcards</p>
@@ -7985,9 +8043,9 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
           
           <!-- 5ª Opção: Resumo Personalizado -->
           <button onclick="gerarConteudoTipo('resumo_personalizado')" 
-            class="col-span-2 p-4 border-2 border-gray-200 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all text-left group">
+            class="col-span-2 p-4 border-2 border-gray-200 rounded-xl hover:border-[#4A6AC0] hover:bg-[#E8EDF5] transition-all text-left group">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center group-hover:bg-orange-500 transition-colors">
+              <div class="w-10 h-10 bg-[#C5D1E8] rounded-lg flex items-center justify-center group-hover:bg-[#E8EDF5]0 transition-colors">
                 <i class="fas fa-file-upload text-orange-600 group-hover:text-white transition-colors"></i>
               </div>
               <div>
@@ -9227,7 +9285,7 @@ function renderSecaoConteudo(conteudo, tipo) {
     
     return `
       <div class="space-y-6">
-        <div class="bg-[#E8EDF5] p-4 rounded-lg border-l-4 border-cyan-500">
+        <div class="bg-[#E8EDF5] p-4 rounded-lg border-l-4 border-[#4A6AC0]">
           <p class="font-bold text-lg text-[#0D1F4D] mb-2">${questoes}</p>
           ${orientacao ? `<p class="${themes[currentTheme].text} mt-2">${orientacao}</p>` : ''}
         </div>
@@ -10239,7 +10297,7 @@ const diasSemanaCompletos = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta',
 const coresTipo = {
   teoria: { bg: 'bg-[#D0D9EB] dark:bg-[#0A1839]/30', border: 'border-[#8FA4CC] dark:border-[#1A3A7F]', text: 'text-[#122D6A] dark:text-[#6B83B5]', icon: '📖' },
   exercicios: { bg: 'bg-[#2A4A9F]/10 dark:bg-green-900/30', border: 'border-green-300 dark:border-green-700', text: 'text-green-700 dark:text-green-300', icon: '✏️' },
-  revisao: { bg: 'bg-[#6BB6FF]/10 dark:bg-cyan-900/30', border: 'border-cyan-300 dark:border-[#0D1F4D]', text: 'text-[#0D1F4D] dark:text-cyan-300', icon: '🔄' }
+  revisao: { bg: 'bg-[#6BB6FF]/10 dark:bg-[#0D1F4D]/30', border: 'border-[#A8D4FF] dark:border-[#0D1F4D]', text: 'text-[#0D1F4D] dark:text-[#7BC4FF]', icon: '🔄' }
 }
 
 // ✅ NOVO: Função para abrir modal de semanas anteriores
@@ -10637,7 +10695,7 @@ function renderCalendarioSemanal() {
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mt-3">
                 ${metasDoDia.map(meta => {
                   const tipoIcon = meta.tipo === 'teoria' ? 'fa-book' : meta.tipo === 'exercicios' ? 'fa-pencil-alt' : 'fa-sync'
-                  const tipoBg = meta.tipo === 'teoria' ? 'bg-[#E8EDF5] text-[#122D6A]' : meta.tipo === 'exercicios' ? 'bg-[#6BB6FF]/10 text-cyan-700' : 'bg-amber-100 text-amber-700'
+                  const tipoBg = meta.tipo === 'teoria' ? 'bg-[#E8EDF5] text-[#122D6A]' : meta.tipo === 'exercicios' ? 'bg-[#6BB6FF]/10 text-[#2A4A9F]' : 'bg-amber-100 text-amber-700'
                   const tipoLabel = meta.tipo === 'teoria' ? 'Teoria' : meta.tipo === 'exercicios' ? 'Exercícios' : 'Revisão'
                   
                   return `
@@ -12882,8 +12940,8 @@ function renderFlashcardsModal(flashcards, topicoNome, disciplinaNome, cardIndex
         <!-- Header -->
         <div class="text-center mb-6">
           <div class="inline-flex items-center gap-2 px-4 py-1 bg-white/10 rounded-full backdrop-blur mb-2">
-            <i class="fas fa-clone text-cyan-300"></i>
-            <span class="text-cyan-200 text-sm">Flashcards</span>
+            <i class="fas fa-clone text-[#7BC4FF]"></i>
+            <span class="text-[#A8D4FF] text-sm">Flashcards</span>
           </div>
           <h2 class="text-white text-2xl font-bold">${topicoNome}</h2>
           <p class="text-white/60 text-sm mt-1">${disciplinaNome}</p>
@@ -13086,7 +13144,7 @@ window.abrirModalSimulado = async function() {
           <!-- Conteúdo -->
           <div class="p-6 max-h-[60vh] overflow-y-auto">
             <!-- Quantidade de questões -->
-            <div class="mb-6 p-4 bg-cyan-50 rounded-xl">
+            <div class="mb-6 p-4 bg-[#E8EDF5] rounded-xl">
               <label class="block text-sm font-semibold ${themes[currentTheme].text} mb-3">
                 <i class="fas fa-hashtag mr-2"></i>Quantidade de questões:
               </label>
@@ -13203,7 +13261,7 @@ window.toggleDisciplinaSimulado = async function(disciplinaId, disciplinaNome) {
             ${topicos.slice(0, 15).map(t => `
               <button onclick="toggleTopicoSimulado(${t.id}, '${t.nome.replace(/'/g, "\\'")}', ${disciplinaId})"
                       id="topico-simulado-${t.id}"
-                      class="px-3 py-1.5 text-sm rounded-full border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-cyan-500 hover:bg-[#6BB6FF]/5 dark:hover:bg-cyan-900/30 transition">
+                      class="px-3 py-1.5 text-sm rounded-full border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-[#4A6AC0] hover:bg-[#6BB6FF]/5 dark:hover:bg-[#0D1F4D]/30 transition">
                 ${t.nome.length > 30 ? t.nome.substring(0, 30) + '...' : t.nome}
               </button>
             `).join('')}
@@ -13237,11 +13295,11 @@ window.toggleTopicoSimulado = function(topicoId, topicoNome, disciplinaId) {
   
   if (index === -1) {
     simuladoConfig.topicosSelecionados.push({ id: topicoId, nome: topicoNome, disciplinaId });
-    btn.classList.add('border-[#122D6A]', 'bg-[#6BB6FF]/10', 'dark:bg-cyan-900/50', 'text-[#0D1F4D]');
+    btn.classList.add('border-[#122D6A]', 'bg-[#6BB6FF]/10', 'dark:bg-[#0D1F4D]/50', 'text-[#0D1F4D]');
     btn.classList.remove('border-gray-300', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-300');
   } else {
     simuladoConfig.topicosSelecionados.splice(index, 1);
-    btn.classList.remove('border-[#122D6A]', 'bg-[#6BB6FF]/10', 'dark:bg-cyan-900/50', 'text-[#0D1F4D]');
+    btn.classList.remove('border-[#122D6A]', 'bg-[#6BB6FF]/10', 'dark:bg-[#0D1F4D]/50', 'text-[#0D1F4D]');
     btn.classList.add('border-gray-300', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-300');
   }
   
@@ -13665,7 +13723,7 @@ window.renderDashboardSimulados = async function() {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button onclick="iniciarSimulado('rapido')" 
                 class="p-4 border-2 border-cyan-200 rounded-xl hover:bg-[#6BB6FF]/5 hover:border-cyan-400 transition-all group">
-                <i class="fas fa-bolt text-cyan-500 text-2xl mb-2 group-hover:scale-110 transition-transform"></i>
+                <i class="fas fa-bolt text-[#4A6AC0] text-2xl mb-2 group-hover:scale-110 transition-transform"></i>
                 <h3 class="font-semibold ${themes[currentTheme].text}">Simulado Rápido</h3>
                 <p class="${themes[currentTheme].textSecondary} text-sm mt-1">10 questões • 15 minutos</p>
               </button>
@@ -13851,7 +13909,7 @@ function renderSimuladoQuestao() {
             </div>
             
             <!-- Timer -->
-            <div id="timer-simulado" class="flex items-center gap-2 bg-[#6BB6FF]/10 dark:bg-cyan-900/30 px-4 py-2 rounded-lg">
+            <div id="timer-simulado" class="flex items-center gap-2 bg-[#6BB6FF]/10 dark:bg-[#0D1F4D]/30 px-4 py-2 rounded-lg">
               <i class="fas fa-clock text-[#122D6A]"></i>
               <span class="font-mono font-bold text-[#122D6A]" id="tempo-restante">--:--</span>
             </div>
@@ -13868,7 +13926,7 @@ function renderSimuladoQuestao() {
       <div class="max-w-4xl mx-auto px-4 py-6">
         <!-- Info da questão -->
         <div class="flex items-center justify-between mb-4">
-          <span class="px-3 py-1 bg-[#6BB6FF]/10 dark:bg-cyan-900/30 text-[#0D1F4D] dark:text-cyan-300 rounded-full text-sm font-medium">
+          <span class="px-3 py-1 bg-[#6BB6FF]/10 dark:bg-[#0D1F4D]/30 text-[#0D1F4D] dark:text-[#7BC4FF] rounded-full text-sm font-medium">
             ${questao.disciplina}
           </span>
           <span class="px-3 py-1 ${questao.dificuldade === 'facil' ? 'bg-[#2A4A9F]/10 text-green-700' : questao.dificuldade === 'dificil' ? 'bg-red-100 text-red-700' : 'bg-[#4A90E2]/10 text-yellow-700'} rounded-full text-xs">
@@ -14034,12 +14092,12 @@ function iniciarTimerSimulado() {
       // Alertas visuais
       if (restante < 60000) {
         timerEl.parentElement.classList.add('bg-red-100', 'dark:bg-red-900/30');
-        timerEl.parentElement.classList.remove('bg-[#6BB6FF]/10', 'dark:bg-cyan-900/30');
+        timerEl.parentElement.classList.remove('bg-[#6BB6FF]/10', 'dark:bg-[#0D1F4D]/30');
         timerEl.classList.add('text-red-600');
         timerEl.classList.remove('text-[#122D6A]');
       } else if (restante < 300000) {
         timerEl.parentElement.classList.add('bg-[#4A90E2]/10', 'dark:bg-yellow-900/30');
-        timerEl.parentElement.classList.remove('bg-[#6BB6FF]/10', 'dark:bg-cyan-900/30');
+        timerEl.parentElement.classList.remove('bg-[#6BB6FF]/10', 'dark:bg-[#0D1F4D]/30');
         timerEl.classList.add('text-[#4A90E2]');
         timerEl.classList.remove('text-[#122D6A]');
       }
@@ -14460,7 +14518,7 @@ window.verDetalhesSimulado = async function(simuladoId) {
             <h3 class="font-bold ${themes[currentTheme].text} mb-4">Disciplinas Abordadas</h3>
             <div class="flex flex-wrap gap-2">
               ${disciplinas.map(d => `
-                <span class="px-3 py-1 bg-[#6BB6FF]/10 dark:bg-cyan-900/30 text-[#0D1F4D] dark:text-cyan-300 rounded-full text-sm">${d}</span>
+                <span class="px-3 py-1 bg-[#6BB6FF]/10 dark:bg-[#0D1F4D]/30 text-[#0D1F4D] dark:text-[#7BC4FF] rounded-full text-sm">${d}</span>
               `).join('')}
             </div>
           </div>

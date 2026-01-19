@@ -8859,7 +8859,19 @@ Retorne APENAS JSON válido (sem markdown, sem texto extra):
 
 Agora gere o material em JSON válido:`
 
+    // Configurar temperatura baseada na iaConfig do usuário
+    const temperaturaMap: Record<string, number> = {
+      'conservador': 0.3,
+      'equilibrado': 0.5,
+      'criativo': 0.7,
+      'muito_criativo': 0.9
+    }
+    const temperatura = temperaturaMap[contexto.iaConfig?.temperatura] || contexto.iaConfig?.temperatura || 0.7
+    
+    // Usar modelo mais potente para melhor qualidade
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+    
+    console.log(`🎛️ Configuração IA: temperatura=${temperatura}, tom=${contexto.iaConfig?.tom || 'didatico'}`)
     
     const response = await fetch(url, {
       method: 'POST',
@@ -8871,11 +8883,10 @@ Agora gere o material em JSON válido:`
           { role: 'user', parts: [{ text: prompt }] }
         ],
         generationConfig: {
-          temperature: 0.7,  // Equilibrado entre criatividade e precisão
-          maxOutputTokens: 8192,  // Limite para gemini-2.0-flash
+          temperature: Number(temperatura),  // Usar temperatura da config do usuário
+          maxOutputTokens: 8192,  // Máximo para gemini-2.0-flash
           topP: 0.95,
           topK: 40
-          // Nota: responseMimeType não é suportado em todas as versões da API
         }
       })
     })
@@ -10740,6 +10751,92 @@ REGRAS OBRIGATÓRIAS:
       error: 'Erro no servidor ao gerar simulado',
       details: error instanceof Error ? error.message : 'Erro desconhecido'
     }, 500)
+  }
+})
+
+// ============== HISTÓRICO DE CONTEÚDOS GERADOS ==============
+
+// Histórico completo de conteúdos gerados pelo usuário
+app.get('/api/historico/conteudos/:user_id', async (c) => {
+  const { DB } = c.env
+  const user_id = parseInt(c.req.param('user_id'))
+  const { tipo, disciplina_id, limit = '50', offset = '0' } = c.req.query()
+  
+  try {
+    // Buscar de materiais_salvos (principal fonte de conteúdos gerados)
+    let query = `
+      SELECT 
+        m.id,
+        m.tipo,
+        m.titulo,
+        m.conteudo,
+        m.created_at,
+        m.favorito,
+        m.disciplina_id,
+        m.topico_id,
+        d.nome as disciplina_nome,
+        t.nome as topico_nome,
+        'materiais_salvos' as source
+      FROM materiais_salvos m
+      LEFT JOIN disciplinas d ON m.disciplina_id = d.id
+      LEFT JOIN topicos_edital t ON m.topico_id = t.id
+      WHERE m.user_id = ?
+    `
+    const params: any[] = [user_id]
+    
+    if (tipo && tipo !== 'todos') {
+      query += ' AND m.tipo = ?'
+      params.push(tipo)
+    }
+    
+    if (disciplina_id) {
+      query += ' AND m.disciplina_id = ?'
+      params.push(parseInt(disciplina_id as string))
+    }
+    
+    query += ' ORDER BY m.created_at DESC LIMIT ? OFFSET ?'
+    params.push(parseInt(limit as string), parseInt(offset as string))
+    
+    const result = await DB.prepare(query).bind(...params).all()
+    
+    // Buscar estatísticas
+    const statsQuery = await DB.prepare(`
+      SELECT 
+        tipo,
+        COUNT(*) as quantidade
+      FROM materiais_salvos
+      WHERE user_id = ?
+      GROUP BY tipo
+    `).bind(user_id).all()
+    
+    const totalQuery = await DB.prepare(`
+      SELECT COUNT(*) as total FROM materiais_salvos WHERE user_id = ?
+    `).bind(user_id).first() as any
+    
+    // Formatar estatísticas
+    const estatisticas: Record<string, number> = {
+      total: totalQuery?.total || 0,
+      teoria: 0,
+      exercicios: 0,
+      flashcards: 0,
+      resumo: 0,
+      resumo_personalizado: 0
+    }
+    
+    statsQuery.results?.forEach((row: any) => {
+      if (row.tipo && estatisticas.hasOwnProperty(row.tipo)) {
+        estatisticas[row.tipo] = row.quantidade
+      }
+    })
+    
+    return c.json({ 
+      historico: result.results || [],
+      estatisticas,
+      total: totalQuery?.total || 0
+    })
+  } catch (error: any) {
+    console.error('Erro ao buscar histórico:', error)
+    return c.json({ error: 'Erro ao buscar histórico de conteúdos' }, 500)
   }
 })
 
