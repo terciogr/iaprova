@@ -8791,33 +8791,22 @@ Retorne APENAS JSON válido (sem markdown, sem texto extra):
   }
 }
 
-**VALIDAÇÃO CRÍTICA**: Antes de retornar, garanta que:
-✅ Conteúdo tem palavras mínimas especificadas (3500+ teoria, 500+ por comentário de questão)
-✅ Inclui legislação COMPLETA com artigos específicos (CF/88, Leis, Decretos, texto literal)
-✅ Tem jurisprudência atualizada (STF, STJ - últimos 2 anos, com teses fixadas)
-✅ Mnemônicos incluídos (mínimo 8 criativos e fáceis de memorizar)
-✅ Estratégia por banca mencionada (CESPE, FCC, FGV) com exemplos
-✅ JSON válido sem erros de sintaxe
-✅ Exemplos práticos contextualizados (mínimo 8 casos reais)
-✅ Tabelas comparativas, esquemas e quadros-resumo
-✅ Comentários de questões com 500+ palavras CADA
-✅ 15 questões para exercícios (ou 5 para teoria)
+**VALIDAÇÃO CRÍTICA antes de retornar**:
+✅ JSON VÁLIDO e COMPLETO (todas as chaves fechadas corretamente)
+✅ Conteúdo com teoria clara e objetiva (800-1500 palavras por seção)
+✅ Mnemônicos incluídos (3-5 criativos)
+✅ Legislação/artigos quando aplicável
+✅ Erros comuns e dicas estratégicas
 
-**CRÍTICO GEMINI 2.0 FLASH THINKING 32K**: 
-- Use TODO o limite de tokens disponível (ATÉ 32.000 TOKENS - MÁXIMO!)
-- Seja ULTRA EXTREMAMENTE DETALHADO e PROFUNDO
-- Priorize QUALIDADE MÁXIMA sobre brevidade
-- Inclua TODOS os elementos obrigatórios
-- NUNCA seja superficial ou resumido
-- Cada seção deve ter MÁXIMO de conteúdo possível
-- Utilize TODO o espaço disponível (32k tokens = ~24.000 palavras)
-- Material deve ser COMPLETO e AUTOSSUFICIENTE para aprovação
+**IMPORTANTE**: 
+- Retorne JSON COMPLETO e VÁLIDO
+- Feche todas as chaves e colchetes corretamente
+- Não corte o conteúdo no meio
+- Seja detalhado mas COMPLETE o JSON
 
-**LEMBRE-SE**: Você está criando o material que vai APROVAR um aluno em concursos de ELITE (PCDF, TJ, Receita Federal). Seja EXCELENTE, COMPLETO e ESTRATÉGICO.
+Agora gere o material em JSON válido:`
 
-Agora gere o material completo em JSON:`
-
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
     
     const response = await fetch(url, {
       method: 'POST',
@@ -8829,11 +8818,11 @@ Agora gere o material completo em JSON:`
           { role: 'user', parts: [{ text: prompt }] }
         ],
         generationConfig: {
-          temperature: 0.8,  // Mais criativo e detalhado
-          maxOutputTokens: 8192,  // Limite correto para gemini-2.0-flash
+          temperature: 0.7,  // Equilibrado entre criatividade e precisão
+          maxOutputTokens: 8192,  // Limite para gemini-2.0-flash
           topP: 0.95,
-          topK: 40,
-          responseMimeType: 'application/json'  // Força resposta em JSON
+          topK: 40
+          // Nota: responseMimeType não é suportado em todas as versões da API
         }
       })
     })
@@ -8877,10 +8866,38 @@ Agora gere o material completo em JSON:`
       resultado = JSON.parse(jsonText)
       console.log('✅ Conteúdo gerado com sucesso!')
     } catch (parseError) {
-      console.error('❌ Erro no parse do JSON após sanitização:', parseError.message)
-      console.error('Primeiros 500 caracteres do JSON:', jsonText.substring(0, 500))
-      console.error('Últimos 500 caracteres do JSON:', jsonText.substring(jsonText.length - 500))
-      return null
+      console.error('❌ Erro no parse do JSON:', parseError.message)
+      console.log('🔧 Tentando recuperar JSON incompleto...')
+      
+      // Tentar recuperar JSON incompleto (comum quando output é truncado)
+      try {
+        // Encontrar última estrutura válida
+        let lastValidIndex = jsonText.length - 1
+        
+        // Remover conteúdo após última vírgula ou colchete válido
+        const lastValidChar = jsonText.lastIndexOf('}')
+        if (lastValidChar > 0) {
+          // Tentar fechar o JSON
+          let fixedJson = jsonText.substring(0, lastValidChar + 1)
+          
+          // Contar chaves e colchetes para fechar corretamente
+          const openBraces = (fixedJson.match(/{/g) || []).length
+          const closeBraces = (fixedJson.match(/}/g) || []).length
+          const openBrackets = (fixedJson.match(/\[/g) || []).length
+          const closeBrackets = (fixedJson.match(/]/g) || []).length
+          
+          // Adicionar fechamentos faltantes
+          for (let i = 0; i < openBrackets - closeBrackets; i++) fixedJson += ']'
+          for (let i = 0; i < openBraces - closeBraces; i++) fixedJson += '}'
+          
+          resultado = JSON.parse(fixedJson)
+          console.log('✅ JSON recuperado com sucesso!')
+        }
+      } catch (recoveryError) {
+        console.error('❌ Não foi possível recuperar o JSON:', recoveryError.message)
+        console.error('Primeiros 300 caracteres:', jsonText.substring(0, 300))
+        return null
+      }
     }
     
     return resultado
@@ -9847,7 +9864,7 @@ INSTRUÇÕES:
 - Use emojis para tornar a conversa mais amigável
 - Se não souber algo, seja honesto`
 
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
     
     const response = await fetch(url, {
       method: 'POST',
@@ -10324,7 +10341,7 @@ REGRAS OBRIGATÓRIAS:
         systemPrompt = `Crie um conteúdo educativo sobre "${topico_nome}" de "${disciplina_nome}" para concursos públicos.`
     }
     
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
     
     const response = await fetch(url, {
       method: 'POST',
@@ -10536,7 +10553,7 @@ REGRAS OBRIGATÓRIAS:
 - Inclua pegadinhas comuns de prova
 - Questões devem ser realistas e baseadas em conteúdo de concursos`
 
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
     
     const response = await fetch(url, {
       method: 'POST',
