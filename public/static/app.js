@@ -1141,15 +1141,33 @@ function renderEmailVerification(email, message, showResend = false) {
           ${email ? `<p class="text-xs text-[#122D6A] mt-2">Email: <strong>${email}</strong></p>` : ''}
         </div>
         
+        <!-- Aviso sobre serviço de email em teste -->
+        <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <p class="text-sm text-amber-800 mb-2">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            <strong>Serviço de Email em Teste</strong>
+          </p>
+          <p class="text-xs text-amber-700">
+            O serviço de envio de emails está em modo de teste e pode não funcionar para todos os emails.
+            Se você não receber o email, clique em "Reenviar" para obter um link de verificação manual.
+          </p>
+        </div>
+        
         <!-- Botões -->
         <div class="space-y-3">
           ${showResend ? `
-            <button onclick="resendVerificationEmail('${email}')" 
+            <button id="btn-resend-email" onclick="resendVerificationEmail('${email}')" 
               class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
               <i class="fas fa-paper-plane mr-2"></i>
-              Reenviar Email de Verificação
+              Reenviar / Obter Link Manual
             </button>
-          ` : ''}
+          ` : `
+            <button id="btn-resend-email" onclick="resendVerificationEmail('${email}')" 
+              class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+              <i class="fas fa-link mr-2"></i>
+              Obter Link de Verificação
+            </button>
+          `}
           
           <button onclick="renderLogin()" 
             class="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition">
@@ -1159,11 +1177,11 @@ function renderEmailVerification(email, message, showResend = false) {
         </div>
         
         <!-- Instruções -->
-        <div class="mt-6 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <p class="text-xs text-amber-800">
+        <div class="mt-6 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+          <p class="text-xs text-gray-600">
             <i class="fas fa-lightbulb mr-1"></i>
-            <strong>Dica:</strong> Verifique também a pasta de spam/lixo eletrônico.
-            O email pode levar alguns minutos para chegar.
+            <strong>Dica:</strong> Se o email não chegar em 5 minutos, verifique a pasta de spam ou 
+            clique no botão acima para obter um link de verificação manual.
           </p>
         </div>
       </div>
@@ -1174,62 +1192,119 @@ function renderEmailVerification(email, message, showResend = false) {
 // Função para reenviar email de verificação
 async function resendVerificationEmail(email) {
   try {
-    const btn = event.target;
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
+    const btn = document.getElementById('btn-resend-email') || event?.target;
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processando...';
+    }
     
     const response = await axios.post('/api/resend-verification', { email });
     
-    // Se está em modo dev, mostrar token e link
-    if (response.data.devMode && response.data.devToken) {
-      console.log('🔗 Novo token (DEV):', response.data.devToken);
-      console.log('🔗 URL de verificação:', `/verificar-email?token=${response.data.devToken}`);
+    // Se tem token (modo dev ou email não pôde ser enviado)
+    if (response.data.devToken) {
+      const verificationUrl = response.data.verificationUrl || 
+        (window.location.origin + '/verificar-email?token=' + response.data.devToken);
       
-      // Mostrar modal com o link manual apenas em modo dev
-      showModal(`
-        <div>
-          <p class="mb-3">${response.data.message}</p>
-          <div class="bg-gray-100 p-3 rounded text-sm">
-            <p class="font-semibold mb-2">🔧 Modo Desenvolvimento - Link Manual:</p>
-            <input type="text" 
-              value="${window.location.origin}/verificar-email?token=${response.data.devToken}"
-              class="w-full p-2 border rounded bg-white"
-              onclick="this.select()"
-              readonly>
-            <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value); showToast('Link copiado!', 'success')"
-              class="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">
-              📋 Copiar Link
-            </button>
-          </div>
-        </div>
-      `, { 
-        type: 'info',
-        title: '📧 Email de Verificação'
+      console.log('🔗 Token de verificação:', response.data.devToken);
+      console.log('🔗 URL de verificação:', verificationUrl);
+      
+      // Mostrar tela com link de verificação
+      document.getElementById('app').innerHTML = createVerificationLinkScreen(email, verificationUrl, response.data.message);
+    } else if (response.data.alreadyVerified) {
+      showModal('Seu email já foi verificado! Você pode fazer login agora.', { 
+        type: 'success',
+        title: 'Email Verificado'
       });
+      setTimeout(() => renderLogin(), 2000);
     } else {
-      showModal(response.data.message, { 
-        type: response.data.alreadyVerified ? 'info' : 'success' 
-      });
-    }
-    
-    // Restaurar botão
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.innerHTML = originalText;
-    }, 2000);
-    
-    // Se já está verificado, voltar ao login
-    if (response.data.alreadyVerified) {
-      setTimeout(() => renderLogin(), 3000);
+      showModal(response.data.message, { type: 'success' });
+      // Restaurar botão após 2 segundos
+      setTimeout(() => {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      }, 2000);
     }
   } catch (error) {
     console.error('Erro ao reenviar email:', error);
-    const btn = event.target;
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Reenviar Email de Verificação';
-    showModal(error.response?.data?.error || 'Erro ao reenviar email', { type: 'error' });
+    const btn = document.getElementById('btn-resend-email') || event?.target;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-link mr-2"></i>Tentar Novamente';
+    }
+    showModal(error.response?.data?.error || 'Erro ao processar solicitação', { type: 'error' });
   }
+}
+
+// Criar tela de link de verificação
+function createVerificationLinkScreen(email, verificationUrl, message) {
+  return `
+    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br ${c('primary').gradient}">
+      <div class="${themes[currentTheme].card} p-8 rounded-lg shadow-2xl w-full max-w-md">
+        <div class="text-center mb-6">
+          <div class="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <i class="fas fa-link text-4xl text-green-600"></i>
+          </div>
+          <h1 class="text-2xl font-bold ${themes[currentTheme].text}">Link de Verificação</h1>
+          <p class="text-sm text-gray-500 mt-2">${email}</p>
+        </div>
+        
+        <!-- Mensagem de sucesso -->
+        <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <p class="text-sm text-green-800">
+            <i class="fas fa-check-circle mr-2"></i>
+            ${message || 'Link de verificação gerado com sucesso!'}
+          </p>
+        </div>
+        
+        <!-- Link de verificação -->
+        <div class="bg-gray-100 p-4 rounded-lg mb-6">
+          <label class="block text-xs font-medium text-gray-600 mb-2">
+            <i class="fas fa-link mr-1"></i>
+            Clique no botão abaixo ou copie o link:
+          </label>
+          <div class="flex gap-2 mb-3">
+            <input type="text" 
+              id="verification-url-input"
+              value="${verificationUrl}"
+              class="flex-1 p-2 text-xs border rounded bg-white font-mono"
+              onclick="this.select()"
+              readonly>
+            <button onclick="navigator.clipboard.writeText('${verificationUrl}'); showToast('Link copiado!', 'success')"
+              class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition"
+              title="Copiar link">
+              <i class="fas fa-copy"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Botão principal -->
+        <a href="${verificationUrl}" 
+          class="block w-full bg-gradient-to-r from-green-600 to-green-700 text-white text-center py-4 rounded-lg font-bold text-lg hover:from-green-700 hover:to-green-800 transition shadow-lg mb-4">
+          <i class="fas fa-check-circle mr-2"></i>
+          Verificar Meu Email
+        </a>
+        
+        <!-- Botão secundário -->
+        <button onclick="renderLogin()" 
+          class="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition">
+          <i class="fas fa-arrow-left mr-2"></i>
+          Voltar ao Login
+        </button>
+        
+        <!-- Instruções -->
+        <div class="mt-6 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <p class="text-xs text-amber-800">
+            <i class="fas fa-info-circle mr-1"></i>
+            <strong>Nota:</strong> O serviço de email está em modo de teste. 
+            Use o link acima para verificar seu email manualmente.
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 // ============== TELA DE ESQUECI SENHA ==============
@@ -8104,20 +8179,29 @@ window.atualizarTodosIconesConteudo = atualizarTodosIconesConteudo;
 
 // Abrir modal de resumo personalizado (upload de PDF/documento)
 window.abrirModalResumoPersonalizado = function(metaId) {
+  console.log('🔵 ABRINDO MODAL DE RESUMO PERSONALIZADO - metaId:', metaId);
+  
+  // Remover qualquer modal existente para evitar conflitos
+  document.querySelectorAll('.fixed.inset-0').forEach(m => {
+    if (m.id !== 'loading-overlay') m.remove();
+  });
+  
   const meta = window.metaAtual || { topico_nome: 'Tópico', disciplina_nome: 'Disciplina' };
+  console.log('📄 Meta atual:', meta);
   
   const modal = document.createElement('div');
+  modal.id = 'modal-resumo-personalizado-upload';
   modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in';
   modal.innerHTML = `
     <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden animate-scale-in">
-      <div class="bg-gradient-to-r from-[#122D6A] to-[#1e3a7a] text-white p-6">
+      <div class="bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] text-white p-6">
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-2xl font-bold flex items-center gap-3">
               <i class="fas fa-file-upload text-3xl"></i>
               Resumo Personalizado
             </h2>
-            <p class="text-blue-200 mt-2">Upload de documento para gerar resumo com IA</p>
+            <p class="text-orange-100 mt-2">Upload de documento para gerar resumo com IA</p>
           </div>
           <button onclick="this.closest('.fixed').remove()" class="text-white/80 hover:text-white transition">
             <i class="fas fa-times text-xl"></i>
@@ -8127,9 +8211,9 @@ window.abrirModalResumoPersonalizado = function(metaId) {
       
       <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
         <!-- Informações do contexto -->
-        <div class="bg-blue-50 rounded-lg p-4 mb-6">
+        <div class="bg-orange-50 rounded-lg p-4 mb-6">
           <div class="flex items-center gap-3">
-            <i class="fas fa-info-circle text-[#122D6A]"></i>
+            <i class="fas fa-info-circle text-[#FF6B35]"></i>
             <div>
               <p class="text-sm text-gray-700">
                 <strong>Disciplina:</strong> ${meta.disciplina_nome}
@@ -8142,10 +8226,10 @@ window.abrirModalResumoPersonalizado = function(metaId) {
         </div>
         
         <!-- Área de upload -->
-        <div class="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center mb-6 hover:border-[#122D6A] transition-all" id="dropzone">
+        <div class="border-2 border-dashed border-orange-300 rounded-lg p-8 text-center mb-6 hover:border-[#FF6B35] transition-all" id="dropzone">
           <input type="file" id="file-upload" accept=".pdf,.txt,.doc,.docx" class="hidden">
           
-          <i class="fas fa-cloud-upload-alt text-6xl text-[#122D6A] opacity-50 mb-4"></i>
+          <i class="fas fa-cloud-upload-alt text-6xl text-[#FF6B35] opacity-50 mb-4"></i>
           
           <h3 class="text-xl font-semibold text-gray-700 mb-2">
             Arraste um arquivo ou clique para selecionar
@@ -8156,7 +8240,7 @@ window.abrirModalResumoPersonalizado = function(metaId) {
           </p>
           
           <button onclick="document.getElementById('file-upload').click()" 
-            class="bg-[#122D6A] text-white px-6 py-3 rounded-lg hover:bg-[#1e3a7a] transition font-medium">
+            class="bg-[#FF6B35] text-white px-6 py-3 rounded-lg hover:bg-[#E55A2D] transition font-medium">
             <i class="fas fa-folder-open mr-2"></i>
             Selecionar Arquivo
           </button>
@@ -8210,19 +8294,19 @@ window.abrirModalResumoPersonalizado = function(metaId) {
         <button onclick="processarResumoPersonalizado(${metaId})" 
           id="btn-processar"
           disabled
-          class="w-full bg-gradient-to-r from-[#122D6A] to-[#1e3a7a] text-white py-4 rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-[#1e3a7a] hover:to-[#264080] transition flex items-center justify-center gap-3">
+          class="w-full bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] text-white py-4 rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-[#E55A2D] hover:to-[#FF6B35] transition flex items-center justify-center gap-3">
           <i class="fas fa-magic"></i>
-          Gerar Resumo Personalizado
+          Gerar Resumo do Documento
         </button>
         
         <!-- Status de processamento -->
         <div id="processing-status" class="hidden mt-6">
-          <div class="bg-blue-50 rounded-lg p-4">
+          <div class="bg-orange-50 rounded-lg p-4">
             <div class="flex items-center gap-3">
-              <div class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full border-blue-500 border-t-transparent"></div>
+              <div class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full border-orange-500 border-t-transparent"></div>
               <div>
-                <p class="font-medium text-blue-700">Processando documento...</p>
-                <p class="text-sm text-[#122D6A] mt-1" id="status-message">Extraindo texto do arquivo...</p>
+                <p class="font-medium text-orange-700">Processando documento...</p>
+                <p class="text-sm text-[#FF6B35] mt-1" id="status-message">Extraindo texto do arquivo...</p>
               </div>
             </div>
           </div>
