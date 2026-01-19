@@ -351,8 +351,9 @@ async function sendPasswordResetEmail(email: string, token: string, name: string
   const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
   const FROM_EMAIL = env?.FROM_EMAIL || 'onboarding@resend.dev';
   
-  // URL de reset - usar URL pública do sandbox
-  const resetUrl = `https://3000-irlvrmbehvaldb16ba7lm-b9b802c4.sandbox.novita.ai/resetar-senha?token=${token}`;
+  // URL de reset - usar APP_URL do ambiente ou fallback
+  const APP_URL = env?.APP_URL || 'https://iaprova.pages.dev';
+  const resetUrl = `${APP_URL}/resetar-senha?token=${token}`;
   
   console.log('🔐 Preparando envio de email de reset...');
   console.log('🔐 Link de reset:', resetUrl);
@@ -466,10 +467,10 @@ async function sendVerificationEmail(email: string, token: string, name: string,
   // Obter configurações do ambiente
   const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
   const FROM_EMAIL = env?.FROM_EMAIL || 'onboarding@resend.dev';
-  const APP_URL = env?.APP_URL || 'http://localhost:3000';
+  const APP_URL = env?.APP_URL || 'https://iaprova.pages.dev';
   
-  // URL de verificação - usar URL pública do sandbox
-  const verificationUrl = `https://3000-irlvrmbehvaldb16ba7lm-b9b802c4.sandbox.novita.ai/verificar-email?token=${token}`;
+  // URL de verificação
+  const verificationUrl = `${APP_URL}/verificar-email?token=${token}`;
   
   // Para fins de desenvolvimento, vamos logar o link
   console.log('📧 Preparando envio de email...');
