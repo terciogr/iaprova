@@ -15032,129 +15032,15 @@ window.createHelpButton = function() {
   if (!document.querySelector('#help-button-styles')) {
     const styles = document.createElement('style');
     styles.id = 'help-button-styles';
-    styles.innerHTML = \`
+    styles.innerHTML = `
       @keyframes slideUp {
         from { transform: translateY(20px); opacity: 0; }
         to { transform: translateY(0); opacity: 1; }
       }
       #help-button:hover { transform: scale(1.1); }
-    \`;
-    document.head.appendChild(styles);
-  }
-  return;
-  
-  // Criar container do botão
-  const helpContainer = document.createElement('div');
-  helpContainer.id = 'help-button-container';
-  helpContainer.innerHTML = `
-    <!-- Botão Principal de Ajuda - Posicionado no topo direito para não conflitar com chat -->
-    <button 
-      id="help-button"
-      onclick="toggleHelpMenu()"
-      class="fixed top-20 right-4 z-[9990] w-12 h-12 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 group hover:scale-110"
-      title="Central de Ajuda"
-    >
-      <i class="fas fa-question text-white text-lg group-hover:rotate-12 transition-transform"></i>
-    </button>
-    
-    <!-- Menu de Opções de Ajuda - Abre abaixo do botão -->
-    <div id="help-menu" class="hidden fixed top-36 right-4 z-[9991] bg-white rounded-2xl shadow-2xl p-2 min-w-[220px] animate-slideUp">
-      <div class="space-y-1">
-        <button 
-          onclick="startTutorial(true); toggleHelpMenu()"
-          class="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#122D6A]/5 rounded-xl transition-all group"
-        >
-          <div class="w-10 h-10 bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-            <i class="fas fa-graduation-cap text-white text-sm"></i>
-          </div>
-          <div class="text-left">
-            <p class="font-semibold text-gray-800 text-sm">Tour Guiado</p>
-            <p class="text-xs text-gray-500">Aprenda a usar o sistema</p>
-          </div>
-        </button>
-        
-        <button 
-          onclick="openFAQ(); toggleHelpMenu()"
-          class="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#122D6A]/5 rounded-xl transition-all group"
-        >
-          <div class="w-10 h-10 bg-gradient-to-br from-[#2A4A9F] to-[#3A5AB0] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-            <i class="fas fa-question-circle text-white text-sm"></i>
-          </div>
-          <div class="text-left">
-            <p class="font-semibold text-gray-800 text-sm">Perguntas Frequentes</p>
-            <p class="text-xs text-gray-500">Dúvidas comuns</p>
-          </div>
-        </button>
-      </div>
-    </div>
-    
-    <!-- Tooltip no hover (posicionado à esquerda do botão) -->
-    <div id="help-tooltip" class="hidden fixed top-20 right-20 z-[9989] bg-gray-800 text-white text-sm px-4 py-2 rounded-lg shadow-lg whitespace-nowrap animate-fadeIn">
-      <span>Ajuda 👈</span>
-      <div class="absolute right-[-8px] top-1/2 transform -translate-y-1/2 w-0 h-0 border-t-[6px] border-b-[6px] border-l-[8px] border-transparent border-l-gray-800"></div>
-    </div>
-  `;
-  
-  document.body.appendChild(helpContainer);
-  
-  // Adicionar estilos CSS específicos
-  if (!document.querySelector('#help-button-styles')) {
-    const styles = document.createElement('style');
-    styles.id = 'help-button-styles';
-    styles.innerHTML = `
-      @keyframes pulseHelp {
-        0% {
-          box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7);
-        }
-        70% {
-          box-shadow: 0 0 0 15px rgba(168, 85, 247, 0);
-        }
-        100% {
-          box-shadow: 0 0 0 0 rgba(168, 85, 247, 0);
-        }
-      }
-      
-      @keyframes slideUp {
-        from {
-          transform: translateY(20px);
-          opacity: 0;
-        }
-        to {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-      
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      
-      .pulse-animation {
-        animation: pulseHelp 2s infinite;
-      }
-      
-      .animate-slideUp {
-        animation: slideUp 0.3s ease-out;
-      }
-      
-      .animate-fadeIn {
-        animation: fadeIn 0.5s ease-out;
-      }
-      
-      #help-button:hover {
-        transform: scale(1.1) rotate(5deg);
-      }
-      
-      /* Mostrar tooltip na primeira vez */
-      #help-button-container:not(.clicked):hover #help-tooltip {
-        display: block !important;
-      }
     `;
     document.head.appendChild(styles);
   }
-  
-  // Tooltip aparece apenas no hover (definido no CSS)
 }
 
 // Toggle do menu de ajuda
