@@ -10,33 +10,6 @@ let currentTheme = localStorage.getItem('theme') || 'light';
 let customColors = JSON.parse(localStorage.getItem('customColors') || '{"primary": "#8b5cf6", "secondary": "#ec4899", "accent": "#3b82f6"}');
 let rgbColors = JSON.parse(localStorage.getItem('rgbColors') || '{"primary": "#8b5cf6", "secondary": "#ec4899", "accent": "#3b82f6"}');
 
-// Função para mostrar toast (notificação rápida)
-function showToast(message, type = 'info') {
-  const toastId = 'toast-' + Date.now();
-  const toastHtml = `
-    <div id="${toastId}" class="fixed top-4 right-4 z-50 animate-fade-in">
-      <div class="bg-white rounded-lg shadow-lg p-4 flex items-center space-x-3 min-w-[250px]">
-        ${type === 'success' ? '<i class="fas fa-check-circle text-green-500 text-xl"></i>' : ''}
-        ${type === 'error' ? '<i class="fas fa-exclamation-circle text-red-500 text-xl"></i>' : ''}
-        ${type === 'info' ? '<i class="fas fa-info-circle text-blue-500 text-xl"></i>' : ''}
-        <span class="text-gray-700 text-sm">${message}</span>
-      </div>
-    </div>
-  `;
-  
-  // Adicionar ao DOM
-  document.body.insertAdjacentHTML('beforeend', toastHtml);
-  
-  // Remover após 3 segundos
-  setTimeout(() => {
-    const toast = document.getElementById(toastId);
-    if (toast) {
-      toast.classList.add('animate-fade-out');
-      setTimeout(() => toast.remove(), 300);
-    }
-  }, 3000);
-}
-
 // Temas disponíveis - EXPANDIDO COM MAIS VARIAÇÕES
 const themes = {
   light: {
@@ -1117,58 +1090,10 @@ window.toggleFabMenu = function() {
   }
 }
 
-// Substituir a função antiga
+// Substituir a função antiga - agora usa o FAB unificado
 function addEmergencyBackButton() {
-  // Agora cria o FAB unificado
+  // O FAB unificado já inclui todos os botões necessários
   createUnifiedFAB();
-  
-  // Ao clicar: limpar tudo e voltar ao login
-  emergencyBtn.onclick = async () => {
-    const confirmed = await showConfirm('Deseja limpar a sessão atual e voltar ao login?\n\nIsso vai fazer logout da conta atual.', {
-      title: 'Voltar ao Login',
-      confirmText: 'Sim, sair',
-      cancelText: 'Cancelar',
-      type: 'warning'
-    });
-    if (confirmed) {
-      localStorage.clear();
-      window.location.reload();
-    }
-  };
-  
-  document.body.appendChild(emergencyBtn);
-  
-  // No mobile, sempre mostrar semi-transparente
-  if (!isMobile) {
-    // Desktop: mostrar botão quando mouse está próximo do canto inferior ESQUERDO
-    document.addEventListener('mousemove', (e) => {
-      const distanceFromBottomLeft = Math.sqrt(
-        Math.pow(e.clientX, 2) + 
-        Math.pow(window.innerHeight - e.clientY, 2)
-      );
-      
-      if (distanceFromBottomLeft < 150) {
-        emergencyBtn.style.opacity = '1';
-      } else {
-        emergencyBtn.style.opacity = '0.3';
-      }
-    });
-  }
-  
-  // Sempre mostrar se houver erro na página
-  window.addEventListener('error', () => {
-    emergencyBtn.style.opacity = '1';
-    emergencyBtn.classList.add('animate-pulse');
-  });
-  
-  // Atualizar ao redimensionar janela
-  window.addEventListener('resize', () => {
-    const nowMobile = window.innerWidth < 768;
-    if (nowMobile !== isMobile) {
-      emergencyBtn.remove();
-      addEmergencyBackButton();
-    }
-  });
 }
 
 function checkUser() {
@@ -16182,7 +16107,7 @@ function mostrarBancaDetectada(banca) {
 
 
 // Função melhorada para mostrar tooltip
-`);
+function mostrarTooltipOpcao(event, tooltip) {
   const button = event.currentTarget;
   
   if (tooltip && button) {
@@ -16280,55 +16205,6 @@ window.abrirModalAjuda = function() {
   `;
   document.body.appendChild(modal);
 }
-
-<!-- Botão de Ajuda Flutuante -->
-<div id="help-button-container" style="position: fixed; bottom: 80px; right: 20px; z-index: 9998;">
-  <button onclick="toggleHelpMenu()" 
-    class="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-300 group">
-    <i class="fas fa-question text-xl group-hover:scale-110 transition-transform"></i>
-  </button>
-  
-  <!-- Menu de Ajuda (oculto por padrão) -->
-  <div id="help-menu" class="hidden absolute bottom-16 right-0 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-72">
-    <div class="space-y-3">
-      <h3 class="font-bold text-gray-800 dark:text-white border-b pb-2">
-        <i class="fas fa-question-circle text-blue-500 mr-2"></i>
-        Central de Ajuda
-      </h3>
-      
-      <button onclick="showHelpTopic('inicio')" 
-        class="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition">
-        <i class="fas fa-play-circle text-green-500 mr-2"></i>
-        Como começar
-      </button>
-      
-      <button onclick="showHelpTopic('edital')" 
-        class="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition">
-        <i class="fas fa-file-pdf text-red-500 mr-2"></i>
-        Upload de edital
-      </button>
-      
-      <button onclick="showHelpTopic('conteudo')" 
-        class="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition">
-        <i class="fas fa-brain text-purple-500 mr-2"></i>
-        Gerar conteúdo com IA
-      </button>
-      
-      <button onclick="showHelpTopic('plano')" 
-        class="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition">
-        <i class="fas fa-calendar text-blue-500 mr-2"></i>
-        Plano de estudos
-      </button>
-      
-      <button onclick="showFullHelp()" 
-        class="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition font-semibold">
-        <i class="fas fa-book text-orange-500 mr-2"></i>
-        Ver toda ajuda
-      </button>
-    </div>
-  </div>
-</div>
-
 
 // Funções do Menu de Ajuda
 window.toggleHelpMenu = function() {
