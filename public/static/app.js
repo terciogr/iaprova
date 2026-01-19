@@ -1248,7 +1248,7 @@ function showForgotPassword() {
             <input type="email" id="resetEmail" required 
               class="w-full px-4 py-2 ${themes[currentTheme].input} rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               placeholder="seu@email.com"
-              pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$"
+              pattern="[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}"
               title="Por favor, insira um email válido">
           </div>
           
@@ -1502,7 +1502,7 @@ function renderLogin() {
               <input type="email" id="userEmail" required 
                 class="w-full px-4 py-2 ${themes[currentTheme].input} rounded-lg focus:ring-2 focus:ring-[#1A3A7F] focus:border-transparent"
                 placeholder="seu@email.com"
-                pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$"
+                pattern="[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}"
                 title="Por favor, insira um email válido"
                 oninput="this.value = this.value.toLowerCase()">
             </div>
