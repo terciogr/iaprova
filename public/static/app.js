@@ -5746,6 +5746,7 @@ let tipoConteudoSelecionado = null;
 
 // Função para selecionar tipo de conteúdo
 window.selecionarTipoConteudo = function(tipo) {
+  console.log('🎯 Tipo de conteúdo selecionado:', tipo);
   tipoConteudoSelecionado = tipo;
   
   // Resetar todos os botões
@@ -5801,6 +5802,8 @@ window.selecionarTipoConteudo = function(tipo) {
 
 // Função para confirmar e executar geração
 window.confirmarGeracaoConteudo = function(topicoId, topicoNome, disciplinaNome, metaId = null) {
+  console.log('📝 Confirmando geração:', { tipoConteudoSelecionado, topicoId, topicoNome, disciplinaNome, metaId });
+  
   if (!tipoConteudoSelecionado) {
     showToast('Selecione um tipo de conteúdo', 'warning');
     return;
@@ -5808,6 +5811,7 @@ window.confirmarGeracaoConteudo = function(topicoId, topicoNome, disciplinaNome,
   
   // Se for resumo personalizado, abrir modal de upload
   if (tipoConteudoSelecionado === 'resumo_personalizado') {
+    console.log('📄 Abrindo modal de upload de resumo personalizado...');
     document.getElementById('modal-gerar-conteudo')?.remove();
     // Configurar meta para o modal de upload
     window.metaAtual = {
