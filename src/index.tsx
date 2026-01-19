@@ -5,7 +5,7 @@ import { serveStatic } from 'hono/cloudflare-workers'
 import type { Bindings } from './types'
 import OpenAI from 'openai'
 import * as XLSX from 'xlsx'
-import { EmailService } from './services/email.service'
+// EmailService movido para funções inline com templates atualizados
 
 // ✅✅✅ FUNÇÃO OTIMIZADA DE EXTRAÇÃO DE PDF - RÁPIDA E EFICIENTE
 async function extractTextFromPDF(pdfBuffer: ArrayBuffer, geminiKey: string): Promise<string> {
@@ -754,6 +754,235 @@ async function sendVerificationEmail(email: string, token: string, name: string,
   }
 }
 
+// Função para enviar email de boas-vindas após verificação (usando Resend)
+async function sendWelcomeEmail(email: string, name: string, env?: any): Promise<boolean> {
+  const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
+  const FROM_EMAIL = env?.FROM_EMAIL || 'onboarding@resend.dev';
+  const APP_URL = env?.APP_URL || 'https://iaprova.pages.dev';
+  
+  // Verificar se tem API key configurada
+  if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
+    console.log('⚠️ MODO DEV: Email de boas-vindas não enviado (configure RESEND_API_KEY)');
+    return false;
+  }
+  
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [email],
+        subject: '🎉 Conta Ativada! Bem-vindo ao IAprova',
+        html: `
+          <!DOCTYPE html>
+          <html lang="pt-BR">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Bem-vindo ao IAprova</title>
+          </head>
+          <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #E8EDF5;">
+            <table cellpadding="0" cellspacing="0" width="100%" style="background-color: #E8EDF5; padding: 40px 20px;">
+              <tr>
+                <td align="center">
+                  <table cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(18, 45, 106, 0.12); overflow: hidden;">
+                    
+                    <!-- Header com gradiente verde de sucesso -->
+                    <tr>
+                      <td style="background: linear-gradient(135deg, #059669 0%, #10B981 50%, #34D399 100%); padding: 40px 30px; text-align: center;">
+                        <table cellpadding="0" cellspacing="0" width="100%">
+                          <tr>
+                            <td align="center">
+                              <div style="background-color: rgba(255,255,255,0.15); width: 70px; height: 70px; border-radius: 16px; display: inline-block; line-height: 70px; margin-bottom: 16px;">
+                                <span style="font-size: 32px;">🎉</span>
+                              </div>
+                              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">Conta Ativada com Sucesso!</h1>
+                              <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0 0; font-size: 14px;">Sua jornada rumo à aprovação começa agora</p>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <!-- Conteúdo principal -->
+                    <tr>
+                      <td style="padding: 40px 40px 20px 40px;">
+                        <h2 style="color: #122D6A; margin: 0 0 8px 0; font-size: 22px; font-weight: 700;">Parabéns, ${name}! 🚀</h2>
+                        <p style="color: #4A6491; margin: 0; font-size: 15px; line-height: 1.6;">
+                          Seu email foi verificado e sua conta está <strong>100% ativa</strong>. Agora você tem acesso completo a todas as funcionalidades do IAprova!
+                        </p>
+                      </td>
+                    </tr>
+                    
+                    <!-- Próximos passos -->
+                    <tr>
+                      <td style="padding: 0 40px 32px 40px;">
+                        <div style="background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%); border-radius: 12px; padding: 24px; border-left: 4px solid #10B981;">
+                          <p style="color: #065F46; font-size: 14px; font-weight: 600; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                            💡 Próximos Passos para Começar:
+                          </p>
+                          <table cellpadding="0" cellspacing="0" width="100%">
+                            <tr>
+                              <td style="padding: 6px 0; color: #047857; font-size: 14px;">
+                                <strong>1.</strong> Faça upload do edital do seu concurso
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 6px 0; color: #047857; font-size: 14px;">
+                                <strong>2.</strong> Complete a entrevista inicial personalizada
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 6px 0; color: #047857; font-size: 14px;">
+                                <strong>3.</strong> Receba seu plano de estudos gerado por IA
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 6px 0; color: #047857; font-size: 14px;">
+                                <strong>4.</strong> Comece a estudar com conteúdos personalizados!
+                              </td>
+                            </tr>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <!-- Botão de acesso -->
+                    <tr>
+                      <td style="padding: 0 40px 32px 40px; text-align: center;">
+                        <a href="${APP_URL}" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #122D6A 0%, #1A3A7F 100%); color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 14px rgba(18, 45, 106, 0.35);">
+                          🚀 Acessar IAprova Agora
+                        </a>
+                      </td>
+                    </tr>
+                    
+                    <!-- Recursos disponíveis -->
+                    <tr>
+                      <td style="padding: 0 40px 32px 40px;">
+                        <p style="color: #122D6A; font-size: 14px; font-weight: 600; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                          ✨ Recursos Disponíveis para Você:
+                        </p>
+                        <table cellpadding="0" cellspacing="0" width="100%">
+                          <tr>
+                            <td style="padding: 8px 0;">
+                              <table cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="width: 28px; vertical-align: top;">
+                                    <span style="color: #1A3A7F; font-size: 16px;">📚</span>
+                                  </td>
+                                  <td style="color: #4A6491; font-size: 14px; line-height: 1.5;">
+                                    <strong style="color: #122D6A;">Teoria Completa</strong> - Conteúdo gerado por IA para cada disciplina
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0;">
+                              <table cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="width: 28px; vertical-align: top;">
+                                    <span style="color: #1A3A7F; font-size: 16px;">📝</span>
+                                  </td>
+                                  <td style="color: #4A6491; font-size: 14px; line-height: 1.5;">
+                                    <strong style="color: #122D6A;">Exercícios Práticos</strong> - Questões no estilo da sua banca
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0;">
+                              <table cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="width: 28px; vertical-align: top;">
+                                    <span style="color: #1A3A7F; font-size: 16px;">🎯</span>
+                                  </td>
+                                  <td style="color: #4A6491; font-size: 14px; line-height: 1.5;">
+                                    <strong style="color: #122D6A;">Metas Semanais</strong> - Plano organizado até a data da prova
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0;">
+                              <table cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="width: 28px; vertical-align: top;">
+                                    <span style="color: #1A3A7F; font-size: 16px;">📊</span>
+                                  </td>
+                                  <td style="color: #4A6491; font-size: 14px; line-height: 1.5;">
+                                    <strong style="color: #122D6A;">Dashboard de Progresso</strong> - Acompanhe sua evolução
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                      <td style="background-color: #122D6A; padding: 24px 40px;">
+                        <table cellpadding="0" cellspacing="0" width="100%">
+                          <tr>
+                            <td align="center">
+                              <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 0 0 8px 0;">
+                                Estamos aqui para ajudar você a conquistar sua aprovação! 💪
+                              </p>
+                              <p style="color: rgba(255,255,255,0.5); font-size: 11px; margin: 0;">
+                                Dúvidas? Entre em contato: suporte@iaprova.com.br
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <!-- Copyright -->
+                    <tr>
+                      <td style="padding: 20px 40px; text-align: center;">
+                        <p style="color: #8FA4CC; font-size: 11px; margin: 0;">
+                          © 2025 IAprova - Preparação Inteligente para Concursos Públicos
+                        </p>
+                        <p style="color: #C5D1E8; font-size: 10px; margin: 8px 0 0 0;">
+                          Este é um email automático. Por favor, não responda.
+                        </p>
+                      </td>
+                    </tr>
+                    
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+          </html>
+        `,
+      }),
+    });
+
+    console.log('🎉 Resposta do Resend (Welcome):', response.status, response.statusText);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Erro do Resend (Welcome):', errorText);
+    } else {
+      console.log('✅ Email de boas-vindas enviado com sucesso!');
+    }
+
+    return response.ok;
+  } catch (error) {
+    console.error('Erro ao enviar email de boas-vindas:', error);
+    return false;
+  }
+}
+
 // ============== ROTAS DE USUÁRIOS ==============
 app.post('/api/users', async (c) => {
   const { DB } = c.env
@@ -1183,16 +1412,8 @@ app.get('/api/verify-email/:token', async (c) => {
       WHERE id = ?
     `).bind(user.id).run()
     
-    const emailService = new EmailService(c.env.RESEND_API_KEY || 'demo_key');
-    const loginLink = `${c.env.APP_URL || 'http://localhost:3000'}`;
-    
-    const { html, text } = emailService.getWelcomeEmailTemplate(user.name, loginLink);
-    await emailService.sendEmail({
-      to: user.email,
-      subject: '✅ Bem-vindo ao IAprova!',
-      html,
-      text
-    });
+    // Enviar email de boas-vindas
+    await sendWelcomeEmail(user.email, user.name, c.env);
     
     return c.json({
       message: 'Email verificado com sucesso!',
@@ -1202,63 +1423,6 @@ app.get('/api/verify-email/:token', async (c) => {
   } catch (error) {
     console.error('Erro ao verificar email:', error)
     return c.json({ error: 'Erro ao verificar email' }, 500)
-  }
-})
-
-// Reenviar email de verificação
-app.post('/api/resend-verification', async (c) => {
-  const { DB } = c.env
-  const { email } = await c.req.json()
-  
-  const userEmail = email?.toLowerCase().trim();
-  
-  if (!userEmail || !isValidEmail(userEmail)) {
-    return c.json({ error: 'Email inválido' }, 400)
-  }
-  
-  try {
-    const user = await DB.prepare(`
-      SELECT id, name, email_verified 
-      FROM users 
-      WHERE email = ?
-    `).bind(userEmail).first() as any
-    
-    if (!user) {
-      return c.json({ error: 'Email não cadastrado' }, 404)
-    }
-    
-    if (user.email_verified) {
-      return c.json({ error: 'Email já verificado' }, 400)
-    }
-    
-    const verificationToken = generateSecureToken();
-    const tokenExpires = new Date();
-    tokenExpires.setHours(tokenExpires.getHours() + 24);
-    
-    await DB.prepare(`
-      UPDATE users 
-      SET verification_token = ?, verification_token_expires = ? 
-      WHERE id = ?
-    `).bind(verificationToken, tokenExpires.toISOString(), user.id).run()
-    
-    const emailService = new EmailService(c.env.RESEND_API_KEY || 'demo_key');
-    const verificationLink = `${c.env.APP_URL || 'http://localhost:3000'}/#/verify-email?token=${verificationToken}`;
-    
-    const { html, text } = emailService.getVerificationEmailTemplate(user.name, verificationLink);
-    await emailService.sendEmail({
-      to: userEmail,
-      subject: '🔄 Novo link de verificação - IAprova',
-      html,
-      text
-    });
-    
-    return c.json({
-      message: 'Email reenviado com sucesso',
-      verificationToken: verificationToken
-    })
-  } catch (error) {
-    console.error('Erro ao reenviar:', error)
-    return c.json({ error: 'Erro ao reenviar' }, 500)
   }
 })
 
