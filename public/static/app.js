@@ -4339,8 +4339,8 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
       </header>
 
       <div class="max-w-7xl mx-auto px-4 py-4">
-        <!-- ✅ LAYOUT UNIFICADO: Contagem Regressiva, Disciplinas, Progresso e Simulados na MESMA LINHA -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-4">
+        <!-- ✅ LAYOUT UNIFICADO: 5 cards em uma linha (Data, Disciplinas, Progresso, Simulados, Desempenho) -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3 mb-4">
           
           <!-- Card Contagem Regressiva / Data da Prova -->
           ${contagemRegressiva ? `
@@ -5529,6 +5529,13 @@ window.toggleRevisaoTopico = async function(topicoId, marcarRevisado, disciplina
 // Função para ver materiais salvos do tópico
 window.verMateriaisTopico = async function(topicoId, topicoNome, disciplinaNome) {
   try {
+    // ✅ Guardar dados em variáveis globais para evitar problemas com escape
+    window._materiaisTopicoAtual = {
+      topicoId: topicoId,
+      topicoNome: topicoNome,
+      disciplinaNome: disciplinaNome
+    };
+    
     // Buscar materiais do tópico
     const response = await axios.get(`/api/materiais/${currentUser.id}?topico_id=${topicoId}`);
     const materiais = response.data.materiais || [];
@@ -5562,7 +5569,7 @@ window.verMateriaisTopico = async function(topicoId, topicoNome, disciplinaNome)
                 <i class="fas fa-folder-open text-6xl text-gray-300 mb-4"></i>
                 <h3 class="text-lg font-bold ${themes[currentTheme].text} mb-2">Nenhum material salvo ainda</h3>
                 <p class="${themes[currentTheme].textSecondary} mb-4">Gere conteúdo com IA para começar</p>
-                <button onclick="document.getElementById('modal-materiais-topico').remove(); gerarConteudoTopico(${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}')"
+                <button onclick="gerarConteudoDoMaterialModal()"
                         class="px-6 py-3 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition">
                   <i class="fas fa-magic mr-2"></i>Gerar Conteúdo
                 </button>
@@ -5620,7 +5627,7 @@ window.verMateriaisTopico = async function(topicoId, topicoNome, disciplinaNome)
           
           <!-- Footer -->
           <div class="p-4 border-t ${themes[currentTheme].border} flex gap-3 justify-end flex-shrink-0">
-            <button onclick="document.getElementById('modal-materiais-topico').remove(); gerarConteudoTopico(${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}')"
+            <button onclick="gerarConteudoDoMaterialModal()"
                     class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition">
               <i class="fas fa-magic mr-2"></i>Gerar Novo Conteúdo
             </button>
@@ -5737,6 +5744,21 @@ window.toggleFavoritoMaterial = async function(materialId) {
   } catch (error) {
     console.error('Erro ao toggle favorito:', error);
     showToast('Erro ao atualizar favorito', 'error');
+  }
+}
+
+// ✅ NOVA: Função auxiliar para gerar conteúdo a partir do modal de materiais
+window.gerarConteudoDoMaterialModal = function() {
+  // Fechar modal de materiais
+  document.getElementById('modal-materiais-topico')?.remove();
+  
+  // Verificar se temos os dados guardados
+  const dados = window._materiaisTopicoAtual;
+  if (dados) {
+    console.log('🎯 Gerando conteúdo para:', dados);
+    gerarConteudoTopico(dados.topicoId, dados.topicoNome, dados.disciplinaNome);
+  } else {
+    showToast('Erro: dados do tópico não encontrados', 'error');
   }
 }
 
@@ -7499,8 +7521,6 @@ window.renderDashboardDesempenho = async function() {
           
         </div>
       </div>
-      
-      ${renderFooter()}
     `;
     
   } catch (error) {
