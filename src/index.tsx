@@ -7090,6 +7090,83 @@ app.get('/api/estatisticas/:user_id', async (c) => {
   })
 })
 
+// Endpoint para retornar estudos por semana (últimas 4 semanas)
+app.get('/api/estatisticas/:user_id/por-semana', async (c) => {
+  const { DB } = c.env
+  const user_id = c.req.param('user_id')
+  
+  try {
+    const semanas = []
+    const hoje = new Date()
+    
+    for (let i = 0; i < 4; i++) {
+      // Calcular início e fim de cada semana
+      const fimSemana = new Date(hoje)
+      fimSemana.setDate(hoje.getDate() - (i * 7))
+      fimSemana.setHours(23, 59, 59, 999)
+      
+      const inicioSemana = new Date(fimSemana)
+      inicioSemana.setDate(fimSemana.getDate() - 6)
+      inicioSemana.setHours(0, 0, 0, 0)
+      
+      const inicioStr = inicioSemana.toISOString().split('T')[0]
+      const fimStr = fimSemana.toISOString().split('T')[0]
+      
+      // Buscar dias estudados na semana
+      const diasEstudados = await DB.prepare(`
+        SELECT COUNT(DISTINCT data) as dias FROM historico_estudos
+        WHERE user_id = ? AND data >= ? AND data <= ? AND status != 'nao_estudou'
+      `).bind(user_id, inicioStr, fimStr).first() as any
+      
+      // Buscar tempo estudado na semana
+      const tempoEstudado = await DB.prepare(`
+        SELECT SUM(tempo_estudado_minutos) as minutos FROM historico_estudos
+        WHERE user_id = ? AND data >= ? AND data <= ?
+      `).bind(user_id, inicioStr, fimStr).first() as any
+      
+      // Buscar metas concluídas na semana (concluida = 1)
+      const metasConcluidas = await DB.prepare(`
+        SELECT COUNT(*) as total FROM metas_diarias
+        WHERE user_id = ? AND data >= ? AND data <= ? AND concluida = 1
+      `).bind(user_id, inicioStr, fimStr).first() as any
+      
+      const metasTotal = await DB.prepare(`
+        SELECT COUNT(*) as total FROM metas_diarias
+        WHERE user_id = ? AND data >= ? AND data <= ?
+      `).bind(user_id, inicioStr, fimStr).first() as any
+      
+      const diasNaSemana = i === 0 ? Math.min(7, Math.ceil((hoje.getTime() - inicioSemana.getTime()) / (1000 * 60 * 60 * 24)) + 1) : 7
+      const percentualConclusao = metasTotal?.total > 0 
+        ? Math.round((metasConcluidas?.total / metasTotal?.total) * 100)
+        : (diasEstudados?.dias > 0 ? Math.round((diasEstudados?.dias / diasNaSemana) * 100) : 0)
+      
+      semanas.push({
+        label: i === 0 ? 'Esta semana' : i === 1 ? 'Semana passada' : `${i + 1} semanas atrás`,
+        inicio: inicioStr,
+        fim: fimStr,
+        diasEstudados: diasEstudados?.dias || 0,
+        diasNaSemana,
+        tempoMinutos: tempoEstudado?.minutos || 0,
+        metasConcluidas: metasConcluidas?.total || 0,
+        metasTotal: metasTotal?.total || 0,
+        percentual: percentualConclusao
+      })
+    }
+    
+    // Calcular média das últimas 4 semanas
+    const mediaPercentual = semanas.length > 0 
+      ? Math.round(semanas.reduce((acc, s) => acc + s.percentual, 0) / semanas.length)
+      : 0
+    
+    return c.json({
+      semanas: semanas.reverse(), // Ordem cronológica (mais antiga primeiro)
+      mediaUltimas4Semanas: mediaPercentual
+    })
+  } catch (error) {
+    console.error('Erro ao buscar estudos por semana:', error)
+    return c.json({ error: 'Erro ao buscar estatísticas' }, 500)
+  }
+})
 
 // ============== ROTAS DE METAS SEMANAIS ==============
 

@@ -7304,17 +7304,19 @@ window.renderDashboardDesempenho = async function() {
     }
     
     // Buscar dados necessários em paralelo
-    const [simuladosRes, estatisticasRes, desempenhoRes, progressoRes] = await Promise.all([
+    const [simuladosRes, estatisticasRes, desempenhoRes, progressoRes, estudosSemanaRes] = await Promise.all([
       axios.get(`/api/simulados/historico/${currentUser.id}`),
       axios.get(`/api/estatisticas/${currentUser.id}`),
       axios.get(`/api/desempenho/user/${currentUser.id}`),
-      axios.get(`/api/planos/${plano.id}/progresso-geral`)
+      axios.get(`/api/planos/${plano.id}/progresso-geral`),
+      axios.get(`/api/estatisticas/${currentUser.id}/por-semana`).catch(() => ({ data: { semanas: [], mediaUltimas4Semanas: 0 } }))
     ]);
     
     const simulados = simuladosRes.data.simulados || [];
     const stats = estatisticasRes.data || {};
     const desempenho = desempenhoRes.data || [];
     const progressoGeral = progressoRes.data || {};
+    const dadosSemanais = estudosSemanaRes.data || { semanas: [], mediaUltimas4Semanas: 0 };
     
     // Calcular métricas
     const mediaSimulados = simulados.length > 0 ? 
@@ -7323,10 +7325,11 @@ window.renderDashboardDesempenho = async function() {
     const mediaUltimos = ultimosSimulados.length > 0 ? 
       Math.round(ultimosSimulados.reduce((acc, s) => acc + s.percentual_acerto, 0) / ultimosSimulados.length) : 0;
     
-    // Calcular percentual de estudos por semana (últimas 4 semanas)
-    const estudosSemana = calcularEstudosPorSemana(stats);
+    // ✅ CORRIGIDO: Usar dados reais da API de estudos por semana
+    const estudosSemana = calcularEstudosPorSemana(dadosSemanais);
+    const mediaSemanasReal = dadosSemanais.mediaUltimas4Semanas || 0;
     
-    // Evolução por disciplina
+    // Evolução por disciplina (dados reais)
     const evolucaoDisciplinas = calcularEvolucaoDisciplinas(desempenho);
     
     // Meta do usuário
@@ -7473,7 +7476,7 @@ window.renderDashboardDesempenho = async function() {
               <div class="mt-4 pt-4 border-t ${themes[currentTheme].border}">
                 <div class="flex justify-between items-center">
                   <span class="text-sm ${themes[currentTheme].textSecondary}">Média das últimas 4 semanas:</span>
-                  <span class="text-lg font-bold text-[#2A4A9F]">${Math.round(estudosSemana.reduce((a,s) => a + s.percentual, 0) / estudosSemana.length)}%</span>
+                  <span class="text-lg font-bold text-[#2A4A9F]">${mediaSemanasReal || (estudosSemana.length > 0 ? Math.round(estudosSemana.reduce((a,s) => a + s.percentual, 0) / estudosSemana.length) : 0)}%</span>
                 </div>
               </div>
             </div>
@@ -7541,44 +7544,39 @@ window.renderDashboardDesempenho = async function() {
 }
 
 // Funções auxiliares para o Dashboard de Desempenho
-function calcularEstudosPorSemana(stats) {
-  const semanas = [];
-  const hoje = new Date();
-  
-  for (let i = 3; i >= 0; i--) {
-    const inicioSemana = new Date(hoje);
-    inicioSemana.setDate(hoje.getDate() - (hoje.getDay() + (i * 7)));
-    inicioSemana.setHours(0, 0, 0, 0);
-    
-    const fimSemana = new Date(inicioSemana);
-    fimSemana.setDate(inicioSemana.getDate() + 6);
-    
-    // Simular dados baseado nas estatísticas gerais
-    const diasNaSemana = i === 0 ? hoje.getDay() + 1 : 7;
-    const percentualEstimado = stats.dias_estudados > 0 ? 
-      Math.min(100, Math.round((stats.dias_estudados / (28 - (i * 7))) * 100 * (Math.random() * 0.4 + 0.8))) : 
-      Math.round(Math.random() * 30);
-    
-    semanas.push({
-      label: i === 0 ? 'Esta semana' : i === 1 ? 'Semana passada' : `${i + 1} semanas atrás`,
-      percentual: Math.max(0, Math.min(100, percentualEstimado)),
-      diasEstudados: Math.round((percentualEstimado / 100) * diasNaSemana)
-    });
+// ✅ CORRIGIDO: Função retorna dados do objeto passado (que vem da API)
+function calcularEstudosPorSemana(dadosSemanas) {
+  // Se receber dados da API, usar diretamente
+  if (dadosSemanas && dadosSemanas.semanas && Array.isArray(dadosSemanas.semanas)) {
+    return dadosSemanas.semanas;
   }
   
-  return semanas;
+  // Fallback para quando não há dados
+  return [
+    { label: '4 semanas atrás', percentual: 0, diasEstudados: 0 },
+    { label: '3 semanas atrás', percentual: 0, diasEstudados: 0 },
+    { label: 'Semana passada', percentual: 0, diasEstudados: 0 },
+    { label: 'Esta semana', percentual: 0, diasEstudados: 0 }
+  ];
 }
 
+// ✅ CORRIGIDO: Usar dados reais, sem Math.random()
 function calcularEvolucaoDisciplinas(desempenho) {
   if (!desempenho || desempenho.length === 0) return [];
   
-  return desempenho.map(d => ({
-    nome: d.disciplina_nome || d.nome || 'Disciplina',
-    percentual: d.percentual_conclusao || d.progresso || Math.round(Math.random() * 80),
-    topicosEstudados: d.topicos_estudados || d.concluidos || 0,
-    totalTopicos: d.total_topicos || d.total || 10,
-    tendencia: Math.round((Math.random() - 0.3) * 20) // Simulado por enquanto
-  })).sort((a, b) => b.percentual - a.percentual);
+  return desempenho.map(d => {
+    const topicosEstudados = d.topicos_estudados || d.concluidos || 0;
+    const totalTopicos = d.total_topicos || d.total || 1;
+    const percentual = d.percentual_conclusao || d.progresso || Math.round((topicosEstudados / totalTopicos) * 100);
+    
+    return {
+      nome: d.disciplina_nome || d.nome || 'Disciplina',
+      percentual: percentual,
+      topicosEstudados: topicosEstudados,
+      totalTopicos: totalTopicos,
+      tendencia: 0 // Sem tendência simulada - será calculada quando houver histórico
+    };
+  }).sort((a, b) => b.percentual - a.percentual);
 }
 
 // Dashboard de Acompanhamento de Simulados
