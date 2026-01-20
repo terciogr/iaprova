@@ -62,18 +62,31 @@ NÃO resuma. NÃO comente. Apenas transcreva.
 
 INICIE A TRANSCRIÇÃO DO CONTEÚDO PROGRAMÁTICO (ANEXOS):`
 
-  // ✅ ESTRATÉGIAS SIMPLIFICADAS (apenas 2 para máxima velocidade)
+  // ✅ ESTRATÉGIAS COM MÚLTIPLOS MODELOS E RETRIES
   const estrategias = [
-    { prompt: promptOtimizado, modelo: 'gemini-2.0-flash-lite', desc: 'Extração rápida (lite)' },
-    { prompt: promptOtimizado, modelo: 'gemini-2.0-flash', desc: 'Extração completa (flash)' }
+    { prompt: promptOtimizado, modelo: 'gemini-2.0-flash-lite', desc: 'Lite (tentativa 1)' },
+    { prompt: promptOtimizado, modelo: 'gemini-2.0-flash', desc: 'Flash (tentativa 1)' },
+    { prompt: promptOtimizado, modelo: 'gemini-1.5-flash', desc: 'Flash 1.5' },
+    { prompt: promptOtimizado, modelo: 'gemini-2.0-flash-lite', desc: 'Lite (tentativa 2)' },
+    { prompt: promptOtimizado, modelo: 'gemini-2.0-flash', desc: 'Flash (tentativa 2)' }
   ]
   
   let melhorTexto = ''
   let allErrors: string[] = []
+  let consecutiveRateLimits = 0
+  
+  // Função para delay
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
   
   for (let i = 0; i < estrategias.length; i++) {
     const estrategia = estrategias[i]
     console.log(`\n🚀 Tentativa ${i + 1}/${estrategias.length}: ${estrategia.desc}`)
+    
+    // Se já teve muitos rate limits consecutivos, aguardar mais
+    if (consecutiveRateLimits >= 2) {
+      console.log(`   ⏳ Aguardando 5s devido a rate limits consecutivos...`)
+      await sleep(5000)
+    }
     
     try {
       const response = await fetch(
@@ -100,11 +113,17 @@ INICIE A TRANSCRIÇÃO DO CONTEÚDO PROGRAMÁTICO (ANEXOS):`
       
       console.log(`   📡 Status: ${response.status}`)
       
-      // ✅ Rate limit ou serviço indisponível - tentar próxima estratégia SEM delay
+      // ✅ Rate limit ou serviço indisponível - aguardar e tentar próximo
       if (response.status === 429 || response.status === 503) {
-        console.log(`   ⏩ Erro ${response.status} - tentando próximo modelo...`)
+        consecutiveRateLimits++
+        const waitTime = Math.min(consecutiveRateLimits * 2000, 10000)
+        console.log(`   ⏩ Erro ${response.status} - aguardando ${waitTime/1000}s antes do próximo...`)
+        await sleep(waitTime)
         continue
       }
+      
+      // Reset contador se não foi rate limit
+      consecutiveRateLimits = 0
       
       if (!response.ok) {
         const errorText = await response.text()
@@ -2602,18 +2621,103 @@ ${textoParaIA}
       const cargoNorm = cargoDesejado.toLowerCase()
       let disciplinasPadrao: any[] = []
       
-      // Disciplinas básicas para qualquer concurso
+      // Disciplinas básicas para qualquer concurso (tópicos completos)
       disciplinasPadrao = [
-        { nome: 'Língua Portuguesa', peso: 1, topicos: ['Interpretação de texto', 'Gramática', 'Ortografia', 'Pontuação'] },
-        { nome: 'Raciocínio Lógico', peso: 1, topicos: ['Lógica proposicional', 'Sequências lógicas', 'Problemas matemáticos'] },
+        { 
+          nome: 'Língua Portuguesa', 
+          peso: 1, 
+          topicos: [
+            'Ortografia oficial',
+            'Acentuação gráfica',
+            'Pontuação',
+            'Morfossintaxe',
+            'Classes de palavras',
+            'Pronomes: emprego, formas de tratamento e colocação',
+            'Tempos e modos verbais',
+            'Vozes do verbo',
+            'Concordância nominal e verbal',
+            'Regência nominal e verbal',
+            'Frase, oração e período',
+            'Processos de coordenação e subordinação',
+            'Compreensão e interpretação de texto',
+            'Gêneros textuais',
+            'Figuras de linguagem'
+          ] 
+        },
+        { 
+          nome: 'Raciocínio Lógico-Matemático', 
+          peso: 1, 
+          topicos: [
+            'Estrutura lógica de relações',
+            'Raciocínio verbal',
+            'Raciocínio matemático',
+            'Raciocínio sequencial',
+            'Orientação espacial e temporal',
+            'Formação de conceitos',
+            'Discriminação de elementos',
+            'Noções de aritmética',
+            'Proporcionalidade e porcentagem',
+            'Regra de três simples',
+            'Cálculos de porcentagem, acréscimos e descontos'
+          ] 
+        },
       ]
       
       // Adicionar disciplinas específicas por área
       if (cargoNorm.includes('enfermeiro') || cargoNorm.includes('saúde') || cargoNorm.includes('saude')) {
-        disciplinasPadrao.push(
-          { nome: 'Sistema Único de Saúde (SUS)', peso: 3, topicos: ['Lei 8.080/90', 'Lei 8.142/90', 'Política Nacional de Saúde'] },
-          { nome: 'Conhecimentos de Enfermagem', peso: 3, topicos: ['Sistematização da Assistência', 'Procedimentos técnicos', 'Ética profissional'] }
-        )
+        // ✅ CONHECIMENTOS REGIONAIS DO PIAUÍ (típico de concursos estaduais)
+        disciplinasPadrao.push({
+          nome: 'Conhecimentos Regionais do Estado do Piauí',
+          peso: 1,
+          topicos: ['História do Piauí', 'Geografia do Piauí', 'Cultura piauiense', 'Economia do Piauí', 'Política do Piauí']
+        })
+        
+        // ✅ SUS E LEGISLAÇÃO DE SAÚDE
+        disciplinasPadrao.push({
+          nome: 'Sistema Único de Saúde (SUS) e Legislação',
+          peso: 2,
+          topicos: [
+            'Princípios e Diretrizes do SUS (Universalidade, Equidade, Integralidade)',
+            'Constituição Federal - Artigos 196 a 200',
+            'Lei Orgânica da Saúde - Lei nº 8.080/1990',
+            'Lei nº 8.142/1990 - Participação da comunidade',
+            'Decreto nº 7508/2011',
+            'Lei Complementar nº 141/2012',
+            'PNAB 2017 - Portaria nº 2.436/2017',
+            'PNAE - Portaria GM/MS nº 1.604/2023',
+            'Política Nacional de Humanização (HumanizaSUS)'
+          ]
+        })
+        
+        // ✅ CONHECIMENTOS ESPECÍFICOS DE ENFERMAGEM
+        disciplinasPadrao.push({
+          nome: 'Conhecimentos Específicos de Enfermagem',
+          peso: 3,
+          topicos: [
+            'Código de Ética dos Profissionais de Enfermagem',
+            'Legislação Profissional - Cofen/Coren',
+            'Sistematização da Assistência de Enfermagem (SAE)',
+            'Técnicas básicas de enfermagem',
+            'Processamento de material: descontaminação, limpeza, desinfecção, esterilização',
+            'Noções de farmacologia',
+            'Cálculo e administração de medicamentos',
+            'Biossegurança em saúde',
+            'Segurança do paciente e saúde laboral',
+            'Prevenção e controle de infecção (IRAS)',
+            'Programa Nacional de Imunizações (PNI)',
+            'Assistência de enfermagem em doenças transmissíveis',
+            'Assistência de enfermagem em urgência/emergência e trauma',
+            'Suporte Básico de Vida (SBV)',
+            'Assistência de enfermagem em saúde mental',
+            'Assistência de enfermagem na saúde da mulher',
+            'Assistência de enfermagem na saúde do homem',
+            'Assistência de enfermagem na saúde do idoso',
+            'Enfermagem na saúde do trabalhador',
+            'PCMSO - NR-7',
+            'Noções de Epidemiologia',
+            'Educação em saúde'
+          ]
+        })
       } else if (cargoNorm.includes('fiscal') || cargoNorm.includes('tributário') || cargoNorm.includes('tributario')) {
         disciplinasPadrao.push(
           { nome: 'Direito Tributário', peso: 3, topicos: ['Sistema Tributário Nacional', 'Impostos', 'Obrigação Tributária'] },
