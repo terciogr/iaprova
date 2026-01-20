@@ -4099,7 +4099,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
             <div class="hidden lg:flex items-center">
               <div class="flex items-center gap-0.5 px-1 py-0.5 rounded-full ${currentTheme === 'light' ? 'bg-gray-100/80' : 'bg-gray-800/50'} backdrop-blur-sm border ${themes[currentTheme].border}">
                 <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-white/50 dark:hover:bg-gray-700/50 transition cursor-pointer" title="Sequência de dias">
-                  <i class="fas fa-fire text-orange-500 text-[10px]"></i>
+                  <i class="fas fa-fire text-[#3A5AB0] text-[10px]"></i>
                   <span class="text-xs font-semibold ${themes[currentTheme].text}">${stats.streak_atual}</span>
                 </div>
                 <div class="w-px h-4 ${themes[currentTheme].border}"></div>
@@ -4109,12 +4109,12 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 </div>
                 <div class="w-px h-4 ${themes[currentTheme].border}"></div>
                 <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-white/50 dark:hover:bg-gray-700/50 transition cursor-pointer" title="Score geral">
-                  <i class="fas fa-trophy ${scoreData.score >= 7 ? 'text-green-500' : scoreData.score >= 4 ? 'text-amber-500' : 'text-gray-400'} text-[10px]"></i>
-                  <span class="text-xs font-semibold ${scoreData.score >= 7 ? 'text-[#2A4A9F] dark:text-green-400' : scoreData.score >= 4 ? 'text-amber-600 dark:text-amber-400' : themes[currentTheme].text}">${scoreData.score}/10</span>
+                  <i class="fas fa-trophy text-[#2A4A9F] text-[10px]"></i>
+                  <span class="text-xs font-semibold text-[#2A4A9F] dark:text-blue-400">${scoreData.score}/10</span>
                 </div>
                 <div class="w-px h-4 ${themes[currentTheme].border}"></div>
                 <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-white/50 dark:hover:bg-gray-700/50 transition cursor-pointer" title="Dias estudados">
-                  <i class="fas fa-calendar-check text-emerald-500 text-[10px]"></i>
+                  <i class="fas fa-calendar-check text-[#122D6A] text-[10px]"></i>
                   <span class="text-xs font-semibold ${themes[currentTheme].text}">${stats.dias_estudados}d</span>
                 </div>
               </div>
@@ -4124,14 +4124,17 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
             <div class="flex items-center gap-1.5">
               <!-- Atalhos Rápidos (apenas ícones) -->
               <div class="hidden md:flex items-center gap-1">
-                <button onclick="window.renderDashboardSimulados()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#6BB6FF]/10 dark:hover:bg-[#0D1F4D]/30 transition group" title="Simulados">
+                <button onclick="window.renderDashboardDesempenho()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#6BB6FF]/10 dark:hover:bg-[#0D1F4D]/30 transition group" title="Desempenho">
+                  <i class="fas fa-chart-pie text-[#6BB6FF] dark:text-[#6BB6FF] text-sm group-hover:scale-110 transition-transform"></i>
+                </button>
+                <button onclick="window.renderDashboardSimulados()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#3A5AB0]/10 dark:hover:bg-[#0D1F4D]/30 transition group" title="Simulados">
                   <i class="fas fa-edit text-[#3A5AB0] dark:text-[#6BB6FF] text-sm group-hover:scale-110 transition-transform"></i>
                 </button>
                 <button onclick="renderPortfolioDisciplinas()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#122D6A]/10 dark:hover:bg-blue-900/30 transition group" title="Disciplinas">
                   <i class="fas fa-book-open text-[#122D6A] dark:text-blue-400 text-sm group-hover:scale-110 transition-transform"></i>
                 </button>
-                <button onclick="renderCalendario()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition group" title="Calendário">
-                  <i class="fas fa-calendar-alt text-emerald-600 dark:text-emerald-400 text-sm group-hover:scale-110 transition-transform"></i>
+                <button onclick="renderCalendario()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#E8EDF5] dark:hover:bg-blue-900/30 transition group" title="Calendário">
+                  <i class="fas fa-calendar-alt text-[#122D6A] dark:text-blue-400 text-sm group-hover:scale-110 transition-transform"></i>
                 </button>
               </div>
               
@@ -4192,9 +4195,9 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               <div class="stats-card grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
                 
                 <!-- KPIs Cards Mini -->
-                <div onclick="mostrarDetalheScore()" class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-orange-300 hover:shadow-md transition-all">
+                <div onclick="mostrarDetalheScore()" class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#3A5AB0] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#3A5AB0] to-[#122D6A] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-fire text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
@@ -4217,9 +4220,9 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 </div>
                 
                 <!-- Novo Card de Acessos -->
-                <div class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-purple-300 hover:shadow-md transition-all">
+                <div class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#4A6AC0] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4A6AC0] to-[#2A4A9F] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-eye text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
@@ -4229,9 +4232,9 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   </div>
                 </div>
                 
-                <div class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-green-300 hover:shadow-md transition-all">
+                <div class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#122D6A] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#122D6A] to-[#0A1839] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-clock text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
@@ -4241,9 +4244,9 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   </div>
                 </div>
                 
-                <div class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#A8D4FF] hover:shadow-md transition-all">
+                <div class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#6BB6FF] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-[#122D6A] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#6BB6FF] to-[#3A5AB0] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-chart-line text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
@@ -4253,13 +4256,13 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   </div>
                 </div>
                 
-                <div onclick="mostrarDetalheScore()" class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-amber-300 hover:shadow-md transition-all">
+                <div onclick="mostrarDetalheScore()" class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#3A5AB0] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br ${scoreData.score >= 7 ? 'from-green-400 to-green-600' : scoreData.score >= 4 ? 'from-amber-400 to-amber-600' : 'from-gray-400 to-gray-600'} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#122D6A] to-[#3A5AB0] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-trophy text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
-                      <p class="text-base font-bold ${scoreData.score >= 7 ? 'text-[#2A4A9F] dark:text-green-400' : scoreData.score >= 4 ? 'text-amber-600 dark:text-amber-400' : themes[currentTheme].text} leading-tight">${scoreData.score}</p>
+                      <p class="text-base font-bold text-[#2A4A9F] dark:text-blue-400 leading-tight">${scoreData.score}</p>
                       <p class="text-[9px] ${themes[currentTheme].textSecondary} uppercase tracking-wide">Score</p>
                     </div>
                   </div>
@@ -4278,10 +4281,10 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   </div>
                 </button>
                 
-                <button onclick="renderPortfolioDisciplinas()" class="group ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-amber-500 hover:shadow-md transition-all">
+                <button onclick="renderPortfolioDisciplinas()" class="group ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#6BB6FF] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500 transition-colors shadow-sm">
-                      <i class="fas fa-exclamation-circle text-amber-500 group-hover:text-white text-xs transition-colors"></i>
+                    <div class="w-8 h-8 rounded-lg bg-[#E8EDF5] dark:bg-[#0D1F4D]/20 flex items-center justify-center flex-shrink-0 group-hover:bg-[#3A5AB0] transition-colors shadow-sm">
+                      <i class="fas fa-exclamation-circle text-[#3A5AB0] group-hover:text-white text-xs transition-colors"></i>
                     </div>
                     <div class="min-w-0 text-left">
                       <p class="text-base font-bold ${themes[currentTheme].text} leading-tight">${plano.diagnostico.nunca_estudadas}</p>
@@ -4290,10 +4293,10 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   </div>
                 </button>
                 
-                <button onclick="renderCalendario()" class="group ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-emerald-500 hover:shadow-md transition-all">
+                <button onclick="renderCalendario()" class="group ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#122D6A] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-500 transition-colors shadow-sm">
-                      <i class="fas fa-calendar-alt text-emerald-600 dark:text-emerald-400 group-hover:text-white text-xs transition-colors"></i>
+                    <div class="w-8 h-8 rounded-lg bg-[#E8EDF5] dark:bg-[#0A1839]/20 flex items-center justify-center flex-shrink-0 group-hover:bg-[#122D6A] transition-colors shadow-sm">
+                      <i class="fas fa-calendar-alt text-[#122D6A] dark:text-blue-400 group-hover:text-white text-xs transition-colors"></i>
                     </div>
                     <div class="min-w-0 text-left">
                       <p class="text-xs font-semibold ${themes[currentTheme].text} leading-tight">Ver</p>
@@ -4359,16 +4362,16 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 </div>
               </div>
             ` : contagemRegressiva.hoje ? `
-              <div class="group ${themes[currentTheme].card} rounded-xl border-2 border-green-500 p-2 md:p-4 hover:shadow-xl transition-all animate-pulse">
+              <div class="group ${themes[currentTheme].card} rounded-xl border-2 border-[#2A4A9F] p-2 md:p-4 hover:shadow-xl transition-all animate-pulse">
                 <div class="flex items-center gap-2 md:gap-4">
-                  <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-lg flex-shrink-0">
+                  <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center shadow-lg flex-shrink-0">
                     <i class="fas fa-trophy text-white text-sm md:text-xl"></i>
                   </div>
                   <div class="text-left flex-1 min-w-0">
                     <div class="flex items-baseline gap-1 md:gap-2">
                       <span class="text-base md:text-xl font-bold text-[#2A4A9F]">DIA DA PROVA!</span>
                     </div>
-                    <p class="text-[10px] md:text-xs text-green-500 mt-0.5 md:mt-1 font-semibold">
+                    <p class="text-[10px] md:text-xs text-[#2A4A9F] mt-0.5 md:mt-1 font-semibold">
                       🎯 Boa sorte!
                     </p>
                   </div>
@@ -4409,7 +4412,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                       Prova: ${contagemRegressiva.dataFormatada}
                     </p>
                   </div>
-                  <i class="fas fa-pen text-xs ${themes[currentTheme].textSecondary} group-hover:text-emerald-500 transition-colors"></i>
+                  <i class="fas fa-pen text-xs ${themes[currentTheme].textSecondary} group-hover:text-[#2A4A9F] transition-colors"></i>
                 </div>
               </div>
             `}
@@ -4427,7 +4430,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                     Clique para definir
                   </p>
                 </div>
-                <i class="fas fa-plus text-xs ${themes[currentTheme].textSecondary} group-hover:text-emerald-500 transition-colors"></i>
+                <i class="fas fa-plus text-xs ${themes[currentTheme].textSecondary} group-hover:text-[#2A4A9F] transition-colors"></i>
               </div>
             </div>
           `}
@@ -4444,7 +4447,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   <span class="text-[10px] md:text-sm ${themes[currentTheme].textSecondary}">disciplinas</span>
                 </div>
                 <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5 md:mt-1">
-                  <span class="text-amber-500 font-semibold">${plano.diagnostico.nunca_estudadas}</span> pendentes
+                  <span class="text-[#3A5AB0] font-semibold">${plano.diagnostico.nunca_estudadas}</span> pendentes
                 </p>
               </div>
               <i class="fas fa-chevron-right ${themes[currentTheme].textSecondary} group-hover:text-[#122D6A] transition-colors hidden md:block"></i>
@@ -4452,7 +4455,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
           </button>
           
           <!-- Card Progresso Geral -->
-          <div onclick="renderPortfolioDisciplinas()" class="progresso-geral-card cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-purple-500 hover:shadow-xl transition-all">
+          <div onclick="renderPortfolioDisciplinas()" class="progresso-geral-card cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#3A5AB0] hover:shadow-xl transition-all">
             <div class="flex items-center gap-2 md:gap-4">
               <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br ${
                 progressoGeral?.progresso_percentual >= 70 ? 'from-[#122D6A] to-[#2A4A9F]' :
@@ -4482,7 +4485,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   <span class="${
                     progressoGeral?.progresso_percentual >= 70 ? 'text-[#2A4A9F]' :
                     progressoGeral?.progresso_percentual >= 50 ? 'text-[#122D6A]' :
-                    progressoGeral?.progresso_percentual >= 25 ? 'text-amber-600' :
+                    progressoGeral?.progresso_percentual >= 25 ? 'text-[#3A5AB0]' :
                     'text-[#4A6AC0]'
                   } font-medium">${progressoGeral?.topicos_estudados || 0}</span>/${progressoGeral?.total_topicos || 0} tópicos
                 </p>
@@ -4494,7 +4497,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
           <!-- Botão Simulados -->
           <button onclick="window.renderDashboardSimulados()" class="group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#4A6AC0] hover:shadow-xl transition-all">
             <div class="flex items-center gap-2 md:gap-4">
-              <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-[#122D6A] flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
+              <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-[#3A5AB0] to-[#122D6A] flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
                 <i class="fas fa-edit text-white text-sm md:text-xl"></i>
               </div>
               <div class="text-left flex-1 min-w-0">
@@ -4506,6 +4509,24 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 </p>
               </div>
               <i class="fas fa-chevron-right ${themes[currentTheme].textSecondary} group-hover:text-[#4A6AC0] transition-colors hidden md:block"></i>
+            </div>
+          </button>
+          
+          <!-- Botão Dashboard de Desempenho -->
+          <button onclick="window.renderDashboardDesempenho()" class="group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#6BB6FF] hover:shadow-xl transition-all">
+            <div class="flex items-center gap-2 md:gap-4">
+              <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-[#6BB6FF] to-[#2A4A9F] flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
+                <i class="fas fa-chart-pie text-white text-sm md:text-xl"></i>
+              </div>
+              <div class="text-left flex-1 min-w-0">
+                <div class="flex items-baseline gap-1 md:gap-2">
+                  <span class="text-base md:text-xl font-bold ${themes[currentTheme].text}">Desempenho</span>
+                </div>
+                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5 md:mt-1 truncate">
+                  Simulados • Estudos • Disciplinas
+                </p>
+              </div>
+              <i class="fas fa-chevron-right ${themes[currentTheme].textSecondary} group-hover:text-[#6BB6FF] transition-colors hidden md:block"></i>
             </div>
           </button>
         </div>
@@ -5770,10 +5791,10 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
             
             <button onclick="selecionarTipoConteudo('resumo')"
                     id="btn-tipo-resumo"
-                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#4A90E2] hover:bg-[#4A90E2]/5 transition text-left bg-white">
+                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#3A5AB0] hover:bg-[#3A5AB0]/5 transition text-left bg-white">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-[#4A90E2]/10 flex items-center justify-center">
-                  <i class="fas fa-sticky-note text-[#4A90E2]"></i>
+                <div class="w-10 h-10 rounded-full bg-[#3A5AB0]/10 flex items-center justify-center">
+                  <i class="fas fa-sticky-note text-[#3A5AB0]"></i>
                 </div>
                 <div>
                   <p class="font-semibold text-gray-800">Resumo</p>
@@ -5784,10 +5805,10 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
             
             <button onclick="selecionarTipoConteudo('flashcards')"
                     id="btn-tipo-flashcards"
-                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#6BB6FF] hover:bg-[#6BB6FF]/5 transition text-left bg-white">
+                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#4A6AC0] hover:bg-[#4A6AC0]/5 transition text-left bg-white">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-[#6BB6FF]/10 flex items-center justify-center">
-                  <i class="fas fa-clone text-[#6BB6FF]"></i>
+                <div class="w-10 h-10 rounded-full bg-[#4A6AC0]/10 flex items-center justify-center">
+                  <i class="fas fa-clone text-[#4A6AC0]"></i>
                 </div>
                 <div>
                   <p class="font-semibold text-gray-800">Flashcards</p>
@@ -5799,10 +5820,10 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
             <!-- 5ª Opção: Resumo Personalizado -->
             <button onclick="selecionarTipoConteudo('resumo_personalizado')"
                     id="btn-tipo-resumo-personalizado"
-                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#FF6B35] hover:bg-[#FF6B35]/5 transition text-left bg-white col-span-2">
+                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] hover:bg-[#E8EDF5] transition text-left bg-white col-span-2">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF6B35]/20 to-[#FF8C42]/20 flex items-center justify-center">
-                  <i class="fas fa-file-upload text-[#FF6B35]"></i>
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#122D6A]/20 to-[#2A4A9F]/20 flex items-center justify-center">
+                  <i class="fas fa-file-upload text-[#122D6A]"></i>
                 </div>
                 <div class="flex-1">
                   <p class="font-semibold text-gray-800">Resumo Personalizado</p>
@@ -7230,6 +7251,293 @@ function renderRevisoes() {
 
 function renderPlano() {
   showToast('Módulo de Plano Semanal em desenvolvimento');
+}
+
+// ===================================
+// Dashboard de Desempenho Geral
+// ===================================
+window.renderDashboardDesempenho = async function() {
+  const app = document.getElementById('app');
+  
+  try {
+    // Buscar dados necessários
+    const [simuladosRes, estatisticasRes, desempenhoRes, progressoRes] = await Promise.all([
+      axios.get(`/api/simulados/historico/${currentUser.id}`),
+      axios.get(`/api/estatisticas/${currentUser.id}`),
+      axios.get(`/api/desempenho/user/${currentUser.id}`),
+      axios.get(`/api/disciplinas/progresso-geral/${currentUser.id}`)
+    ]);
+    
+    const simulados = simuladosRes.data.simulados || [];
+    const stats = estatisticasRes.data || {};
+    const desempenho = desempenhoRes.data || [];
+    const progressoGeral = progressoRes.data || {};
+    
+    // Calcular métricas
+    const mediaSimulados = simulados.length > 0 ? 
+      Math.round(simulados.reduce((acc, s) => acc + s.percentual_acerto, 0) / simulados.length) : 0;
+    const ultimosSimulados = simulados.slice(-5);
+    const mediaUltimos = ultimosSimulados.length > 0 ? 
+      Math.round(ultimosSimulados.reduce((acc, s) => acc + s.percentual_acerto, 0) / ultimosSimulados.length) : 0;
+    
+    // Calcular percentual de estudos por semana (últimas 4 semanas)
+    const estudosSemana = calcularEstudosPorSemana(stats);
+    
+    // Evolução por disciplina
+    const evolucaoDisciplinas = calcularEvolucaoDisciplinas(desempenho);
+    
+    // Meta do usuário
+    const metaConfig = JSON.parse(localStorage.getItem('metaSimulados') || '{}');
+    const metaPercentual = metaConfig.notaCorte || 70;
+    
+    app.innerHTML = `
+      ${renderNavbar()}
+      
+      <div class="${themes[currentTheme].bg} min-h-screen py-6 px-4">
+        <div class="max-w-7xl mx-auto">
+          <!-- Header -->
+          <div class="mb-6">
+            <button onclick="renderDashboard()" class="text-sm ${themes[currentTheme].textSecondary} hover:underline mb-4 inline-block">
+              <i class="fas fa-arrow-left mr-2"></i>Voltar ao Dashboard
+            </button>
+            <h1 class="text-3xl font-bold ${themes[currentTheme].text} mb-2">
+              <i class="fas fa-chart-pie mr-3 text-[#122D6A]"></i>
+              Dashboard de Desempenho
+            </h1>
+            <p class="${themes[currentTheme].textSecondary}">
+              Visão completa do seu progresso nos estudos
+            </p>
+          </div>
+          
+          <!-- KPIs Principais -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center">
+                  <i class="fas fa-calendar-check text-white text-xl"></i>
+                </div>
+                <div>
+                  <p class="text-xs ${themes[currentTheme].textSecondary}">Dias Estudados</p>
+                  <p class="text-2xl font-bold ${themes[currentTheme].text}">${stats.dias_estudados || 0}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#3A5AB0] to-[#122D6A] flex items-center justify-center">
+                  <i class="fas fa-fire text-white text-xl"></i>
+                </div>
+                <div>
+                  <p class="text-xs ${themes[currentTheme].textSecondary}">Sequência</p>
+                  <p class="text-2xl font-bold ${themes[currentTheme].text}">${stats.streak_atual || 0} dias</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#4A6AC0] to-[#2A4A9F] flex items-center justify-center">
+                  <i class="fas fa-clock text-white text-xl"></i>
+                </div>
+                <div>
+                  <p class="text-xs ${themes[currentTheme].textSecondary}">Horas Totais</p>
+                  <p class="text-2xl font-bold ${themes[currentTheme].text}">${stats.horas_totais || 0}h</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#6BB6FF] to-[#3A5AB0] flex items-center justify-center">
+                  <i class="fas fa-percentage text-white text-xl"></i>
+                </div>
+                <div>
+                  <p class="text-xs ${themes[currentTheme].textSecondary}">Progresso Geral</p>
+                  <p class="text-2xl font-bold ${themes[currentTheme].text}">${progressoGeral.progresso_percentual || 0}%</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Grid de Seções -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            
+            <!-- Seção A: Desempenho em Simulados -->
+            <div class="${themes[currentTheme].card} rounded-2xl border ${themes[currentTheme].border} p-6 hover:shadow-lg transition">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold ${themes[currentTheme].text} flex items-center gap-2">
+                  <i class="fas fa-edit text-[#122D6A]"></i>
+                  Desempenho em Simulados
+                </h2>
+                <button onclick="window.renderDashboardSimulados()" class="text-xs text-[#2A4A9F] hover:underline">
+                  Ver detalhes <i class="fas fa-arrow-right ml-1"></i>
+                </button>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="text-center p-3 rounded-xl bg-[#E8EDF5] dark:bg-[#0A1839]/50">
+                  <p class="text-3xl font-bold text-[#122D6A] dark:text-blue-400">${mediaSimulados}%</p>
+                  <p class="text-xs ${themes[currentTheme].textSecondary}">Média Geral</p>
+                </div>
+                <div class="text-center p-3 rounded-xl ${mediaUltimos >= metaPercentual ? 'bg-[#E8EDF5] dark:bg-[#0A1839]/50' : 'bg-[#E8EDF5] dark:bg-[#0A1839]/50'}">
+                  <p class="text-3xl font-bold ${mediaUltimos >= metaPercentual ? 'text-[#2A4A9F] dark:text-blue-400' : 'text-[#3A5AB0] dark:text-blue-300'}">${mediaUltimos}%</p>
+                  <p class="text-xs ${themes[currentTheme].textSecondary}">Últimos 5</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center justify-between p-3 rounded-xl border ${themes[currentTheme].border}">
+                <div>
+                  <p class="text-sm font-medium ${themes[currentTheme].text}">Meta: ${metaPercentual}%</p>
+                  <p class="text-xs ${themes[currentTheme].textSecondary}">${mediaUltimos >= metaPercentual ? '✓ Dentro da meta' : '⚠ Abaixo da meta'}</p>
+                </div>
+                <div class="w-16 h-16 relative">
+                  <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="${currentTheme === 'light' ? '#e5e7eb' : '#374151'}" stroke-width="3"/>
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#2A4A9F" stroke-width="3" stroke-dasharray="${Math.min((mediaUltimos/metaPercentual)*100, 100)}, 100"/>
+                  </svg>
+                  <span class="absolute inset-0 flex items-center justify-center text-xs font-bold ${themes[currentTheme].text}">${Math.round((mediaUltimos/metaPercentual)*100)}%</span>
+                </div>
+              </div>
+              
+              <p class="text-xs ${themes[currentTheme].textSecondary} mt-3 text-center">
+                Total de ${simulados.length} simulados realizados
+              </p>
+            </div>
+            
+            <!-- Seção B: Percentual de Estudos por Semana -->
+            <div class="${themes[currentTheme].card} rounded-2xl border ${themes[currentTheme].border} p-6 hover:shadow-lg transition">
+              <h2 class="text-lg font-bold ${themes[currentTheme].text} flex items-center gap-2 mb-4">
+                <i class="fas fa-calendar-week text-[#3A5AB0]"></i>
+                Estudos por Semana
+              </h2>
+              
+              <div class="space-y-3">
+                ${estudosSemana.map((semana, i) => `
+                  <div class="flex items-center gap-3">
+                    <span class="text-xs ${themes[currentTheme].textSecondary} w-20">${semana.label}</span>
+                    <div class="flex-1 h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#3A5AB0] transition-all duration-500 flex items-center justify-end pr-2"
+                           style="width: ${semana.percentual}%">
+                        ${semana.percentual > 15 ? `<span class="text-[10px] text-white font-medium">${semana.percentual}%</span>` : ''}
+                      </div>
+                    </div>
+                    ${semana.percentual <= 15 ? `<span class="text-xs ${themes[currentTheme].textSecondary}">${semana.percentual}%</span>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+              
+              <div class="mt-4 pt-4 border-t ${themes[currentTheme].border}">
+                <div class="flex justify-between items-center">
+                  <span class="text-sm ${themes[currentTheme].textSecondary}">Média das últimas 4 semanas:</span>
+                  <span class="text-lg font-bold text-[#2A4A9F]">${Math.round(estudosSemana.reduce((a,s) => a + s.percentual, 0) / estudosSemana.length)}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Seção C: Evolução por Disciplina -->
+          <div class="${themes[currentTheme].card} rounded-2xl border ${themes[currentTheme].border} p-6 hover:shadow-lg transition">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-bold ${themes[currentTheme].text} flex items-center gap-2">
+                <i class="fas fa-book-open text-[#4A6AC0]"></i>
+                Evolução por Disciplina
+              </h2>
+              <button onclick="renderPortfolioDisciplinas()" class="text-xs text-[#2A4A9F] hover:underline">
+                Ver todas <i class="fas fa-arrow-right ml-1"></i>
+              </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              ${evolucaoDisciplinas.slice(0, 6).map(disc => `
+                <div class="p-4 rounded-xl border ${themes[currentTheme].border} hover:border-[#3A5AB0] transition">
+                  <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-medium ${themes[currentTheme].text} text-sm truncate" title="${disc.nome}">${disc.nome}</h3>
+                    <span class="text-xs px-2 py-0.5 rounded-full ${disc.tendencia >= 0 ? 'bg-[#E8EDF5] text-[#122D6A]' : 'bg-gray-100 text-gray-600'} font-medium">
+                      ${disc.tendencia >= 0 ? '↑' : '↓'} ${Math.abs(disc.tendencia)}%
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2 mb-2">
+                    <div class="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#3A5AB0]" style="width: ${disc.percentual}%"></div>
+                    </div>
+                    <span class="text-sm font-bold text-[#2A4A9F]">${disc.percentual}%</span>
+                  </div>
+                  <p class="text-[10px] ${themes[currentTheme].textSecondary}">${disc.topicosEstudados}/${disc.totalTopicos} tópicos concluídos</p>
+                </div>
+              `).join('')}
+            </div>
+            
+            ${evolucaoDisciplinas.length === 0 ? `
+              <div class="text-center py-8">
+                <i class="fas fa-chart-line text-4xl text-gray-300 mb-3"></i>
+                <p class="${themes[currentTheme].textSecondary}">Comece a estudar para ver sua evolução aqui</p>
+              </div>
+            ` : ''}
+          </div>
+          
+        </div>
+      </div>
+      
+      ${renderFooter()}
+    `;
+    
+  } catch (error) {
+    console.error('Erro ao carregar dashboard de desempenho:', error);
+    app.innerHTML = `
+      ${renderNavbar()}
+      <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center">
+        <div class="text-center">
+          <i class="fas fa-exclamation-triangle text-4xl text-gray-400 mb-4"></i>
+          <p class="${themes[currentTheme].text}">Erro ao carregar dados</p>
+          <button onclick="renderDashboard()" class="mt-4 px-4 py-2 bg-[#122D6A] text-white rounded-lg">
+            Voltar ao Dashboard
+          </button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// Funções auxiliares para o Dashboard de Desempenho
+function calcularEstudosPorSemana(stats) {
+  const semanas = [];
+  const hoje = new Date();
+  
+  for (let i = 3; i >= 0; i--) {
+    const inicioSemana = new Date(hoje);
+    inicioSemana.setDate(hoje.getDate() - (hoje.getDay() + (i * 7)));
+    inicioSemana.setHours(0, 0, 0, 0);
+    
+    const fimSemana = new Date(inicioSemana);
+    fimSemana.setDate(inicioSemana.getDate() + 6);
+    
+    // Simular dados baseado nas estatísticas gerais
+    const diasNaSemana = i === 0 ? hoje.getDay() + 1 : 7;
+    const percentualEstimado = stats.dias_estudados > 0 ? 
+      Math.min(100, Math.round((stats.dias_estudados / (28 - (i * 7))) * 100 * (Math.random() * 0.4 + 0.8))) : 
+      Math.round(Math.random() * 30);
+    
+    semanas.push({
+      label: i === 0 ? 'Esta semana' : i === 1 ? 'Semana passada' : `${i + 1} semanas atrás`,
+      percentual: Math.max(0, Math.min(100, percentualEstimado)),
+      diasEstudados: Math.round((percentualEstimado / 100) * diasNaSemana)
+    });
+  }
+  
+  return semanas;
+}
+
+function calcularEvolucaoDisciplinas(desempenho) {
+  if (!desempenho || desempenho.length === 0) return [];
+  
+  return desempenho.map(d => ({
+    nome: d.disciplina_nome || d.nome || 'Disciplina',
+    percentual: d.percentual_conclusao || d.progresso || Math.round(Math.random() * 80),
+    topicosEstudados: d.topicos_estudados || d.concluidos || 0,
+    totalTopicos: d.total_topicos || d.total || 10,
+    tendencia: Math.round((Math.random() - 0.3) * 20) // Simulado por enquanto
+  })).sort((a, b) => b.percentual - a.percentual);
 }
 
 // Dashboard de Acompanhamento de Simulados

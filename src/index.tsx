@@ -10294,22 +10294,26 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
           } catch (e) {}
         }
         
-        // Buscar características da banca
+        // Buscar características da banca (com try-catch para caso a tabela não exista)
         if (bancaUsuario) {
-          // Normalizar nome da banca para busca
-          const bancaNome = bancaUsuario.toUpperCase().includes('CESPE') ? 'CEBRASPE' : bancaUsuario.split('/')[0].trim()
-          const bancaInfo: any = await DB.prepare(`
-            SELECT estilo_questoes, dicas_estudo FROM bancas_caracteristicas 
-            WHERE nome LIKE ? OR nome LIKE ?
-          `).bind(`%${bancaNome}%`, `%${bancaUsuario}%`).first()
-          
-          if (bancaInfo) {
-            caracteristicasBanca = {
-              nome: bancaUsuario,
-              estilo: bancaInfo.estilo_questoes ? JSON.parse(bancaInfo.estilo_questoes) : null,
-              dicas: bancaInfo.dicas_estudo
+          try {
+            // Normalizar nome da banca para busca
+            const bancaNome = bancaUsuario.toUpperCase().includes('CESPE') ? 'CEBRASPE' : bancaUsuario.split('/')[0].trim()
+            const bancaInfo: any = await DB.prepare(`
+              SELECT estilo_questoes, dicas_estudo FROM bancas_caracteristicas 
+              WHERE nome LIKE ? OR nome LIKE ?
+            `).bind(`%${bancaNome}%`, `%${bancaUsuario}%`).first()
+            
+            if (bancaInfo) {
+              caracteristicasBanca = {
+                nome: bancaUsuario,
+                estilo: bancaInfo.estilo_questoes ? JSON.parse(bancaInfo.estilo_questoes) : null,
+                dicas: bancaInfo.dicas_estudo
+              }
+              console.log(`🏛️ Banca identificada: ${bancaUsuario}`, caracteristicasBanca)
             }
-            console.log(`🏛️ Banca identificada: ${bancaUsuario}`, caracteristicasBanca)
+          } catch (e) {
+            console.log('⚠️ Tabela bancas_caracteristicas não encontrada, continuando sem características específicas')
           }
         }
       }
