@@ -7260,12 +7260,33 @@ window.renderDashboardDesempenho = async function() {
   const app = document.getElementById('app');
   
   try {
-    // Buscar dados necessários
+    // Primeiro buscar o plano ativo do usuário
+    const planoRes = await axios.get(`/api/planos/user/${currentUser.id}`);
+    const plano = planoRes.data;
+    
+    if (!plano || !plano.id) {
+      app.innerHTML = `
+        ${renderNavbar()}
+        <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+          <div class="text-center ${themes[currentTheme].card} p-8 rounded-2xl shadow-lg max-w-md">
+            <i class="fas fa-chart-pie text-5xl text-[#122D6A] mb-4"></i>
+            <h2 class="text-xl font-bold ${themes[currentTheme].text} mb-2">Nenhum plano ativo</h2>
+            <p class="${themes[currentTheme].textSecondary} mb-4">Crie um plano de estudos para visualizar seu desempenho.</p>
+            <button onclick="renderDashboard()" class="px-6 py-3 bg-[#122D6A] text-white rounded-lg hover:bg-[#2A4A9F] transition">
+              <i class="fas fa-arrow-left mr-2"></i>Voltar ao Dashboard
+            </button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    
+    // Buscar dados necessários em paralelo
     const [simuladosRes, estatisticasRes, desempenhoRes, progressoRes] = await Promise.all([
       axios.get(`/api/simulados/historico/${currentUser.id}`),
       axios.get(`/api/estatisticas/${currentUser.id}`),
       axios.get(`/api/desempenho/user/${currentUser.id}`),
-      axios.get(`/api/disciplinas/progresso-geral/${currentUser.id}`)
+      axios.get(`/api/planos/${plano.id}/progresso-geral`)
     ]);
     
     const simulados = simuladosRes.data.simulados || [];
@@ -8612,6 +8633,21 @@ window.gerarConteudoTipo = async function(tipo) {
   const metaId = meta?.id || null;
   
   console.log(`🎯 Gerando ${tipo} para: ${disciplinaNome} - ${topicoNome} (meta: ${metaId})`);
+  
+  // ✅ CORREÇÃO: Se for resumo personalizado, abrir modal de upload ao invés de gerar diretamente
+  if (tipo === 'resumo_personalizado') {
+    console.log('📄 Abrindo modal de upload de resumo personalizado...');
+    // Configurar meta para o modal de upload
+    window.metaAtual = {
+      topico_id: topicoId,
+      topico_nome: topicoNome,
+      disciplina_nome: disciplinaNome,
+      id: metaId
+    };
+    window.conteudoPendente = null;
+    abrirModalResumoPersonalizado(metaId || 0);
+    return;
+  }
   
   // Limpar dados pendentes agora (modal já foi fechado)
   window.conteudoPendente = null;
@@ -10642,13 +10678,27 @@ function toggleChat() {
   chatOpen = !chatOpen;
   const chatContainer = document.getElementById('chatContainer');
   const chatButton = document.getElementById('chatButton');
+  const fabContainer = document.getElementById('unified-fab-container');
+  
+  // Verificar se é mobile (largura < 768px)
+  const isMobile = window.innerWidth < 768;
   
   if (chatOpen) {
     chatContainer.classList.remove('hidden');
-    chatButton.innerHTML = '<i class="fas fa-times text-2xl"></i>';
+    if (chatButton) chatButton.innerHTML = '<i class="fas fa-times text-2xl"></i>';
+    
+    // ✅ Esconder FAB no mobile quando chat está aberto para não sobrepor o input
+    if (isMobile && fabContainer) {
+      fabContainer.style.display = 'none';
+    }
   } else {
     chatContainer.classList.add('hidden');
-    chatButton.innerHTML = '<i class="fas fa-comments text-2xl"></i>';
+    if (chatButton) chatButton.innerHTML = '<i class="fas fa-comments text-2xl"></i>';
+    
+    // Mostrar FAB novamente quando chat é fechado
+    if (fabContainer) {
+      fabContainer.style.display = 'block';
+    }
   }
 }
 
