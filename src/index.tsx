@@ -66,7 +66,7 @@ INICIE A TRANSCRIÇÃO DO CONTEÚDO PROGRAMÁTICO (ANEXOS):`
   const estrategias = [
     { prompt: promptOtimizado, modelo: 'gemini-2.0-flash-lite', desc: 'Lite (tentativa 1)' },
     { prompt: promptOtimizado, modelo: 'gemini-2.0-flash', desc: 'Flash (tentativa 1)' },
-    { prompt: promptOtimizado, modelo: 'gemini-1.5-flash', desc: 'Flash 1.5' },
+    { prompt: promptOtimizado, modelo: 'gemini-2.0-flash-exp', desc: 'Flash Exp' },
     { prompt: promptOtimizado, modelo: 'gemini-2.0-flash-lite', desc: 'Lite (tentativa 2)' },
     { prompt: promptOtimizado, modelo: 'gemini-2.0-flash', desc: 'Flash (tentativa 2)' }
   ]
@@ -10160,9 +10160,13 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
       
       try {
         textoExtraido = await extractTextFromPDF(arrayBuffer, geminiKey)
-      } catch (error) {
+      } catch (error: any) {
         console.error('Erro ao extrair PDF:', error)
-        return c.json({ error: 'Erro ao processar PDF. Tente converter para TXT.' }, 500)
+        return c.json({ 
+          error: 'Erro ao processar PDF. Tente converter para TXT.',
+          details: error?.message || 'Falha na extração do texto',
+          suggestion: 'Use https://www.ilovepdf.com/pt/pdf_para_texto para converter o PDF em TXT'
+        }, 500)
       }
     } else if (file.type === 'text/plain') {
       // Arquivo de texto simples
@@ -10296,8 +10300,18 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
     )
     
     if (!response.ok) {
-      console.error('Erro na API Gemini:', response.status)
-      return c.json({ error: 'Erro ao gerar resumo com IA' }, 500)
+      const errorText = await response.text()
+      console.error('Erro na API Gemini:', response.status, errorText)
+      
+      // Se for rate limit, dar mensagem específica
+      if (response.status === 429) {
+        return c.json({ 
+          error: 'API Gemini com limite de uso. Aguarde alguns segundos e tente novamente.',
+          errorType: 'RATE_LIMIT'
+        }, 429)
+      }
+      
+      return c.json({ error: 'Erro ao gerar resumo com IA. Tente novamente em alguns segundos.' }, 500)
     }
     
     const data = await response.json() as any
