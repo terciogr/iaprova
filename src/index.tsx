@@ -7090,80 +7090,160 @@ app.get('/api/estatisticas/:user_id', async (c) => {
   })
 })
 
-// Endpoint para retornar estudos por semana (últimas 4 semanas)
-app.get('/api/estatisticas/:user_id/por-semana', async (c) => {
+// ✅ Endpoint para retornar progresso de metas desde a Semana 1 até a prova (ou indefinidamente)
+app.get('/api/estatisticas/:user_id/progresso-semanal', async (c) => {
   const { DB } = c.env
   const user_id = c.req.param('user_id')
+  const visualizacao = c.req.query('view') || 'semana' // 'semana' ou 'mes'
   
   try {
-    const semanas = []
-    const hoje = new Date()
+    // Buscar plano ativo do usuário com data_prova (já na tabela planos_estudo)
+    const plano = await DB.prepare(`
+      SELECT * FROM planos_estudo 
+      WHERE user_id = ? AND ativo = 1
+      ORDER BY created_at DESC LIMIT 1
+    `).bind(user_id).first() as any
     
-    for (let i = 0; i < 4; i++) {
-      // Calcular início e fim de cada semana
-      const fimSemana = new Date(hoje)
-      fimSemana.setDate(hoje.getDate() - (i * 7))
-      fimSemana.setHours(23, 59, 59, 999)
+    if (!plano) {
+      return c.json({ 
+        semanas: [], 
+        meses: [],
+        mediaGeral: 0,
+        temDataProva: false,
+        semanasAteFim: 0
+      })
+    }
+    
+    const dataInicioPlano = new Date(plano.created_at)
+    const hoje = new Date()
+    const dataProva = plano.data_prova ? new Date(plano.data_prova) : null
+    
+    // Calcular semanas desde o início do plano
+    const semanas: any[] = []
+    const meses: any[] = []
+    
+    // Calcular quantas semanas mostrar
+    let dataFinal = dataProva || hoje
+    if (dataFinal < hoje) dataFinal = hoje // Se a prova já passou, mostrar até hoje
+    
+    const diffMs = dataFinal.getTime() - dataInicioPlano.getTime()
+    const totalSemanas = Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)))
+    const semanaAtual = Math.ceil((hoje.getTime() - dataInicioPlano.getTime()) / (7 * 24 * 60 * 60 * 1000))
+    
+    // Gerar dados para cada semana
+    for (let i = 1; i <= totalSemanas; i++) {
+      const inicioSemana = new Date(dataInicioPlano)
+      inicioSemana.setDate(dataInicioPlano.getDate() + ((i - 1) * 7))
       
-      const inicioSemana = new Date(fimSemana)
-      inicioSemana.setDate(fimSemana.getDate() - 6)
-      inicioSemana.setHours(0, 0, 0, 0)
+      const fimSemana = new Date(inicioSemana)
+      fimSemana.setDate(inicioSemana.getDate() + 6)
       
       const inicioStr = inicioSemana.toISOString().split('T')[0]
       const fimStr = fimSemana.toISOString().split('T')[0]
       
-      // Buscar dias estudados na semana
-      const diasEstudados = await DB.prepare(`
-        SELECT COUNT(DISTINCT data) as dias FROM historico_estudos
-        WHERE user_id = ? AND data >= ? AND data <= ? AND status != 'nao_estudou'
-      `).bind(user_id, inicioStr, fimStr).first() as any
+      // Só buscar dados para semanas passadas ou atual
+      let metasConcluidas = 0
+      let metasTotal = 0
+      let diasEstudados = 0
+      let tempoMinutos = 0
       
-      // Buscar tempo estudado na semana
-      const tempoEstudado = await DB.prepare(`
-        SELECT SUM(tempo_estudado_minutos) as minutos FROM historico_estudos
-        WHERE user_id = ? AND data >= ? AND data <= ?
-      `).bind(user_id, inicioStr, fimStr).first() as any
+      if (inicioSemana <= hoje) {
+        const metasConcluidasRes = await DB.prepare(`
+          SELECT COUNT(*) as total FROM metas_diarias
+          WHERE user_id = ? AND data >= ? AND data <= ? AND concluida = 1
+        `).bind(user_id, inicioStr, fimStr).first() as any
+        metasConcluidas = metasConcluidasRes?.total || 0
+        
+        const metasTotalRes = await DB.prepare(`
+          SELECT COUNT(*) as total FROM metas_diarias
+          WHERE user_id = ? AND data >= ? AND data <= ?
+        `).bind(user_id, inicioStr, fimStr).first() as any
+        metasTotal = metasTotalRes?.total || 0
+        
+        const diasEstudadosRes = await DB.prepare(`
+          SELECT COUNT(DISTINCT data) as dias FROM historico_estudos
+          WHERE user_id = ? AND data >= ? AND data <= ? AND status != 'nao_estudou'
+        `).bind(user_id, inicioStr, fimStr).first() as any
+        diasEstudados = diasEstudadosRes?.dias || 0
+        
+        const tempoRes = await DB.prepare(`
+          SELECT SUM(tempo_estudado_minutos) as minutos FROM historico_estudos
+          WHERE user_id = ? AND data >= ? AND data <= ?
+        `).bind(user_id, inicioStr, fimStr).first() as any
+        tempoMinutos = tempoRes?.minutos || 0
+      }
       
-      // Buscar metas concluídas na semana (concluida = 1)
-      const metasConcluidas = await DB.prepare(`
-        SELECT COUNT(*) as total FROM metas_diarias
-        WHERE user_id = ? AND data >= ? AND data <= ? AND concluida = 1
-      `).bind(user_id, inicioStr, fimStr).first() as any
-      
-      const metasTotal = await DB.prepare(`
-        SELECT COUNT(*) as total FROM metas_diarias
-        WHERE user_id = ? AND data >= ? AND data <= ?
-      `).bind(user_id, inicioStr, fimStr).first() as any
-      
-      const diasNaSemana = i === 0 ? Math.min(7, Math.ceil((hoje.getTime() - inicioSemana.getTime()) / (1000 * 60 * 60 * 24)) + 1) : 7
-      const percentualConclusao = metasTotal?.total > 0 
-        ? Math.round((metasConcluidas?.total / metasTotal?.total) * 100)
-        : (diasEstudados?.dias > 0 ? Math.round((diasEstudados?.dias / diasNaSemana) * 100) : 0)
+      const percentual = metasTotal > 0 ? Math.round((metasConcluidas / metasTotal) * 100) : 0
+      const isFutura = inicioSemana > hoje
+      const isAtual = i === semanaAtual
+      const isProva = dataProva && i === totalSemanas
       
       semanas.push({
-        label: i === 0 ? 'Esta semana' : i === 1 ? 'Semana passada' : `${i + 1} semanas atrás`,
+        numero: i,
+        label: `Sem ${i}`,
         inicio: inicioStr,
         fim: fimStr,
-        diasEstudados: diasEstudados?.dias || 0,
-        diasNaSemana,
-        tempoMinutos: tempoEstudado?.minutos || 0,
-        metasConcluidas: metasConcluidas?.total || 0,
-        metasTotal: metasTotal?.total || 0,
-        percentual: percentualConclusao
+        metasConcluidas,
+        metasTotal,
+        diasEstudados,
+        tempoMinutos,
+        percentual,
+        isFutura,
+        isAtual,
+        isProva
       })
     }
     
-    // Calcular média das últimas 4 semanas
-    const mediaPercentual = semanas.length > 0 
-      ? Math.round(semanas.reduce((acc, s) => acc + s.percentual, 0) / semanas.length)
+    // Agrupar por mês
+    const mesesMap = new Map<string, any>()
+    semanas.forEach(sem => {
+      const mesAno = sem.inicio.substring(0, 7) // YYYY-MM
+      const [ano, mes] = mesAno.split('-')
+      const labelMes = new Date(parseInt(ano), parseInt(mes) - 1).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+      
+      if (!mesesMap.has(mesAno)) {
+        mesesMap.set(mesAno, {
+          label: labelMes,
+          mesAno,
+          metasConcluidas: 0,
+          metasTotal: 0,
+          diasEstudados: 0,
+          tempoMinutos: 0,
+          semanasCount: 0
+        })
+      }
+      
+      const mesData = mesesMap.get(mesAno)
+      mesData.metasConcluidas += sem.metasConcluidas
+      mesData.metasTotal += sem.metasTotal
+      mesData.diasEstudados += sem.diasEstudados
+      mesData.tempoMinutos += sem.tempoMinutos
+      mesData.semanasCount++
+    })
+    
+    mesesMap.forEach((mes, key) => {
+      mes.percentual = mes.metasTotal > 0 ? Math.round((mes.metasConcluidas / mes.metasTotal) * 100) : 0
+      meses.push(mes)
+    })
+    
+    // Calcular média geral (apenas semanas passadas)
+    const semanasConcluidas = semanas.filter(s => !s.isFutura)
+    const mediaGeral = semanasConcluidas.length > 0 
+      ? Math.round(semanasConcluidas.reduce((acc, s) => acc + s.percentual, 0) / semanasConcluidas.length)
       : 0
     
     return c.json({
-      semanas: semanas.reverse(), // Ordem cronológica (mais antiga primeiro)
-      mediaUltimas4Semanas: mediaPercentual
+      semanas,
+      meses,
+      mediaGeral,
+      temDataProva: !!dataProva,
+      dataProva: dataProva?.toISOString().split('T')[0] || null,
+      semanaAtual,
+      totalSemanas,
+      semanasRestantes: Math.max(0, totalSemanas - semanaAtual)
     })
   } catch (error) {
-    console.error('Erro ao buscar estudos por semana:', error)
+    console.error('Erro ao buscar progresso semanal:', error)
     return c.json({ error: 'Erro ao buscar estatísticas' }, 500)
   }
 })
@@ -11293,6 +11373,17 @@ app.get('/', (c) => {
           /* Scrollbar hide for mobile calendar */
           .scrollbar-hide::-webkit-scrollbar { display: none; }
           .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+          
+          /* Barras listradas para semanas futuras */
+          .bg-stripes {
+            background-image: repeating-linear-gradient(
+              45deg,
+              transparent,
+              transparent 5px,
+              rgba(255, 255, 255, 0.15) 5px,
+              rgba(255, 255, 255, 0.15) 10px
+            );
+          }
         </style>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');

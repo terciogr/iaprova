@@ -7278,6 +7278,71 @@ function renderPlano() {
 // ===================================
 // Dashboard de Desempenho Geral
 // ===================================
+
+// Armazena dados do progresso semanal para alternância
+let progressoSemanalCache = null;
+
+// Função para alternar entre visualização por Semana e Mês
+window.toggleProgressoView = function(view) {
+  if (!progressoSemanalCache) return;
+  
+  const container = document.getElementById('progresso-container');
+  const btnSemana = document.getElementById('btn-view-semana');
+  const btnMes = document.getElementById('btn-view-mes');
+  
+  if (!container || !btnSemana || !btnMes) return;
+  
+  // Atualizar botões
+  if (view === 'semana') {
+    btnSemana.className = 'px-3 py-1 text-xs font-medium rounded-md bg-[#122D6A] text-white transition';
+    btnMes.className = `px-3 py-1 text-xs font-medium rounded-md ${themes[currentTheme].text} hover:bg-gray-200 dark:hover:bg-gray-700 transition`;
+  } else {
+    btnMes.className = 'px-3 py-1 text-xs font-medium rounded-md bg-[#122D6A] text-white transition';
+    btnSemana.className = `px-3 py-1 text-xs font-medium rounded-md ${themes[currentTheme].text} hover:bg-gray-200 dark:hover:bg-gray-700 transition`;
+  }
+  
+  // Renderizar conteúdo
+  if (view === 'semana') {
+    container.innerHTML = progressoSemanalCache.semanas.map(sem => `
+      <div class="flex items-center gap-2 ${sem.isAtual ? 'bg-[#E8EDF5] dark:bg-[#0A1839]/30 rounded-lg p-2 -mx-2' : ''} ${sem.isProva ? 'border-2 border-[#122D6A] rounded-lg p-2 -mx-2' : ''}">
+        <span class="text-xs font-medium ${sem.isAtual ? 'text-[#122D6A] dark:text-blue-400' : themes[currentTheme].textSecondary} w-12 flex-shrink-0">
+          ${sem.label}${sem.isAtual ? ' ●' : ''}${sem.isProva ? ' 🏁' : ''}
+        </span>
+        <div class="flex-1 h-5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          ${sem.isFutura ? `
+            <div class="h-full rounded-full bg-gray-300 dark:bg-gray-600 bg-stripes" style="width: 100%"></div>
+          ` : `
+            <div class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#3A5AB0] transition-all duration-500 flex items-center justify-end pr-2"
+                 style="width: ${Math.max(sem.percentual, 3)}%">
+              ${sem.percentual > 15 ? `<span class="text-[9px] text-white font-medium">${sem.percentual}%</span>` : ''}
+            </div>
+          `}
+        </div>
+        <span class="text-xs ${themes[currentTheme].textSecondary} w-10 text-right flex-shrink-0">
+          ${sem.isFutura ? '-' : sem.percentual + '%'}
+        </span>
+      </div>
+    `).join('');
+  } else {
+    container.innerHTML = progressoSemanalCache.meses.map(mes => `
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-medium ${themes[currentTheme].textSecondary} w-16 flex-shrink-0 capitalize">
+          ${mes.label}
+        </span>
+        <div class="flex-1 h-5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#3A5AB0] transition-all duration-500 flex items-center justify-end pr-2"
+               style="width: ${Math.max(mes.percentual, 3)}%">
+            ${mes.percentual > 15 ? `<span class="text-[9px] text-white font-medium">${mes.percentual}%</span>` : ''}
+          </div>
+        </div>
+        <span class="text-xs ${themes[currentTheme].textSecondary} w-10 text-right flex-shrink-0">
+          ${mes.percentual}%
+        </span>
+      </div>
+    `).join('');
+  }
+};
+
 window.renderDashboardDesempenho = async function() {
   const app = document.getElementById('app');
   
@@ -7304,19 +7369,22 @@ window.renderDashboardDesempenho = async function() {
     }
     
     // Buscar dados necessários em paralelo
-    const [simuladosRes, estatisticasRes, desempenhoRes, progressoRes, estudosSemanaRes] = await Promise.all([
+    const [simuladosRes, estatisticasRes, desempenhoRes, progressoRes, progressoSemanalRes] = await Promise.all([
       axios.get(`/api/simulados/historico/${currentUser.id}`),
       axios.get(`/api/estatisticas/${currentUser.id}`),
       axios.get(`/api/desempenho/user/${currentUser.id}`),
       axios.get(`/api/planos/${plano.id}/progresso-geral`),
-      axios.get(`/api/estatisticas/${currentUser.id}/por-semana`).catch(() => ({ data: { semanas: [], mediaUltimas4Semanas: 0 } }))
+      axios.get(`/api/estatisticas/${currentUser.id}/progresso-semanal`).catch(() => ({ data: { semanas: [], meses: [], mediaGeral: 0 } }))
     ]);
     
     const simulados = simuladosRes.data.simulados || [];
     const stats = estatisticasRes.data || {};
     const desempenho = desempenhoRes.data || [];
     const progressoGeral = progressoRes.data || {};
-    const dadosSemanais = estudosSemanaRes.data || { semanas: [], mediaUltimas4Semanas: 0 };
+    const progressoSemanal = progressoSemanalRes.data || { semanas: [], meses: [], mediaGeral: 0 };
+    
+    // Armazenar no cache para alternância de visualização
+    progressoSemanalCache = progressoSemanal;
     
     // Calcular métricas
     const mediaSimulados = simulados.length > 0 ? 
@@ -7324,10 +7392,6 @@ window.renderDashboardDesempenho = async function() {
     const ultimosSimulados = simulados.slice(-5);
     const mediaUltimos = ultimosSimulados.length > 0 ? 
       Math.round(ultimosSimulados.reduce((acc, s) => acc + s.percentual_acerto, 0) / ultimosSimulados.length) : 0;
-    
-    // ✅ CORRIGIDO: Usar dados reais da API de estudos por semana
-    const estudosSemana = calcularEstudosPorSemana(dadosSemanais);
-    const mediaSemanasReal = dadosSemanais.mediaUltimas4Semanas || 0;
     
     // Evolução por disciplina (dados reais)
     const evolucaoDisciplinas = calcularEvolucaoDisciplinas(desempenho);
@@ -7451,32 +7515,72 @@ window.renderDashboardDesempenho = async function() {
               </p>
             </div>
             
-            <!-- Seção B: Percentual de Estudos por Semana -->
+            <!-- Seção B: Cumprimento de Metas -->
             <div class="${themes[currentTheme].card} rounded-2xl border ${themes[currentTheme].border} p-6 hover:shadow-lg transition">
-              <h2 class="text-lg font-bold ${themes[currentTheme].text} flex items-center gap-2 mb-4">
-                <i class="fas fa-calendar-week text-[#3A5AB0]"></i>
-                Estudos por Semana
-              </h2>
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold ${themes[currentTheme].text} flex items-center gap-2">
+                  <i class="fas fa-chart-line text-[#3A5AB0]"></i>
+                  Cumprimento de Metas
+                </h2>
+                <!-- Botões de alternância -->
+                <div class="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                  <button id="btn-view-semana" onclick="window.toggleProgressoView('semana')" 
+                          class="px-3 py-1 text-xs font-medium rounded-md bg-[#122D6A] text-white transition">
+                    Semana
+                  </button>
+                  <button id="btn-view-mes" onclick="window.toggleProgressoView('mes')" 
+                          class="px-3 py-1 text-xs font-medium rounded-md ${themes[currentTheme].text} hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Mês
+                  </button>
+                </div>
+              </div>
               
-              <div class="space-y-3">
-                ${estudosSemana.map((semana, i) => `
-                  <div class="flex items-center gap-3">
-                    <span class="text-xs ${themes[currentTheme].textSecondary} w-20">${semana.label}</span>
-                    <div class="flex-1 h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#3A5AB0] transition-all duration-500 flex items-center justify-end pr-2"
-                           style="width: ${semana.percentual}%">
-                        ${semana.percentual > 15 ? `<span class="text-[10px] text-white font-medium">${semana.percentual}%</span>` : ''}
-                      </div>
+              ${progressoSemanal.temDataProva ? `
+                <div class="mb-4 p-3 rounded-xl bg-[#E8EDF5] dark:bg-[#0A1839]/50 flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <i class="fas fa-flag-checkered text-[#122D6A]"></i>
+                    <span class="text-sm ${themes[currentTheme].text}">Prova em <strong>${new Date(progressoSemanal.dataProva).toLocaleDateString('pt-BR')}</strong></span>
+                  </div>
+                  <span class="text-xs px-2 py-1 bg-[#122D6A] text-white rounded-full">${progressoSemanal.semanasRestantes} semanas restantes</span>
+                </div>
+              ` : `
+                <div class="mb-4 p-3 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center gap-2">
+                  <i class="fas fa-infinity text-gray-500"></i>
+                  <span class="text-sm ${themes[currentTheme].textSecondary}">Sem data definida - acompanhamento contínuo</span>
+                </div>
+              `}
+              
+              <!-- Container para o gráfico -->
+              <div id="progresso-container" class="space-y-2 max-h-64 overflow-y-auto pr-2">
+                ${progressoSemanal.semanas.map(sem => `
+                  <div class="flex items-center gap-2 ${sem.isAtual ? 'bg-[#E8EDF5] dark:bg-[#0A1839]/30 rounded-lg p-2 -mx-2' : ''} ${sem.isProva ? 'border-2 border-[#122D6A] rounded-lg p-2 -mx-2' : ''}">
+                    <span class="text-xs font-medium ${sem.isAtual ? 'text-[#122D6A] dark:text-blue-400' : themes[currentTheme].textSecondary} w-12 flex-shrink-0">
+                      ${sem.label}${sem.isAtual ? ' ●' : ''}${sem.isProva ? ' 🏁' : ''}
+                    </span>
+                    <div class="flex-1 h-5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      ${sem.isFutura ? `
+                        <div class="h-full rounded-full bg-gray-300 dark:bg-gray-600 bg-stripes" style="width: 100%"></div>
+                      ` : `
+                        <div class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#3A5AB0] transition-all duration-500 flex items-center justify-end pr-2"
+                             style="width: ${Math.max(sem.percentual, 3)}%">
+                          ${sem.percentual > 15 ? `<span class="text-[9px] text-white font-medium">${sem.percentual}%</span>` : ''}
+                        </div>
+                      `}
                     </div>
-                    ${semana.percentual <= 15 ? `<span class="text-xs ${themes[currentTheme].textSecondary}">${semana.percentual}%</span>` : ''}
+                    <span class="text-xs ${themes[currentTheme].textSecondary} w-10 text-right flex-shrink-0">
+                      ${sem.isFutura ? '-' : sem.percentual + '%'}
+                    </span>
                   </div>
                 `).join('')}
               </div>
               
               <div class="mt-4 pt-4 border-t ${themes[currentTheme].border}">
                 <div class="flex justify-between items-center">
-                  <span class="text-sm ${themes[currentTheme].textSecondary}">Média das últimas 4 semanas:</span>
-                  <span class="text-lg font-bold text-[#2A4A9F]">${mediaSemanasReal || (estudosSemana.length > 0 ? Math.round(estudosSemana.reduce((a,s) => a + s.percentual, 0) / estudosSemana.length) : 0)}%</span>
+                  <span class="text-sm ${themes[currentTheme].textSecondary}">Média geral:</span>
+                  <span class="text-lg font-bold text-[#2A4A9F]">${progressoSemanal.mediaGeral || 0}%</span>
+                </div>
+                <div class="flex justify-between items-center mt-1">
+                  <span class="text-xs ${themes[currentTheme].textSecondary}">Semana atual: ${progressoSemanal.semanaAtual || 1} de ${progressoSemanal.totalSemanas || 1}</span>
                 </div>
               </div>
             </div>
