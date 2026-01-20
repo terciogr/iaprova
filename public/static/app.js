@@ -1938,6 +1938,37 @@ function renderConcursoEspecifico() {
               </p>
             </div>
 
+            <!-- Banca Organizadora -->
+            <div class="relative">
+              <label class="block text-xs md:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">
+                <i class="fas fa-landmark mr-1 text-[#1A3A7F]"></i>
+                Banca Organizadora <span class="text-gray-400 font-normal">(se souber)</span>
+              </label>
+              <select id="bancaOrganizadora"
+                class="w-full px-3 md:px-4 py-2.5 md:py-3 ${themes[currentTheme].input} rounded-lg md:rounded-xl border-2 border-gray-200 focus:border-[#1A3A7F] focus:ring-2 focus:ring-[#1A3A7F]/20 transition-all text-sm md:text-base">
+                <option value="">Selecione a banca (opcional)</option>
+                <option value="CESPE/CEBRASPE">CESPE / CEBRASPE</option>
+                <option value="FCC">FCC - Fundação Carlos Chagas</option>
+                <option value="FGV">FGV - Fundação Getúlio Vargas</option>
+                <option value="VUNESP">VUNESP</option>
+                <option value="CESGRANRIO">CESGRANRIO</option>
+                <option value="IBFC">IBFC</option>
+                <option value="IADES">IADES</option>
+                <option value="IDECAN">IDECAN</option>
+                <option value="QUADRIX">QUADRIX</option>
+                <option value="INSTITUTO AOCP">Instituto AOCP</option>
+                <option value="CONSULPLAN">Consulplan</option>
+                <option value="FUNDATEC">FUNDATEC</option>
+                <option value="FUNCAB">FUNCAB</option>
+                <option value="COPESE">COPESE</option>
+                <option value="outra">Outra banca</option>
+              </select>
+              <p class="text-[10px] md:text-xs text-gray-400 mt-1">
+                <i class="fas fa-star mr-1"></i>
+                Questões e conteúdo serão adaptados ao estilo da banca
+              </p>
+            </div>
+
             <!-- Prazo -->
             <div class="relative">
               <label class="block text-xs md:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">
@@ -2042,8 +2073,10 @@ function renderConcursoEspecifico() {
     e.preventDefault();
     interviewData.concurso_nome = document.getElementById('concursoNome').value;
     interviewData.cargo = document.getElementById('cargo').value;
-    // Campo peso_prova removido - peso se aplica à matéria, não à prova
+    interviewData.banca_organizadora = document.getElementById('bancaOrganizadora').value || null;
     interviewData.prazo_prova = document.getElementById('prazoProva').value || null;
+    
+    console.log('📋 Banca organizadora selecionada:', interviewData.banca_organizadora);
     
     // Salvar arquivos de editais
     const editaisFiles = document.getElementById('editaisUpload').files;
@@ -2358,7 +2391,7 @@ async function processarEditalAntesDeStep2() {
               document.getElementById('app').innerHTML = `
                 <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
                   <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
-                    <div class="w-20 h-20 mx-auto mb-4 rounded-full ${isApiError ? 'bg-[#E8EDF5]' : 'bg-orange-100'} flex items-center justify-center relative">
+                    <div class="w-20 h-20 mx-auto mb-4 rounded-full ${isApiError ? 'bg-[#E8EDF5]' : 'bg-[#C5D1E8]'} flex items-center justify-center relative">
                       <i class="fas ${iconClass} text-4xl"></i>
                       ${isCountdownActive ? `
                         <div class="absolute -top-1 -right-1 w-8 h-8 bg-[#122D6A] rounded-full flex items-center justify-center">
@@ -2816,6 +2849,38 @@ function renderEntrevistaStep2() {
                 class="w-full px-3 md:px-4 py-2.5 md:py-3 ${themes[currentTheme].input} rounded-lg md:rounded-xl border-2 border-gray-200 focus:border-[#1A3A7F] focus:ring-2 focus:ring-[#1A3A7F]/20 transition-all text-sm md:text-base">
             </div>
 
+            <!-- Bancas Preferidas (especialmente para área geral) -->
+            ${interviewData.objetivo_tipo === 'area_geral' ? `
+            <div>
+              <label class="block text-xs md:text-sm font-medium ${themes[currentTheme].text} mb-2 md:mb-3">
+                <i class="fas fa-landmark mr-1 text-[#1A3A7F]"></i>
+                Quais bancas você prefere estudar?
+              </label>
+              <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mb-2">
+                <i class="fas fa-info-circle mr-1"></i>
+                Selecione as bancas que mais aparecem nos concursos da sua área. Questões e conteúdo serão adaptados.
+              </p>
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                ${[
+                  { val: 'CESPE/CEBRASPE', label: 'CESPE/Cebraspe', desc: 'Certo/Errado' },
+                  { val: 'FCC', label: 'FCC', desc: 'Carlos Chagas' },
+                  { val: 'FGV', label: 'FGV', desc: 'Getúlio Vargas' },
+                  { val: 'VUNESP', label: 'VUNESP', desc: 'São Paulo' },
+                  { val: 'CESGRANRIO', label: 'CESGRANRIO', desc: 'Petrobras/CEF' },
+                  { val: 'IBFC', label: 'IBFC', desc: 'Diversas' }
+                ].map(b => `
+                  <label class="cursor-pointer">
+                    <input type="checkbox" name="bancas_preferidas" value="${b.val}" class="hidden peer">
+                    <div class="p-2 md:p-3 border-2 ${themes[currentTheme].border} rounded-lg text-center peer-checked:border-[#122D6A] peer-checked:bg-gradient-to-br peer-checked:from-[#E8EDF5] peer-checked:to-[#D0D9EB] hover:border-[#8FA4CC] transition-all peer-checked:shadow-md">
+                      <p class="font-semibold text-xs md:text-sm ${themes[currentTheme].text}">${b.label}</p>
+                      <p class="text-[9px] md:text-[10px] ${themes[currentTheme].textSecondary}">${b.desc}</p>
+                    </div>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+            ` : ''}
+
             <!-- Experiências detalhadas - Colapsável no mobile -->
             <div>
               <label class="block text-xs md:text-sm font-medium ${themes[currentTheme].text} mb-1.5 md:mb-2">
@@ -2863,6 +2928,13 @@ function renderEntrevistaStep2() {
     const diasSemana = formData.getAll('dias_semana').map(d => parseInt(d));
     interviewData.dias_semana = diasSemana.length > 0 ? diasSemana : [1, 2, 3, 4, 5]; // Default: seg a sex
     console.log('📅 Dias da semana selecionados:', interviewData.dias_semana);
+    
+    // ✅ NOVO: Coletar bancas preferidas (para área geral)
+    const bancasPreferidas = formData.getAll('bancas_preferidas');
+    if (bancasPreferidas.length > 0) {
+      interviewData.bancas_preferidas = bancasPreferidas;
+      console.log('🏛️ Bancas preferidas:', interviewData.bancas_preferidas);
+    }
     
     renderEntrevistaStep3();
   });
@@ -5806,7 +5878,7 @@ window.selecionarTipoConteudo = function(tipo) {
       exercicios: 'bg-green-50', 
       resumo: 'bg-yellow-50', 
       flashcards: 'bg-[#E8EDF5]',
-      resumo_personalizado: 'bg-orange-50'
+      resumo_personalizado: 'bg-[#E8EDF5]'
     };
     btnSelecionado.classList.add(colors[tipo]);
   }
@@ -6744,7 +6816,7 @@ function renderTabConteudo(tipo, conteudos) {
               ${conteudo.objetivos ? `
                 <div class="border-t ${themes[currentTheme].text === 'text-white' ? 'border-gray-700' : '${themes[currentTheme].border}'} pt-4">
                   <h4 class="font-semibold ${themes[currentTheme].text} mb-2">
-                    <i class="fas fa-bullseye mr-2 text-orange-500"></i>Objetivos:
+                    <i class="fas fa-bullseye mr-2 text-[#3A5AB0]"></i>Objetivos:
                   </h4>
                   <ul class="${themes[currentTheme].textSecondary} text-sm space-y-1">
                     ${JSON.parse(conteudo.objetivos).slice(0, 3).map(obj => `
@@ -7189,8 +7261,23 @@ window.renderDashboardSimulados = async function() {
       return Math.round(media);
     });
     
-    // Meta do usuário (buscar ou definir padrão)
-    const metaPercentual = 80; // Pode ser configurável depois
+    // ✅ NOVO: Meta do usuário (nota de corte) - buscar do localStorage
+    const metaConfig = JSON.parse(localStorage.getItem('metaSimulados') || '{}');
+    const metaPercentual = metaConfig.notaCorte || 70; // Padrão 70%
+    const vagasTotal = metaConfig.vagasTotal || 100;
+    const vagasDesejadas = metaConfig.vagasDesejadas || 10;
+    
+    // ✅ NOVO: Calcular se está dentro das vagas
+    const mediaGeral = simulados.length > 0 ? 
+      Math.round(simulados.reduce((acc, s) => acc + s.percentual_acerto, 0) / simulados.length) : 0;
+    const ultimosSimulados = simulados.slice(-5); // Últimos 5 simulados
+    const mediaUltimos = ultimosSimulados.length > 0 ? 
+      Math.round(ultimosSimulados.reduce((acc, s) => acc + s.percentual_acerto, 0) / ultimosSimulados.length) : 0;
+    
+    // Calcular posição estimada (simplificado)
+    const dentroMeta = mediaUltimos >= metaPercentual;
+    const tendencia = ultimosSimulados.length >= 2 ? 
+      ultimosSimulados[ultimosSimulados.length - 1].percentual_acerto - ultimosSimulados[0].percentual_acerto : 0;
     
     app.innerHTML = `
       ${renderNavbar()}
@@ -7256,13 +7343,45 @@ window.renderDashboardSimulados = async function() {
             <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border}">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-sm ${themes[currentTheme].textSecondary}">Meta</p>
-                  <p class="text-2xl font-bold text-amber-600">${metaPercentual}%</p>
+                  <p class="text-sm ${themes[currentTheme].textSecondary}">Nota de Corte</p>
+                  <p class="text-2xl font-bold text-[#3A5AB0]">${metaPercentual}%</p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
-                  <i class="fas fa-bullseye text-amber-600 text-xl"></i>
+                <div class="w-12 h-12 rounded-full bg-[#E8EDF5] flex items-center justify-center">
+                  <i class="fas fa-bullseye text-[#3A5AB0] text-xl"></i>
                 </div>
               </div>
+            </div>
+          </div>
+          
+          <!-- ✅ NOVO: Indicador de Status das Vagas -->
+          <div class="${themes[currentTheme].card} p-6 rounded-xl border-2 ${dentroMeta ? 'border-green-500 bg-green-50/50' : 'border-red-500 bg-red-50/50'} mb-6">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div class="flex items-center gap-4">
+                <div class="w-16 h-16 rounded-full ${dentroMeta ? 'bg-green-500' : 'bg-red-500'} flex items-center justify-center">
+                  <i class="fas ${dentroMeta ? 'fa-check' : 'fa-exclamation'} text-white text-2xl"></i>
+                </div>
+                <div>
+                  <h3 class="text-xl font-bold ${dentroMeta ? 'text-green-700' : 'text-red-700'}">
+                    ${dentroMeta ? '✅ DENTRO DA META!' : '⚠️ ABAIXO DA META'}
+                  </h3>
+                  <p class="${themes[currentTheme].textSecondary}">
+                    ${simulados.length === 0 ? 'Faça simulados para acompanhar seu progresso' :
+                      dentroMeta ? 
+                        `Sua média (${mediaUltimos}%) está acima da nota de corte (${metaPercentual}%)` :
+                        `Você precisa de mais ${metaPercentual - mediaUltimos}% para atingir a nota de corte`
+                    }
+                  </p>
+                  ${tendencia !== 0 ? `
+                    <p class="text-sm mt-1 ${tendencia > 0 ? 'text-green-600' : 'text-red-600'}">
+                      <i class="fas fa-arrow-${tendencia > 0 ? 'up' : 'down'} mr-1"></i>
+                      Tendência: ${tendencia > 0 ? '+' : ''}${tendencia}% nos últimos simulados
+                    </p>
+                  ` : ''}
+                </div>
+              </div>
+              <button onclick="configurarMetaSimulado()" class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition">
+                <i class="fas fa-cog mr-2"></i>Configurar Meta
+              </button>
             </div>
           </div>
           
@@ -7478,17 +7597,97 @@ window.renderGraficoSimulados = function(semanas, percentuais, metaPercentual) {
   });
 }
 
-// Configurar meta do simulado
+// Configurar meta do simulado (nota de corte)
 window.configurarMetaSimulado = async function() {
-  const metaAtual = 80; // Buscar do banco depois
-  const novaMeta = await showPrompt('Configurar Meta de Acertos', 'Digite sua meta de acertos (%)', metaAtual.toString());
+  const metaConfig = JSON.parse(localStorage.getItem('metaSimulados') || '{}');
   
-  if (novaMeta && !isNaN(novaMeta)) {
-    const meta = Math.min(100, Math.max(0, parseInt(novaMeta)));
-    // Salvar no banco depois
-    showToast(`Meta configurada para ${meta}%`, 'success');
-    renderDashboardSimulados(); // Recarregar
-  }
+  // Criar modal de configuração
+  const modal = document.createElement('div');
+  modal.id = 'modal-config-meta';
+  modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+  modal.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+      <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-6">
+        <h2 class="text-xl font-bold flex items-center gap-2">
+          <i class="fas fa-bullseye"></i>
+          Configurar Meta de Aprovação
+        </h2>
+        <p class="text-[#A8D4FF] text-sm mt-1">Defina sua nota de corte esperada</p>
+      </div>
+      
+      <div class="p-6 space-y-6">
+        <!-- Nota de Corte -->
+        <div>
+          <label class="block text-sm font-medium ${themes[currentTheme].text} mb-2">
+            <i class="fas fa-percentage mr-2 text-[#3A5AB0]"></i>
+            Nota de Corte Esperada (%)
+          </label>
+          <input type="number" id="input-nota-corte" min="0" max="100" value="${metaConfig.notaCorte || 70}"
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#3A5AB0] focus:ring-2 focus:ring-[#3A5AB0]/20 ${themes[currentTheme].input}">
+          <p class="text-xs ${themes[currentTheme].textSecondary} mt-1">
+            <i class="fas fa-info-circle mr-1"></i>
+            Percentual mínimo para ser aprovado no concurso
+          </p>
+        </div>
+        
+        <!-- Informações sobre as bancas -->
+        <div class="bg-[#E8EDF5] rounded-lg p-4">
+          <h4 class="font-medium ${themes[currentTheme].text} mb-2">
+            <i class="fas fa-lightbulb mr-2 text-[#3A5AB0]"></i>
+            Dica: Notas de corte comuns
+          </h4>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <div class="flex justify-between">
+              <span>CESPE (Certo/Errado):</span>
+              <span class="font-medium">60-70%</span>
+            </div>
+            <div class="flex justify-between">
+              <span>FCC:</span>
+              <span class="font-medium">65-75%</span>
+            </div>
+            <div class="flex justify-between">
+              <span>FGV:</span>
+              <span class="font-medium">60-70%</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Concursos disputados:</span>
+              <span class="font-medium">80%+</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Botões -->
+        <div class="flex gap-3">
+          <button onclick="document.getElementById('modal-config-meta').remove()" 
+            class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition font-medium">
+            Cancelar
+          </button>
+          <button onclick="salvarMetaSimulado()" 
+            class="flex-1 px-4 py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-xl hover:from-[#0D1F4D] hover:to-[#122D6A] transition font-medium">
+            <i class="fas fa-save mr-2"></i>Salvar
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+// Salvar meta do simulado
+window.salvarMetaSimulado = function() {
+  const notaCorte = parseInt(document.getElementById('input-nota-corte').value) || 70;
+  
+  const metaConfig = {
+    notaCorte: Math.min(100, Math.max(0, notaCorte)),
+    updatedAt: new Date().toISOString()
+  };
+  
+  localStorage.setItem('metaSimulados', JSON.stringify(metaConfig));
+  document.getElementById('modal-config-meta').remove();
+  
+  showToast(`Nota de corte configurada para ${metaConfig.notaCorte}%`, 'success');
+  renderDashboardSimulados(); // Recarregar
 }
 
 // Ver detalhes de um simulado específico
@@ -8016,10 +8215,10 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
           </button>
           
           <button onclick="gerarConteudoTipo('resumo')" 
-            class="p-4 border-2 border-gray-200 rounded-xl hover:border-amber-500 hover:bg-amber-50 transition-all text-left group">
+            class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#4A6AC0] hover:bg-[#E8EDF5] transition-all text-left group">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center group-hover:bg-amber-500 transition-colors">
-                <i class="fas fa-file-alt text-amber-600 group-hover:text-white transition-colors"></i>
+              <div class="w-10 h-10 bg-[#C5D1E8] rounded-lg flex items-center justify-center group-hover:bg-[#3A5AB0] transition-colors">
+                <i class="fas fa-file-alt text-[#2A4A9F] group-hover:text-white transition-colors"></i>
               </div>
               <div>
                 <p class="font-semibold text-gray-800">Resumo</p>
@@ -8046,7 +8245,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
             class="col-span-2 p-4 border-2 border-gray-200 rounded-xl hover:border-[#4A6AC0] hover:bg-[#E8EDF5] transition-all text-left group">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 bg-[#C5D1E8] rounded-lg flex items-center justify-center group-hover:bg-[#E8EDF5]0 transition-colors">
-                <i class="fas fa-file-upload text-orange-600 group-hover:text-white transition-colors"></i>
+                <i class="fas fa-file-upload text-[#3A5AB0] group-hover:text-white transition-colors"></i>
               </div>
               <div>
                 <p class="font-semibold text-gray-800">Resumo Personalizado</p>
@@ -8215,14 +8414,14 @@ window.abrirModalResumoPersonalizado = function(metaId) {
   modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in';
   modal.innerHTML = `
     <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden animate-scale-in">
-      <div class="bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] text-white p-6">
+      <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-6">
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-2xl font-bold flex items-center gap-3">
               <i class="fas fa-file-upload text-3xl"></i>
               Resumo Personalizado
             </h2>
-            <p class="text-orange-100 mt-2">Upload de documento para gerar resumo com IA</p>
+            <p class="text-[#A8D4FF] mt-2">Upload de documento para gerar resumo com IA</p>
           </div>
           <button onclick="this.closest('.fixed').remove()" class="text-white/80 hover:text-white transition">
             <i class="fas fa-times text-xl"></i>
@@ -8232,9 +8431,9 @@ window.abrirModalResumoPersonalizado = function(metaId) {
       
       <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
         <!-- Informações do contexto -->
-        <div class="bg-orange-50 rounded-lg p-4 mb-6">
+        <div class="bg-[#E8EDF5] rounded-lg p-4 mb-6">
           <div class="flex items-center gap-3">
-            <i class="fas fa-info-circle text-[#FF6B35]"></i>
+            <i class="fas fa-info-circle text-[#3A5AB0]"></i>
             <div>
               <p class="text-sm text-gray-700">
                 <strong>Disciplina:</strong> ${meta.disciplina_nome}
@@ -8247,10 +8446,10 @@ window.abrirModalResumoPersonalizado = function(metaId) {
         </div>
         
         <!-- Área de upload -->
-        <div class="border-2 border-dashed border-orange-300 rounded-lg p-8 text-center mb-6 hover:border-[#FF6B35] transition-all" id="dropzone">
+        <div class="border-2 border-dashed border-[#C5D1E8] rounded-lg p-8 text-center mb-6 hover:border-[#3A5AB0] transition-all" id="dropzone">
           <input type="file" id="file-upload" accept=".pdf,.txt,.doc,.docx" class="hidden">
           
-          <i class="fas fa-cloud-upload-alt text-6xl text-[#FF6B35] opacity-50 mb-4"></i>
+          <i class="fas fa-cloud-upload-alt text-6xl text-[#3A5AB0] opacity-50 mb-4"></i>
           
           <h3 class="text-xl font-semibold text-gray-700 mb-2">
             Arraste um arquivo ou clique para selecionar
@@ -8261,7 +8460,7 @@ window.abrirModalResumoPersonalizado = function(metaId) {
           </p>
           
           <button onclick="document.getElementById('file-upload').click()" 
-            class="bg-[#FF6B35] text-white px-6 py-3 rounded-lg hover:bg-[#E55A2D] transition font-medium">
+            class="bg-[#3A5AB0] text-white px-6 py-3 rounded-lg hover:bg-[#2A4A9F] transition font-medium">
             <i class="fas fa-folder-open mr-2"></i>
             Selecionar Arquivo
           </button>
@@ -8315,19 +8514,19 @@ window.abrirModalResumoPersonalizado = function(metaId) {
         <button onclick="processarResumoPersonalizado(${metaId})" 
           id="btn-processar"
           disabled
-          class="w-full bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] text-white py-4 rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-[#E55A2D] hover:to-[#FF6B35] transition flex items-center justify-center gap-3">
+          class="w-full bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white py-4 rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-[#0D1F4D] hover:to-[#122D6A] transition flex items-center justify-center gap-3">
           <i class="fas fa-magic"></i>
           Gerar Resumo do Documento
         </button>
         
         <!-- Status de processamento -->
         <div id="processing-status" class="hidden mt-6">
-          <div class="bg-orange-50 rounded-lg p-4">
+          <div class="bg-[#E8EDF5] rounded-lg p-4">
             <div class="flex items-center gap-3">
-              <div class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full border-orange-500 border-t-transparent"></div>
+              <div class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full border-[#3A5AB0] border-t-transparent"></div>
               <div>
-                <p class="font-medium text-orange-700">Processando documento...</p>
-                <p class="text-sm text-[#FF6B35] mt-1" id="status-message">Extraindo texto do arquivo...</p>
+                <p class="font-medium text-[#2A4A9F]">Processando documento...</p>
+                <p class="text-sm text-[#4A6AC0] mt-1" id="status-message">Extraindo texto do arquivo...</p>
               </div>
             </div>
           </div>
@@ -8794,7 +8993,7 @@ async function verificarConteudoGerado(metaId) {
               <span>Ver Material</span>
             </button>
             <button onclick="regenerarConteudo(${metaId})" 
-              class="bg-amber-500 text-white px-3 py-2 rounded-lg hover:bg-amber-600 transition text-sm" title="Regerar material">
+              class="bg-[#3A5AB0] text-white px-3 py-2 rounded-lg hover:bg-[#2A4A9F] transition text-sm" title="Regerar material">
               <i class="fas fa-sync-alt"></i>
             </button>
           </div>
@@ -8941,7 +9140,7 @@ function visualizarConteudo(conteudo, meta = null) {
             <i class="fas fa-book-open text-[#2A4A9F]"></i>
             ${nomeDisciplina}
           </h1>
-          <button onclick="recriarConteudo(${conteudo.id}, ${conteudo.meta_id || 'null'})" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-md">
+          <button onclick="recriarConteudo(${conteudo.id}, ${conteudo.meta_id || 'null'})" class="bg-[#3A5AB0] hover:bg-[#2A4A9F] text-white px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-md">
             <i class="fas fa-redo-alt"></i>
             <span>Recriar</span>
           </button>

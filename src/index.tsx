@@ -5302,12 +5302,20 @@ app.post('/api/interviews', async (c) => {
     }
 
     // Inserir entrevista
+    // ✅ NOVO: Incluir banca_organizadora e bancas_preferidas
+    const bancaOrganizadora = data.banca_organizadora || null
+    const bancasPreferidas = data.bancas_preferidas ? JSON.stringify(data.bancas_preferidas) : null
+    
+    console.log('🏛️ Banca organizadora:', bancaOrganizadora)
+    console.log('🏛️ Bancas preferidas:', bancasPreferidas)
+    
     const interview = await DB.prepare(`
       INSERT INTO interviews (
         user_id, objetivo_tipo, concurso_nome, cargo, area_geral,
         tempo_disponivel_dia, experiencia, ja_estudou_antes,
-        prazo_prova, reprovacoes, concursos_prestados, experiencias_detalhadas, peso_prova, dias_semana
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        prazo_prova, reprovacoes, concursos_prestados, experiencias_detalhadas, peso_prova, dias_semana,
+        banca_organizadora, bancas_preferidas
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       data.user_id,
       data.objetivo_tipo,
@@ -5322,7 +5330,9 @@ app.post('/api/interviews', async (c) => {
       data.concursos_prestados || 0,
       data.experiencias_detalhadas || null,
       data.peso_prova || null,
-      JSON.stringify(data.dias_semana || [1, 2, 3, 4, 5]) // ✅ NOVO: Dias da semana
+      JSON.stringify(data.dias_semana || [1, 2, 3, 4, 5]),
+      bancaOrganizadora,
+      bancasPreferidas
     ).run()
 
     const interview_id = interview.meta.last_row_id
@@ -10259,6 +10269,52 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
   try {
     console.log(`📚 Gerando conteúdo ${tipoConteudo} para: ${topico_nome} (${disciplina_nome}) - Quantidade: ${quantidade || 'padrão'}`)
     
+    // ✅ NOVO: Buscar banca do usuário (se disponível)
+    let bancaUsuario = null
+    let caracteristicasBanca = null
+    const user_id_header = c.req.header('X-User-ID') || c.req.query('user_id')
+    
+    if (user_id_header) {
+      // Buscar banca da entrevista mais recente do usuário
+      const entrevista: any = await DB.prepare(`
+        SELECT banca_organizadora, bancas_preferidas FROM interviews 
+        WHERE user_id = ? ORDER BY created_at DESC LIMIT 1
+      `).bind(parseInt(user_id_header)).first()
+      
+      if (entrevista) {
+        bancaUsuario = entrevista.banca_organizadora
+        
+        // Se não tem banca específica, usar a primeira das bancas preferidas
+        if (!bancaUsuario && entrevista.bancas_preferidas) {
+          try {
+            const bancasPreferidas = JSON.parse(entrevista.bancas_preferidas)
+            if (bancasPreferidas && bancasPreferidas.length > 0) {
+              bancaUsuario = bancasPreferidas[0]
+            }
+          } catch (e) {}
+        }
+        
+        // Buscar características da banca
+        if (bancaUsuario) {
+          // Normalizar nome da banca para busca
+          const bancaNome = bancaUsuario.toUpperCase().includes('CESPE') ? 'CEBRASPE' : bancaUsuario.split('/')[0].trim()
+          const bancaInfo: any = await DB.prepare(`
+            SELECT estilo_questoes, dicas_estudo FROM bancas_caracteristicas 
+            WHERE nome LIKE ? OR nome LIKE ?
+          `).bind(`%${bancaNome}%`, `%${bancaUsuario}%`).first()
+          
+          if (bancaInfo) {
+            caracteristicasBanca = {
+              nome: bancaUsuario,
+              estilo: bancaInfo.estilo_questoes ? JSON.parse(bancaInfo.estilo_questoes) : null,
+              dicas: bancaInfo.dicas_estudo
+            }
+            console.log(`🏛️ Banca identificada: ${bancaUsuario}`, caracteristicasBanca)
+          }
+        }
+      }
+    }
+    
     // Definir prompt baseado no tipo de conteúdo
     let systemPrompt = ''
     
@@ -10349,14 +10405,46 @@ REGRAS OBRIGATÓRIAS:
                                  iaConfig.formatoExercicios === 'complexo' ? 'Questões COMPLEXAS que exigem raciocínio avançado.' :
                                  'Questões de nível PADRÃO/INTERMEDIÁRIO.';
         
+        // ✅ NOVO: Instruções específicas da banca
+        let instrucoesBanca = 'Use estilo variado de bancas como CESPE, FCC, FGV.'
+        if (caracteristicasBanca) {
+          const estilo = caracteristicasBanca.estilo
+          if (estilo?.tipo === 'certo_errado') {
+            instrucoesBanca = `🏛️ BANCA: ${caracteristicasBanca.nome}
+ESTILO OBRIGATÓRIO: Questões no formato CERTO/ERRADO (julgue os itens)
+- Cada questão apresenta uma afirmação que deve ser julgada como CERTA ou ERRADA
+- Use afirmações que exigem atenção aos detalhes e interpretação
+- Inclua pegadinhas típicas da banca (generalização, inversão de conceitos)
+- ${caracteristicasBanca.dicas || ''}`
+          } else {
+            instrucoesBanca = `🏛️ BANCA: ${caracteristicasBanca.nome}
+ESTILO: Questões de múltipla escolha no padrão da banca
+- Complexidade: ${estilo?.complexidade || 'média'}
+- ${caracteristicasBanca.dicas || ''}`
+          }
+        }
+        
         systemPrompt = `Você é um professor especialista em concursos públicos brasileiros.
 ${personalizacao}
 6. FORMATO: ${formatoExercicios}
+
+${instrucoesBanca}
 
 CRIE EXATAMENTE ${qtdExercicios} QUESTÕES DE CONCURSO sobre o tópico "${topico_nome}" da disciplina "${disciplina_nome}".
 
 IMPORTANTE: Você DEVE criar EXATAMENTE ${qtdExercicios} questões, numeradas de 1 a ${qtdExercicios}.
 
+${caracteristicasBanca?.estilo?.tipo === 'certo_errado' ? `
+ESTRUTURA OBRIGATÓRIA PARA CADA QUESTÃO (FORMATO CERTO/ERRADO):
+
+**Questão 1**
+[Afirmação para ser julgada como CERTA ou ERRADA]
+
+**Gabarito:** CERTO / ERRADO
+**Comentário:** Explicação detalhada.
+
+---
+` : `
 ESTRUTURA OBRIGATÓRIA PARA CADA QUESTÃO:
 
 **Questão 1** (Nível: Fácil)
@@ -10372,6 +10460,7 @@ e) Quinta alternativa
 **Comentário:** Explicação detalhada.
 
 ---
+`}
 
 **Questão 2** (Nível: Médio)
 [Continue até a Questão ${qtdExercicios}...]
@@ -10379,11 +10468,11 @@ e) Quinta alternativa
 REGRAS OBRIGATÓRIAS:
 - CRIE EXATAMENTE ${qtdExercicios} questões (nem mais, nem menos)
 - Numere de 1 a ${qtdExercicios} sequencialmente
-- Cada questão DEVE ter exatamente 5 alternativas (a, b, c, d, e)
+${caracteristicasBanca?.estilo?.tipo === 'certo_errado' ? 
+  '- Cada questão é uma AFIRMAÇÃO para julgar como CERTA ou ERRADA\n- Inclua pegadinhas de interpretação e detalhes' :
+  '- Cada questão DEVE ter exatamente 5 alternativas (a, b, c, d, e)\n- Varie os níveis: Fácil, Médio e Difícil'}
 - Cada questão DEVE ter Gabarito e Comentário separados
 - Use o separador --- entre questões
-- Varie os níveis: Fácil, Médio e Difícil
-- Use estilo de bancas como CESPE, FCC, FGV
 - Inclua pegadinhas comuns de prova`
         break
         
@@ -10497,7 +10586,10 @@ REGRAS OBRIGATÓRIAS:
         }],
         generationConfig: {
           temperature: parseFloat(iaConfig.temperatura) || 0.7,
-          maxOutputTokens: Math.max(Math.ceil(limiteCaracteres / 2.5), 500), // Ajuste para garantir espaço suficiente
+          // Para flashcards e exercícios, usar mais tokens
+          maxOutputTokens: tipoConteudo === 'flashcards' ? Math.max(qtdFlashcards * 150, 3000) : // ~150 tokens por flashcard
+                           tipoConteudo === 'exercicios' ? Math.max(qtdExercicios * 300, 4000) : // ~300 tokens por exercício
+                           Math.max(Math.ceil(limiteCaracteres / 2.5), 500), // Para teoria/resumo
           topP: 0.95
         }
       })
@@ -10538,7 +10630,7 @@ REGRAS OBRIGATÓRIAS:
     
     // Auto-salvar o conteúdo gerado em materiais_salvos (se user_id fornecido via header ou query)
     let material_id = null
-    const user_id_header = c.req.header('X-User-ID') || c.req.query('user_id')
+    // user_id_header já definido anteriormente para buscar banca
     if (user_id_header) {
       try {
         const tipoLabel = {
