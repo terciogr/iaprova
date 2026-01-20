@@ -5763,7 +5763,7 @@ window.gerarConteudoDoMaterialModal = function() {
 }
 
 // Função para gerar conteúdo do tópico com IA
-window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome) {
+window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome, metaId = null) {
   const app = document.getElementById('app');
   
   // Modal de seleção de tipo - TEMA CORRIGIDO
