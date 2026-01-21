@@ -4157,6 +4157,14 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'} text-white text-sm group-hover:scale-110 transition-transform"></i>
               </button>
               
+              <!-- Botão de Ajuda (?) -->
+              <button onclick="toggleHelpMenu()" 
+                id="header-help-button"
+                class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group"
+                title="Central de Ajuda">
+                <i class="fas fa-question-circle text-white text-sm group-hover:scale-110 transition-transform"></i>
+              </button>
+              
               <!-- Avatar -->
               <div class="relative">
                 <button onclick="toggleUserMenu()" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 hover:scale-105 transition-all">
@@ -4336,57 +4344,6 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
       </header>
 
       <div class="max-w-7xl mx-auto px-4 py-4">
-        <!-- ✅ KPIs SUPERIORES: 4 cards em linha com visual consistente -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#4A90D9] to-[#6BB6FF] flex items-center justify-center shadow-md">
-                <i class="fas fa-calendar-check text-white text-xl"></i>
-              </div>
-              <div>
-                <p class="text-xs ${themes[currentTheme].textSecondary}">Dias Estudados</p>
-                <p class="text-2xl font-bold ${themes[currentTheme].text}">${stats.dias_estudados || 0}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#5A9FE8] to-[#7BC4FF] flex items-center justify-center shadow-md">
-                <i class="fas fa-fire text-white text-xl"></i>
-              </div>
-              <div>
-                <p class="text-xs ${themes[currentTheme].textSecondary}">Sequência</p>
-                <p class="text-2xl font-bold ${themes[currentTheme].text}">${stats.streak_atual || 0} dias</p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#6BB6FF] to-[#8DCFFF] flex items-center justify-center shadow-md">
-                <i class="fas fa-clock text-white text-xl"></i>
-              </div>
-              <div>
-                <p class="text-xs ${themes[currentTheme].textSecondary}">Horas Totais</p>
-                <p class="text-2xl font-bold ${themes[currentTheme].text}">${stats.horas_totais || 0}h</p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="${themes[currentTheme].card} p-4 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7BC4FF] to-[#A5D8FF] flex items-center justify-center shadow-md">
-                <i class="fas fa-percentage text-white text-xl"></i>
-              </div>
-              <div>
-                <p class="text-xs ${themes[currentTheme].textSecondary}">Progresso Geral</p>
-                <p class="text-2xl font-bold ${themes[currentTheme].text}">${progressoGeral?.progresso_percentual || 0}%</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
         <!-- CARDS DE AÇÕES: Data, Disciplinas, Progresso, Simulados, Desempenho -->
         <div class="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3 mb-4">
           
@@ -15925,30 +15882,20 @@ window.resetTutorial = function() {
 // 🎯 BOTÃO FLUTUANTE DE AJUDA/TUTORIAL
 // ============================================================================
 
-// Criar botão de ajuda flutuante no canto inferior direito
+// Criar menu de ajuda (agora o botão fica no header)
 window.createHelpButton = function() {
-  // Remover botão existente se houver
-  const existingButton = document.getElementById('help-button-container');
-  if (existingButton) {
-    existingButton.remove();
+  // Remover menu existente se houver
+  const existingMenu = document.getElementById('help-menu-container');
+  if (existingMenu) {
+    existingMenu.remove();
   }
   
-  // Criar botão flutuante de ajuda (lado direito, acima do chat)
+  // Criar apenas o menu dropdown (botão está no header)
   const helpContainer = document.createElement('div');
-  helpContainer.id = 'help-button-container';
+  helpContainer.id = 'help-menu-container';
   helpContainer.innerHTML = `
-    <!-- Botão Principal de Ajuda - Posicionado no lado direito, acima do chat -->
-    <button 
-      id="help-button"
-      onclick="toggleHelpMenu()"
-      class="fixed bottom-24 right-6 z-[9990] w-14 h-14 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 group hover:scale-110 flex items-center justify-center"
-      title="Central de Ajuda"
-    >
-      <i class="fas fa-question text-white text-xl group-hover:rotate-12 transition-transform"></i>
-    </button>
-    
-    <!-- Menu de Opções de Ajuda - Abre acima do botão -->
-    <div id="help-menu" class="hidden fixed bottom-44 right-6 z-[9991] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-3 min-w-[260px] border border-gray-200 dark:border-gray-700" style="animation: slideUp 0.3s ease-out;">
+    <!-- Menu de Opções de Ajuda - Posicionado abaixo do botão no header -->
+    <div id="help-menu" class="hidden fixed top-14 right-4 z-[9999] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-3 min-w-[260px] border border-gray-200 dark:border-gray-700" style="animation: slideDown 0.2s ease-out;">
       <div class="mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-sm font-bold text-[#122D6A] dark:text-blue-400 flex items-center gap-2">
           <i class="fas fa-life-ring"></i> Central de Ajuda
@@ -16004,11 +15951,10 @@ window.createHelpButton = function() {
     const styles = document.createElement('style');
     styles.id = 'help-button-styles';
     styles.innerHTML = `
-      @keyframes slideUp {
-        from { transform: translateY(20px); opacity: 0; }
+      @keyframes slideDown {
+        from { transform: translateY(-10px); opacity: 0; }
         to { transform: translateY(0); opacity: 1; }
       }
-      #help-button:hover { transform: scale(1.1); }
     `;
     document.head.appendChild(styles);
   }
@@ -16017,9 +15963,7 @@ window.createHelpButton = function() {
 // Toggle do menu de ajuda
 window.toggleHelpMenu = function() {
   const menu = document.getElementById('help-menu');
-  const button = document.getElementById('help-button');
-  const badge = document.getElementById('help-badge');
-  const container = document.getElementById('help-button-container');
+  const button = document.getElementById('header-help-button');
   
   if (menu) {
     menu.classList.toggle('hidden');
@@ -16027,26 +15971,18 @@ window.toggleHelpMenu = function() {
     // Marcar como clicado
     if (!localStorage.getItem('helpButtonClicked')) {
       localStorage.setItem('helpButtonClicked', 'true');
-      if (badge) badge.classList.add('hidden');
-      if (container) container.classList.add('clicked');
     }
     
-    // Rotação do ícone
+    // Fechar ao clicar fora
     if (!menu.classList.contains('hidden')) {
-      button.querySelector('i').classList.add('rotate-180');
-      
-      // Fechar ao clicar fora
       setTimeout(() => {
         document.addEventListener('click', function closeHelpMenu(e) {
-          if (!e.target.closest('#help-button-container')) {
+          if (!e.target.closest('#help-menu-container') && !e.target.closest('#header-help-button')) {
             menu.classList.add('hidden');
-            button.querySelector('i').classList.remove('rotate-180');
             document.removeEventListener('click', closeHelpMenu);
           }
         });
       }, 100);
-    } else {
-      button.querySelector('i').classList.remove('rotate-180');
     }
   }
 }
@@ -16422,7 +16358,7 @@ window.toggleHelpMenu = function() {
     if (!menu.classList.contains('hidden')) {
       setTimeout(() => {
         document.addEventListener('click', function closeMenu(e) {
-          if (!e.target.closest('#header-help-button') && !e.target.closest('#help-button-container')) {
+          if (!e.target.closest('#header-help-button') && !e.target.closest('#help-menu-container')) {
             menu.classList.add('hidden');
             document.removeEventListener('click', closeMenu);
           }
@@ -17337,9 +17273,9 @@ window.showHelpModal = function(title, content) {
 
 // Fechar menu ao clicar fora
 document.addEventListener('click', function(e) {
-  const helpButton = document.querySelector('#help-button-container button');
+  const helpButton = document.getElementById('header-help-button');
   const helpMenu = document.getElementById('help-menu');
-  if (helpMenu && !helpButton.contains(e.target) && !helpMenu.contains(e.target)) {
+  if (helpMenu && helpButton && !helpButton.contains(e.target) && !helpMenu.contains(e.target)) {
     helpMenu.classList.add('hidden');
   }
 });
