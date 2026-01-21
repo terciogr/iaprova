@@ -11600,11 +11600,17 @@ app.post('/api/simulados/gerar-questoes', async (c) => {
     // Buscar disciplinas do usuário com tópicos do edital
     let discsParaUsar = disciplinas
     if (!discsParaUsar || discsParaUsar.length === 0) {
+      // JOIN com edital_disciplinas para obter os tópicos
       const { results: userDiscs } = await DB.prepare(`
-        SELECT d.id, d.nome, ud.edital_disciplina_id
+        SELECT 
+          d.id, 
+          d.nome,
+          MAX(ed.id) as edital_disciplina_id
         FROM user_disciplinas ud
         JOIN disciplinas d ON ud.disciplina_id = d.id
+        LEFT JOIN edital_disciplinas ed ON LOWER(TRIM(ed.nome)) = LOWER(TRIM(d.nome))
         WHERE ud.user_id = ?
+        GROUP BY d.id, d.nome
         LIMIT 10
       `).bind(user_id).all()
       discsParaUsar = userDiscs?.map((d: any) => ({ id: d.id, nome: d.nome, edital_disciplina_id: d.edital_disciplina_id })) || []
