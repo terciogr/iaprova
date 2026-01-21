@@ -11597,45 +11597,62 @@ app.post('/api/simulados/gerar-questoes', async (c) => {
   const cfg = config[tipo] || config['padrao']
   
   try {
-    // Buscar disciplinas do usuário se não especificadas
+    // Buscar disciplinas do usuário com tópicos do edital
     let discsParaUsar = disciplinas
     if (!discsParaUsar || discsParaUsar.length === 0) {
       const { results: userDiscs } = await DB.prepare(`
-        SELECT d.id, d.nome FROM user_disciplinas ud
+        SELECT d.id, d.nome, ud.edital_disciplina_id
+        FROM user_disciplinas ud
         JOIN disciplinas d ON ud.disciplina_id = d.id
         WHERE ud.user_id = ?
         LIMIT 10
       `).bind(user_id).all()
-      discsParaUsar = userDiscs?.map((d: any) => ({ id: d.id, nome: d.nome })) || []
+      discsParaUsar = userDiscs?.map((d: any) => ({ id: d.id, nome: d.nome, edital_disciplina_id: d.edital_disciplina_id })) || []
     }
     
     if (discsParaUsar.length === 0) {
       return c.json({ error: 'Nenhuma disciplina encontrada para gerar questões' }, 400)
     }
     
+    // 🆕 Buscar tópicos do edital para cada disciplina
+    const disciplinasComTopicos: string[] = []
+    for (const disc of discsParaUsar) {
+      let topicosStr = ''
+      if (disc.edital_disciplina_id) {
+        const { results: topicos } = await DB.prepare(`
+          SELECT nome FROM edital_topicos 
+          WHERE edital_disciplina_id = ? 
+          ORDER BY ordem ASC LIMIT 10
+        `).bind(disc.edital_disciplina_id).all()
+        if (topicos && topicos.length > 0) {
+          topicosStr = ` (Tópicos: ${topicos.map((t: any) => t.nome).join(', ')})`
+        }
+      }
+      disciplinasComTopicos.push(`${disc.nome}${topicosStr}`)
+    }
+    
     // Distribuir questões entre disciplinas
     const questoesPorDisciplina = Math.ceil(cfg.questoes / discsParaUsar.length)
-    const disciplinasNomes = discsParaUsar.map((d: any) => d.nome).join(', ')
+    const disciplinasNomes = disciplinasComTopicos.join('\n- ')
     
     const prompt = `Gere ${cfg.questoes} questões de múltipla escolha para um simulado de concurso público.
 
-DISCIPLINAS QUE DEVEM SER COBRADAS: ${disciplinasNomes}
+DISCIPLINAS E TÓPICOS DO EDITAL DO CANDIDATO:
+- ${disciplinasNomes}
 
-⚠️ REGRA CRÍTICA: As questões DEVEM ser sobre o CONTEÚDO ESPECÍFICO de cada disciplina listada acima!
-- Se a disciplina é "Conhecimentos Regionais do Piauí", as questões devem ser sobre geografia, história, economia e cultura DO PIAUÍ
-- Se a disciplina é "Direito Constitucional", as questões devem ser sobre a Constituição Federal
-- Se a disciplina é "Português", as questões devem ser sobre gramática, interpretação de texto etc.
+⚠️ REGRAS CRÍTICAS:
+1. As questões DEVEM ser sobre os TÓPICOS ESPECÍFICOS listados para cada disciplina
+2. Se a disciplina tem tópicos indicados (entre parênteses), PRIORIZE esses tópicos
+3. CADA QUESTÃO deve abordar UM TÓPICO DIFERENTE - NÃO repita tópicos
+4. Use informações CORRETAS e VERIFICÁVEIS - NÃO invente dados, leis ou fatos
 
-NÃO misture conteúdos! Cada questão deve corresponder EXATAMENTE à disciplina indicada.
-
-REGRAS IMPORTANTES:
-1. Cada questão deve ter exatamente 5 alternativas (A, B, C, D, E)
+REGRAS DE FORMATO:
+1. Exatamente 5 alternativas (A, B, C, D, E)
 2. Apenas UMA alternativa correta por questão
-3. Questões no estilo de bancas como CESPE, FCC, VUNESP, FGV
-4. Nível de dificuldade variado (fácil, médio, difícil)
-5. Distribua as questões PROPORCIONALMENTE entre todas as disciplinas
+3. Estilo de bancas: CESPE, FCC, VUNESP, FGV
+4. Dificuldade variada (fácil, médio, difícil)
+5. Distribua PROPORCIONALMENTE entre as disciplinas
 6. Inclua explicação didática para cada resposta
-7. O CONTEÚDO da questão DEVE corresponder à disciplina indicada
 
 Retorne APENAS um JSON válido no formato:
 {
@@ -11680,12 +11697,12 @@ Retorne APENAS um JSON válido no formato:
         model: 'llama-3.3-70b-versatile',
         messages: [{
           role: 'system',
-          content: 'Você é um especialista em elaboração de questões para concursos públicos brasileiros. Sempre retorne JSON válido.'
+          content: 'Você é um especialista em elaboração de questões para concursos públicos brasileiros. REGRAS ABSOLUTAS: 1) SEMPRE retorne JSON válido. 2) CADA questão deve abordar um TÓPICO DIFERENTE - NUNCA repita tópicos ou enunciados. 3) O conteúdo deve ser PRECISO e VERIFICÁVEL - use fatos, leis e dados REAIS. 4) As questões devem ser baseadas nos TÓPICOS ESPECÍFICOS fornecidos no edital do candidato. 5) Varie a dificuldade: 30% fácil, 50% médio, 20% difícil.'
         }, {
           role: 'user',
           content: prompt
         }],
-        temperature: 0.8,
+        temperature: 0.3,
         max_tokens: 8000,
         response_format: { type: 'json_object' }
       })

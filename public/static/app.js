@@ -5947,7 +5947,7 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
     const iaConfigSaved = localStorage.getItem('iaConfig');
     const iaConfig = iaConfigSaved ? JSON.parse(iaConfigSaved) : {
       tom: 'didatico',
-      temperatura: 0.5,
+      temperatura: 0.3, // Fixado em 0.3 para ser objetivo
       intensidade: 'intermediaria',
       profundidade: 'aplicada',
       extensao: 'medio',
@@ -14669,15 +14669,15 @@ function renderSimuladoQuestao() {
           ${Object.entries(questao.alternativas).map(([letra, texto]) => `
             <button onclick="selecionarResposta('${letra}')" 
               class="w-full text-left p-4 rounded-xl border-2 transition-all ${respostaSelecionada === letra 
-                ? 'border-[#122D6A] bg-[#122D6A]/10 dark:bg-blue-900/40 shadow-md' 
-                : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:border-[#122D6A] hover:bg-[#122D6A]/5 dark:hover:bg-blue-900/20'}">
+                ? 'border-[#122D6A] bg-blue-50 dark:bg-blue-900/40 shadow-md' 
+                : `${themes[currentTheme].card} border ${themes[currentTheme].border} hover:border-[#122D6A] hover:bg-blue-50/50`}">
               <div class="flex items-start gap-3">
                 <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-sm ${respostaSelecionada === letra 
                   ? 'bg-[#122D6A] text-white shadow-lg' 
-                  : 'bg-white dark:bg-gray-600 border-2 border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200'}">
+                  : `${themes[currentTheme].bgAlt} border ${themes[currentTheme].border} ${themes[currentTheme].text}`}">
                   ${letra}
                 </div>
-                <span class="text-gray-800 dark:text-gray-100 font-normal">${texto}</span>
+                <span class="${themes[currentTheme].text}">${texto}</span>
               </div>
             </button>
           `).join('')}
@@ -16276,7 +16276,7 @@ window.toggleHelpMenu = function() {
 // Configurações padrão de personalização
 const defaultIAConfig = {
   tom: 'didatico', // formal, tecnico, didatico, direto, casual
-  temperatura: 0.5, // 0.1 a 1.0 (baixo = objetivo, alto = criativo)
+  temperatura: 0.3, // 0.1 a 1.0 - FIXADO em 0.3 para ser objetivo e não inventar
   intensidade: 'intermediaria', // superficial, intermediaria, aprofundada
   profundidade: 'aplicada', // conceitual, aplicada, analitica
   extensao: 'medio', // curto, medio, longo, personalizado
