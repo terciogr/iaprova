@@ -4383,59 +4383,34 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 </div>
               </div>
             ` : `
-              <div onclick="abrirModalEditarDataProva()" class="cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-emerald-500 hover:shadow-xl transition-all ${contagemRegressiva.muitoUrgente ? 'border-red-400' : contagemRegressiva.urgente ? 'border-amber-400' : ''}">
+              <div onclick="abrirModalEditarDataProva()" class="cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#122D6A] hover:shadow-xl transition-all">
                 <div class="flex items-center gap-2 md:gap-4">
-                  <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br ${contagemRegressiva.muitoUrgente ? 'from-gray-700 to-gray-900' : contagemRegressiva.urgente ? 'from-[#3A5AB0] to-[#2A4A9F]' : 'from-[#122D6A] to-[#2A4A9F]'} flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0 relative">
+                  <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
                     <span class="text-white text-sm md:text-xl font-bold">${contagemRegressiva.dias}</span>
-                    ${viabilidade && viabilidade.viabilidade !== 'sem_data' ? `
-                      <div class="absolute -bottom-1 -right-1 w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-white text-[8px] md:text-[10px] shadow-lg
-                        ${viabilidade.viabilidade === 'confortavel' || viabilidade.viabilidade === 'adequado' ? 'bg-[#122D6A]' : 
-                          viabilidade.viabilidade === 'apertado' ? 'bg-blue-500' : 
-                          viabilidade.viabilidade === 'critico' ? 'bg-gray-600' : 'bg-gray-800'}"
-                        title="${viabilidade.mensagem}">
-                        <i class="fas ${viabilidade.viabilidade === 'confortavel' || viabilidade.viabilidade === 'adequado' ? 'fa-check' : 
-                          viabilidade.viabilidade === 'apertado' ? 'fa-exclamation' : 'fa-times'}"></i>
-                      </div>
-                    ` : ''}
                   </div>
                   <div class="text-left flex-1 min-w-0">
-                    <div class="flex items-baseline gap-1 md:gap-2 flex-wrap">
-                      <span class="text-base md:text-xl font-bold ${themes[currentTheme].text}">${contagemRegressiva.muitoUrgente ? '⚠️' : contagemRegressiva.urgente ? '🔥' : '📅'} ${contagemRegressiva.semanas > 0 ? contagemRegressiva.semanas + 'sem ' + contagemRegressiva.diasRestantes + 'd' : contagemRegressiva.dias + ' dias'}</span>
+                    <div class="flex items-baseline gap-1 md:gap-2">
+                      <span class="text-xl md:text-3xl font-bold ${themes[currentTheme].text}">${contagemRegressiva.semanas > 0 ? contagemRegressiva.semanas + 'sem ' + contagemRegressiva.diasRestantes + 'd' : contagemRegressiva.dias + 'd'}</span>
                     </div>
-                    <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5 md:mt-1">
-                      ${viabilidade && viabilidade.viabilidade !== 'sem_data' ? `
-                        <span class="${viabilidade.viabilidade === 'confortavel' || viabilidade.viabilidade === 'adequado' ? 'text-[#2A4A9F]' : 
-                          viabilidade.viabilidade === 'apertado' ? 'text-amber-600' : 
-                          viabilidade.viabilidade === 'critico' ? 'text-orange-600' : 'text-red-600'}">${
-                            viabilidade.viabilidade === 'confortavel' ? '✓ Tempo confortável' : 
-                            viabilidade.viabilidade === 'adequado' ? '✓ Tempo adequado' : 
-                            viabilidade.viabilidade === 'apertado' ? '⚡ Tempo apertado' : 
-                            viabilidade.viabilidade === 'critico' ? '⚠️ Tempo crítico' : '❌ Tempo insuficiente'
-                          }</span>
-                        <span class="mx-1">•</span>
-                      ` : ''}
+                    <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">
                       Prova: ${contagemRegressiva.dataFormatada}
                     </p>
                   </div>
-                  <i class="fas fa-pen text-xs ${themes[currentTheme].textSecondary} group-hover:text-[#2A4A9F] transition-colors"></i>
                 </div>
               </div>
             `}
           ` : `
-            <div onclick="abrirModalEditarDataProva()" class="cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 border-dashed ${themes[currentTheme].border} p-2 md:p-4 hover:border-emerald-500 hover:shadow-xl transition-all">
+            <div onclick="abrirModalEditarDataProva()" class="cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 border-dashed ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#122D6A] hover:shadow-xl transition-all">
               <div class="flex items-center gap-2 md:gap-4">
-                <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-gray-300 to-gray-500 dark:from-gray-600 dark:to-gray-800 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0 group-hover:from-emerald-500 group-hover:to-[#122D6A]">
+                <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0 group-hover:from-[#122D6A] group-hover:to-[#2A4A9F]">
                   <i class="fas fa-calendar-plus text-white text-sm md:text-xl"></i>
                 </div>
                 <div class="text-left flex-1 min-w-0">
                   <div class="flex items-baseline gap-1 md:gap-2">
-                    <span class="text-base md:text-xl font-bold ${themes[currentTheme].text}">📅 Data da Prova</span>
+                    <span class="text-xl md:text-3xl font-bold ${themes[currentTheme].text}">—</span>
                   </div>
-                  <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5 md:mt-1">
-                    Clique para definir
-                  </p>
+                  <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">Prova</p>
                 </div>
-                <i class="fas fa-plus text-xs ${themes[currentTheme].textSecondary} group-hover:text-[#2A4A9F] transition-colors"></i>
               </div>
             </div>
           `}
@@ -4449,17 +4424,13 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               <div class="text-left flex-1 min-w-0">
                 <div class="flex items-baseline gap-1 md:gap-2">
                   <span class="text-xl md:text-3xl font-bold ${themes[currentTheme].text}">${plano.diagnostico.total_disciplinas}</span>
-                  <span class="text-[10px] md:text-sm ${themes[currentTheme].textSecondary}">disciplinas</span>
                 </div>
-                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5 md:mt-1">
-                  <span class="text-[#3A5AB0] font-semibold">${plano.diagnostico.nunca_estudadas}</span> pendentes
-                </p>
+                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">Disciplinas</p>
               </div>
-              <i class="fas fa-chevron-right ${themes[currentTheme].textSecondary} group-hover:text-[#122D6A] transition-colors hidden md:block"></i>
             </div>
           </button>
           
-          <!-- Card Progresso Geral -->
+          <!-- Card Progresso -->
           <div onclick="renderPortfolioDisciplinas()" class="progresso-geral-card cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#3A5AB0] hover:shadow-xl transition-all">
             <div class="flex items-center gap-2 md:gap-4">
               <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br ${
@@ -4467,35 +4438,19 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 progressoGeral?.progresso_percentual >= 50 ? 'from-[#2A4A9F] to-[#3A5AB0]' :
                 progressoGeral?.progresso_percentual >= 25 ? 'from-[#3A5AB0] to-[#4A6AC0]' :
                 'from-gray-400 to-gray-500'
-              } flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0 relative">
+              } flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
                 <span class="text-white text-sm md:text-lg font-bold">${progressoGeral?.progresso_percentual || 0}%</span>
               </div>
               <div class="text-left flex-1 min-w-0">
-                <div class="flex items-baseline gap-1 md:gap-2">
-                  <span class="text-base md:text-lg font-bold ${themes[currentTheme].text}">
-                    ${progressoGeral?.tipo === 'edital' ? '📋 Progresso do Edital' : '📊 Progresso Geral'}
-                  </span>
-                </div>
-                <div class="flex items-center gap-2 mt-0.5 md:mt-1">
-                  <div class="flex-1 h-1.5 md:h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div class="h-full rounded-full transition-all duration-500 ${
-                      progressoGeral?.progresso_percentual >= 70 ? 'bg-gradient-to-r from-[#122D6A] to-[#2A4A9F]' :
-                      progressoGeral?.progresso_percentual >= 50 ? 'bg-gradient-to-r from-[#2A4A9F] to-[#3A5AB0]' :
-                      progressoGeral?.progresso_percentual >= 25 ? 'bg-gradient-to-r from-[#3A5AB0] to-[#4A6AC0]' :
-                      'bg-gradient-to-r from-gray-400 to-gray-500'
-                    }" style="width: ${progressoGeral?.progresso_percentual || 0}%"></div>
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full bg-[#122D6A]" style="width: ${progressoGeral?.progresso_percentual || 0}%"></div>
                   </div>
                 </div>
-                <p class="text-[9px] md:text-[10px] ${themes[currentTheme].textSecondary} mt-0.5">
-                  <span class="${
-                    progressoGeral?.progresso_percentual >= 70 ? 'text-[#2A4A9F]' :
-                    progressoGeral?.progresso_percentual >= 50 ? 'text-[#122D6A]' :
-                    progressoGeral?.progresso_percentual >= 25 ? 'text-[#3A5AB0]' :
-                    'text-[#4A6AC0]'
-                  } font-medium">${progressoGeral?.topicos_estudados || 0}</span>/${progressoGeral?.total_topicos || 0} tópicos
+                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-1">
+                  Progresso
                 </p>
               </div>
-              <i class="fas fa-chevron-right ${themes[currentTheme].textSecondary} group-hover:text-[#5A7AD0] transition-colors hidden md:block"></i>
             </div>
           </div>
           
@@ -4506,14 +4461,8 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 <i class="fas fa-edit text-white text-sm md:text-xl"></i>
               </div>
               <div class="text-left flex-1 min-w-0">
-                <div class="flex items-baseline gap-1 md:gap-2">
-                  <span class="text-base md:text-xl font-bold ${themes[currentTheme].text}">Simulados</span>
-                </div>
-                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5 md:mt-1 truncate">
-                  Rápido • Padrão • Completo
-                </p>
+                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">Simulados</p>
               </div>
-              <i class="fas fa-chevron-right ${themes[currentTheme].textSecondary} group-hover:text-[#4A6AC0] transition-colors hidden md:block"></i>
             </div>
           </button>
           
@@ -4524,14 +4473,8 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 <i class="fas fa-chart-pie text-white text-sm md:text-xl"></i>
               </div>
               <div class="text-left flex-1 min-w-0">
-                <div class="flex items-baseline gap-1 md:gap-2">
-                  <span class="text-base md:text-xl font-bold ${themes[currentTheme].text}">Desempenho</span>
-                </div>
-                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5 md:mt-1 truncate">
-                  Simulados • Estudos • Disciplinas
-                </p>
+                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">Desempenho</p>
               </div>
-              <i class="fas fa-chevron-right ${themes[currentTheme].textSecondary} group-hover:text-[#6BB6FF] transition-colors hidden md:block"></i>
             </div>
           </button>
         </div>
