@@ -11426,45 +11426,43 @@ function renderCalendarioSemanal() {
   const dataFimFormatada = new Date(semana.data_fim).toLocaleDateString('pt-BR')
   const diasSemanaAbrev = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
+  const percentualSemana = semana.metas_totais > 0 ? Math.round((semana.metas_concluidas / semana.metas_totais) * 100) : 0;
+  
   container.innerHTML = `
-    <div class="semana-resumo-card ${themes[currentTheme].card} rounded-xl shadow-md p-3 mb-3 border ${themes[currentTheme].border}">
-      <div class="flex items-center justify-between flex-wrap gap-2">
+    <!-- Header Compacto da Semana -->
+    <div class="${themes[currentTheme].card} rounded-xl shadow-sm p-3 mb-3 border ${themes[currentTheme].border}">
+      <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center">
-            <i class="fas fa-calendar-week text-white"></i>
+          <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center">
+            <i class="fas fa-calendar-week text-white text-sm"></i>
           </div>
-          <div>
-            <h2 class="text-sm font-bold ${themes[currentTheme].text}">
-              Semana ${semana.numero_semana} • ${dataInicioFormatada} a ${dataFimFormatada}
-            </h2>
-            <p class="${themes[currentTheme].textSecondary} text-xs">
-              ${semana.metas_concluidas}/${semana.metas_totais} concluídas
-            </p>
+          <div class="flex items-center gap-4">
+            <div>
+              <span class="text-sm font-semibold ${themes[currentTheme].text}">Sem ${semana.numero_semana}</span>
+              <span class="text-xs ${themes[currentTheme].textSecondary} ml-2">${dataInicioFormatada} - ${dataFimFormatada}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-20 bg-gray-200 rounded-full h-1.5">
+                <div class="bg-[#122D6A] h-1.5 rounded-full" style="width: ${percentualSemana}%"></div>
+              </div>
+              <span class="text-xs font-medium ${themes[currentTheme].text}">${percentualSemana}%</span>
+            </div>
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <!-- ✅ NOVO: Botão Semanas Anteriores -->
-          <button onclick="abrirSemanasAnteriores()" class="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-all" title="Ver semanas anteriores">
-            <i class="fas fa-history"></i>
-            <span class="hidden sm:inline">Anteriores</span>
+          <button onclick="abrirSemanasAnteriores()" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Semanas anteriores">
+            <i class="fas fa-history text-gray-600 text-sm"></i>
           </button>
-          <button onclick="gerarMetasSemana()" class="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg text-xs font-medium hover:shadow-lg hover:scale-105 transition-all">
+          <button onclick="gerarMetasSemana()" class="flex items-center gap-1.5 px-3 py-2 bg-[#122D6A] text-white rounded-lg text-xs font-medium hover:bg-[#0D1F4D] transition">
             <i class="fas fa-magic"></i>
-            <span>Gerar Metas</span>
+            <span class="hidden sm:inline">Gerar</span>
           </button>
-        </div>
-      </div>
-      <div class="mt-2">
-        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-          <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] h-1.5 rounded-full transition-all" 
-               style="width: ${semana.metas_totais > 0 ? (semana.metas_concluidas / semana.metas_totais * 100) : 0}%">
-          </div>
         </div>
       </div>
     </div>
 
-    <!-- Calendário Semanal Compacto - Design UX Moderno -->
-    <div class="calendario-semanal ${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} shadow-sm overflow-hidden">
+    <!-- Calendário Semanal Minimalista -->
+    <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} shadow-sm overflow-hidden">
       ${[1, 2, 3, 4, 5, 6, 7].map(diaSemana => {
         const metasDoDia = metas.filter(m => m.dia_semana === diaSemana)
         const metasConcluidasDia = metasDoDia.filter(m => m.concluida).length
@@ -11474,116 +11472,84 @@ function renderCalendarioSemanal() {
         const diaSemanaAtual = hoje.getDay() === 0 ? 7 : hoje.getDay()
         const isHoje = diaSemana === diaSemanaAtual
         
-        // Nomes completos dos dias
-        const diasNomes = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo']
-        
-        // Cores do progresso - usando padrão do sistema
         const progressColor = percentualDia === 100 ? 'bg-emerald-500' : percentualDia >= 50 ? 'bg-[#122D6A]' : percentualDia > 0 ? 'bg-amber-400' : 'bg-gray-200'
-        const progressTextColor = percentualDia === 100 ? 'text-emerald-600' : percentualDia >= 50 ? 'text-[#122D6A]' : percentualDia > 0 ? 'text-amber-600' : 'text-gray-400'
         
         return `
-          <div class="${isHoje ? 'bg-[#E8EDF5] border-l-4 border-l-[#122D6A]' : themes[currentTheme].card} ${diaSemana < 7 ? 'border-b ' + themes[currentTheme].border : ''} p-3 hover:bg-[#E8EDF5]/50 transition-colors">
-            <!-- Header do Dia -->
+          <div class="${isHoje ? 'bg-blue-50/50 border-l-3 border-l-[#122D6A]' : ''} ${diaSemana < 7 ? 'border-b ' + themes[currentTheme].border : ''} p-2.5 hover:bg-gray-50/50 transition-colors">
+            <!-- Header Compacto -->
             <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2">
-                  <span class="w-10 h-10 rounded-xl ${isHoje ? 'bg-[#122D6A] text-white shadow-lg' : 'bg-gray-100 text-gray-600'} flex items-center justify-center text-sm font-bold">
-                    ${diasSemanaAbrev[diaSemana - 1]}
-                  </span>
-                  <div>
-                    <p class="text-sm font-semibold ${themes[currentTheme].text}">${diasNomes[diaSemana - 1]}</p>
-                    <p class="text-[10px] ${themes[currentTheme].textSecondary}">${metasDoDia.length} ${metasDoDia.length === 1 ? 'meta' : 'metas'} ${isHoje ? '• <span class="text-[#122D6A] font-semibold">HOJE</span>' : ''}</p>
-                  </div>
-                </div>
+              <div class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-lg ${isHoje ? 'bg-[#122D6A] text-white' : 'bg-gray-100 text-gray-600'} flex items-center justify-center text-xs font-bold">
+                  ${diasSemanaAbrev[diaSemana - 1]}
+                </span>
+                ${isHoje ? '<span class="text-[10px] font-semibold text-[#122D6A] bg-blue-100 px-1.5 py-0.5 rounded">HOJE</span>' : ''}
               </div>
-              
-              <!-- Progresso do Dia -->
-              <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2">
-                  <div class="w-24 bg-gray-200 rounded-full h-2">
-                    <div class="${progressColor} h-2 rounded-full transition-all duration-500" style="width: ${percentualDia}%"></div>
-                  </div>
-                  <span class="text-sm font-bold ${progressTextColor} min-w-[40px] text-right">${percentualDia}%</span>
+              <div class="flex items-center gap-2">
+                <div class="w-16 bg-gray-200 rounded-full h-1.5">
+                  <div class="${progressColor} h-1.5 rounded-full" style="width: ${percentualDia}%"></div>
                 </div>
-                <span class="text-xs ${themes[currentTheme].textSecondary} bg-gray-100 px-2 py-1 rounded-full">${metasConcluidasDia}/${metasDoDia.length}</span>
+                <span class="text-xs font-medium ${themes[currentTheme].textSecondary}">${metasConcluidasDia}/${metasDoDia.length}</span>
               </div>
             </div>
             
-            <!-- Cards das Metas - Layout Responsivo e Espaçado -->
+            <!-- Cards das Metas - Layout Compacto -->
             ${metasDoDia.length > 0 ? `
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mt-3">
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                 ${metasDoDia.map(meta => {
                   const tipoIcon = meta.tipo === 'teoria' ? 'fa-book' : meta.tipo === 'exercicios' ? 'fa-pencil-alt' : 'fa-sync'
-                  const tipoBg = meta.tipo === 'teoria' ? 'bg-[#E8EDF5] text-[#122D6A]' : meta.tipo === 'exercicios' ? 'bg-[#6BB6FF]/10 text-[#2A4A9F]' : 'bg-amber-100 text-amber-700'
-                  const tipoLabel = meta.tipo === 'teoria' ? 'Teoria' : meta.tipo === 'exercicios' ? 'Exercícios' : 'Revisão'
+                  const tipoBg = meta.tipo === 'teoria' ? 'text-[#122D6A]' : meta.tipo === 'exercicios' ? 'text-[#2A4A9F]' : 'text-amber-600'
                   
                   return `
-                    <div class="meta-card group relative flex flex-col p-3 rounded-xl border-2 transition-all cursor-pointer ${meta.concluida 
-                      ? 'bg-emerald-50 border-emerald-300 hover:border-emerald-400' 
-                      : 'bg-white border-gray-200 hover:border-[#122D6A] hover:shadow-md'}"
-                      style="min-width: 0;">
+                    <div class="meta-card group flex flex-col p-2 rounded-lg border transition-all cursor-pointer ${meta.concluida 
+                      ? 'bg-emerald-50 border-emerald-200' 
+                      : 'bg-white border-gray-200 hover:border-[#122D6A] hover:shadow-sm'}">
                       
-                      <!-- Status Badge -->
-                      <div class="flex items-center justify-between mb-1.5">
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${tipoBg}">
-                          <i class="fas ${tipoIcon} text-[8px]"></i>
-                          ${tipoLabel}
-                        </span>
+                      <!-- Header: Tipo + Status -->
+                      <div class="flex items-center justify-between mb-1">
+                        <i class="fas ${tipoIcon} text-xs ${tipoBg}"></i>
                         ${meta.concluida 
-                          ? '<span class="flex items-center gap-1 text-[10px] text-emerald-600 font-medium"><i class="fas fa-check-circle"></i>Feito</span>' 
-                          : `<span class="text-[10px] text-gray-500">${meta.tempo_minutos || 60}min</span>`}
+                          ? '<i class="fas fa-check-circle text-emerald-500 text-xs"></i>' 
+                          : `<span class="text-[9px] text-gray-400">${meta.tempo_minutos || 60}m</span>`}
                       </div>
                       
                       <!-- Disciplina -->
-                      <p class="text-sm font-semibold text-gray-800 mb-1 line-clamp-2 ${meta.concluida ? 'line-through opacity-70' : ''}">${meta.disciplina_nome}</p>
+                      <p class="text-xs font-medium text-gray-800 line-clamp-2 mb-1.5 ${meta.concluida ? 'line-through opacity-60' : ''}">${meta.disciplina_nome}</p>
                       
-                      <!-- Tópico se existir -->
-                      ${(meta.topicos_sugeridos && meta.topicos_sugeridos[0]?.nome) ? `<p class="text-xs text-gray-500 line-clamp-1 mb-2">${meta.topicos_sugeridos[0].nome}</p>` : '<div class="mb-2"></div>'}
-                      
-                      <!-- Ações -->
-                      <div class="flex items-center gap-1.5 mt-auto pt-2 border-t border-gray-100 group/actions">
-                        ${meta.concluida ? `
-                          <button onclick="event.stopPropagation(); abrirConteudo(${meta.id})" class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition">
-                            <i class="fas fa-eye text-[10px]"></i> Ver
-                          </button>
-                        ` : `
-                          <button onclick="event.stopPropagation(); abrirConteudo(${meta.id})" class="flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-white bg-[#122D6A] hover:bg-[#0D1F4D] rounded-lg transition shadow-sm">
-                            <i class="fas fa-play text-[10px]"></i> Estudar
-                          </button>
-                        `}
-                        
-                        <!-- Ícones de conteúdo - sempre visíveis (opacidade indica se tem conteúdo) -->
+                      <!-- Ações Compactas -->
+                      <div class="flex items-center gap-1 mt-auto">
+                        <button onclick="event.stopPropagation(); abrirConteudo(${meta.id})" class="flex-1 flex items-center justify-center py-1 text-[10px] font-medium ${meta.concluida ? 'text-emerald-600 bg-emerald-100' : 'text-white bg-[#122D6A]'} rounded transition">
+                          ${meta.concluida ? 'Ver' : 'Estudar'}
+                        </button>
                         <div class="flex items-center gap-0.5" id="conteudos-meta-${meta.id}">
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${meta.topico_nome?.replace(/'/g, "\\'") || ''}', disciplina_nome: '${meta.disciplina_nome?.replace(/'/g, "\\'") || ''}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'teoria')" 
-                            class="w-6 h-6 rounded flex items-center justify-center bg-[#E8EDF5] hover:bg-[#122D6A] hover:text-white transition-all cursor-pointer" 
-                            title="Teoria - Clique para ver ou gerar" data-tipo="teoria" id="icon-teoria-${meta.id}">
-                            <i class="fas fa-book text-[10px] text-[#122D6A] hover:text-white"></i>
+                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'teoria')" 
+                            class="w-5 h-5 rounded flex items-center justify-center bg-gray-100 hover:bg-[#122D6A] hover:text-white transition" 
+                            title="Teoria" data-tipo="teoria" id="icon-teoria-${meta.id}">
+                            <i class="fas fa-book text-[8px] text-[#122D6A]"></i>
                           </button>
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${meta.topico_nome?.replace(/'/g, "\\'") || ''}', disciplina_nome: '${meta.disciplina_nome?.replace(/'/g, "\\'") || ''}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'exercicios')" 
-                            class="w-6 h-6 rounded flex items-center justify-center bg-[#E8EDF5] hover:bg-[#2A4A9F] hover:text-white transition-all cursor-pointer" 
-                            title="Exercícios - Clique para ver ou gerar" data-tipo="exercicios" id="icon-exercicios-${meta.id}">
-                            <i class="fas fa-tasks text-[10px] text-[#2A4A9F] hover:text-white"></i>
+                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'exercicios')" 
+                            class="w-5 h-5 rounded flex items-center justify-center bg-gray-100 hover:bg-[#2A4A9F] hover:text-white transition" 
+                            title="Exercícios" data-tipo="exercicios" id="icon-exercicios-${meta.id}">
+                            <i class="fas fa-tasks text-[8px] text-[#2A4A9F]"></i>
                           </button>
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${meta.topico_nome?.replace(/'/g, "\\'") || ''}', disciplina_nome: '${meta.disciplina_nome?.replace(/'/g, "\\'") || ''}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'resumo')" 
-                            class="w-6 h-6 rounded flex items-center justify-center bg-[#E8EDF5] hover:bg-[#3A5AB0] hover:text-white transition-all cursor-pointer" 
-                            title="Resumo - Clique para ver ou gerar" data-tipo="resumo" id="icon-resumo-${meta.id}">
-                            <i class="fas fa-file-alt text-[10px] text-[#3A5AB0] hover:text-white"></i>
+                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'resumo')" 
+                            class="w-5 h-5 rounded flex items-center justify-center bg-gray-100 hover:bg-[#3A5AB0] hover:text-white transition" 
+                            title="Resumo" data-tipo="resumo" id="icon-resumo-${meta.id}">
+                            <i class="fas fa-file-alt text-[8px] text-[#3A5AB0]"></i>
                           </button>
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${meta.topico_nome?.replace(/'/g, "\\'") || ''}', disciplina_nome: '${meta.disciplina_nome?.replace(/'/g, "\\'") || ''}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'flashcards')" 
-                            class="w-6 h-6 rounded flex items-center justify-center bg-[#E8EDF5] hover:bg-[#4A6AC0] hover:text-white transition-all cursor-pointer" 
-                            title="Flashcards - Clique para ver ou gerar" data-tipo="flashcards" id="icon-flashcards-${meta.id}">
-                            <i class="fas fa-clone text-[10px] text-[#4A6AC0] hover:text-white"></i>
+                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'flashcards')" 
+                            class="w-5 h-5 rounded flex items-center justify-center bg-gray-100 hover:bg-[#4A6AC0] hover:text-white transition" 
+                            title="Flashcards" data-tipo="flashcards" id="icon-flashcards-${meta.id}">
+                            <i class="fas fa-clone text-[8px] text-[#4A6AC0]"></i>
                           </button>
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${meta.topico_nome?.replace(/'/g, "\\'") || ''}', disciplina_nome: '${meta.disciplina_nome?.replace(/'/g, "\\'") || ''}', topico_id: ${meta.topico_id || 'null'} }; abrirModalResumoPersonalizado(${meta.id})" 
-                            class="w-6 h-6 rounded flex items-center justify-center bg-[#E8EDF5] hover:bg-[#8B5CF6] hover:text-white transition-all cursor-pointer" 
-                            title="Resumo Personalizado - Upload de PDF/Documento" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">
-                            <i class="fas fa-file-upload text-[10px] text-[#8B5CF6] hover:text-white"></i>
+                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; abrirModalResumoPersonalizado(${meta.id})" 
+                            class="w-5 h-5 rounded flex items-center justify-center bg-gray-100 hover:bg-[#8B5CF6] hover:text-white transition" 
+                            title="Upload" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">
+                            <i class="fas fa-file-upload text-[8px] text-[#8B5CF6]"></i>
                           </button>
                         </div>
-                        
                         ${!meta.concluida ? `
-                          <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id})" class="flex items-center justify-center w-7 h-7 text-xs font-medium text-emerald-700 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition" title="Marcar como concluída">
-                            <i class="fas fa-check text-[10px]"></i>
+                          <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id})" class="w-5 h-5 flex items-center justify-center text-emerald-600 bg-emerald-100 hover:bg-emerald-200 rounded transition" title="Concluir">
+                            <i class="fas fa-check text-[8px]"></i>
                           </button>
                         ` : ''}
                       </div>
@@ -11592,9 +11558,8 @@ function renderCalendarioSemanal() {
                 }).join('')}
               </div>
             ` : `
-              <div class="flex items-center justify-center py-3 ${themes[currentTheme].textSecondary}">
-                <i class="fas fa-coffee mr-2"></i>
-                <span class="text-xs">Dia livre</span>
+              <div class="flex items-center justify-center py-2 ${themes[currentTheme].textSecondary}">
+                <span class="text-[10px]">—</span>
               </div>
             `}
           </div>
