@@ -3215,6 +3215,37 @@ app.delete('/api/editais/:id', async (c) => {
 })
 
 // ============== ROTAS DE DISCIPLINAS ==============
+
+// Buscar disciplinas do usuário (para modal de simulados)
+app.get('/api/usuarios/:user_id/disciplinas', async (c) => {
+  const { DB } = c.env
+  const user_id = c.req.param('user_id')
+  
+  try {
+    const { results } = await DB.prepare(`
+      SELECT 
+        d.id,
+        d.nome,
+        d.area,
+        (
+          SELECT COUNT(*) 
+          FROM edital_topicos et 
+          JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id 
+          WHERE LOWER(TRIM(ed.nome)) = LOWER(TRIM(d.nome))
+        ) as topicos_count
+      FROM user_disciplinas ud
+      JOIN disciplinas d ON ud.disciplina_id = d.id
+      WHERE ud.user_id = ?
+      ORDER BY d.nome
+    `).bind(user_id).all()
+    
+    return c.json(results || [])
+  } catch (error) {
+    console.error('Erro ao buscar disciplinas do usuário:', error)
+    return c.json([])
+  }
+})
+
 app.get('/api/disciplinas', async (c) => {
   const { DB } = c.env
   const area = c.req.query('area')
@@ -11583,9 +11614,11 @@ app.get('/api/simulados/estatisticas/:user_id', async (c) => {
 
 // ============== GERAÇÃO DE QUESTÕES COM IA ==============
 app.post('/api/simulados/gerar-questoes', async (c) => {
-  const { user_id, tipo, disciplinas } = await c.req.json()
+  const { user_id, tipo, disciplinas, dificuldade = 'medio' } = await c.req.json()
   const { DB } = c.env
   const GROQ_API_KEY = c.env.GROQ_API_KEY || process.env.GROQ_API_KEY
+  
+  console.log(`🎯 Gerando simulado: tipo=${tipo}, dificuldade=${dificuldade}, disciplinas=${disciplinas?.length || 'auto'}`)
   
   // Configuração por tipo de simulado
   const config: Record<string, { questoes: number, tempo: number }> = {
@@ -11596,8 +11629,26 @@ app.post('/api/simulados/gerar-questoes', async (c) => {
   
   const cfg = config[tipo] || config['padrao']
   
+  // Mapeamento de dificuldade
+  const dificuldadeConfig: Record<string, { texto: string, instrucao: string }> = {
+    'facil': { 
+      texto: 'FÁCIL', 
+      instrucao: 'TODAS as questões devem ser de nível FÁCIL - conceitos básicos, definições diretas, questões introdutórias. Evite pegadinhas ou questões complexas.'
+    },
+    'medio': { 
+      texto: 'MÉDIO', 
+      instrucao: 'As questões devem ter nível MÉDIO - padrão de provas de concurso, exigindo conhecimento sólido mas sem ser extremamente difícil. Mix de 20% fácil, 60% médio, 20% difícil.'
+    },
+    'dificil': { 
+      texto: 'DIFÍCIL', 
+      instrucao: 'TODAS as questões devem ser de nível DIFÍCIL - questões desafiadoras, casos complexos, jurisprudência avançada, pegadinhas comuns em provas. Exija raciocínio elaborado.'
+    }
+  }
+  
+  const difConfig = dificuldadeConfig[dificuldade] || dificuldadeConfig['medio']
+  
   try {
-    // Buscar disciplinas do usuário com tópicos do edital
+    // Buscar disciplinas - usar as selecionadas ou buscar do usuário
     let discsParaUsar = disciplinas
     if (!discsParaUsar || discsParaUsar.length === 0) {
       // JOIN com edital_disciplinas para obter os tópicos
@@ -11614,6 +11665,18 @@ app.post('/api/simulados/gerar-questoes', async (c) => {
         LIMIT 10
       `).bind(user_id).all()
       discsParaUsar = userDiscs?.map((d: any) => ({ id: d.id, nome: d.nome, edital_disciplina_id: d.edital_disciplina_id })) || []
+    } else {
+      // Se disciplinas foram passadas, buscar edital_disciplina_id para cada uma
+      for (const disc of discsParaUsar) {
+        if (!disc.edital_disciplina_id) {
+          const editalDisc = await DB.prepare(`
+            SELECT id FROM edital_disciplinas 
+            WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?))
+            LIMIT 1
+          `).bind(disc.nome).first() as any
+          disc.edital_disciplina_id = editalDisc?.id || null
+        }
+      }
     }
     
     if (discsParaUsar.length === 0) {
@@ -11641,9 +11704,14 @@ app.post('/api/simulados/gerar-questoes', async (c) => {
     const questoesPorDisciplina = Math.ceil(cfg.questoes / discsParaUsar.length)
     const disciplinasNomes = disciplinasComTopicos.join('\n- ')
     
+    console.log(`📚 Disciplinas para o simulado: ${discsParaUsar.map((d: any) => d.nome).join(', ')}`)
+    
     const prompt = `Gere ${cfg.questoes} questões de múltipla escolha para um simulado de concurso público.
 
-DISCIPLINAS E TÓPICOS DO EDITAL DO CANDIDATO:
+🎯 NÍVEL DE DIFICULDADE: ${difConfig.texto}
+${difConfig.instrucao}
+
+📚 DISCIPLINAS E TÓPICOS DO EDITAL DO CANDIDATO:
 - ${disciplinasNomes}
 
 ⚠️ REGRAS CRÍTICAS:
@@ -11651,14 +11719,14 @@ DISCIPLINAS E TÓPICOS DO EDITAL DO CANDIDATO:
 2. Se a disciplina tem tópicos indicados (entre parênteses), PRIORIZE esses tópicos
 3. CADA QUESTÃO deve abordar UM TÓPICO DIFERENTE - NÃO repita tópicos
 4. Use informações CORRETAS e VERIFICÁVEIS - NÃO invente dados, leis ou fatos
+5. RESPEITE o nível de dificuldade solicitado (${difConfig.texto})
 
 REGRAS DE FORMATO:
 1. Exatamente 5 alternativas (A, B, C, D, E)
 2. Apenas UMA alternativa correta por questão
 3. Estilo de bancas: CESPE, FCC, VUNESP, FGV
-4. Dificuldade variada (fácil, médio, difícil)
-5. Distribua PROPORCIONALMENTE entre as disciplinas
-6. Inclua explicação didática para cada resposta
+4. Distribua PROPORCIONALMENTE entre as disciplinas (${Math.ceil(cfg.questoes / discsParaUsar.length)} questões por disciplina)
+5. Inclua explicação didática para cada resposta
 
 Retorne APENAS um JSON válido no formato:
 {

@@ -14547,8 +14547,179 @@ let simuladoAtual = {
   timerInterval: null
 };
 
-// Função para iniciar um novo simulado
+// Cache de disciplinas do usuário para o modal
+let disciplinasUsuario = [];
+
+// Função para abrir modal de configuração do simulado
 window.iniciarSimulado = async function(tipo) {
+  const config = {
+    'rapido': { nome: 'Rápido', questoes: 10, tempo: 15 },
+    'padrao': { nome: 'Padrão', questoes: 30, tempo: 45 },
+    'completo': { nome: 'Completo', questoes: 50, tempo: 90 }
+  };
+  
+  const cfg = config[tipo];
+  
+  // Buscar disciplinas do usuário
+  try {
+    const response = await axios.get(`/api/usuarios/${currentUser.id}/disciplinas`);
+    disciplinasUsuario = response.data || [];
+  } catch (error) {
+    console.error('Erro ao buscar disciplinas:', error);
+    disciplinasUsuario = [];
+  }
+  
+  // Se não tem disciplinas, avisar
+  if (disciplinasUsuario.length === 0) {
+    showModal('⚠️ Você precisa ter disciplinas cadastradas para gerar um simulado. Complete a entrevista inicial primeiro.');
+    return;
+  }
+  
+  // Criar modal de configuração
+  const modal = document.createElement('div');
+  modal.id = 'modal-config-simulado';
+  modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4';
+  modal.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+      <!-- Header -->
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center">
+          <i class="fas fa-cog text-white text-xl"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold ${themes[currentTheme].text}">Configurar Simulado</h3>
+          <p class="${themes[currentTheme].textSecondary} text-sm">${cfg.nome} • ${cfg.questoes} questões • ${cfg.tempo} min</p>
+        </div>
+      </div>
+      
+      <!-- Nível de Dificuldade -->
+      <div class="mb-6">
+        <label class="block text-sm font-semibold ${themes[currentTheme].text} mb-3">
+          <i class="fas fa-signal mr-2 text-[#4A90D9]"></i>Nível de Dificuldade
+        </label>
+        <div class="grid grid-cols-3 gap-2">
+          <button type="button" onclick="selecionarDificuldade('facil')" id="btn-dif-facil"
+            class="p-3 rounded-xl border-2 border-green-200 hover:border-green-400 hover:bg-green-50 transition-all text-center">
+            <i class="fas fa-seedling text-green-500 text-xl mb-1"></i>
+            <p class="font-medium ${themes[currentTheme].text} text-sm">Fácil</p>
+            <p class="${themes[currentTheme].textMuted} text-xs">Conceitos básicos</p>
+          </button>
+          <button type="button" onclick="selecionarDificuldade('medio')" id="btn-dif-medio"
+            class="p-3 rounded-xl border-2 border-[#122D6A] bg-blue-50 transition-all text-center ring-2 ring-[#122D6A]">
+            <i class="fas fa-balance-scale text-[#122D6A] text-xl mb-1"></i>
+            <p class="font-medium ${themes[currentTheme].text} text-sm">Médio</p>
+            <p class="${themes[currentTheme].textMuted} text-xs">Nível de prova</p>
+          </button>
+          <button type="button" onclick="selecionarDificuldade('dificil')" id="btn-dif-dificil"
+            class="p-3 rounded-xl border-2 border-red-200 hover:border-red-400 hover:bg-red-50 transition-all text-center">
+            <i class="fas fa-fire text-red-500 text-xl mb-1"></i>
+            <p class="font-medium ${themes[currentTheme].text} text-sm">Difícil</p>
+            <p class="${themes[currentTheme].textMuted} text-xs">Desafiador</p>
+          </button>
+        </div>
+        <input type="hidden" id="dificuldade-selecionada" value="medio">
+      </div>
+      
+      <!-- Disciplinas -->
+      <div class="mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <label class="text-sm font-semibold ${themes[currentTheme].text}">
+            <i class="fas fa-book mr-2 text-[#4A90D9]"></i>Disciplinas
+          </label>
+          <button type="button" onclick="toggleTodasDisciplinas()" class="text-xs text-[#122D6A] hover:underline">
+            Marcar/Desmarcar todas
+          </button>
+        </div>
+        <div class="space-y-2 max-h-48 overflow-y-auto pr-2">
+          ${disciplinasUsuario.map((disc, idx) => `
+            <label class="flex items-center gap-3 p-3 rounded-xl border ${themes[currentTheme].border} hover:bg-blue-50/50 cursor-pointer transition-all">
+              <input type="checkbox" id="disc-${disc.id}" value="${disc.id}" data-nome="${disc.nome}" 
+                class="disc-checkbox w-5 h-5 rounded border-gray-300 text-[#122D6A] focus:ring-[#122D6A]" checked>
+              <div class="flex-1">
+                <p class="font-medium ${themes[currentTheme].text} text-sm">${disc.nome}</p>
+              </div>
+              <span class="text-xs ${themes[currentTheme].textMuted} bg-gray-100 px-2 py-1 rounded-full">
+                ${disc.topicos_count || '?'} tópicos
+              </span>
+            </label>
+          `).join('')}
+        </div>
+        <p class="${themes[currentTheme].textMuted} text-xs mt-2">
+          <i class="fas fa-info-circle mr-1"></i>
+          Selecione pelo menos 1 disciplina. Quanto mais disciplinas, mais variado o simulado.
+        </p>
+      </div>
+      
+      <!-- Botões -->
+      <div class="flex gap-3">
+        <button onclick="fecharModalConfigSimulado()" 
+          class="flex-1 px-4 py-3 rounded-xl border ${themes[currentTheme].border} ${themes[currentTheme].text} hover:bg-gray-100 transition-all font-medium">
+          Cancelar
+        </button>
+        <button onclick="confirmarIniciarSimulado('${tipo}')" 
+          class="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2">
+          <i class="fas fa-play"></i> Iniciar
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+};
+
+// Selecionar nível de dificuldade
+window.selecionarDificuldade = function(nivel) {
+  document.getElementById('dificuldade-selecionada').value = nivel;
+  
+  // Reset visual de todos
+  ['facil', 'medio', 'dificil'].forEach(n => {
+    const btn = document.getElementById(`btn-dif-${n}`);
+    btn.classList.remove('ring-2', 'ring-[#122D6A]', 'ring-green-500', 'ring-red-500', 'bg-blue-50', 'bg-green-50', 'bg-red-50');
+    btn.classList.add('hover:bg-gray-50');
+  });
+  
+  // Ativar selecionado
+  const btnAtivo = document.getElementById(`btn-dif-${nivel}`);
+  const cores = {
+    facil: { ring: 'ring-green-500', bg: 'bg-green-50' },
+    medio: { ring: 'ring-[#122D6A]', bg: 'bg-blue-50' },
+    dificil: { ring: 'ring-red-500', bg: 'bg-red-50' }
+  };
+  btnAtivo.classList.add('ring-2', cores[nivel].ring, cores[nivel].bg);
+  btnAtivo.classList.remove('hover:bg-gray-50');
+};
+
+// Toggle todas as disciplinas
+window.toggleTodasDisciplinas = function() {
+  const checkboxes = document.querySelectorAll('.disc-checkbox');
+  const todasMarcadas = Array.from(checkboxes).every(cb => cb.checked);
+  checkboxes.forEach(cb => cb.checked = !todasMarcadas);
+};
+
+// Fechar modal de configuração
+window.fecharModalConfigSimulado = function() {
+  const modal = document.getElementById('modal-config-simulado');
+  if (modal) modal.remove();
+};
+
+// Confirmar e iniciar simulado com configurações
+window.confirmarIniciarSimulado = async function(tipo) {
+  const dificuldade = document.getElementById('dificuldade-selecionada').value;
+  const checkboxes = document.querySelectorAll('.disc-checkbox:checked');
+  
+  if (checkboxes.length === 0) {
+    showToast('Selecione pelo menos 1 disciplina', 'error');
+    return;
+  }
+  
+  const disciplinasSelecionadas = Array.from(checkboxes).map(cb => ({
+    id: parseInt(cb.value),
+    nome: cb.dataset.nome
+  }));
+  
+  // Fechar modal
+  fecharModalConfigSimulado();
+  
   const config = {
     'rapido': { nome: 'Rápido', questoes: 10, tempo: 15 },
     'padrao': { nome: 'Padrão', questoes: 30, tempo: 45 },
@@ -14564,7 +14735,13 @@ window.iniciarSimulado = async function(tipo) {
         <i class="fas fa-spinner fa-spin text-6xl text-[#122D6A] mb-4"></i>
         <p class="${themes[currentTheme].text} text-xl mb-2">Gerando ${cfg.questoes} questões...</p>
         <p class="${themes[currentTheme].textSecondary}">Simulado ${cfg.nome} • ${cfg.tempo} minutos</p>
-        <p class="${themes[currentTheme].textSecondary} text-sm mt-4">Isso pode levar alguns segundos...</p>
+        <p class="${themes[currentTheme].textSecondary} text-sm mt-2">
+          <i class="fas fa-signal mr-1"></i>Dificuldade: <strong>${dificuldade === 'facil' ? 'Fácil' : dificuldade === 'medio' ? 'Médio' : 'Difícil'}</strong>
+        </p>
+        <p class="${themes[currentTheme].textSecondary} text-sm">
+          <i class="fas fa-book mr-1"></i>${disciplinasSelecionadas.length} disciplina(s) selecionada(s)
+        </p>
+        <p class="${themes[currentTheme].textSecondary} text-xs mt-4">Isso pode levar alguns segundos...</p>
       </div>
     </div>
   `;
@@ -14572,7 +14749,9 @@ window.iniciarSimulado = async function(tipo) {
   try {
     const response = await axios.post('/api/simulados/gerar-questoes', {
       user_id: currentUser.id,
-      tipo: tipo
+      tipo: tipo,
+      dificuldade: dificuldade,
+      disciplinas: disciplinasSelecionadas
     });
     
     if (response.data.questoes && response.data.questoes.length > 0) {
