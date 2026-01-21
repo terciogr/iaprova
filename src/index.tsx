@@ -7148,29 +7148,21 @@ app.get('/api/estatisticas/:user_id/progresso-semanal', async (c) => {
       let tempoMinutos = 0
       
       if (inicioSemana <= hoje) {
-        const metasConcluidasRes = await DB.prepare(`
-          SELECT COUNT(*) as total FROM metas_diarias
-          WHERE user_id = ? AND data >= ? AND data <= ? AND concluida = 1
-        `).bind(user_id, inicioStr, fimStr).first() as any
-        metasConcluidas = metasConcluidasRes?.total || 0
-        
-        const metasTotalRes = await DB.prepare(`
-          SELECT COUNT(*) as total FROM metas_diarias
+        // Buscar dados do historico_estudos que já tem metas_concluidas agregadas por dia
+        const historicoRes = await DB.prepare(`
+          SELECT 
+            COALESCE(SUM(metas_concluidas), 0) as metas_concluidas,
+            COALESCE(SUM(metas_total), 0) as metas_total,
+            COUNT(DISTINCT CASE WHEN status != 'nao_estudou' THEN data END) as dias_estudados,
+            COALESCE(SUM(tempo_estudado_minutos), 0) as tempo_minutos
+          FROM historico_estudos
           WHERE user_id = ? AND data >= ? AND data <= ?
         `).bind(user_id, inicioStr, fimStr).first() as any
-        metasTotal = metasTotalRes?.total || 0
         
-        const diasEstudadosRes = await DB.prepare(`
-          SELECT COUNT(DISTINCT data) as dias FROM historico_estudos
-          WHERE user_id = ? AND data >= ? AND data <= ? AND status != 'nao_estudou'
-        `).bind(user_id, inicioStr, fimStr).first() as any
-        diasEstudados = diasEstudadosRes?.dias || 0
-        
-        const tempoRes = await DB.prepare(`
-          SELECT SUM(tempo_estudado_minutos) as minutos FROM historico_estudos
-          WHERE user_id = ? AND data >= ? AND data <= ?
-        `).bind(user_id, inicioStr, fimStr).first() as any
-        tempoMinutos = tempoRes?.minutos || 0
+        metasConcluidas = historicoRes?.metas_concluidas || 0
+        metasTotal = historicoRes?.metas_total || 0
+        diasEstudados = historicoRes?.dias_estudados || 0
+        tempoMinutos = historicoRes?.tempo_minutos || 0
       }
       
       const percentual = metasTotal > 0 ? Math.round((metasConcluidas / metasTotal) * 100) : 0
