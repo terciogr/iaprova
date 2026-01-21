@@ -4323,19 +4323,33 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 </button>
               </div>
               
-              <!-- Footer do Painel - Info + Novo Plano -->
+              <!-- Footer do Painel - Info Simplificada -->
               <div class="flex flex-wrap items-center gap-2 pt-2 border-t ${themes[currentTheme].border}">
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full ${currentTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800/50'} border ${themes[currentTheme].border}">
-                  <i class="fas fa-trophy text-[#122D6A] dark:text-blue-400 text-[10px]"></i>
-                  <span class="text-[10px] ${themes[currentTheme].text} font-medium truncate max-w-[120px]">${plano.nome}</span>
+                <div class="flex items-center gap-1.5 px-2 py-1 rounded-full ${currentTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800/50'}">
+                  <i class="fas fa-book text-[#122D6A] text-[9px]"></i>
+                  <span class="text-[9px] ${themes[currentTheme].text}">${plano.diagnostico?.total_disciplinas || 0} disc.</span>
                 </div>
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full ${currentTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800/50'} border ${themes[currentTheme].border}">
-                  <i class="${concursoInfo.icone} text-[#122D6A] dark:text-blue-400 text-[10px]"></i>
-                  <span class="text-[10px] ${themes[currentTheme].text} truncate max-w-[150px]">${concursoInfo.titulo}</span>
-                </div>
-                <button onclick="iniciarEntrevista()" class="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white text-[10px] font-medium hover:shadow-lg hover:scale-105 transition-all">
-                  <i class="fas fa-plus text-[8px]"></i>
-                  <span>Novo Plano</span>
+                ${entrevista?.banca_organizadora ? `
+                  <div class="flex items-center gap-1.5 px-2 py-1 rounded-full ${currentTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800/50'}">
+                    <i class="fas fa-building text-[#122D6A] text-[9px]"></i>
+                    <span class="text-[9px] ${themes[currentTheme].text}">${entrevista.banca_organizadora}</span>
+                  </div>
+                ` : ''}
+                ${plano.data_prova ? `
+                  <div class="flex items-center gap-1.5 px-2 py-1 rounded-full ${currentTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800/50'}">
+                    <i class="fas fa-calendar text-[#122D6A] text-[9px]"></i>
+                    <span class="text-[9px] ${themes[currentTheme].text}">${new Date(plano.data_prova).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                  </div>
+                ` : ''}
+                ${entrevista?.experiencia ? `
+                  <div class="flex items-center gap-1.5 px-2 py-1 rounded-full ${currentTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800/50'}">
+                    <i class="fas fa-signal text-[#122D6A] text-[9px]"></i>
+                    <span class="text-[9px] ${themes[currentTheme].text}">${entrevista.experiencia === 'iniciante' ? 'Iniciante' : entrevista.experiencia === 'intermediario' ? 'Intermediário' : 'Avançado'}</span>
+                  </div>
+                ` : ''}
+                <button onclick="iniciarEntrevista()" class="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#122D6A] text-white text-[9px] font-medium hover:bg-[#0D1F4D] transition">
+                  <i class="fas fa-plus text-[7px]"></i>
+                  <span>Novo</span>
                 </button>
               </div>
             </div>
@@ -14389,64 +14403,45 @@ window.renderDashboardSimulados = async function() {
       : 0;
     
     document.getElementById('app').innerHTML = `
-      <div class="min-h-screen ${themes[currentTheme].bg} p-4 md:p-8">
-        <div class="max-w-7xl mx-auto">
-          <!-- Header -->
-          <div class="flex items-center justify-between mb-6">
-            <div>
-              <h1 class="text-3xl font-bold ${themes[currentTheme].text} mb-1">
-                <i class="fas fa-chart-line text-[#122D6A] mr-3"></i>
-                Dashboard de Simulados
-              </h1>
-              <p class="${themes[currentTheme].textSecondary}">
-                Acompanhe seu desempenho e evolução nos simulados
-              </p>
-            </div>
-            <button onclick="renderDashboard()" 
-              class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition flex items-center gap-2">
-              <i class="fas fa-arrow-left"></i> Voltar
-            </button>
-          </div>
-          
-          <!-- Estatísticas -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="${themes[currentTheme].card} p-6 rounded-lg shadow border ${themes[currentTheme].border}">
-              <div class="flex items-center justify-between mb-2">
-                <div class="w-12 h-12 bg-[#6BB6FF]/10 rounded-lg flex items-center justify-center">
-                  <i class="fas fa-clipboard-list text-[#122D6A] text-xl"></i>
+      <div class="min-h-screen ${themes[currentTheme].bg}">
+        <!-- Header Azul Padrão -->
+        <header class="bg-gradient-to-r from-[#122D6A] via-[#1E3A7D] to-[#2A4A9F] text-white shadow-lg">
+          <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-4">
+                <button onclick="renderDashboard()" class="p-2 hover:bg-white/10 rounded-lg transition">
+                  <i class="fas fa-arrow-left text-white"></i>
+                </button>
+                <div>
+                  <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-edit"></i>
+                    Simulados
+                  </h1>
                 </div>
-                <span class="text-3xl font-bold ${themes[currentTheme].text}">${totalSimulados}</span>
               </div>
-              <p class="${themes[currentTheme].textSecondary} text-sm">Total de Simulados</p>
-            </div>
-            
-            <div class="${themes[currentTheme].card} p-6 rounded-lg shadow border ${themes[currentTheme].border}">
-              <div class="flex items-center justify-between mb-2">
-                <div class="w-12 h-12 bg-[#2A4A9F]/10 rounded-lg flex items-center justify-center">
-                  <i class="fas fa-check-circle text-[#2A4A9F] text-xl"></i>
+              <!-- KPIs no Header -->
+              <div class="flex items-center gap-4">
+                <div class="text-center">
+                  <p class="text-2xl font-bold text-white">${totalSimulados}</p>
+                  <p class="text-[10px] text-white/70 uppercase">Total</p>
                 </div>
-                <span class="text-3xl font-bold ${themes[currentTheme].text}">${simuladosCompletos}</span>
-              </div>
-              <p class="${themes[currentTheme].textSecondary} text-sm">Simulados Completos</p>
-            </div>
-            
-            <div class="${themes[currentTheme].card} p-6 rounded-lg shadow border ${themes[currentTheme].border}">
-              <div class="flex items-center justify-between mb-2">
-                <div class="w-12 h-12 bg-[#122D6A]/10 rounded-lg flex items-center justify-center">
-                  <i class="fas fa-percentage text-[#122D6A] text-xl"></i>
+                <div class="text-center">
+                  <p class="text-2xl font-bold text-white">${simuladosCompletos}</p>
+                  <p class="text-[10px] text-white/70 uppercase">Completos</p>
                 </div>
-                <span class="text-3xl font-bold ${themes[currentTheme].text}">${acertoMedio}%</span>
+                <div class="text-center">
+                  <p class="text-2xl font-bold text-white">${acertoMedio}%</p>
+                  <p class="text-[10px] text-white/70 uppercase">Média</p>
+                </div>
               </div>
-              <p class="${themes[currentTheme].textSecondary} text-sm">Taxa Média de Acerto</p>
             </div>
           </div>
-          
-          <!-- Ações -->
-          <div class="${themes[currentTheme].card} p-6 rounded-lg shadow border ${themes[currentTheme].border} mb-6">
-            <h2 class="text-xl font-bold ${themes[currentTheme].text} mb-4">
-              <i class="fas fa-play-circle text-[#122D6A] mr-2"></i>
-              Novo Simulado
-            </h2>
+        </header>
+        
+        <div class="max-w-7xl mx-auto p-4">
+          <!-- Ações - Novo Simulado -->
+          <div class="${themes[currentTheme].card} p-4 rounded-xl shadow-sm border ${themes[currentTheme].border} mb-4">
+            <h2 class="text-sm font-semibold ${themes[currentTheme].text} mb-3">Novo Simulado</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button onclick="iniciarSimulado('rapido')" 
                 class="p-4 border-2 border-cyan-200 rounded-xl hover:bg-[#6BB6FF]/5 hover:border-cyan-400 transition-all group">
@@ -14472,11 +14467,8 @@ window.renderDashboardSimulados = async function() {
           </div>
           
           <!-- Histórico de Simulados -->
-          <div class="${themes[currentTheme].card} p-6 rounded-lg shadow border ${themes[currentTheme].border}">
-            <h2 class="text-xl font-bold ${themes[currentTheme].text} mb-4">
-              <i class="fas fa-history text-[#122D6A] mr-2"></i>
-              Histórico de Simulados
-            </h2>
+          <div class="${themes[currentTheme].card} p-4 rounded-xl shadow-sm border ${themes[currentTheme].border}">
+            <h2 class="text-sm font-semibold ${themes[currentTheme].text} mb-3">Histórico</h2>
             <div class="overflow-x-auto">
               ${simulados.length > 0 ? `
                 <table class="w-full">
