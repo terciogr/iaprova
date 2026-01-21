@@ -4647,69 +4647,24 @@ function gerarCalendarioCompacto(historico) {
       }
     }
 
-    // Marcar dia atual - tamanho responsivo
-    if (dia === hoje.getDate()) {
-      diasHTML += `
-        <div class="w-6 h-6 md:w-8 md:h-8 ${corClasse} rounded flex items-center justify-center text-[10px] md:text-xs font-bold ring-2 ring-blue-500 cursor-pointer hover:scale-110 transition"
-             title="${titulo}">
-          ${dia}
-        </div>
-      `;
-    } else {
-      diasHTML += `
-        <div class="w-6 h-6 md:w-8 md:h-8 ${corClasse} rounded flex items-center justify-center text-[10px] md:text-xs cursor-pointer hover:scale-110 transition"
-             title="${titulo}">
-          ${dia}
-        </div>
-      `;
-    }
+    // Marcar dia atual
+    const isHoje = dia === hoje.getDate();
+    const textColor = (hist?.status === 'completo' || hist?.status === 'parcial') ? 'text-white' : 'text-gray-600';
+    diasHTML += `
+      <div class="w-5 h-5 ${corClasse} rounded flex items-center justify-center text-[9px] ${textColor} ${isHoje ? 'ring-1 ring-[#122D6A] font-bold' : ''} cursor-pointer hover:opacity-80 transition"
+           title="${titulo}">
+        ${dia}
+      </div>
+    `;
   }
 
   return `
-    <div class="${themes[currentTheme].card} rounded-lg shadow-lg p-3 md:p-6 mb-6">
-      <div class="flex items-center justify-between mb-3 md:mb-4">
-        <h2 class="text-base md:text-xl font-bold">
-          <span class="hidden md:inline">📅 Calendário de Estudos - </span>
-          <span class="md:hidden">📅 </span>
-          ${mesesNomes[mes - 1]}/${ano}
-        </h2>
-      </div>
-
-      <!-- Legenda - Responsiva -->
-      <div class="flex flex-wrap justify-center gap-2 md:gap-4 mb-3 md:mb-4 text-xs">
-        <div class="flex items-center">
-          <div class="w-3 h-3 bg-[#122D6A] rounded mr-1"></div>
-          <span class="hidden sm:inline">Completo</span>
-          <span class="sm:hidden">Ok</span>
-        </div>
-        <div class="flex items-center">
-          <div class="w-3 h-3 bg-blue-400 rounded mr-1"></div>
-          <span>Parcial</span>
-        </div>
-        <div class="flex items-center hidden sm:flex">
-          <div class="w-3 h-3 bg-red-300 rounded mr-1"></div>
-          <span>Não estudou</span>
-        </div>
-        <div class="flex items-center hidden sm:flex">
-          <div class="w-3 h-3 bg-gray-200 rounded mr-1"></div>
-          <span>Sem dados</span>
-        </div>
-      </div>
-
-      <!-- Grade do calendário - Responsiva -->
-      <div class="grid grid-cols-7 gap-0.5 md:gap-1 mb-2 text-center text-xs font-semibold text-gray-600">
-        <div>D</div>
-        <div>S</div>
-        <div>T</div>
-        <div>Q</div>
-        <div>Q</div>
-        <div>S</div>
-        <div>S</div>
-      </div>
-
-      <div class="grid grid-cols-7 gap-0.5 md:gap-1 justify-items-center">
-        ${diasHTML}
-      </div>
+    <!-- Grade do calendário - Minimalista -->
+    <div class="grid grid-cols-7 gap-0.5 mb-1 text-center text-[9px] font-medium text-gray-500">
+      <div>D</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>S</div>
+    </div>
+    <div class="grid grid-cols-7 gap-0.5 justify-items-center">
+      ${diasHTML}
     </div>
   `;
 }
@@ -9085,13 +9040,17 @@ window.abrirModalResumoPersonalizado = function(metaId) {
         <!-- Status de processamento -->
         <div id="processing-status" class="hidden mt-6">
           <div class="bg-[#E8EDF5] rounded-lg p-4">
-            <div class="flex items-center gap-3">
-              <div class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full border-[#3A5AB0] border-t-transparent"></div>
-              <div>
-                <p class="font-medium text-[#2A4A9F]">Processando documento...</p>
-                <p class="text-sm text-[#4A6AC0] mt-1" id="status-message">Extraindo texto do arquivo...</p>
+            <div class="flex items-center gap-3 mb-3">
+              <div class="spinner-border animate-spin inline-block w-6 h-6 border-3 rounded-full border-[#3A5AB0] border-t-transparent"></div>
+              <div class="flex-1">
+                <p class="font-medium text-[#2A4A9F] text-sm" id="status-message">Enviando arquivo...</p>
               </div>
+              <span class="text-xs text-[#4A6AC0]" id="status-time"></span>
             </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <div id="status-progress-bar" class="bg-[#122D6A] h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-2 text-center" id="status-hint">Documentos maiores podem levar até 1 minuto</p>
           </div>
         </div>
       </div>
@@ -9213,9 +9172,43 @@ async function processarResumoPersonalizado(metaId) {
   document.getElementById('btn-processar').disabled = true;
   document.getElementById('processing-status').classList.remove('hidden');
   
+  // Variáveis para controle de progresso
+  let progressInterval = null;
+  let currentProgress = 0;
+  let startTime = Date.now();
+  
+  // Função para atualizar progresso visualmente
+  const updateProgress = (progress, message, hint = '') => {
+    document.getElementById('status-message').textContent = message;
+    document.getElementById('status-progress-bar').style.width = `${progress}%`;
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    document.getElementById('status-time').textContent = `${elapsed}s`;
+    if (hint) document.getElementById('status-hint').textContent = hint;
+  };
+  
+  // Simular progresso durante processamento da IA
+  const startProgressSimulation = () => {
+    currentProgress = 30; // Começa em 30% após upload
+    progressInterval = setInterval(() => {
+      if (currentProgress < 90) {
+        // Progresso mais lento conforme avança
+        const increment = currentProgress < 50 ? 3 : currentProgress < 70 ? 2 : 1;
+        currentProgress += increment;
+        const messages = [
+          { min: 30, msg: 'Extraindo texto do documento...' },
+          { min: 45, msg: 'Analisando conteúdo...' },
+          { min: 60, msg: 'Gerando resumo com IA...' },
+          { min: 75, msg: 'Formatando resultado...' },
+          { min: 85, msg: 'Finalizando...' }
+        ];
+        const currentMsg = messages.reverse().find(m => currentProgress >= m.min)?.msg || 'Processando...';
+        updateProgress(currentProgress, currentMsg, 'A IA está processando seu documento');
+      }
+    }, 800);
+  };
+  
   try {
-    // Atualizar status
-    document.getElementById('status-message').textContent = 'Enviando arquivo...';
+    updateProgress(0, 'Enviando arquivo...', 'Aguarde o envio do arquivo');
     
     const response = await axios.post('/api/topicos/resumo-personalizado', formData, {
       headers: {
@@ -9224,12 +9217,19 @@ async function processarResumoPersonalizado(metaId) {
       },
       onUploadProgress: (progressEvent) => {
         const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        document.getElementById('status-message').textContent = `Enviando arquivo... ${percentCompleted}%`;
+        const uploadProgress = Math.round(percentCompleted * 0.3); // Upload é 30% do total
+        updateProgress(uploadProgress, `Enviando arquivo... ${percentCompleted}%`, 'Enviando para o servidor');
+        
+        // Quando upload completa, iniciar simulação de progresso
+        if (percentCompleted >= 100 && !progressInterval) {
+          startProgressSimulation();
+        }
       }
     });
     
-    // Atualizar status
-    document.getElementById('status-message').textContent = 'Gerando resumo com IA...';
+    // Parar simulação e mostrar 100%
+    if (progressInterval) clearInterval(progressInterval);
+    updateProgress(100, 'Concluído!', 'Resumo gerado com sucesso');
     
     if (response.data.success) {
       showToast('Resumo personalizado gerado com sucesso!', 'success');
@@ -9257,6 +9257,7 @@ async function processarResumoPersonalizado(metaId) {
     }
   } catch (error) {
     console.error('Erro ao processar resumo:', error);
+    if (progressInterval) clearInterval(progressInterval);
     showToast(error.response?.data?.error || 'Erro ao processar documento. Tente novamente.', 'error');
     
     // Resetar botão
