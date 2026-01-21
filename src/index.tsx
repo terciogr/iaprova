@@ -9163,8 +9163,52 @@ Agora gere o material em JSON válido:`
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('❌ Erro na API Gemini:', response.status, errorText)
+      const errorData = await response.json().catch(() => ({}))
+      console.error('❌ Erro Gemini ao gerar conteúdo:', errorData.error || { status: response.status })
+      
+      // Se for rate limit (429), tentar novamente após delay
+      if (response.status === 429) {
+        console.log('⏳ Rate limit - aguardando 5 segundos para retry...')
+        await new Promise(resolve => setTimeout(resolve, 5000))
+        
+        // Tentar uma vez mais
+        const retryResponse = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              { role: 'user', parts: [{ text: systemPrompt }] },
+              { role: 'model', parts: [{ text: 'Entendido! Sou um Professor Mestre em Concursos Públicos. Vou gerar material de altíssima qualidade.' }] },
+              { role: 'user', parts: [{ text: prompt }] }
+            ],
+            generationConfig: {
+              temperature: Number(temperatura),
+              maxOutputTokens: 8192,
+              topP: 0.95,
+              topK: 40
+            }
+          })
+        })
+        
+        if (retryResponse.ok) {
+          const retryData = await retryResponse.json()
+          const retryText = retryData.candidates?.[0]?.content?.parts?.[0]?.text
+          if (retryText) {
+            console.log('✅ Retry bem sucedido!')
+            // Processar como o fluxo normal
+            const jsonMatch = retryText.match(/\{[\s\S]*\}/)
+            if (jsonMatch) {
+              try {
+                return JSON.parse(jsonMatch[0])
+              } catch {
+                console.log('⚠️ JSON do retry inválido')
+              }
+            }
+          }
+        }
+        console.log('❌ Retry também falhou')
+      }
+      
       return null
     }
 
@@ -10852,31 +10896,82 @@ REGRAS OBRIGATÓRIAS:
         systemPrompt = `Crie um conteúdo educativo sobre "${topico_nome}" de "${disciplina_nome}" para concursos públicos.`
     }
     
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+    // Lista de modelos para tentar em ordem (fallback cascade)
+    const modelos = [
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',  // Modelo mais leve com menor rate limit
+      'gemini-2.5-flash'        // Fallback mais novo
+    ]
     
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: systemPrompt
-          }]
-        }],
-        generationConfig: {
-          temperature: parseFloat(iaConfig.temperatura) || 0.7,
-          // Para flashcards e exercícios, usar mais tokens
-          maxOutputTokens: tipoConteudo === 'flashcards' ? Math.max(qtdFlashcards * 150, 3000) : // ~150 tokens por flashcard
-                           tipoConteudo === 'exercicios' ? Math.max(qtdExercicios * 300, 4000) : // ~300 tokens por exercício
-                           Math.max(Math.ceil(limiteCaracteres / 2.5), 500), // Para teoria/resumo
-          topP: 0.95
+    const requestBody = {
+      contents: [{
+        parts: [{
+          text: systemPrompt
+        }]
+      }],
+      generationConfig: {
+        temperature: parseFloat(iaConfig.temperatura) || 0.7,
+        maxOutputTokens: tipoConteudo === 'flashcards' ? Math.max(qtdFlashcards * 150, 3000) :
+                         tipoConteudo === 'exercicios' ? Math.max(qtdExercicios * 300, 4000) :
+                         Math.max(Math.ceil(limiteCaracteres / 2.5), 500),
+        topP: 0.95
+      }
+    }
+    
+    let data: any = null
+    let lastError: any = null
+    
+    // Tentar cada modelo em ordem até um funcionar
+    for (const modelo of modelos) {
+      console.log(`🤖 Tentando modelo: ${modelo}...`)
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${GEMINI_API_KEY}`
+      
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        })
+        
+        data = await response.json()
+        
+        // Se não houver erro, sucesso!
+        if (!data.error) {
+          console.log(`✅ Modelo ${modelo} respondeu com sucesso!`)
+          break
         }
-      })
-    })
+        
+        // Se erro 429 (rate limit), aguardar e tentar próximo modelo
+        if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED') {
+          console.log(`⏳ Rate limit no modelo ${modelo}, tentando próximo...`)
+          lastError = data.error
+          await new Promise(resolve => setTimeout(resolve, 2000)) // Aguarda 2s antes do próximo
+          continue
+        }
+        
+        // Outro erro, guardar e tentar próximo
+        lastError = data.error
+        console.log(`⚠️ Erro no modelo ${modelo}:`, data.error.message)
+        
+      } catch (fetchError) {
+        console.log(`❌ Erro de fetch no modelo ${modelo}:`, fetchError)
+        lastError = { message: 'Erro de conexão' }
+      }
+    }
     
-    const data: any = await response.json()
+    // Se ainda com erro após todos os modelos
+    if (data?.error || !data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      const errorInfo = data?.error || lastError
+      if (errorInfo?.code === 429 || errorInfo?.status === 'RESOURCE_EXHAUSTED') {
+        console.error('❌ Rate limit em todos os modelos')
+        return c.json({ 
+          error: 'API temporariamente ocupada. Aguarde 2-3 minutos e tente novamente.',
+          details: 'Rate limit da API Gemini. Muitas requisições simultâneas.'
+        }, 429)
+      }
+    }
     
-    if (data.error) {
+    if (data?.error) {
       console.error('❌ Erro Gemini ao gerar conteúdo:', data.error)
       return c.json({ 
         error: 'Erro ao gerar conteúdo',

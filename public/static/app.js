@@ -6103,7 +6103,16 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
   } catch (error) {
     document.getElementById('loading-conteudo')?.remove();
     console.error('Erro ao gerar conteúdo:', error);
-    showToast('Erro ao gerar conteúdo: ' + (error.response?.data?.error || error.message), 'error');
+    
+    // Mensagem mais amigável para rate limit
+    const errorMsg = error.response?.data?.error || error.message;
+    const errorDetails = error.response?.data?.details || '';
+    
+    if (error.response?.status === 429 || errorMsg.includes('rate') || errorMsg.includes('indisponível')) {
+      showToast('🕐 API ocupada. Aguarde 1-2 minutos e tente novamente.', 'warning');
+    } else {
+      showToast('Erro ao gerar conteúdo: ' + errorMsg, 'error');
+    }
   }
 }
 
