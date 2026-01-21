@@ -7292,33 +7292,33 @@ window.toggleProgressoView = function(view) {
   
   if (!container || !btnSemana || !btnMes) return;
   
-  // Atualizar botões
+  // Atualizar botões - tons claros e azuis vibrantes
   if (view === 'semana') {
-    btnSemana.className = 'px-3 py-1 text-xs font-medium rounded-md bg-[#122D6A] text-white transition';
-    btnMes.className = `px-3 py-1 text-xs font-medium rounded-md ${themes[currentTheme].text} hover:bg-gray-200 dark:hover:bg-gray-700 transition`;
+    btnSemana.className = 'px-3 py-1 text-xs font-medium rounded-md bg-[#4A90D9] text-white shadow-sm transition';
+    btnMes.className = `px-3 py-1 text-xs font-medium rounded-md text-[#4A90D9] bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-gray-700 transition`;
   } else {
-    btnMes.className = 'px-3 py-1 text-xs font-medium rounded-md bg-[#122D6A] text-white transition';
-    btnSemana.className = `px-3 py-1 text-xs font-medium rounded-md ${themes[currentTheme].text} hover:bg-gray-200 dark:hover:bg-gray-700 transition`;
+    btnMes.className = 'px-3 py-1 text-xs font-medium rounded-md bg-[#4A90D9] text-white shadow-sm transition';
+    btnSemana.className = `px-3 py-1 text-xs font-medium rounded-md text-[#4A90D9] bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-gray-700 transition`;
   }
   
-  // Renderizar conteúdo
+  // Renderizar conteúdo - cores claras e azuis vibrantes
   if (view === 'semana') {
     container.innerHTML = progressoSemanalCache.semanas.map(sem => `
-      <div class="flex items-center gap-2 ${sem.isAtual ? 'bg-[#E8EDF5] dark:bg-[#0A1839]/30 rounded-lg p-2 -mx-2' : ''} ${sem.isProva ? 'border-2 border-[#122D6A] rounded-lg p-2 -mx-2' : ''}">
-        <span class="text-xs font-medium ${sem.isAtual ? 'text-[#122D6A] dark:text-blue-400' : themes[currentTheme].textSecondary} w-12 flex-shrink-0">
+      <div class="flex items-center gap-2 ${sem.isAtual ? 'bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 -mx-2 border border-blue-200 dark:border-blue-800' : ''} ${sem.isProva ? 'border-2 border-[#4A90D9] rounded-lg p-2 -mx-2 bg-blue-50/50 dark:bg-blue-900/10' : ''}">
+        <span class="text-xs font-medium ${sem.isAtual ? 'text-[#4A90D9] dark:text-blue-400' : themes[currentTheme].textSecondary} w-12 flex-shrink-0">
           ${sem.label}${sem.isAtual ? ' ●' : ''}${sem.isProva ? ' 🏁' : ''}
         </span>
-        <div class="flex-1 h-5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div class="flex-1 h-5 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden">
           ${sem.isFutura ? `
-            <div class="h-full rounded-full bg-gray-300 dark:bg-gray-600 bg-stripes" style="width: 100%"></div>
+            <div class="h-full rounded-full bg-blue-200/50 dark:bg-blue-800/30 bg-stripes" style="width: 100%"></div>
           ` : `
-            <div class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#3A5AB0] transition-all duration-500 flex items-center justify-end pr-2"
+            <div class="h-full rounded-full bg-gradient-to-r from-[#4A90D9] to-[#6BB6FF] transition-all duration-500 flex items-center justify-end pr-2"
                  style="width: ${Math.max(sem.percentual, 3)}%">
               ${sem.percentual > 15 ? `<span class="text-[9px] text-white font-medium">${sem.percentual}%</span>` : ''}
             </div>
           `}
         </div>
-        <span class="text-xs ${themes[currentTheme].textSecondary} w-10 text-right flex-shrink-0">
+        <span class="text-xs font-semibold ${sem.isFutura ? 'text-gray-400' : 'text-[#4A90D9]'} w-10 text-right flex-shrink-0">
           ${sem.isFutura ? '-' : sem.percentual + '%'}
         </span>
       </div>
@@ -7329,13 +7329,13 @@ window.toggleProgressoView = function(view) {
         <span class="text-xs font-medium ${themes[currentTheme].textSecondary} w-16 flex-shrink-0 capitalize">
           ${mes.label}
         </span>
-        <div class="flex-1 h-5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-          <div class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#3A5AB0] transition-all duration-500 flex items-center justify-end pr-2"
+        <div class="flex-1 h-5 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden">
+          <div class="h-full rounded-full bg-gradient-to-r from-[#4A90D9] to-[#6BB6FF] transition-all duration-500 flex items-center justify-end pr-2"
                style="width: ${Math.max(mes.percentual, 3)}%">
             ${mes.percentual > 15 ? `<span class="text-[9px] text-white font-medium">${mes.percentual}%</span>` : ''}
           </div>
         </div>
-        <span class="text-xs ${themes[currentTheme].textSecondary} w-10 text-right flex-shrink-0">
+        <span class="text-xs font-semibold text-[#4A90D9] w-10 text-right flex-shrink-0">
           ${mes.percentual}%
         </span>
       </div>
@@ -7519,55 +7519,55 @@ window.renderDashboardDesempenho = async function() {
             <div class="${themes[currentTheme].card} rounded-2xl border ${themes[currentTheme].border} p-6 hover:shadow-lg transition">
               <div class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-bold ${themes[currentTheme].text} flex items-center gap-2">
-                  <i class="fas fa-chart-line text-[#3A5AB0]"></i>
+                  <i class="fas fa-chart-line text-[#4A90D9]"></i>
                   Cumprimento de Metas
                 </h2>
-                <!-- Botões de alternância -->
-                <div class="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                <!-- Botões de alternância - tons claros e azuis -->
+                <div class="flex gap-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-1 border border-blue-100 dark:border-blue-800">
                   <button id="btn-view-semana" onclick="window.toggleProgressoView('semana')" 
-                          class="px-3 py-1 text-xs font-medium rounded-md bg-[#122D6A] text-white transition">
+                          class="px-3 py-1 text-xs font-medium rounded-md bg-[#4A90D9] text-white shadow-sm transition">
                     Semana
                   </button>
                   <button id="btn-view-mes" onclick="window.toggleProgressoView('mes')" 
-                          class="px-3 py-1 text-xs font-medium rounded-md ${themes[currentTheme].text} hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                          class="px-3 py-1 text-xs font-medium rounded-md text-[#4A90D9] bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-gray-700 transition">
                     Mês
                   </button>
                 </div>
               </div>
               
               ${progressoSemanal.temDataProva ? `
-                <div class="mb-4 p-3 rounded-xl bg-[#E8EDF5] dark:bg-[#0A1839]/50 flex items-center justify-between">
+                <div class="mb-4 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20 border border-blue-200 dark:border-blue-800 flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <i class="fas fa-flag-checkered text-[#122D6A]"></i>
+                    <i class="fas fa-flag-checkered text-[#4A90D9]"></i>
                     <span class="text-sm ${themes[currentTheme].text}">Prova em <strong>${new Date(progressoSemanal.dataProva).toLocaleDateString('pt-BR')}</strong></span>
                   </div>
-                  <span class="text-xs px-2 py-1 bg-[#122D6A] text-white rounded-full">${progressoSemanal.semanasRestantes} semanas restantes</span>
+                  <span class="text-xs px-2 py-1 bg-[#4A90D9] text-white rounded-full shadow-sm">${progressoSemanal.semanasRestantes} semanas restantes</span>
                 </div>
               ` : `
-                <div class="mb-4 p-3 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center gap-2">
-                  <i class="fas fa-infinity text-gray-500"></i>
+                <div class="mb-4 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                  <i class="fas fa-infinity text-gray-400"></i>
                   <span class="text-sm ${themes[currentTheme].textSecondary}">Sem data definida - acompanhamento contínuo</span>
                 </div>
               `}
               
-              <!-- Container para o gráfico -->
+              <!-- Container para o gráfico - cores claras e azuis vibrantes -->
               <div id="progresso-container" class="space-y-2 max-h-64 overflow-y-auto pr-2">
                 ${progressoSemanal.semanas.map(sem => `
-                  <div class="flex items-center gap-2 ${sem.isAtual ? 'bg-[#E8EDF5] dark:bg-[#0A1839]/30 rounded-lg p-2 -mx-2' : ''} ${sem.isProva ? 'border-2 border-[#122D6A] rounded-lg p-2 -mx-2' : ''}">
-                    <span class="text-xs font-medium ${sem.isAtual ? 'text-[#122D6A] dark:text-blue-400' : themes[currentTheme].textSecondary} w-12 flex-shrink-0">
+                  <div class="flex items-center gap-2 ${sem.isAtual ? 'bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 -mx-2 border border-blue-200 dark:border-blue-800' : ''} ${sem.isProva ? 'border-2 border-[#4A90D9] rounded-lg p-2 -mx-2 bg-blue-50/50 dark:bg-blue-900/10' : ''}">
+                    <span class="text-xs font-medium ${sem.isAtual ? 'text-[#4A90D9] dark:text-blue-400' : themes[currentTheme].textSecondary} w-12 flex-shrink-0">
                       ${sem.label}${sem.isAtual ? ' ●' : ''}${sem.isProva ? ' 🏁' : ''}
                     </span>
-                    <div class="flex-1 h-5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div class="flex-1 h-5 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden">
                       ${sem.isFutura ? `
-                        <div class="h-full rounded-full bg-gray-300 dark:bg-gray-600 bg-stripes" style="width: 100%"></div>
+                        <div class="h-full rounded-full bg-blue-200/50 dark:bg-blue-800/30 bg-stripes" style="width: 100%"></div>
                       ` : `
-                        <div class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#3A5AB0] transition-all duration-500 flex items-center justify-end pr-2"
+                        <div class="h-full rounded-full bg-gradient-to-r from-[#4A90D9] to-[#6BB6FF] transition-all duration-500 flex items-center justify-end pr-2"
                              style="width: ${Math.max(sem.percentual, 3)}%">
                           ${sem.percentual > 15 ? `<span class="text-[9px] text-white font-medium">${sem.percentual}%</span>` : ''}
                         </div>
                       `}
                     </div>
-                    <span class="text-xs ${themes[currentTheme].textSecondary} w-10 text-right flex-shrink-0">
+                    <span class="text-xs font-semibold ${sem.isFutura ? 'text-gray-400' : 'text-[#4A90D9]'} w-10 text-right flex-shrink-0">
                       ${sem.isFutura ? '-' : sem.percentual + '%'}
                     </span>
                   </div>
@@ -7577,7 +7577,7 @@ window.renderDashboardDesempenho = async function() {
               <div class="mt-4 pt-4 border-t ${themes[currentTheme].border}">
                 <div class="flex justify-between items-center">
                   <span class="text-sm ${themes[currentTheme].textSecondary}">Média geral:</span>
-                  <span class="text-lg font-bold text-[#2A4A9F]">${progressoSemanal.mediaGeral || 0}%</span>
+                  <span class="text-lg font-bold text-[#4A90D9]">${progressoSemanal.mediaGeral || 0}%</span>
                 </div>
                 <div class="flex justify-between items-center mt-1">
                   <span class="text-xs ${themes[currentTheme].textSecondary}">Semana atual: ${progressoSemanal.semanaAtual || 1} de ${progressoSemanal.totalSemanas || 1}</span>
