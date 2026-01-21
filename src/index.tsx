@@ -3216,14 +3216,25 @@ app.delete('/api/editais/:id', async (c) => {
 
 // ============== ROTAS DE DISCIPLINAS ==============
 
-// Buscar disciplinas do usuário (para modal de simulados)
+// Buscar disciplinas do PLANO ATIVO do usuário (para modal de simulados)
 app.get('/api/usuarios/:user_id/disciplinas', async (c) => {
   const { DB } = c.env
   const user_id = c.req.param('user_id')
   
   try {
+    // Primeiro, buscar o plano ativo do usuário
+    const plano = await DB.prepare(
+      'SELECT id FROM planos_estudo WHERE user_id = ? AND ativo = 1 ORDER BY created_at DESC LIMIT 1'
+    ).bind(user_id).first() as any
+    
+    if (!plano) {
+      console.log(`⚠️ Usuário ${user_id} não tem plano ativo`)
+      return c.json([])
+    }
+    
+    // Buscar disciplinas ÚNICAS dos ciclos do plano ativo
     const { results } = await DB.prepare(`
-      SELECT 
+      SELECT DISTINCT
         d.id,
         d.nome,
         d.area,
@@ -3233,15 +3244,17 @@ app.get('/api/usuarios/:user_id/disciplinas', async (c) => {
           JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id 
           WHERE LOWER(TRIM(ed.nome)) = LOWER(TRIM(d.nome))
         ) as topicos_count
-      FROM user_disciplinas ud
-      JOIN disciplinas d ON ud.disciplina_id = d.id
-      WHERE ud.user_id = ?
+      FROM ciclos_estudo c
+      JOIN disciplinas d ON c.disciplina_id = d.id
+      WHERE c.plano_id = ?
       ORDER BY d.nome
-    `).bind(user_id).all()
+    `).bind(plano.id).all()
+    
+    console.log(`✅ Disciplinas do plano ${plano.id}: ${results?.map((r: any) => r.nome).join(', ')}`)
     
     return c.json(results || [])
   } catch (error) {
-    console.error('Erro ao buscar disciplinas do usuário:', error)
+    console.error('Erro ao buscar disciplinas do plano:', error)
     return c.json([])
   }
 })
