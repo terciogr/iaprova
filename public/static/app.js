@@ -2367,31 +2367,42 @@ async function processarEditalAntesDeStep2() {
       await new Promise(resolve => setTimeout(resolve, 300));
       atualizarFeedbackUI(2, `📋 Passo 3: Localizando seção de CONTEÚDO PROGRAMÁTICO...`);
       await new Promise(resolve => setTimeout(resolve, 500));
-      atualizarFeedbackUI(2, `🤖 Passo 4: Enviando para análise com IA IA...`);
+      atualizarFeedbackUI(2, `🤖 Passo 4: Enviando para análise com IA...`);
       atualizarFeedbackUI(2, `⏳ Isso pode levar 30-60 segundos...`);
       
       try {
-        const processRes = await axios.post(`/api/editais/processar/${edital.id}`);
+        // ✅ MODO REVISÃO: Envia para IA e retorna disciplinas para revisão do usuário
+        const processRes = await axios.post(`/api/editais/processar/${edital.id}?modo=revisao`);
         console.log(`✅ Edital processado:`, processRes.data);
         
-        // Feedback de sucesso detalhado
-        const numDisciplinas = processRes.data.disciplinas?.length || 0;
-        atualizarFeedbackUI(2, `✅ IA IA respondeu com sucesso!`, 'success');
-        atualizarFeedbackUI(3, `📚 ${numDisciplinas} disciplinas identificadas!`, 'success');
-        
-        // Listar disciplinas encontradas
-        if (processRes.data.disciplinas) {
-          processRes.data.disciplinas.forEach((disc, i) => {
-            atualizarFeedbackUI(3, `   ${i+1}. ${disc.nome} (${disc.topicos?.length || 0} tópicos)`, 'success');
-          });
+        // Verificar se é modo revisão
+        if (processRes.data.modo === 'revisao') {
+          atualizarFeedbackUI(2, `✅ IA respondeu com sucesso!`, 'success');
+          atualizarFeedbackUI(3, `📚 ${processRes.data.disciplinas?.length || 0} disciplinas identificadas!`, 'success');
+          
+          // Mostrar modal de revisão de disciplinas
+          await mostrarModalRevisaoDisciplinas(processRes.data, edital.id);
+          
+          // Salvar ID do edital processado após confirmação
+          interviewData.edital_id = edital.id;
+        } else {
+          // Modo direto (fallback)
+          const numDisciplinas = processRes.data.disciplinas?.length || 0;
+          atualizarFeedbackUI(2, `✅ IA respondeu com sucesso!`, 'success');
+          atualizarFeedbackUI(3, `📚 ${numDisciplinas} disciplinas identificadas!`, 'success');
+          
+          if (processRes.data.disciplinas) {
+            processRes.data.disciplinas.forEach((disc, i) => {
+              atualizarFeedbackUI(3, `   ${i+1}. ${disc.nome} (${disc.topicos?.length || 0} tópicos)`, 'success');
+            });
+          }
+          
+          atualizarFeedbackUI(4, `💾 Salvando ${numDisciplinas} disciplinas no banco de dados...`);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          atualizarFeedbackUI(4, `✅ Processamento concluído com sucesso!`, 'success');
+          
+          interviewData.edital_id = edital.id;
         }
-        
-        atualizarFeedbackUI(4, `💾 Salvando ${numDisciplinas} disciplinas no banco de dados...`);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        atualizarFeedbackUI(4, `✅ Processamento concluído com sucesso!`, 'success');
-        
-        // Salvar ID do edital processado
-        interviewData.edital_id = edital.id;
       } catch (procError) {
         console.error(`❌ Erro ao processar edital ${edital.id}:`, procError);
         console.error(`❌ Resposta do servidor:`, procError?.response?.data);
@@ -2718,6 +2729,216 @@ async function processarEditalAntesDeStep2() {
     renderEntrevistaStep2();
   }
 }
+
+// ════════════════════════════════════════════════════════════════════════
+// ✅ MODAL DE REVISÃO DE DISCIPLINAS EXTRAÍDAS DO EDITAL
+// ════════════════════════════════════════════════════════════════════════
+async function mostrarModalRevisaoDisciplinas(data, editalId) {
+  return new Promise((resolve) => {
+    const disciplinas = data.disciplinas || [];
+    const quadroProvas = data.quadro_provas || { encontrado: false };
+    
+    // Criar estado local para edição
+    let disciplinasEditadas = JSON.parse(JSON.stringify(disciplinas));
+    
+    const renderDisciplinaItem = (disc, index) => {
+      const topicosLista = (disc.topicos || []).slice(0, 5).map(t => 
+        typeof t === 'string' ? t : t.nome
+      ).join(', ');
+      const maisTopicos = disc.topicos?.length > 5 ? ` (+${disc.topicos.length - 5} mais)` : '';
+      
+      return `
+        <div class="border ${themes[currentTheme].border} rounded-lg p-4 mb-3 ${themes[currentTheme].bgAlt}" data-index="${index}">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex-1">
+              <input type="text" 
+                     value="${disc.nome}" 
+                     onchange="atualizarNomeDisciplinaRevisao(${index}, this.value)"
+                     class="font-semibold ${themes[currentTheme].text} ${themes[currentTheme].bg} border ${themes[currentTheme].border} rounded px-2 py-1 w-full"
+              />
+            </div>
+            <button onclick="removerDisciplinaRevisao(${index})" 
+                    class="ml-2 text-red-500 hover:text-red-700 p-1">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+          
+          <div class="flex items-center gap-4 mb-2">
+            <div class="flex items-center gap-2">
+              <label class="text-sm ${themes[currentTheme].textSecondary}">Peso:</label>
+              <select onchange="atualizarPesoDisciplinaRevisao(${index}, this.value)"
+                      class="${themes[currentTheme].bg} border ${themes[currentTheme].border} rounded px-2 py-1 text-sm ${themes[currentTheme].text}">
+                ${[1, 2, 3, 4, 5].map(p => 
+                  `<option value="${p}" ${disc.peso == p ? 'selected' : ''}>${p}</option>`
+                ).join('')}
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm ${themes[currentTheme].textSecondary}">
+                <i class="fas fa-list-ul mr-1"></i> ${disc.topicos?.length || 0} tópicos
+              </span>
+            </div>
+          </div>
+          
+          <div class="text-xs ${themes[currentTheme].textSecondary} truncate" title="${(disc.topicos || []).map(t => typeof t === 'string' ? t : t.nome).join(', ')}">
+            <strong>Tópicos:</strong> ${topicosLista}${maisTopicos}
+          </div>
+        </div>
+      `;
+    };
+    
+    const renderModal = () => {
+      const modalContainer = getModalContainer();
+      
+      const modalHtml = `
+        <div id="modalRevisaoDisciplinas" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div class="${themes[currentTheme].card} rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <!-- Header -->
+            <div class="p-4 border-b ${themes[currentTheme].border} bg-gradient-to-r from-[#122D6A] to-[#2A4A9F]">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-edit"></i> Revisar Disciplinas Extraídas
+                  </h2>
+                  <p class="text-blue-100 text-sm mt-1">
+                    Verifique os pesos e ajuste se necessário antes de confirmar
+                  </p>
+                </div>
+                <button onclick="fecharModalRevisao()" class="text-white hover:text-gray-200">
+                  <i class="fas fa-times text-xl"></i>
+                </button>
+              </div>
+              
+              ${quadroProvas?.encontrado ? `
+                <div class="mt-2 p-2 bg-white bg-opacity-20 rounded text-white text-sm">
+                  <i class="fas fa-info-circle mr-1"></i>
+                  Pesos detectados do quadro de provas: 
+                  CG=${quadroProvas.peso_conhecimentos_gerais}, 
+                  CE=${quadroProvas.peso_conhecimentos_especificos}
+                </div>
+              ` : `
+                <div class="mt-2 p-2 bg-orange-500 bg-opacity-80 rounded text-white text-sm">
+                  <i class="fas fa-exclamation-triangle mr-1"></i>
+                  Quadro de provas não encontrado. Verifique os pesos manualmente!
+                </div>
+              `}
+            </div>
+            
+            <!-- Lista de disciplinas -->
+            <div class="p-4 overflow-y-auto flex-1" id="listaDisciplinasRevisao">
+              ${disciplinasEditadas.map((d, i) => renderDisciplinaItem(d, i)).join('')}
+            </div>
+            
+            <!-- Footer com botões -->
+            <div class="p-4 border-t ${themes[currentTheme].border} flex justify-between items-center">
+              <button onclick="adicionarDisciplinaRevisao()" 
+                      class="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                <i class="fas fa-plus"></i> Adicionar Disciplina
+              </button>
+              
+              <div class="flex gap-3">
+                <button onclick="fecharModalRevisao()" 
+                        class="px-4 py-2 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg hover:opacity-80 transition-colors border ${themes[currentTheme].border}">
+                  Cancelar
+                </button>
+                <button onclick="confirmarDisciplinasRevisao()" 
+                        class="px-6 py-2 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all font-semibold flex items-center gap-2">
+                  <i class="fas fa-check"></i> Confirmar e Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      modalContainer.innerHTML = modalHtml;
+    };
+    
+    // Funções de edição
+    window.atualizarNomeDisciplinaRevisao = (index, nome) => {
+      disciplinasEditadas[index].nome = nome;
+    };
+    
+    window.atualizarPesoDisciplinaRevisao = (index, peso) => {
+      disciplinasEditadas[index].peso = parseInt(peso);
+    };
+    
+    window.removerDisciplinaRevisao = (index) => {
+      if (disciplinasEditadas.length <= 1) {
+        showModal('Você precisa ter pelo menos 1 disciplina.', { type: 'warning' });
+        return;
+      }
+      disciplinasEditadas.splice(index, 1);
+      document.getElementById('listaDisciplinasRevisao').innerHTML = 
+        disciplinasEditadas.map((d, i) => renderDisciplinaItem(d, i)).join('');
+    };
+    
+    window.adicionarDisciplinaRevisao = () => {
+      disciplinasEditadas.push({
+        nome: 'Nova Disciplina',
+        peso: 1,
+        topicos: []
+      });
+      document.getElementById('listaDisciplinasRevisao').innerHTML = 
+        disciplinasEditadas.map((d, i) => renderDisciplinaItem(d, i)).join('');
+      
+      // Scroll para o final
+      const lista = document.getElementById('listaDisciplinasRevisao');
+      lista.scrollTop = lista.scrollHeight;
+    };
+    
+    window.fecharModalRevisao = () => {
+      const modal = document.getElementById('modalRevisaoDisciplinas');
+      if (modal) modal.remove();
+      resolve(false);
+    };
+    
+    window.confirmarDisciplinasRevisao = async () => {
+      try {
+        // Mostrar loading
+        const btnConfirmar = document.querySelector('#modalRevisaoDisciplinas button:last-child');
+        if (btnConfirmar) {
+          btnConfirmar.disabled = true;
+          btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Salvando...';
+        }
+        
+        // Enviar disciplinas revisadas para o backend
+        const response = await axios.put(`/api/editais/${editalId}/disciplinas`, {
+          disciplinas: disciplinasEditadas
+        });
+        
+        console.log('✅ Disciplinas salvas:', response.data);
+        
+        // Fechar modal
+        const modal = document.getElementById('modalRevisaoDisciplinas');
+        if (modal) modal.remove();
+        
+        // Atualizar feedback
+        atualizarFeedbackUI(4, `✅ ${disciplinasEditadas.length} disciplinas confirmadas e salvas!`, 'success');
+        
+        showModal('Disciplinas revisadas e salvas com sucesso!', { type: 'success' });
+        
+        resolve(true);
+      } catch (error) {
+        console.error('❌ Erro ao salvar disciplinas:', error);
+        showModal('Erro ao salvar disciplinas. Tente novamente.', { type: 'error' });
+        
+        // Restaurar botão
+        const btnConfirmar = document.querySelector('#modalRevisaoDisciplinas button:last-child');
+        if (btnConfirmar) {
+          btnConfirmar.disabled = false;
+          btnConfirmar.innerHTML = '<i class="fas fa-check"></i> Confirmar e Salvar';
+        }
+      }
+    };
+    
+    // Renderizar modal
+    renderModal();
+  });
+}
+
+// Expor função globalmente
+window.mostrarModalRevisaoDisciplinas = mostrarModalRevisaoDisciplinas;
 
 function renderAreaGeral() {
   const areas = [

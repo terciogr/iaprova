@@ -2410,6 +2410,54 @@ app.post('/api/editais/processar/:id', async (c) => {
     // Chamar Gemini AI para extrair disciplinas e tópicos
     const geminiKey = c.env.GEMINI_API_KEY || 'SUA_CHAVE_GEMINI_AQUI'
     
+    // ════════════════════════════════════════════════════════════════
+    // ✅ ETAPA 4A: PRIMEIRA EXTRAÇÃO - LOCALIZAR QUADRO DE PROVAS/PESOS
+    // ════════════════════════════════════════════════════════════════
+    console.log('📊 ETAPA 4A: Buscando QUADRO DE PROVAS para extrair pesos...')
+    
+    // Tentar encontrar tabela de provas no texto
+    const textoLowerCase = textoLimpo.toLowerCase()
+    let quadroProvas: any = null
+    
+    // Padrões comuns de quadro de provas
+    const posQuadro = Math.max(
+      textoLowerCase.indexOf('quadro de provas'),
+      textoLowerCase.indexOf('composição das provas'),
+      textoLowerCase.indexOf('estrutura da prova'),
+      textoLowerCase.indexOf('distribuição de questões'),
+      textoLowerCase.indexOf('tabela de provas')
+    )
+    
+    if (posQuadro > -1) {
+      // Extrair ~3000 caracteres após o início do quadro
+      const textoQuadro = textoLimpo.substring(posQuadro, posQuadro + 3000)
+      console.log(`  📍 Quadro de provas encontrado na posição ${posQuadro}`)
+      console.log(`  📄 Preview: ${textoQuadro.substring(0, 200)}...`)
+      
+      // Tentar extrair pesos via regex simples antes de usar IA
+      // Padrão: "Conhecimentos Gerais ... peso 1" ou "peso: 1" ou "(peso 1)"
+      const regexPesoGeral = /conhecimentos?\s+gerais[^0-9]*(?:peso|valor)[:\s]*(\d)/i
+      const regexPesoEspecifico = /conhecimentos?\s+espec[íi]ficos[^0-9]*(?:peso|valor)[:\s]*(\d)/i
+      
+      const matchPesoGeral = textoQuadro.match(regexPesoGeral)
+      const matchPesoEspecifico = textoQuadro.match(regexPesoEspecifico)
+      
+      if (matchPesoGeral || matchPesoEspecifico) {
+        quadroProvas = {
+          encontrado: true,
+          peso_conhecimentos_gerais: matchPesoGeral ? parseInt(matchPesoGeral[1]) : 1,
+          peso_conhecimentos_especificos: matchPesoEspecifico ? parseInt(matchPesoEspecifico[1]) : 2,
+          fonte: 'regex'
+        }
+        console.log(`  ✅ Pesos extraídos por regex: CG=${quadroProvas.peso_conhecimentos_gerais}, CE=${quadroProvas.peso_conhecimentos_especificos}`)
+      }
+    }
+    
+    // ════════════════════════════════════════════════════════════════
+    // ✅ ETAPA 4B: EXTRAÇÃO PRINCIPAL - DISCIPLINAS E TÓPICOS
+    // ════════════════════════════════════════════════════════════════
+    console.log('📚 ETAPA 4B: Extraindo disciplinas e tópicos...')
+    
     // ✅ PROMPT OTIMIZADO - Extrai APENAS disciplinas do CARGO ESPECÍFICO
     // Usando até 60k caracteres do conteúdo programático extraído
     const textoParaIA = textoEdital.substring(0, 60000)
@@ -2418,114 +2466,41 @@ app.post('/api/editais/processar/:id', async (c) => {
     
     // ✅ INSTRUÇÃO CRÍTICA: Filtrar pelo cargo do candidato
     const instrucaoCargo = cargoDesejado ? `
-═══════════════════════════════════════════════════════════
-🎯🎯🎯 CARGO DO CANDIDATO: ${cargoDesejado.toUpperCase()} 🎯🎯🎯
-═══════════════════════════════════════════════════════════
+CARGO DO CANDIDATO: ${cargoDesejado.toUpperCase()}
 
-⚠️ ATENÇÃO MÁXIMA:
-1. Extraia APENAS disciplinas do cargo "${cargoDesejado.toUpperCase()}"
-2. IGNORE conteúdos de outros cargos (Serviço Social, Fisioterapia, etc.)
-3. Procure seções como "NÍVEL SUPERIOR - ${cargoDesejado.toUpperCase()}" ou similar
-
-📌 EXEMPLO PARA CARGO ${cargoDesejado.toUpperCase()}:
-Se o edital tiver:
-- Conhecimentos Gerais: Português (10 questões), Raciocínio Lógico (5 questões)
-- Conhecimentos Específicos de ${cargoDesejado}: [lista de itens técnicos]
-- Legislação/SUS (se houver seção separada)
-
-Você deve retornar 3-4 DISCIPLINAS (não 10-15):
-1. Língua Portuguesa (peso 1) - tópicos de gramática
-2. Raciocínio Lógico (peso 1) - tópicos de lógica  
-3. Conhecimentos Específicos de ${cargoDesejado} (peso 3) - TODOS os itens técnicos como tópicos
-4. Legislação SUS (peso 2) - se for seção separada
+INSTRUÇÕES:
+- Extraia APENAS disciplinas do cargo "${cargoDesejado.toUpperCase()}"
+- IGNORE conteúdos de outros cargos
+- Procure seções como "NÍVEL SUPERIOR - ${cargoDesejado.toUpperCase()}"
 
 ` : '';
 
-    const prompt = `Você é um ESPECIALISTA em editais de concursos públicos brasileiros.
+    // ✅ USAR PESOS JÁ EXTRAÍDOS DO QUADRO DE PROVAS
+    const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
+    const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
+    
+    // ✅ PROMPT SIMPLIFICADO E DIRETO
+    const prompt = `TAREFA: Extrair disciplinas e tópicos do edital para o cargo "${cargoDesejado || 'não especificado'}".
 
 ${instrucaoCargo}
-═══════════════════════════════════════════════════════════
-🎯 TAREFA: EXTRAIR DISCIPLINAS DO CARGO "${cargoDesejado || 'Não especificado'}"
-═══════════════════════════════════════════════════════════
 
-⚠️ REGRAS ABSOLUTAS - ENTENDA A DIFERENÇA:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📚 DISCIPLINAS = matérias PRINCIPAIS (geralmente 3-6 por cargo)
-   Exemplos de DISCIPLINAS:
-   - "Língua Portuguesa"
-   - "Raciocínio Lógico" 
-   - "Conhecimentos Específicos de Enfermagem"
-   - "Legislação SUS"
-   - "Conhecimentos Regionais"
+REGRAS CRÍTICAS:
+1. Extraia APENAS 3-6 DISCIPLINAS (matérias principais da prova)
+2. NÃO transforme tópicos em disciplinas separadas
+3. "Conhecimentos Específicos" deve ser UMA disciplina com muitos tópicos
+4. Use os pesos: Conhecimentos Gerais = ${pesoCG}, Conhecimentos Específicos = ${pesoCE}
 
-📝 TÓPICOS = itens DENTRO de cada disciplina (podem ser dezenas)
-   Exemplos de TÓPICOS (da disciplina Conhecimentos Específicos):
-   - "Noções de farmacologia"
-   - "Biossegurança em saúde"
-   - "Educação em saúde"
-   - "Gerenciamento de insumos"
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXEMPLOS DE DISCIPLINAS CORRETAS:
+- "Língua Portuguesa" (peso ${pesoCG})
+- "Raciocínio Lógico" (peso ${pesoCG})
+- "Conhecimentos Específicos de ${cargoDesejado || 'Área'}" (peso ${pesoCE}) - com TODOS os itens técnicos como tópicos
+- "Legislação SUS" (peso ${pesoCE}) - se for seção separada no edital
 
-🚨 ERRO COMUM A EVITAR:
-Se o edital lista "Conhecimentos Específicos: 1. Farmacologia; 2. Biossegurança; 3. Educação em saúde..."
-→ NÃO crie 3 disciplinas separadas!
-→ Crie UMA disciplina "Conhecimentos Específicos de ${cargoDesejado || 'Área'}" com esses itens como TÓPICOS
-
-📋 ESTRUTURA TÍPICA DE EDITAIS:
-1. CONHECIMENTOS GERAIS (peso 1):
-   - Língua Portuguesa → disciplina com tópicos de gramática, interpretação etc
-   - Raciocínio Lógico → disciplina com tópicos de proposições, diagramas etc
-   - Informática → disciplina (se houver)
-   - Conhecimentos Regionais → disciplina (se houver)
-
-2. CONHECIMENTOS ESPECÍFICOS (peso 2 ou 3):
-   - UMA disciplina principal do cargo (ex: "Conhecimentos de Enfermagem")
-   - Todos os itens técnicos vão como TÓPICOS dessa disciplina
-   - Pode haver "Legislação" ou "SUS" como disciplina separada SE estiver em seção distinta
-
-📊 REGRAS DE PESO:
-- Conhecimentos Gerais: peso 1
-- Conhecimentos Específicos: peso 2 ou 3 (maior se houver mais questões)
-- Procure "QUADRO DE PROVAS" para pesos exatos
-
-═══════════════════════════════════════════════════════════
-📄 TEXTO DO EDITAL:
-═══════════════════════════════════════════════════════════
+TEXTO DO EDITAL:
 ${textoParaIA}
-═══════════════════════════════════════════════════════════
 
-📤 RETORNE JSON VÁLIDO (sem markdown):
-{
-  "cargo_identificado": "${cargoDesejado || 'Geral'}",
-  "total_disciplinas_encontradas": 4,
-  "info_peso": {
-    "encontrou_tabela_peso": false,
-    "peso_conhecimentos_gerais": 1,
-    "peso_conhecimentos_especificos": 2
-  },
-  "disciplinas": [
-    {
-      "nome": "Língua Portuguesa",
-      "categoria": "Conhecimentos Gerais",
-      "peso": 1,
-      "questoes": 10,
-      "topicos": ["Interpretação de texto", "Concordância", "Regência", "Pontuação", "etc"]
-    },
-    {
-      "nome": "Conhecimentos Específicos de ${cargoDesejado || 'Área'}",
-      "categoria": "Conhecimentos Específicos",
-      "peso": 3,
-      "questoes": 30,
-      "topicos": ["Todos os itens técnicos listados no edital para este cargo"]
-    }
-  ]
-}
-
-⚠️ VALIDAÇÃO FINAL:
-✅ Total de disciplinas deve ser entre 3 e 6 (típico de concursos)
-✅ Cada disciplina deve ter vários tópicos (não apenas 1)
-✅ NÃO transforme tópicos em disciplinas separadas
-✅ Conhecimentos Específicos = UMA disciplina com MUITOS tópicos`
+RETORNE APENAS JSON (sem markdown, sem explicações):
+{"disciplinas":[{"nome":"Nome da Disciplina","peso":${pesoCG},"topicos":["Tópico 1","Tópico 2"]}]}`
 
     // ════════════════════════════════════════════════════════════════════════
     // ✅ SISTEMA ULTRA-ROBUSTO DE CHAMADA À API GEMINI COM MÚLTIPLOS FALLBACKS
@@ -3273,7 +3248,47 @@ ${textoParaIA}
       throw new Error('Resposta da IA não contém array de disciplinas')
     }
 
-    // Inserir disciplinas e tópicos no banco
+    // ════════════════════════════════════════════════════════════════════════
+    // ✅ NOVA FUNCIONALIDADE: MODO REVISÃO - Retorna disciplinas para o usuário revisar
+    // ════════════════════════════════════════════════════════════════════════
+    
+    // Verificar se o usuário quer modo revisão (query param ?modo=revisao)
+    const modoRevisao = c.req.query('modo') === 'revisao'
+    
+    if (modoRevisao) {
+      console.log('📝 MODO REVISÃO: Retornando disciplinas para revisão do usuário...')
+      
+      // Marcar edital como 'aguardando_revisao' em vez de 'processado'
+      await DB.prepare(`
+        UPDATE editais SET status = 'aguardando_revisao' WHERE id = ?
+      `).bind(editalId).run()
+      
+      // Retornar disciplinas completas para revisão (com todos os tópicos)
+      return c.json({ 
+        success: true,
+        modo: 'revisao',
+        edital_id: editalId,
+        message: 'Disciplinas extraídas! Revise os pesos e tópicos antes de confirmar.',
+        quadro_provas: quadroProvas || { encontrado: false },
+        disciplinas: resultado.disciplinas.map((d, idx) => ({
+          id: idx + 1,
+          nome: d.nome,
+          categoria: d.categoria || 'Geral',
+          peso: d.peso || 1,
+          questoes: d.questoes || null,
+          topicos: d.topicos || []
+        })),
+        estatisticas: {
+          total_disciplinas: resultado.disciplinas.length,
+          disciplinas_com_peso: resultado.disciplinas.filter(d => d.peso).length,
+          total_topicos: resultado.disciplinas.reduce((acc, d) => acc + (d.topicos ? d.topicos.length : 0), 0)
+        }
+      })
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // MODO NORMAL: Salvar diretamente (comportamento anterior)
+    // ════════════════════════════════════════════════════════════════════════
     console.log(`💾 Salvando ${resultado.disciplinas.length} disciplinas no banco...`)
     
     for (let i = 0; i < resultado.disciplinas.length; i++) {
@@ -3349,6 +3364,7 @@ ${textoParaIA}
     // Retornar detalhes completos do processamento
     return c.json({ 
       success: true, 
+      modo: 'direto',
       disciplinas_extraidas: resultado.disciplinas.length,
       message: 'Edital processado com sucesso!',
       disciplinas: resultado.disciplinas.map(d => ({
@@ -3394,6 +3410,97 @@ ${textoParaIA}
       errorType: errorType,
       details: errorMessage
     }, 500)
+  }
+})
+
+// ════════════════════════════════════════════════════════════════════════
+// ✅ NOVO ENDPOINT: Atualizar disciplinas do edital (revisão pelo usuário)
+// ════════════════════════════════════════════════════════════════════════
+app.put('/api/editais/:id/disciplinas', async (c) => {
+  const { DB } = c.env
+  const editalId = c.req.param('id')
+  
+  try {
+    const { disciplinas } = await c.req.json()
+    
+    if (!disciplinas || !Array.isArray(disciplinas)) {
+      return c.json({ error: 'Disciplinas inválidas' }, 400)
+    }
+    
+    console.log(`📝 Atualizando ${disciplinas.length} disciplinas do edital ${editalId}`)
+    
+    // Buscar edital para obter user_id
+    const edital = await DB.prepare(`SELECT user_id FROM editais WHERE id = ?`).bind(editalId).first() as any
+    if (!edital) {
+      return c.json({ error: 'Edital não encontrado' }, 404)
+    }
+    
+    // Deletar disciplinas antigas
+    await DB.prepare(`DELETE FROM edital_topicos WHERE edital_disciplina_id IN (SELECT id FROM edital_disciplinas WHERE edital_id = ?)`).bind(editalId).run()
+    await DB.prepare(`DELETE FROM edital_disciplinas WHERE edital_id = ?`).bind(editalId).run()
+    
+    // Inserir disciplinas atualizadas
+    for (let i = 0; i < disciplinas.length; i++) {
+      const disc = disciplinas[i]
+      
+      // Verificar/criar disciplina na tabela principal
+      let disciplina_id_real = null
+      const discExistente = await DB.prepare(`
+        SELECT id FROM disciplinas WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?))
+      `).bind(disc.nome).first() as any
+      
+      if (discExistente) {
+        disciplina_id_real = discExistente.id
+      } else {
+        const novaDiscResult = await DB.prepare(`
+          INSERT INTO disciplinas (nome, area, descricao)
+          VALUES (?, ?, ?)
+        `).bind(disc.nome, 'edital', 'Disciplina do edital').run()
+        disciplina_id_real = novaDiscResult.meta.last_row_id
+      }
+      
+      // Inserir em edital_disciplinas
+      const discResult = await DB.prepare(`
+        INSERT INTO edital_disciplinas (edital_id, nome, ordem, disciplina_id, peso)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(editalId, disc.nome, i + 1, disciplina_id_real, disc.peso || 1).run()
+      
+      const edital_disciplina_id = discResult.meta.last_row_id
+      
+      // Inserir tópicos
+      if (disc.topicos && disc.topicos.length > 0) {
+        // Limpar tópicos antigos do usuário para esta disciplina
+        await DB.prepare(`DELETE FROM topicos_edital WHERE disciplina_id = ? AND user_id = ?`).bind(disciplina_id_real, edital.user_id).run()
+        
+        for (let j = 0; j < disc.topicos.length; j++) {
+          const topicoNome = typeof disc.topicos[j] === 'string' ? disc.topicos[j] : disc.topicos[j].nome
+          
+          await DB.prepare(`
+            INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem)
+            VALUES (?, ?, ?)
+          `).bind(edital_disciplina_id, topicoNome, j + 1).run()
+          
+          await DB.prepare(`
+            INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).bind(disciplina_id_real, topicoNome, 'Conteúdo Programático', j + 1, disc.peso || 1, edital.user_id).run()
+        }
+      }
+      
+      console.log(`  ✅ ${disc.nome}: peso ${disc.peso}, ${disc.topicos?.length || 0} tópicos`)
+    }
+    
+    // Atualizar status do edital
+    await DB.prepare(`UPDATE editais SET status = 'processado' WHERE id = ?`).bind(editalId).run()
+    
+    return c.json({ 
+      success: true, 
+      message: 'Disciplinas atualizadas com sucesso!',
+      total_disciplinas: disciplinas.length
+    })
+  } catch (error) {
+    console.error('Erro ao atualizar disciplinas:', error)
+    return c.json({ error: 'Erro ao atualizar disciplinas' }, 500)
   }
 })
 
