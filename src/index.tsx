@@ -1147,6 +1147,283 @@ app.post('/api/login', async (c) => {
   }
 })
 
+// ============== GOOGLE OAUTH ==============
+
+// Endpoint para iniciar autenticação Google (retorna URL de autorização)
+app.get('/api/auth/google', async (c) => {
+  const GOOGLE_CLIENT_ID = c.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID
+  const APP_URL = c.env.APP_URL || 'https://iaprova.pages.dev'
+  
+  if (!GOOGLE_CLIENT_ID) {
+    return c.json({ error: 'Google OAuth não configurado' }, 500)
+  }
+  
+  const redirectUri = `${APP_URL}/api/auth/google/callback`
+  const scope = encodeURIComponent('openid email profile https://www.googleapis.com/auth/drive.file')
+  
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${GOOGLE_CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&response_type=code` +
+    `&scope=${scope}` +
+    `&access_type=offline` +
+    `&prompt=consent`
+  
+  return c.json({ authUrl })
+})
+
+// Callback do Google OAuth
+app.get('/api/auth/google/callback', async (c) => {
+  const { DB } = c.env
+  const code = c.req.query('code')
+  const error = c.req.query('error')
+  
+  const GOOGLE_CLIENT_ID = c.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID
+  const GOOGLE_CLIENT_SECRET = c.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET
+  const APP_URL = c.env.APP_URL || 'https://iaprova.pages.dev'
+  
+  if (error) {
+    return c.redirect(`${APP_URL}?error=google_auth_denied`)
+  }
+  
+  if (!code) {
+    return c.redirect(`${APP_URL}?error=no_code`)
+  }
+  
+  try {
+    // Trocar código por tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID!,
+        client_secret: GOOGLE_CLIENT_SECRET!,
+        redirect_uri: `${APP_URL}/api/auth/google/callback`,
+        grant_type: 'authorization_code'
+      })
+    })
+    
+    const tokens = await tokenResponse.json() as any
+    
+    if (tokens.error) {
+      console.error('Erro ao obter tokens:', tokens)
+      return c.redirect(`${APP_URL}?error=token_exchange_failed`)
+    }
+    
+    // Buscar informações do usuário
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { 'Authorization': `Bearer ${tokens.access_token}` }
+    })
+    
+    const googleUser = await userInfoResponse.json() as any
+    console.log('👤 Usuário Google:', { id: googleUser.id, email: googleUser.email, name: googleUser.name })
+    
+    // Verificar se usuário já existe (por google_id ou email)
+    let user = await DB.prepare(
+      'SELECT * FROM users WHERE google_id = ? OR email = ?'
+    ).bind(googleUser.id, googleUser.email).first() as any
+    
+    const tokenExpires = new Date(Date.now() + (tokens.expires_in * 1000)).toISOString()
+    
+    if (user) {
+      // Atualizar tokens e informações
+      await DB.prepare(`
+        UPDATE users SET 
+          google_id = ?,
+          google_email = ?,
+          google_picture = ?,
+          google_access_token = ?,
+          google_refresh_token = COALESCE(?, google_refresh_token),
+          google_token_expires = ?,
+          auth_provider = CASE WHEN auth_provider = 'email' THEN 'both' ELSE 'google' END,
+          email_verified = 1,
+          name = COALESCE(name, ?)
+        WHERE id = ?
+      `).bind(
+        googleUser.id,
+        googleUser.email,
+        googleUser.picture || null,
+        tokens.access_token,
+        tokens.refresh_token || null,
+        tokenExpires,
+        googleUser.name,
+        user.id
+      ).run()
+      
+      console.log(`✅ Usuário ${user.id} atualizado com Google OAuth`)
+    } else {
+      // Criar novo usuário
+      const result = await DB.prepare(`
+        INSERT INTO users (
+          name, email, google_id, google_email, google_picture,
+          google_access_token, google_refresh_token, google_token_expires,
+          auth_provider, email_verified, password
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'google', 1, '')
+      `).bind(
+        googleUser.name || 'Usuário Google',
+        googleUser.email,
+        googleUser.id,
+        googleUser.email,
+        googleUser.picture || null,
+        tokens.access_token,
+        tokens.refresh_token || null,
+        tokenExpires
+      ).run()
+      
+      user = { 
+        id: result.meta.last_row_id, 
+        name: googleUser.name, 
+        email: googleUser.email 
+      }
+      console.log(`✅ Novo usuário ${user.id} criado via Google OAuth`)
+    }
+    
+    // Redirecionar com dados do usuário
+    const userData = encodeURIComponent(JSON.stringify({
+      id: user.id,
+      name: user.name || googleUser.name,
+      email: user.email || googleUser.email,
+      picture: googleUser.picture,
+      authProvider: 'google'
+    }))
+    
+    return c.redirect(`${APP_URL}?googleAuth=success&user=${userData}`)
+    
+  } catch (error) {
+    console.error('Erro no callback Google:', error)
+    return c.redirect(`${APP_URL}?error=google_auth_failed`)
+  }
+})
+
+// Endpoint para atualizar tokens do Google (refresh)
+app.post('/api/auth/google/refresh', async (c) => {
+  const { DB } = c.env
+  const { user_id } = await c.req.json()
+  
+  const GOOGLE_CLIENT_ID = c.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID
+  const GOOGLE_CLIENT_SECRET = c.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET
+  
+  try {
+    const user = await DB.prepare(
+      'SELECT google_refresh_token FROM users WHERE id = ?'
+    ).bind(user_id).first() as any
+    
+    if (!user?.google_refresh_token) {
+      return c.json({ error: 'Usuário não conectado ao Google' }, 400)
+    }
+    
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID!,
+        client_secret: GOOGLE_CLIENT_SECRET!,
+        refresh_token: user.google_refresh_token,
+        grant_type: 'refresh_token'
+      })
+    })
+    
+    const tokens = await tokenResponse.json() as any
+    
+    if (tokens.error) {
+      return c.json({ error: 'Falha ao renovar token' }, 400)
+    }
+    
+    const tokenExpires = new Date(Date.now() + (tokens.expires_in * 1000)).toISOString()
+    
+    await DB.prepare(`
+      UPDATE users SET 
+        google_access_token = ?,
+        google_token_expires = ?
+      WHERE id = ?
+    `).bind(tokens.access_token, tokenExpires, user_id).run()
+    
+    return c.json({ 
+      success: true, 
+      access_token: tokens.access_token,
+      expires_at: tokenExpires
+    })
+  } catch (error) {
+    console.error('Erro ao renovar token:', error)
+    return c.json({ error: 'Erro ao renovar token' }, 500)
+  }
+})
+
+// Verificar status da conexão Google
+app.get('/api/auth/google/status/:user_id', async (c) => {
+  const { DB } = c.env
+  const user_id = c.req.param('user_id')
+  
+  try {
+    const user = await DB.prepare(`
+      SELECT google_id, google_email, google_picture, auth_provider, 
+             google_token_expires, last_sync_at
+      FROM users WHERE id = ?
+    `).bind(user_id).first() as any
+    
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404)
+    }
+    
+    const isConnected = !!user.google_id
+    const tokenExpired = user.google_token_expires ? new Date(user.google_token_expires) < new Date() : true
+    
+    return c.json({
+      connected: isConnected,
+      email: user.google_email,
+      picture: user.google_picture,
+      authProvider: user.auth_provider,
+      tokenValid: isConnected && !tokenExpired,
+      lastSync: user.last_sync_at
+    })
+  } catch (error) {
+    console.error('Erro ao verificar status Google:', error)
+    return c.json({ error: 'Erro ao verificar status' }, 500)
+  }
+})
+
+// Desconectar Google
+app.post('/api/auth/google/disconnect', async (c) => {
+  const { DB } = c.env
+  const { user_id } = await c.req.json()
+  
+  try {
+    const user = await DB.prepare(
+      'SELECT auth_provider, password FROM users WHERE id = ?'
+    ).bind(user_id).first() as any
+    
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404)
+    }
+    
+    // Se o usuário só tem Google (sem senha), não pode desconectar
+    if (user.auth_provider === 'google' && (!user.password || user.password === '')) {
+      return c.json({ 
+        error: 'Você precisa definir uma senha antes de desconectar o Google',
+        needsPassword: true
+      }, 400)
+    }
+    
+    await DB.prepare(`
+      UPDATE users SET 
+        google_id = NULL,
+        google_email = NULL,
+        google_picture = NULL,
+        google_access_token = NULL,
+        google_refresh_token = NULL,
+        google_token_expires = NULL,
+        auth_provider = 'email'
+      WHERE id = ?
+    `).bind(user_id).run()
+    
+    return c.json({ success: true, message: 'Google desconectado com sucesso' })
+  } catch (error) {
+    console.error('Erro ao desconectar Google:', error)
+    return c.json({ error: 'Erro ao desconectar' }, 500)
+  }
+})
+
 // Verificar email com token
 app.get('/api/verify-email/:token', async (c) => {
   const { DB } = c.env
@@ -8684,6 +8961,351 @@ app.get('/api/conteudos/meta/:metaId', async (c) => {
     })
   } catch (error: any) {
     console.error('Erro ao buscar conteúdos da meta:', error)
+    return c.json({ error: error.message }, 500)
+  }
+})
+
+// ============== GOOGLE DRIVE SYNC ==============
+
+// Exportar dados do usuário para backup
+app.get('/api/backup/export/:user_id', async (c) => {
+  const { DB } = c.env
+  const user_id = c.req.param('user_id')
+  
+  try {
+    console.log(`📦 Exportando dados do usuário ${user_id}...`)
+    
+    // Buscar todos os dados do usuário
+    const user = await DB.prepare('SELECT id, name, email, created_at FROM users WHERE id = ?').bind(user_id).first()
+    
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404)
+    }
+    
+    // Buscar entrevistas
+    const { results: interviews } = await DB.prepare('SELECT * FROM interviews WHERE user_id = ?').bind(user_id).all()
+    
+    // Buscar planos
+    const { results: planos } = await DB.prepare('SELECT * FROM planos_estudo WHERE user_id = ?').bind(user_id).all()
+    
+    // Buscar ciclos de estudo
+    const planoIds = planos.map((p: any) => p.id).join(',') || '0'
+    const { results: ciclos } = await DB.prepare(`SELECT * FROM ciclos_estudo WHERE plano_id IN (${planoIds})`).all()
+    
+    // Buscar disciplinas do usuário
+    const { results: userDisciplinas } = await DB.prepare('SELECT * FROM user_disciplinas WHERE user_id = ?').bind(user_id).all()
+    
+    // Buscar histórico de estudos
+    const { results: historico } = await DB.prepare('SELECT * FROM historico_estudos WHERE user_id = ?').bind(user_id).all()
+    
+    // Buscar metas
+    const { results: metasDiarias } = await DB.prepare('SELECT * FROM metas_diarias WHERE user_id = ?').bind(user_id).all()
+    const { results: metasSemana } = await DB.prepare('SELECT * FROM metas_semana WHERE user_id = ?').bind(user_id).all()
+    const { results: semanas } = await DB.prepare('SELECT * FROM semanas_estudo WHERE user_id = ?').bind(user_id).all()
+    
+    // Buscar simulados
+    const { results: simulados } = await DB.prepare('SELECT * FROM simulados WHERE user_id = ?').bind(user_id).all()
+    
+    // Buscar progresso em tópicos
+    const { results: progressoTopicos } = await DB.prepare('SELECT * FROM user_topicos_progresso WHERE user_id = ?').bind(user_id).all()
+    
+    // Buscar conteúdos gerados
+    const { results: conteudos } = await DB.prepare('SELECT * FROM conteudo_estudo WHERE user_id = ?').bind(user_id).all()
+    
+    // Buscar exercícios
+    const { results: exercicios } = await DB.prepare('SELECT * FROM exercicios_resultados WHERE user_id = ?').bind(user_id).all()
+    
+    // Buscar materiais salvos
+    const { results: materiais } = await DB.prepare('SELECT * FROM materiais_salvos WHERE user_id = ?').bind(user_id).all()
+    
+    const backup = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        created_at: user.created_at
+      },
+      data: {
+        interviews,
+        planos,
+        ciclos,
+        userDisciplinas,
+        historico,
+        metasDiarias,
+        metasSemana,
+        semanas,
+        simulados,
+        progressoTopicos,
+        conteudos,
+        exercicios,
+        materiais
+      },
+      stats: {
+        totalPlanos: planos.length,
+        totalDisciplinas: userDisciplinas.length,
+        totalMetas: metasDiarias.length + metasSemana.length,
+        totalSimulados: simulados.length,
+        diasEstudados: historico.length
+      }
+    }
+    
+    console.log(`✅ Backup exportado: ${JSON.stringify(backup.stats)}`)
+    
+    return c.json(backup)
+  } catch (error: any) {
+    console.error('Erro ao exportar backup:', error)
+    return c.json({ error: error.message }, 500)
+  }
+})
+
+// Importar dados de backup
+app.post('/api/backup/import/:user_id', async (c) => {
+  const { DB } = c.env
+  const user_id = c.req.param('user_id')
+  const { backup, mode = 'merge' } = await c.req.json() // mode: 'merge' ou 'replace'
+  
+  try {
+    console.log(`📥 Importando backup para usuário ${user_id}, modo: ${mode}`)
+    
+    if (!backup || !backup.data) {
+      return c.json({ error: 'Backup inválido' }, 400)
+    }
+    
+    // Verificar versão do backup
+    if (backup.version !== '1.0') {
+      return c.json({ error: 'Versão de backup não suportada' }, 400)
+    }
+    
+    const stats = { inserted: 0, updated: 0, skipped: 0 }
+    
+    // Se modo 'replace', limpar dados existentes
+    if (mode === 'replace') {
+      console.log('🗑️ Modo replace: limpando dados existentes...')
+      await DB.prepare('DELETE FROM materiais_salvos WHERE user_id = ?').bind(user_id).run()
+      await DB.prepare('DELETE FROM exercicios_resultados WHERE user_id = ?').bind(user_id).run()
+      await DB.prepare('DELETE FROM conteudo_estudo WHERE user_id = ?').bind(user_id).run()
+      await DB.prepare('DELETE FROM user_topicos_progresso WHERE user_id = ?').bind(user_id).run()
+      await DB.prepare('DELETE FROM simulados WHERE user_id = ?').bind(user_id).run()
+      await DB.prepare('DELETE FROM metas_semana WHERE user_id = ?').bind(user_id).run()
+      await DB.prepare('DELETE FROM metas_diarias WHERE user_id = ?').bind(user_id).run()
+      await DB.prepare('DELETE FROM semanas_estudo WHERE user_id = ?').bind(user_id).run()
+      await DB.prepare('DELETE FROM historico_estudos WHERE user_id = ?').bind(user_id).run()
+      // Não deletar ciclos, planos, disciplinas e entrevistas para preservar estrutura
+    }
+    
+    // Importar histórico de estudos
+    if (backup.data.historico?.length > 0) {
+      for (const h of backup.data.historico) {
+        try {
+          await DB.prepare(`
+            INSERT OR REPLACE INTO historico_estudos 
+            (user_id, data, metas_total, metas_concluidas, tempo_total_minutos, tempo_estudado_minutos, percentual_conclusao, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(user_id, h.data, h.metas_total, h.metas_concluidas, h.tempo_total_minutos, h.tempo_estudado_minutos, h.percentual_conclusao, h.status).run()
+          stats.inserted++
+        } catch (e) {
+          stats.skipped++
+        }
+      }
+    }
+    
+    // Importar progresso em tópicos
+    if (backup.data.progressoTopicos?.length > 0) {
+      for (const p of backup.data.progressoTopicos) {
+        try {
+          await DB.prepare(`
+            INSERT OR REPLACE INTO user_topicos_progresso 
+            (user_id, topico_id, nivel_dominio, vezes_estudado, ultima_revisao)
+            VALUES (?, ?, ?, ?, ?)
+          `).bind(user_id, p.topico_id, p.nivel_dominio, p.vezes_estudado, p.ultima_revisao).run()
+          stats.inserted++
+        } catch (e) {
+          stats.skipped++
+        }
+      }
+    }
+    
+    // Importar resultados de exercícios
+    if (backup.data.exercicios?.length > 0) {
+      for (const ex of backup.data.exercicios) {
+        try {
+          await DB.prepare(`
+            INSERT INTO exercicios_resultados 
+            (user_id, disciplina_id, topico_id, total_questoes, acertos, percentual, tempo_segundos, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(user_id, ex.disciplina_id, ex.topico_id, ex.total_questoes, ex.acertos, ex.percentual, ex.tempo_segundos, ex.created_at).run()
+          stats.inserted++
+        } catch (e) {
+          stats.skipped++
+        }
+      }
+    }
+    
+    // Atualizar data do último sync
+    await DB.prepare('UPDATE users SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?').bind(user_id).run()
+    
+    console.log(`✅ Backup importado: ${JSON.stringify(stats)}`)
+    
+    return c.json({ 
+      success: true, 
+      message: 'Backup importado com sucesso',
+      stats 
+    })
+  } catch (error: any) {
+    console.error('Erro ao importar backup:', error)
+    return c.json({ error: error.message }, 500)
+  }
+})
+
+// Salvar backup no Google Drive
+app.post('/api/backup/google-drive/save', async (c) => {
+  const { DB } = c.env
+  const { user_id } = await c.req.json()
+  
+  try {
+    // Buscar token do usuário
+    const user = await DB.prepare(`
+      SELECT google_access_token, google_token_expires 
+      FROM users WHERE id = ?
+    `).bind(user_id).first() as any
+    
+    if (!user?.google_access_token) {
+      return c.json({ error: 'Conecte sua conta Google primeiro' }, 400)
+    }
+    
+    // Verificar se token expirou
+    if (new Date(user.google_token_expires) < new Date()) {
+      return c.json({ error: 'Token expirado, reconecte sua conta Google', needsReauth: true }, 401)
+    }
+    
+    // Exportar dados
+    const exportResponse = await fetch(`${c.req.url.split('/api')[0]}/api/backup/export/${user_id}`)
+    const backup = await exportResponse.json()
+    
+    // Criar arquivo no Google Drive
+    const metadata = {
+      name: `iaprova_backup_${new Date().toISOString().split('T')[0]}.json`,
+      mimeType: 'application/json',
+      parents: ['appDataFolder'] // Pasta oculta específica do app
+    }
+    
+    // Primeiro, verificar se já existe um backup anterior
+    const searchResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name contains 'iaprova_backup'`,
+      { headers: { 'Authorization': `Bearer ${user.google_access_token}` } }
+    )
+    const searchResult = await searchResponse.json() as any
+    
+    let fileId = null
+    if (searchResult.files?.length > 0) {
+      // Atualizar arquivo existente
+      fileId = searchResult.files[0].id
+    }
+    
+    // Upload do arquivo
+    const boundary = '-------314159265358979323846'
+    const delimiter = `\r\n--${boundary}\r\n`
+    const closeDelimiter = `\r\n--${boundary}--`
+    
+    const multipartBody = 
+      delimiter +
+      'Content-Type: application/json\r\n\r\n' +
+      JSON.stringify(metadata) +
+      delimiter +
+      'Content-Type: application/json\r\n\r\n' +
+      JSON.stringify(backup) +
+      closeDelimiter
+    
+    const uploadUrl = fileId 
+      ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
+      : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'
+    
+    const uploadResponse = await fetch(uploadUrl, {
+      method: fileId ? 'PATCH' : 'POST',
+      headers: {
+        'Authorization': `Bearer ${user.google_access_token}`,
+        'Content-Type': `multipart/related; boundary=${boundary}`
+      },
+      body: multipartBody
+    })
+    
+    const uploadResult = await uploadResponse.json() as any
+    
+    if (uploadResult.error) {
+      console.error('Erro no upload:', uploadResult.error)
+      return c.json({ error: 'Falha ao salvar no Google Drive' }, 500)
+    }
+    
+    // Atualizar data do último sync
+    await DB.prepare('UPDATE users SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?').bind(user_id).run()
+    
+    console.log(`✅ Backup salvo no Google Drive: ${uploadResult.id}`)
+    
+    return c.json({ 
+      success: true, 
+      message: 'Backup salvo no Google Drive',
+      fileId: uploadResult.id,
+      fileName: metadata.name
+    })
+  } catch (error: any) {
+    console.error('Erro ao salvar no Google Drive:', error)
+    return c.json({ error: error.message }, 500)
+  }
+})
+
+// Carregar backup do Google Drive
+app.post('/api/backup/google-drive/load', async (c) => {
+  const { DB } = c.env
+  const { user_id } = await c.req.json()
+  
+  try {
+    const user = await DB.prepare(`
+      SELECT google_access_token, google_token_expires 
+      FROM users WHERE id = ?
+    `).bind(user_id).first() as any
+    
+    if (!user?.google_access_token) {
+      return c.json({ error: 'Conecte sua conta Google primeiro' }, 400)
+    }
+    
+    if (new Date(user.google_token_expires) < new Date()) {
+      return c.json({ error: 'Token expirado', needsReauth: true }, 401)
+    }
+    
+    // Buscar arquivo de backup
+    const searchResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name contains 'iaprova_backup'&orderBy=modifiedTime desc`,
+      { headers: { 'Authorization': `Bearer ${user.google_access_token}` } }
+    )
+    const searchResult = await searchResponse.json() as any
+    
+    if (!searchResult.files?.length) {
+      return c.json({ error: 'Nenhum backup encontrado no Google Drive' }, 404)
+    }
+    
+    const fileId = searchResult.files[0].id
+    
+    // Download do arquivo
+    const downloadResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers: { 'Authorization': `Bearer ${user.google_access_token}` } }
+    )
+    
+    const backup = await downloadResponse.json()
+    
+    return c.json({ 
+      success: true, 
+      backup,
+      fileInfo: {
+        id: fileId,
+        name: searchResult.files[0].name,
+        modifiedTime: searchResult.files[0].modifiedTime
+      }
+    })
+  } catch (error: any) {
+    console.error('Erro ao carregar do Google Drive:', error)
     return c.json({ error: error.message }, 500)
   }
 })

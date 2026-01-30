@@ -840,6 +840,19 @@ function createUnifiedFAB() {
         </button>
       </div>
       
+      <!-- Botão Administração -->
+      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
+        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
+          Administração
+        </span>
+        <button 
+          onclick="abrirAdministracao(); toggleFabMenu(); event.stopPropagation();"
+          class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          title="Administração">
+          <i class="fas fa-cog text-lg"></i>
+        </button>
+      </div>
+      
       <!-- Botão Configurações IA -->
       <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
         <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
@@ -1097,6 +1110,57 @@ function addEmergencyBackButton() {
 }
 
 function checkUser() {
+  // Verificar se há callback do Google OAuth na URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const googleAuth = urlParams.get('googleAuth');
+  const userData = urlParams.get('user');
+  const error = urlParams.get('error');
+  
+  // Limpar parâmetros da URL
+  if (googleAuth || error) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  
+  // Tratar erro do Google
+  if (error) {
+    console.error('❌ Erro no login Google:', error);
+    showToast('Erro ao fazer login com Google. Tente novamente.', 'error');
+    renderLogin();
+    return;
+  }
+  
+  // Tratar sucesso do Google OAuth
+  if (googleAuth === 'success' && userData) {
+    try {
+      const user = JSON.parse(decodeURIComponent(userData));
+      console.log('✅ Login Google bem sucedido:', user);
+      
+      currentUser = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+        authProvider: 'google'
+      };
+      
+      // Salvar dados da sessão
+      localStorage.setItem('userId', user.id);
+      localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('userName', user.name || '');
+      localStorage.setItem('userPicture', user.picture || '');
+      localStorage.setItem('authProvider', 'google');
+      
+      showToast('Login com Google realizado com sucesso!', 'success');
+      
+      // Contabilizar acesso e verificar entrevista
+      contabilizarAcesso();
+      verificarEntrevista();
+      return;
+    } catch (e) {
+      console.error('Erro ao processar dados do Google:', e);
+    }
+  }
+  
   const userId = localStorage.getItem('userId');
   const userEmail = localStorage.getItem('userEmail');
   
@@ -1111,7 +1175,9 @@ function checkUser() {
     id: parseInt(userId), 
     email: userEmail,
     name: localStorage.getItem('userName') || '',
-    created_at: localStorage.getItem('userCreatedAt') || null
+    created_at: localStorage.getItem('userCreatedAt') || null,
+    picture: localStorage.getItem('userPicture') || null,
+    authProvider: localStorage.getItem('authProvider') || 'email'
   };
   verificarEntrevista();
   
@@ -1121,6 +1187,23 @@ function checkUser() {
   // Adicionar botão de ajuda no header (?) à direita
   setTimeout(addHelpToHeader, 500);
 }
+
+// Login com Google
+async function loginComGoogle() {
+  try {
+    showToast('Redirecionando para o Google...', 'info');
+    const response = await axios.get('/api/auth/google');
+    if (response.data.authUrl) {
+      window.location.href = response.data.authUrl;
+    } else {
+      showToast('Google OAuth não está configurado', 'error');
+    }
+  } catch (error) {
+    console.error('Erro ao iniciar login Google:', error);
+    showToast('Erro ao conectar com Google. Tente novamente.', 'error');
+  }
+}
+window.loginComGoogle = loginComGoogle;
 
 // ============== TELA DE VERIFICAÇÃO DE EMAIL ==============
 function renderEmailVerification(email, message, showResend = false) {
@@ -1616,7 +1699,26 @@ function renderLogin() {
             </div>
           ` : ''}
           
-          <div class="mt-6 text-center text-sm text-gray-600">
+          <!-- Divisor -->
+          <div class="mt-6 flex items-center gap-4">
+            <div class="flex-1 h-px bg-gray-300"></div>
+            <span class="text-sm text-gray-500">ou</span>
+            <div class="flex-1 h-px bg-gray-300"></div>
+          </div>
+          
+          <!-- Botão Google -->
+          <button type="button" onclick="loginComGoogle()" 
+            class="mt-4 w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all font-medium text-gray-700">
+            <svg class="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Continuar com Google
+          </button>
+          
+          <div class="mt-4 text-center text-sm text-gray-600">
             ${isLoginMode ? 
               'Primeira vez aqui? Use o Cadastro acima.' : 
               'Já tem conta? Use o Login acima.'}
@@ -8173,6 +8275,8 @@ function logout() {
   localStorage.removeItem('userId');
   localStorage.removeItem('userEmail');
   localStorage.removeItem('userName');
+  localStorage.removeItem('userPicture');
+  localStorage.removeItem('authProvider');
   
   // Limpar objeto global
   currentUser = null;
@@ -8180,6 +8284,339 @@ function logout() {
   // Voltar para tela de login
   renderLogin();
 }
+
+// ============== ADMINISTRAÇÃO ==============
+
+// Abrir modal de administração
+window.abrirAdministracao = async function() {
+  // Verificar status da conexão Google
+  let googleStatus = { connected: false };
+  try {
+    const response = await axios.get(`/api/auth/google/status/${currentUser.id}`);
+    googleStatus = response.data;
+  } catch (e) {
+    console.log('Google não conectado');
+  }
+  
+  const modal = document.createElement('div');
+  modal.id = 'modal-administracao';
+  modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4';
+  modal.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+            <i class="fas fa-cog text-white text-xl"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold ${themes[currentTheme].text}">Administração</h3>
+            <p class="${themes[currentTheme].textSecondary} text-sm">Backup e sincronização</p>
+          </div>
+        </div>
+        <button onclick="fecharModalAdmin()" class="${themes[currentTheme].textSecondary} hover:text-gray-600">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      
+      <!-- Conexão Google -->
+      <div class="mb-6 p-4 rounded-xl border ${themes[currentTheme].border} ${googleStatus.connected ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-gray-800'}">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full ${googleStatus.connected ? 'bg-green-100' : 'bg-gray-200'} flex items-center justify-center">
+              ${googleStatus.picture 
+                ? `<img src="${googleStatus.picture}" class="w-10 h-10 rounded-full" alt="Google">`
+                : `<svg class="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="${googleStatus.connected ? '#34A853' : '#9CA3AF'}" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="${googleStatus.connected ? '#4285F4' : '#9CA3AF'}" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  </svg>`
+              }
+            </div>
+            <div>
+              <p class="font-semibold ${themes[currentTheme].text}">
+                ${googleStatus.connected ? 'Google Conectado' : 'Conectar Google'}
+              </p>
+              <p class="${themes[currentTheme].textMuted} text-xs">
+                ${googleStatus.connected 
+                  ? googleStatus.email 
+                  : 'Sincronize seus dados com o Google Drive'}
+              </p>
+            </div>
+          </div>
+          ${googleStatus.connected 
+            ? `<span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                <i class="fas fa-check mr-1"></i>Ativo
+               </span>`
+            : `<button onclick="loginComGoogle()" class="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
+                Conectar
+               </button>`
+          }
+        </div>
+        ${googleStatus.connected ? `
+          <div class="flex gap-2 mt-3">
+            <button onclick="desconectarGoogle()" class="flex-1 px-3 py-2 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition">
+              <i class="fas fa-unlink mr-1"></i>Desconectar
+            </button>
+          </div>
+        ` : ''}
+      </div>
+      
+      <!-- Backup Local -->
+      <div class="mb-6">
+        <h4 class="font-semibold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+          <i class="fas fa-download text-blue-500"></i>Backup Local
+        </h4>
+        <div class="grid grid-cols-2 gap-3">
+          <button onclick="exportarDados()" 
+            class="p-4 rounded-xl border-2 border-dashed border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-center">
+            <i class="fas fa-file-export text-blue-500 text-2xl mb-2"></i>
+            <p class="font-medium ${themes[currentTheme].text} text-sm">Exportar</p>
+            <p class="${themes[currentTheme].textMuted} text-xs">Baixar backup JSON</p>
+          </button>
+          <button onclick="importarDados()" 
+            class="p-4 rounded-xl border-2 border-dashed border-green-200 hover:border-green-400 hover:bg-green-50 transition-all text-center">
+            <i class="fas fa-file-import text-green-500 text-2xl mb-2"></i>
+            <p class="font-medium ${themes[currentTheme].text} text-sm">Importar</p>
+            <p class="${themes[currentTheme].textMuted} text-xs">Restaurar backup</p>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Google Drive Sync -->
+      ${googleStatus.connected ? `
+        <div class="mb-6">
+          <h4 class="font-semibold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+            <i class="fab fa-google-drive text-yellow-500"></i>Google Drive
+          </h4>
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="salvarNoDrive()" 
+              class="p-4 rounded-xl border-2 border-dashed border-yellow-200 hover:border-yellow-400 hover:bg-yellow-50 transition-all text-center">
+              <i class="fas fa-cloud-upload-alt text-yellow-500 text-2xl mb-2"></i>
+              <p class="font-medium ${themes[currentTheme].text} text-sm">Salvar no Drive</p>
+              <p class="${themes[currentTheme].textMuted} text-xs">Backup na nuvem</p>
+            </button>
+            <button onclick="carregarDoDrive()" 
+              class="p-4 rounded-xl border-2 border-dashed border-purple-200 hover:border-purple-400 hover:bg-purple-50 transition-all text-center">
+              <i class="fas fa-cloud-download-alt text-purple-500 text-2xl mb-2"></i>
+              <p class="font-medium ${themes[currentTheme].text} text-sm">Carregar do Drive</p>
+              <p class="${themes[currentTheme].textMuted} text-xs">Restaurar da nuvem</p>
+            </button>
+          </div>
+          ${googleStatus.lastSync ? `
+            <p class="${themes[currentTheme].textMuted} text-xs mt-3 text-center">
+              <i class="fas fa-sync mr-1"></i>Último sync: ${new Date(googleStatus.lastSync).toLocaleString('pt-BR')}
+            </p>
+          ` : ''}
+        </div>
+      ` : ''}
+      
+      <!-- Informações da conta -->
+      <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-800">
+        <h4 class="font-semibold ${themes[currentTheme].text} mb-2 text-sm">
+          <i class="fas fa-user mr-2"></i>Sua Conta
+        </h4>
+        <div class="space-y-1 text-xs ${themes[currentTheme].textSecondary}">
+          <p><strong>ID:</strong> ${currentUser.id}</p>
+          <p><strong>Email:</strong> ${currentUser.email}</p>
+          <p><strong>Nome:</strong> ${currentUser.name || 'Não informado'}</p>
+          <p><strong>Autenticação:</strong> ${currentUser.authProvider === 'google' ? 'Google' : 'Email/Senha'}</p>
+        </div>
+      </div>
+      
+      <!-- Fechar -->
+      <button onclick="fecharModalAdmin()" 
+        class="w-full mt-6 px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 ${themes[currentTheme].text} font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+        Fechar
+      </button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+};
+
+window.fecharModalAdmin = function() {
+  document.getElementById('modal-administracao')?.remove();
+};
+
+// Exportar dados para arquivo JSON
+window.exportarDados = async function() {
+  try {
+    showToast('Preparando backup...', 'info');
+    
+    const response = await axios.get(`/api/backup/export/${currentUser.id}`);
+    const backup = response.data;
+    
+    // Criar arquivo para download
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `iaprova_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast(`Backup exportado! ${backup.stats.diasEstudados} dias de histórico.`, 'success');
+  } catch (error) {
+    console.error('Erro ao exportar:', error);
+    showToast('Erro ao exportar dados', 'error');
+  }
+};
+
+// Importar dados de arquivo JSON
+window.importarDados = function() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      
+      if (!backup.version || !backup.data) {
+        showToast('Arquivo de backup inválido', 'error');
+        return;
+      }
+      
+      // Confirmar importação
+      const confirmar = await showConfirm(
+        `Importar backup de ${backup.exportedAt ? new Date(backup.exportedAt).toLocaleDateString('pt-BR') : 'data desconhecida'}?\n\n` +
+        `• ${backup.stats?.diasEstudados || 0} dias de histórico\n` +
+        `• ${backup.stats?.totalMetas || 0} metas\n` +
+        `• ${backup.stats?.totalSimulados || 0} simulados\n\n` +
+        `Modo: Mesclar com dados existentes`,
+        { title: 'Importar Backup', confirmText: 'Importar', type: 'warning' }
+      );
+      
+      if (!confirmar) return;
+      
+      showToast('Importando dados...', 'info');
+      
+      const response = await axios.post(`/api/backup/import/${currentUser.id}`, {
+        backup,
+        mode: 'merge'
+      });
+      
+      showToast(`Backup importado! ${response.data.stats.inserted} registros.`, 'success');
+      fecharModalAdmin();
+      renderDashboard();
+    } catch (error) {
+      console.error('Erro ao importar:', error);
+      showToast('Erro ao importar backup', 'error');
+    }
+  };
+  input.click();
+};
+
+// Salvar no Google Drive
+window.salvarNoDrive = async function() {
+  try {
+    showToast('Salvando no Google Drive...', 'info');
+    
+    const response = await axios.post('/api/backup/google-drive/save', {
+      user_id: currentUser.id
+    });
+    
+    if (response.data.needsReauth) {
+      showToast('Reconecte sua conta Google', 'warning');
+      loginComGoogle();
+      return;
+    }
+    
+    showToast('Backup salvo no Google Drive!', 'success');
+    abrirAdministracao(); // Recarregar modal
+  } catch (error) {
+    console.error('Erro ao salvar no Drive:', error);
+    showToast(error.response?.data?.error || 'Erro ao salvar no Drive', 'error');
+  }
+};
+
+// Carregar do Google Drive
+window.carregarDoDrive = async function() {
+  try {
+    showToast('Buscando backup no Google Drive...', 'info');
+    
+    const response = await axios.post('/api/backup/google-drive/load', {
+      user_id: currentUser.id
+    });
+    
+    if (response.data.needsReauth) {
+      showToast('Reconecte sua conta Google', 'warning');
+      loginComGoogle();
+      return;
+    }
+    
+    if (!response.data.backup) {
+      showToast('Nenhum backup encontrado no Drive', 'warning');
+      return;
+    }
+    
+    const backup = response.data.backup;
+    const fileInfo = response.data.fileInfo;
+    
+    // Confirmar importação
+    const confirmar = await showConfirm(
+      `Restaurar backup do Google Drive?\n\n` +
+      `Arquivo: ${fileInfo.name}\n` +
+      `Modificado: ${new Date(fileInfo.modifiedTime).toLocaleString('pt-BR')}\n\n` +
+      `• ${backup.stats?.diasEstudados || 0} dias de histórico\n` +
+      `• ${backup.stats?.totalMetas || 0} metas`,
+      { title: 'Restaurar do Drive', confirmText: 'Restaurar', type: 'warning' }
+    );
+    
+    if (!confirmar) return;
+    
+    showToast('Restaurando dados...', 'info');
+    
+    const importResponse = await axios.post(`/api/backup/import/${currentUser.id}`, {
+      backup,
+      mode: 'merge'
+    });
+    
+    showToast('Backup restaurado do Google Drive!', 'success');
+    fecharModalAdmin();
+    renderDashboard();
+  } catch (error) {
+    console.error('Erro ao carregar do Drive:', error);
+    showToast(error.response?.data?.error || 'Erro ao carregar do Drive', 'error');
+  }
+};
+
+// Desconectar Google
+window.desconectarGoogle = async function() {
+  const confirmar = await showConfirm(
+    'Desconectar conta Google?\n\nVocê não perderá seus dados, mas não poderá mais sincronizar com o Google Drive.',
+    { title: 'Desconectar Google', confirmText: 'Desconectar', type: 'warning' }
+  );
+  
+  if (!confirmar) return;
+  
+  try {
+    const response = await axios.post('/api/auth/google/disconnect', {
+      user_id: currentUser.id
+    });
+    
+    if (response.data.needsPassword) {
+      showToast('Defina uma senha antes de desconectar o Google', 'warning');
+      return;
+    }
+    
+    localStorage.removeItem('authProvider');
+    localStorage.removeItem('userPicture');
+    currentUser.authProvider = 'email';
+    currentUser.picture = null;
+    
+    showToast('Google desconectado', 'success');
+    abrirAdministracao(); // Recarregar modal
+  } catch (error) {
+    console.error('Erro ao desconectar:', error);
+    showToast(error.response?.data?.error || 'Erro ao desconectar', 'error');
+  }
+};
 
 window.changeTheme = (theme) => {
   applyTheme(theme);
