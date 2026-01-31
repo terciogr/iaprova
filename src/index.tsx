@@ -9110,8 +9110,8 @@ app.get('/api/backup/export/:user_id', async (c) => {
     const { results: metasSemana } = await DB.prepare('SELECT * FROM metas_semana WHERE user_id = ?').bind(user_id).all()
     const { results: semanas } = await DB.prepare('SELECT * FROM semanas_estudo WHERE user_id = ?').bind(user_id).all()
     
-    // Buscar simulados
-    const { results: simulados } = await DB.prepare('SELECT * FROM simulados WHERE user_id = ?').bind(user_id).all()
+    // Buscar simulados (tabela correta: simulados_historico)
+    const { results: simulados } = await DB.prepare('SELECT * FROM simulados_historico WHERE user_id = ?').bind(user_id).all()
     
     // Buscar progresso em tópicos
     const { results: progressoTopicos } = await DB.prepare('SELECT * FROM user_topicos_progresso WHERE user_id = ?').bind(user_id).all()
@@ -9194,7 +9194,7 @@ app.post('/api/backup/import/:user_id', async (c) => {
       await DB.prepare('DELETE FROM exercicios_resultados WHERE user_id = ?').bind(user_id).run()
       await DB.prepare('DELETE FROM conteudo_estudo WHERE user_id = ?').bind(user_id).run()
       await DB.prepare('DELETE FROM user_topicos_progresso WHERE user_id = ?').bind(user_id).run()
-      await DB.prepare('DELETE FROM simulados WHERE user_id = ?').bind(user_id).run()
+      await DB.prepare('DELETE FROM simulados_historico WHERE user_id = ?').bind(user_id).run()
       await DB.prepare('DELETE FROM metas_semana WHERE user_id = ?').bind(user_id).run()
       await DB.prepare('DELETE FROM metas_diarias WHERE user_id = ?').bind(user_id).run()
       await DB.prepare('DELETE FROM semanas_estudo WHERE user_id = ?').bind(user_id).run()
