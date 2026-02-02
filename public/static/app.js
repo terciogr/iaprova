@@ -2956,10 +2956,8 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
         const modal = document.getElementById('modalRevisaoDisciplinas');
         if (modal) modal.remove();
         
-        // Atualizar feedback
-        atualizarFeedbackUI(4, `✅ ${disciplinasEditadas.length} disciplinas confirmadas e salvas!`, 'success');
-        
-        showModal('Disciplinas revisadas e salvas com sucesso!', { type: 'success' });
+        // Mostrar toast de sucesso (não depende de atualizarFeedbackUI que é local)
+        showToast(`✅ ${disciplinasEditadas.length} disciplinas confirmadas e salvas!`, 'success');
         
         resolve(true);
       } catch (error) {
