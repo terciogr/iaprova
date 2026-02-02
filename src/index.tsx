@@ -64,11 +64,11 @@ INICIE A TRANSCRIÇÃO DO CONTEÚDO PROGRAMÁTICO (ANEXOS):`
 
   // ✅ ESTRATÉGIAS COM MÚLTIPLOS MODELOS E RETRIES
   const estrategias = [
-    { prompt: promptOtimizado, modelo: 'gemini-2.0-flash-lite', desc: 'Lite (tentativa 1)' },
-    { prompt: promptOtimizado, modelo: 'gemini-2.0-flash', desc: 'Flash (tentativa 1)' },
-    { prompt: promptOtimizado, modelo: 'gemini-2.0-flash-exp', desc: 'Flash Exp' },
-    { prompt: promptOtimizado, modelo: 'gemini-2.0-flash-lite', desc: 'Lite (tentativa 2)' },
-    { prompt: promptOtimizado, modelo: 'gemini-2.0-flash', desc: 'Flash (tentativa 2)' }
+    { prompt: promptOtimizado, modelo: 'gemini-2.5-flash', desc: 'Lite (tentativa 1)' },
+    { prompt: promptOtimizado, modelo: 'gemini-2.5-flash', desc: 'Flash (tentativa 1)' },
+    { prompt: promptOtimizado, modelo: 'gemini-2.5-flash', desc: 'Flash Exp' },
+    { prompt: promptOtimizado, modelo: 'gemini-2.5-flash', desc: 'Lite (tentativa 2)' },
+    { prompt: promptOtimizado, modelo: 'gemini-2.5-flash', desc: 'Flash (tentativa 2)' }
   ]
   
   let melhorTexto = ''
@@ -2539,12 +2539,12 @@ RETORNE APENAS JSON (sem markdown, sem explicações):
     const MAX_RETRIES = 2
     
     // Usar apenas 1 modelo estável
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`
     
     // Função auxiliar para delay simples
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
     
-    let successModel = 'gemini-2.0-flash'
+    let successModel = 'gemini-2.5-flash'
     
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       console.log(`🔄 Tentativa ${attempt}/${MAX_RETRIES} com Gemini Flash...`)
@@ -9798,7 +9798,7 @@ Agora gere o material em JSON válido:`
     const temperatura = temperaturaMap[contexto.iaConfig?.temperatura] || contexto.iaConfig?.temperatura || 0.7
     
     // Usar modelo mais potente para melhor qualidade
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
     
     console.log(`🎛️ Configuração IA: temperatura=${temperatura}, tom=${contexto.iaConfig?.tom || 'didatico'}`)
     
@@ -9813,7 +9813,7 @@ Agora gere o material em JSON válido:`
         ],
         generationConfig: {
           temperature: Number(temperatura),  // Usar temperatura da config do usuário
-          maxOutputTokens: 8192,  // Máximo para gemini-2.0-flash
+          maxOutputTokens: 8192,  // Máximo para gemini-2.5-flash
           topP: 0.95,
           topK: 40
         }
@@ -10912,7 +10912,7 @@ INSTRUÇÕES:
 - Use emojis para tornar a conversa mais amigável
 - Se não souber algo, seja honesto`
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
     
     const response = await fetch(url, {
       method: 'POST',
@@ -11141,7 +11141,7 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
     `
     
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -11565,7 +11565,7 @@ REGRAS OBRIGATÓRIAS:
     }
     
     // Usar apenas 1 modelo para evitar rate limit
-    const modelos = ['gemini-2.0-flash']
+    const modelos = ['gemini-2.5-flash']
     
     // Para exercícios, usar temperatura mais baixa para focar no tópico
     const tempExercicios = tipoConteudo === 'exercicios' ? 0.3 : (parseFloat(iaConfig.temperatura) || 0.7)
@@ -11829,7 +11829,7 @@ REGRAS OBRIGATÓRIAS:
 - Inclua pegadinhas comuns de prova
 - Questões devem ser realistas e baseadas em conteúdo de concursos`
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
     
     const response = await fetch(url, {
       method: 'POST',
