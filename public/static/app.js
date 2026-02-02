@@ -16179,8 +16179,11 @@ const tutorialSteps = [
   {
     id: 'welcome',
     title: '👋 Bem-vindo ao IAprova!',
-    content: 'Vou te guiar por todas as funcionalidades do sistema para você aproveitar ao máximo sua preparação para concursos.',
-    target: null, // Sem elemento específico (tela de boas-vindas)
+    content: `
+      <p class="mb-3">Vou te guiar por todas as funcionalidades do sistema para você aproveitar ao máximo sua preparação para concursos.</p>
+      <p class="text-sm text-gray-600">🎯 <b>Dica:</b> Este tour pode ser acessado novamente pelo menu a qualquer momento.</p>
+    `,
+    target: null,
     position: 'center',
     showSkip: true,
     showPrev: false
@@ -16188,7 +16191,10 @@ const tutorialSteps = [
   {
     id: 'countdown',
     title: '📅 Contagem Regressiva',
-    content: 'Aqui você vê quantos dias faltam para sua prova. O sistema calcula automaticamente se você tem tempo suficiente para estudar todo o conteúdo.',
+    content: `
+      <p class="mb-2">Mostra quantos dias faltam para sua prova.</p>
+      <p class="text-sm text-gray-600">💡 <b>Clique</b> para editar a data da prova a qualquer momento.</p>
+    `,
     target: '[onclick*="abrirModalEditarDataProva"]',
     position: 'bottom',
     highlight: true,
@@ -16197,7 +16203,14 @@ const tutorialSteps = [
   {
     id: 'disciplines',
     title: '📚 Suas Disciplinas',
-    content: 'Acesse todas as disciplinas do seu edital. Veja o progresso, nível de domínio e gerencie os tópicos de estudo.',
+    content: `
+      <p class="mb-2">Acesse todas as disciplinas do seu edital.</p>
+      <ul class="text-sm text-gray-600 space-y-1">
+        <li>• Veja o <b>progresso</b> de cada matéria</li>
+        <li>• Ajuste o <b>nível de domínio</b> (0-10)</li>
+        <li>• Gerencie os <b>tópicos</b> de estudo</li>
+      </ul>
+    `,
     target: '[onclick="renderPortfolioDisciplinas()"]',
     position: 'bottom',
     highlight: true,
@@ -16206,7 +16219,10 @@ const tutorialSteps = [
   {
     id: 'progress',
     title: '📊 Progresso Geral',
-    content: 'Acompanhe seu avanço geral no edital. A barra mostra o percentual de tópicos já estudados considerando o peso de cada disciplina.',
+    content: `
+      <p class="mb-2">Seu avanço geral no edital.</p>
+      <p class="text-sm text-gray-600">A barra considera o <b>peso</b> de cada disciplina para calcular o progresso real.</p>
+    `,
     target: '.progresso-geral-card',
     position: 'bottom',
     highlight: true,
@@ -16215,7 +16231,14 @@ const tutorialSteps = [
   {
     id: 'simulados',
     title: '✍️ Simulados',
-    content: 'Teste seus conhecimentos com simulados personalizados. O sistema acompanha sua evolução e identifica pontos de melhoria.',
+    content: `
+      <p class="mb-2">Teste seus conhecimentos com simulados.</p>
+      <ul class="text-sm text-gray-600 space-y-1">
+        <li>• Questões no estilo da <b>sua banca</b></li>
+        <li>• Acompanhe sua <b>evolução</b></li>
+        <li>• Identifique <b>pontos fracos</b></li>
+      </ul>
+    `,
     target: '[onclick*="renderDashboardSimulados"]',
     position: 'bottom',
     highlight: true,
@@ -16224,7 +16247,10 @@ const tutorialSteps = [
   {
     id: 'weekly-goals',
     title: '🎯 Metas Semanais',
-    content: 'O sistema gera automaticamente metas de estudo distribuídas ao longo da semana, respeitando seu tempo disponível e dias de estudo.',
+    content: `
+      <p class="mb-2">O sistema gera metas automáticas distribuídas na semana.</p>
+      <p class="text-sm text-gray-600">Respeita seu <b>tempo disponível</b> e <b>dias de estudo</b> configurados.</p>
+    `,
     target: '.semana-resumo-card',
     position: 'top',
     highlight: true,
@@ -16233,7 +16259,10 @@ const tutorialSteps = [
   {
     id: 'generate-goals',
     title: '✨ Gerar Metas',
-    content: 'Clique aqui para gerar suas metas semanais. O sistema cria um cronograma personalizado baseado no seu perfil e tempo até a prova.',
+    content: `
+      <p class="mb-2">Clique para gerar suas metas semanais.</p>
+      <p class="text-sm text-gray-600">O sistema cria um <b>cronograma personalizado</b> baseado no seu perfil e tempo até a prova.</p>
+    `,
     target: '[onclick="gerarMetasSemana()"]',
     position: 'left',
     highlight: true,
@@ -16242,7 +16271,14 @@ const tutorialSteps = [
   {
     id: 'daily-goals',
     title: '📋 Metas Diárias',
-    content: 'Cada dia tem metas específicas de teoria, exercícios e revisão. Marque como concluída ao estudar o conteúdo.',
+    content: `
+      <p class="mb-2">Cada dia tem metas de <b>teoria</b>, <b>exercícios</b> e <b>revisão</b>.</p>
+      <ul class="text-sm text-gray-600 space-y-1">
+        <li>📖 Clique para <b>estudar o conteúdo</b></li>
+        <li>✅ Marque como <b>concluída</b> ao finalizar</li>
+        <li>🤖 A IA gera o <b>material de estudo</b></li>
+      </ul>
+    `,
     target: '.meta-card',
     position: 'top',
     highlight: true,
@@ -16252,25 +16288,64 @@ const tutorialSteps = [
   {
     id: 'calendar',
     title: '📆 Calendário Mensal',
-    content: 'Visualize seu histórico de estudos. Cores indicam o status: verde (100% concluído), amarelo (parcial) e cinza (não estudado).',
+    content: `
+      <p class="mb-2">Visualize seu histórico de estudos.</p>
+      <ul class="text-sm text-gray-600 space-y-1">
+        <li>🟢 <b>Verde:</b> 100% concluído</li>
+        <li>🟡 <b>Amarelo:</b> Parcialmente estudado</li>
+        <li>⚪ <b>Cinza:</b> Não estudado</li>
+      </ul>
+    `,
     target: '.calendario-mes',
     position: 'left',
     highlight: true,
     arrow: 'right'
   },
   {
-    id: 'daily-stats',
-    title: '📈 Estatísticas Diárias',
-    content: 'Acompanhe suas métricas: tempo de estudo, metas concluídas e desempenho em exercícios.',
-    target: '.stats-card',
-    position: 'top',
+    id: 'fab-button',
+    title: '🔘 Menu de Ações Rápidas',
+    content: `
+      <p class="mb-3">Este botão flutuante dá acesso rápido a funcionalidades importantes:</p>
+      <ul class="text-sm space-y-2">
+        <li>🤖 <b class="text-blue-600">Assistente Lilu:</b> Tire dúvidas sobre qualquer assunto</li>
+        <li>🧠 <b class="text-purple-600">Personalizar IA:</b> Configure como o conteúdo é gerado (tom, extensão, profundidade)</li>
+        <li>⚙️ <b class="text-teal-600">Administração:</b> Backup, planos e configurações</li>
+        <li>🚪 <b class="text-red-600">Sair:</b> Desconectar da conta</li>
+      </ul>
+    `,
+    target: '#fab-main',
+    position: 'left',
     highlight: true,
-    arrow: 'bottom'
+    arrow: 'right'
+  },
+  {
+    id: 'ia-personalization',
+    title: '🧠 Personalização da IA',
+    content: `
+      <p class="mb-3">Configure como a IA gera seu conteúdo de estudo:</p>
+      <ul class="text-sm text-gray-600 space-y-1">
+        <li>📝 <b>Tom:</b> Formal, técnico, didático ou direto</li>
+        <li>📊 <b>Intensidade:</b> Superficial, intermediária ou aprofundada</li>
+        <li>🔍 <b>Profundidade:</b> Conceitual, aplicada ou analítica</li>
+        <li>📏 <b>Extensão:</b> Curto (500), médio (2000) ou longo (5000) caracteres</li>
+      </ul>
+      <p class="mt-2 text-xs text-blue-600">💡 Acesse pelo botão roxo no menu flutuante!</p>
+    `,
+    target: null,
+    position: 'center'
   },
   {
     id: 'new-plan',
     title: '🚀 Criar Novo Plano',
-    content: 'Quando quiser estudar para outro concurso ou atualizar seu plano, clique aqui para iniciar uma nova entrevista inteligente.',
+    content: `
+      <p class="mb-2">Inicie uma nova entrevista inteligente para:</p>
+      <ul class="text-sm text-gray-600 space-y-1">
+        <li>• Estudar para <b>outro concurso</b></li>
+        <li>• Atualizar seu <b>plano atual</b></li>
+        <li>• Importar <b>novo edital</b></li>
+      </ul>
+      <p class="mt-2 text-xs text-orange-600">⚠️ Planos com mesmo nome são substituídos automaticamente.</p>
+    `,
     target: '[onclick="iniciarEntrevista()"]',
     position: 'left',
     highlight: true,
@@ -16278,14 +16353,16 @@ const tutorialSteps = [
   },
   {
     id: 'tips',
-    title: '💡 Dicas Importantes',
+    title: '💡 Dicas para Aprovação',
     content: `
       <ul class="text-left space-y-2">
-        <li>📌 <b>Consistência é chave:</b> Estude um pouco todos os dias</li>
-        <li>🎯 <b>Siga as metas:</b> O sistema otimiza seu tempo disponível</li>
-        <li>📊 <b>Faça simulados:</b> Identifique seus pontos fracos</li>
-        <li>🔄 <b>Revise sempre:</b> A revisão consolida o aprendizado</li>
+        <li>📌 <b>Consistência:</b> Estude um pouco todos os dias</li>
+        <li>🎯 <b>Siga as metas:</b> O sistema otimiza seu tempo</li>
+        <li>📊 <b>Faça simulados:</b> Identifique pontos fracos</li>
+        <li>🔄 <b>Revise sempre:</b> Consolida o aprendizado</li>
+        <li>🤖 <b>Use a IA:</b> Gere teoria, exercícios e flashcards</li>
       </ul>
+      <p class="mt-3 text-center text-sm text-blue-600 font-semibold">🏆 Bons estudos e boa aprovação!</p>
     `,
     target: null,
     position: 'center',
