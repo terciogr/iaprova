@@ -5869,6 +5869,24 @@ app.post('/api/interviews', async (c) => {
     try {
       console.log('🎯 Criando plano automaticamente para entrevista', interview_id)
       
+      // ✅ NOVO: Verificar se já existe plano com o mesmo nome
+      const nomePlanoAuto = `Plano ${data.concurso_nome || data.area_geral || 'Novo'}`
+      const planoExistenteAuto = await DB.prepare(`
+        SELECT id, nome FROM planos_estudo WHERE user_id = ? AND nome = ?
+      `).bind(data.user_id, nomePlanoAuto).first() as any
+      
+      if (planoExistenteAuto) {
+        console.log(`🔄 Plano "${nomePlanoAuto}" já existe (ID ${planoExistenteAuto.id}). Substituindo...`)
+        
+        // Deletar dados relacionados ao plano antigo
+        await DB.prepare('DELETE FROM metas_diarias WHERE plano_id = ?').bind(planoExistenteAuto.id).run()
+        await DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id = ?').bind(planoExistenteAuto.id).run()
+        await DB.prepare('DELETE FROM semanas_estudo WHERE plano_id = ?').bind(planoExistenteAuto.id).run()
+        await DB.prepare('DELETE FROM planos_estudo WHERE id = ?').bind(planoExistenteAuto.id).run()
+        
+        console.log(`✅ Plano antigo ${planoExistenteAuto.id} removido`)
+      }
+      
       // Buscar APENAS as disciplinas desta entrevista (não todas do usuário)
       const disciplinaIds = data.disciplinas.map(d => d.disciplina_id).filter(id => id) // Remover nulls/undefined
       
@@ -5913,7 +5931,7 @@ app.post('/api/interviews', async (c) => {
         interview_id,
         JSON.stringify(diagnosticoCompleto),
         JSON.stringify(mapaPrioridades),
-        `Plano ${data.concurso_nome || data.area_geral || 'Novo'}`,
+        nomePlanoAuto,  // ✅ Usa a variável já definida
         data.prazo_prova || null  // ✅ NOVO: Salvar data da prova
       ).run()
       
@@ -5975,16 +5993,52 @@ app.get('/api/interviews/:interview_id', async (c) => {
 // ============== ROTAS DE PLANO DE ESTUDOS ==============
 app.post('/api/planos', async (c) => {
   const { DB } = c.env
-  const { user_id, interview_id } = await c.req.json()
+  const { user_id, interview_id, substituir_existente } = await c.req.json()
 
   try {
     // Buscar dados da entrevista
     const interview = await DB.prepare(
       'SELECT * FROM interviews WHERE id = ?'
-    ).bind(interview_id).first()
+    ).bind(interview_id).first() as any
 
     if (!interview) {
       return c.json({ error: 'Entrevista não encontrada' }, 404)
+    }
+
+    // ✅ NOVO: Verificar se já existe plano com o mesmo nome
+    const nomePlano = `Plano ${interview.concurso_nome || interview.area_geral || 'Novo'}`
+    const planoExistente = await DB.prepare(`
+      SELECT id, nome, ativo, created_at 
+      FROM planos_estudo 
+      WHERE user_id = ? AND nome = ?
+    `).bind(user_id, nomePlano).first() as any
+
+    if (planoExistente && !substituir_existente) {
+      // Plano já existe - perguntar se quer substituir
+      return c.json({
+        error: 'PLANO_EXISTENTE',
+        message: `Já existe um plano "${nomePlano}" em andamento.`,
+        plano_existente: {
+          id: planoExistente.id,
+          nome: planoExistente.nome,
+          ativo: planoExistente.ativo,
+          created_at: planoExistente.created_at
+        },
+        pergunta: 'Deseja substituir o plano existente?'
+      }, 409) // 409 Conflict
+    }
+
+    // Se substituir_existente = true, deletar o plano antigo e dados relacionados
+    if (planoExistente && substituir_existente) {
+      console.log(`🔄 Substituindo plano existente ID ${planoExistente.id}: ${nomePlano}`)
+      
+      // Deletar dados relacionados ao plano antigo
+      await DB.prepare('DELETE FROM metas_diarias WHERE plano_id = ?').bind(planoExistente.id).run()
+      await DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id = ?').bind(planoExistente.id).run()
+      await DB.prepare('DELETE FROM semanas_estudo WHERE plano_id = ?').bind(planoExistente.id).run()
+      await DB.prepare('DELETE FROM planos_estudo WHERE id = ?').bind(planoExistente.id).run()
+      
+      console.log(`✅ Plano antigo ${planoExistente.id} removido com sucesso`)
     }
 
     // ✅ CORREÇÃO: Buscar APENAS disciplinas da entrevista específica
@@ -6036,7 +6090,7 @@ app.post('/api/planos', async (c) => {
       interview_id,
       JSON.stringify(diagnostico),
       JSON.stringify(mapaPrioridades),
-      `Plano ${interview.concurso_nome || interview.area_geral || 'Novo'}`,
+      nomePlano,  // ✅ Usa a variável já definida
       interview.prazo_prova || null  // ✅ NOVO: Salvar data da prova
     ).run()
 
