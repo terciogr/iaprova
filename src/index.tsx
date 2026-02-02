@@ -2531,238 +2531,103 @@ RETORNE APENAS JSON (sem markdown, sem explicações):
 {"disciplinas":[{"nome":"Nome da Disciplina","peso":${pesoCG},"topicos":["Tópico 1","Tópico 2"]}]}`
 
     // ════════════════════════════════════════════════════════════════════════
-    // ✅ SISTEMA ULTRA-ROBUSTO DE CHAMADA À API GEMINI COM MÚLTIPLOS FALLBACKS
+    // ✅ SISTEMA SIMPLIFICADO DE CHAMADA À API GEMINI (máximo 2 tentativas)
     // ════════════════════════════════════════════════════════════════════════
     let response: Response | null = null
     let data: any = null
     let lastError: string = ''
-    let retryCount = 0
-    const MAX_RETRIES = 2  // Menos retries por modelo, mais modelos disponíveis
+    const MAX_RETRIES = 2
     
-    // ✅ AMPLA LISTA DE MODELOS GEMINI - ESTRATÉGIA DE FALLBACK EM CASCATA
-    // Modelos ordenados por velocidade/estabilidade:
-    // 1. gemini-2.0-flash-lite: Mais rápido, menor rate limit
-    // 2. gemini-2.0-flash: Equilíbrio velocidade/qualidade
-    // 3. gemini-2.0-flash-8b: Estável, menor rate limit
-    // 4. gemini-2.0-flash: Mais estável, ampla disponibilidade
-    // 5. gemini-2.0-flash: Último recurso (mais lento mas confiável)
-    const apiModels = [
-      { name: 'gemini-2.0-flash-lite', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`, maxTokens: 32768 },
-      { name: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, maxTokens: 65536 },
-      { name: 'gemini-2.0-flash-8b', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-8b:generateContent?key=${geminiKey}`, maxTokens: 32768 },
-      { name: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, maxTokens: 65536 },
-      { name: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, maxTokens: 65536 }
-    ]
+    // Usar apenas 1 modelo estável
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
     
-    // Variáveis para controle de rate limit global
-    let totalAttempts = 0
-    const MAX_TOTAL_ATTEMPTS = 10  // Aumentado para mais tentativas com mais modelos
+    // Função auxiliar para delay simples
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
     
-    // Função auxiliar para delay com jitter (evita thundering herd)
-    const delay = (ms: number) => {
-      const jitter = Math.random() * 2000  // Adiciona até 2s de variação aleatória
-      return new Promise(resolve => setTimeout(resolve, ms + jitter))
-    }
+    let successModel = 'gemini-2.0-flash'
     
-    // Função para calcular tempo de espera com backoff exponencial AGRESSIVO
-    const calculateBackoff = (attempt: number, errorCode: number): number => {
-      // Backoff exponencial mais curto para manter usuário engajado
-      // 429 (Rate Limit): 3s, 6s, 12s (máx 15s)
-      // 503 (Unavailable): 2s, 4s, 8s (máx 10s)
-      // Outros: 1s, 2s, 4s (máx 8s)
-      const baseMs = errorCode === 429 ? 3000 : errorCode === 503 ? 2000 : 1000
-      const maxMs = errorCode === 429 ? 15000 : errorCode === 503 ? 10000 : 8000
-      return Math.min(baseMs * Math.pow(2, attempt - 1), maxMs)
-    }
-    
-    // ✅ NOVO: Função para verificar se erro é recuperável
-    const isRecoverableError = (status: number): boolean => {
-      return [429, 503, 500, 502, 504].includes(status)
-    }
-    
-    let modelIndex = 0
-    let successModel = ''
-    
-    modelLoop:
-    for (const model of apiModels) {
-      modelIndex++
-      retryCount = 0
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      console.log(`🔄 Tentativa ${attempt}/${MAX_RETRIES} com Gemini Flash...`)
       
-      // Verificar se atingiu limite total de tentativas
-      if (totalAttempts >= MAX_TOTAL_ATTEMPTS) {
-        console.log(`⚠️ Limite total de ${MAX_TOTAL_ATTEMPTS} tentativas atingido. Parando.`)
-        break
-      }
-      
-      console.log(`\n🔄 Tentando modelo ${modelIndex}/${apiModels.length}: ${model.name}`)
-      
-      while (retryCount < MAX_RETRIES && totalAttempts < MAX_TOTAL_ATTEMPTS) {
-        totalAttempts++
-        retryCount++
-        
-        try {
-          console.log(`   ⏳ Tentativa ${retryCount}/${MAX_RETRIES} (total: ${totalAttempts}/${MAX_TOTAL_ATTEMPTS})...`)
-          
-          // Configuração otimizada por modelo - usar maxTokens definido no modelo
-          const maxTokens = model.maxTokens || 65536
-          
-          response = await fetch(model.url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                temperature: 0.1,  // Determinístico para extração precisa
-                topP: 0.95,
-                topK: 40,
-                maxOutputTokens: maxTokens
-              }
-            })
+      try {
+        response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.1,
+              topP: 0.95,
+              topK: 40,
+              maxOutputTokens: 32768
+            }
           })
+        })
         
-          // Verificar se a resposta HTTP é OK
-          if (!response.ok) {
-            const errorText = await response.text()
-            lastError = `HTTP ${response.status}: ${errorText.substring(0, 200)}`
-            console.error(`   ❌ Erro HTTP ${response.status}:`, errorText.substring(0, 300))
-            
-            // ✅ TRATAMENTO INTELIGENTE DE ERROS RECUPERÁVEIS
-            if (isRecoverableError(response.status)) {
-              const waitTime = calculateBackoff(retryCount, response.status)
-              const errorName = response.status === 429 ? 'Rate Limited' : 
-                               response.status === 503 ? 'Serviço Indisponível' :
-                               `Erro ${response.status}`
-              
-              console.log(`   ⏳ ${errorName}. Aguardando ${(waitTime/1000).toFixed(1)}s antes de tentar próximo modelo...`)
-              
-              // ✅ ESTRATÉGIA: Não esperar muito, pular rapidamente para próximo modelo
-              // Cada modelo tem cota separada na API Gemini
-              await delay(Math.min(waitTime, 5000))  // Máximo 5s antes de tentar outro modelo
-              
-              // Pular imediatamente para próximo modelo (cada um tem sua própria cota)
-              console.log(`   ➡️ Tentando próximo modelo disponível...`)
-              continue modelLoop
-            }
-            
-            // Erro 400 (Bad Request) - problema no prompt, tentar próximo modelo
-            if (response.status === 400) {
-              console.log(`   ⚠️ Erro no request (400) - pode ser limite de tokens, tentando modelo com mais capacidade...`)
-              continue modelLoop
-            }
-            
-            // Outros erros não recuperáveis - tentar próximo modelo
-            console.log(`   ⚠️ Erro ${response.status} não recuperável - tentando próximo modelo...`)
-            continue modelLoop
-          }
+        if (!response.ok) {
+          const errorText = await response.text()
+          lastError = `HTTP ${response.status}: ${errorText.substring(0, 200)}`
+          console.error(`❌ Erro HTTP ${response.status}`)
           
-          data = await response.json() as any
-          
-          // Verificar se a resposta contém dados válidos
-          if (!data) {
-            lastError = 'Resposta vazia da API'
-            console.error('   ❌ Resposta vazia da API Gemini')
-            await delay(2000)
+          if (attempt < MAX_RETRIES) {
+            console.log(`⏳ Aguardando 5s antes de nova tentativa...`)
+            await delay(5000)
             continue
           }
-          
-          // Verificar se há candidates
-          if (!data.candidates || data.candidates.length === 0) {
-            lastError = `API retornou sem candidates: ${JSON.stringify(data).substring(0, 200)}`
-            console.error('   ❌ Gemini API error:', JSON.stringify(data).substring(0, 500))
-            
-            // Verificar se é erro de segurança/filtro
-            if (data.promptFeedback?.blockReason) {
-              console.log(`   ⚠️ Conteúdo bloqueado: ${data.promptFeedback.blockReason}`)
-              lastError = `Conteúdo bloqueado pelo filtro: ${data.promptFeedback.blockReason}`
-            }
-            
-            await delay(2000)
-            continue
+          break
+        }
+        
+        data = await response.json() as any
+        
+        if (!data?.candidates?.[0]) {
+          lastError = 'Resposta sem conteúdo válido'
+          if (data?.promptFeedback?.blockReason) {
+            lastError = `Conteúdo bloqueado: ${data.promptFeedback.blockReason}`
           }
           
-          // SUCESSO! Sair de todos os loops
-          successModel = model.name
-          console.log(`   ✅ Modelo ${model.name} respondeu com sucesso!`)
-          break modelLoop
+          if (attempt < MAX_RETRIES) {
+            await delay(3000)
+            continue
+          }
+          break
+        }
         
-        } catch (fetchError) {
-          lastError = `Erro no fetch: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
-          console.error(`   ❌ Erro de rede:`, fetchError)
+        // SUCESSO!
+        console.log(`✅ Gemini respondeu com sucesso!`)
+        break
+        
+      } catch (fetchError) {
+        lastError = `Erro de rede: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
+        console.error(`❌ Erro:`, lastError)
+        
+        if (attempt < MAX_RETRIES) {
           await delay(3000)
           continue
         }
-      } // fim while retryCount
-    } // fim for models
-    
-    // Se nenhum modelo funcionou, retornar erro específico e útil
-    if (!data || !data.candidates || data.candidates.length === 0) {
-      console.error('❌ TODAS as tentativas falharam após tentar todos os modelos.')
-      console.error(`   Total de tentativas: ${totalAttempts}`)
-      console.error(`   Último erro: ${lastError}`)
-      
-      // Marcar edital como erro para permitir reprocessamento
-      await DB.prepare(`UPDATE editais SET status = 'erro' WHERE id = ?`).bind(editalId).run()
-      
-      // Verificar tipo de erro para mensagem específica
-      const isRateLimit = lastError.includes('429') || lastError.includes('Too Many') || lastError.includes('Resource exhausted')
-      const isServiceUnavailable = lastError.includes('503') || lastError.includes('Unavailable') || lastError.includes('overloaded')
-      const isBlocked = lastError.includes('bloqueado') || lastError.includes('blocked')
-      
-      if (isRateLimit) {
-        return c.json({
-          error: 'API Gemini atingiu limite de requisições.',
-          errorType: 'RATE_LIMIT',
-          suggestion: `A API está temporariamente indisponível devido a muitas requisições.\n\n✅ SOLUÇÕES:\n1. Aguarde 30 segundos e clique em "Tentar Novamente"\n2. Use um arquivo XLSX com cronograma (processamento instantâneo)\n3. Continue sem edital e adicione disciplinas manualmente\n\n⏱️ O limite é resetado automaticamente.`,
-          canRetry: true,
-          retryAfter: 30,  // Reduzido para 30 segundos
-          totalAttempts,
-          modelsAttempted: apiModels.length,
-          step: 4,
-          stepName: 'Análise com IA Gemini'
-        }, 429)
       }
-      
-      if (isServiceUnavailable) {
-        return c.json({
-          error: 'Servidores da IA temporariamente sobrecarregados.',
-          errorType: 'SERVICE_UNAVAILABLE',
-          suggestion: `Os servidores Gemini estão com alta demanda.\n\n✅ SOLUÇÕES:\n1. Clique em "Tentar Novamente" em 30 segundos\n2. Use um arquivo XLSX com cronograma de estudos\n3. Continue sem edital e adicione disciplinas manualmente`,
-          canRetry: true,
-          retryAfter: 30,  // Reduzido para 30 segundos
-          totalAttempts,
-          modelsAttempted: apiModels.length,
-          step: 4,
-          stepName: 'Análise com IA Gemini'
-        }, 503)
-      }
-      
-      if (isBlocked) {
-        return c.json({
-          error: 'Conteúdo do edital foi bloqueado pelo filtro de segurança.',
-          errorType: 'CONTENT_BLOCKED',
-          suggestion: `O filtro de segurança da IA bloqueou parte do conteúdo.\n\n✅ SOLUÇÕES:\n1. Extraia apenas o "Conteúdo Programático" do PDF\n2. Use um arquivo XLSX com as disciplinas\n3. Continue sem edital e adicione disciplinas manualmente`,
-          canRetry: false,
-          step: 4,
-          stepName: 'Análise com IA Gemini'
-        }, 400)
-      }
-      
-      // Erro genérico - SEMPRE permitir retry e continuar
-      return c.json({
-        error: 'Não foi possível processar com IA neste momento.',
-        errorType: 'AI_PROCESSING_FAILED',
-        suggestion: `A IA está temporariamente indisponível.\n\n✅ SOLUÇÕES:\n1. Clique em "Tentar Novamente" em 30 segundos\n2. Use um arquivo XLSX com cronograma\n3. Continue sem edital e adicione disciplinas manualmente`,
-        canRetry: true,
-        retryAfter: 30,
-        totalAttempts,
-        modelsAttempted: apiModels.length,
-        lastError: lastError.substring(0, 200),
-        step: 4,
-        stepName: 'Análise com IA Gemini'
-      }, 503)  // Usando 503 para indicar que é temporário
     }
     
-    console.log(`✅ Sucesso com modelo: ${successModel} após ${totalAttempts} tentativa(s)`)
+    // Se falhou, retornar erro
+    if (!data?.candidates?.[0]) {
+      console.error('❌ Falha após todas as tentativas.')
+      console.error(`Último erro: ${lastError}`)
+      
+      await DB.prepare(`UPDATE editais SET status = 'erro' WHERE id = ?`).bind(editalId).run()
+      
+      const isRateLimit = lastError.includes('429') || lastError.includes('Too Many')
+      
+      return c.json({
+        error: isRateLimit ? 'API temporariamente indisponível (rate limit).' : 'Erro ao processar edital com IA.',
+        errorType: isRateLimit ? 'RATE_LIMIT' : 'AI_ERROR',
+        suggestion: 'Aguarde 30 segundos e tente novamente, ou use um arquivo XLSX.',
+        canRetry: true,
+        retryAfter: 30,
+        step: 4,
+        stepName: 'Análise com IA'
+      }, isRateLimit ? 429 : 500)
+    }
+    
+    console.log(`✅ Sucesso com modelo: ${successModel}`)
     
     // Extrair texto da resposta com validação
     if (!data.candidates[0]?.content?.parts?.[0]?.text) {
@@ -11546,7 +11411,17 @@ ${personalizacao}
 
 ${instrucoesBanca}
 
-CRIE EXATAMENTE ${qtdExercicios} QUESTÕES DE CONCURSO sobre o tópico "${topico_nome}" da disciplina "${disciplina_nome}".
+════════════════════════════════════════════════════════════════
+🎯 TÓPICO ESPECÍFICO: "${topico_nome}"
+📚 DISCIPLINA: "${disciplina_nome}"
+════════════════════════════════════════════════════════════════
+
+⚠️ REGRA CRÍTICA: TODAS as ${qtdExercicios} questões devem ser EXCLUSIVAMENTE sobre o tópico "${topico_nome}".
+- NÃO misture com outros tópicos da disciplina
+- NÃO generalize para assuntos não relacionados ao tópico
+- Cada questão deve abordar um aspecto diferente DESTE MESMO TÓPICO
+
+CRIE EXATAMENTE ${qtdExercicios} QUESTÕES DE CONCURSO focadas 100% no tópico "${topico_nome}".
 
 IMPORTANTE: Você DEVE criar EXATAMENTE ${qtdExercicios} questões, numeradas de 1 a ${qtdExercicios}.
 
@@ -11689,12 +11564,11 @@ REGRAS OBRIGATÓRIAS:
         systemPrompt = `Crie um conteúdo educativo sobre "${topico_nome}" de "${disciplina_nome}" para concursos públicos.`
     }
     
-    // Lista de modelos para tentar em ordem (fallback cascade)
-    const modelos = [
-      'gemini-2.0-flash',
-      'gemini-2.0-flash-lite',  // Modelo mais leve com menor rate limit
-      'gemini-2.5-flash'        // Fallback mais novo
-    ]
+    // Usar apenas 1 modelo para evitar rate limit
+    const modelos = ['gemini-2.0-flash']
+    
+    // Para exercícios, usar temperatura mais baixa para focar no tópico
+    const tempExercicios = tipoConteudo === 'exercicios' ? 0.3 : (parseFloat(iaConfig.temperatura) || 0.7)
     
     const requestBody = {
       contents: [{
@@ -11703,7 +11577,7 @@ REGRAS OBRIGATÓRIAS:
         }]
       }],
       generationConfig: {
-        temperature: parseFloat(iaConfig.temperatura) || 0.7,
+        temperature: tempExercicios,
         maxOutputTokens: tipoConteudo === 'flashcards' ? Math.max(qtdFlashcards * 150, 3000) :
                          tipoConteudo === 'exercicios' ? Math.max(qtdExercicios * 300, 4000) :
                          Math.max(Math.ceil(limiteCaracteres / 2.5), 500),

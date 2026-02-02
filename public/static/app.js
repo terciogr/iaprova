@@ -2209,7 +2209,40 @@ function renderConcursoEspecifico() {
 }
 
 // ✅ NOVA FUNÇÃO: Processar edital ANTES de mostrar disciplinas
+let isProcessingEdital = false; // Flag global para evitar requisições simultâneas
+
+// ✅ Função auxiliar para cancelar countdown e navegar
+function cancelarCountdownENavegar(destino) {
+  console.log(`🔄 Cancelando countdown e navegando para: ${destino}`);
+  
+  // Cancelar countdown ativo
+  if (window.countdownInterval) {
+    clearInterval(window.countdownInterval);
+    window.countdownInterval = null;
+  }
+  
+  // Liberar flag de processamento
+  isProcessingEdital = false;
+  
+  // Navegar para destino
+  if (destino === 'step1') {
+    renderEntrevistaStep1();
+  } else if (destino === 'step2') {
+    renderEntrevistaStep2();
+  } else if (destino === 'dashboard') {
+    renderDashboard();
+  }
+}
+
 async function processarEditalAntesDeStep2() {
+  // ✅ PROTEÇÃO: Evitar requisições simultâneas
+  if (isProcessingEdital) {
+    console.log('⚠️ Já existe um processamento em andamento, ignorando...');
+    return;
+  }
+  isProcessingEdital = true;
+  console.log('🔒 Flag isProcessingEdital ativada');
+  
   // ✅ IMPORTANTE: Cancelar qualquer countdown ativo
   if (window.countdownInterval) {
     clearInterval(window.countdownInterval);
@@ -2553,7 +2586,7 @@ async function processarEditalAntesDeStep2() {
                     
                     <div class="flex flex-col gap-3">
                       ${canContinueManually || isNoDisciplines || isExtractionFailed ? `
-                        <button onclick="renderEntrevistaStep2()" 
+                        <button onclick="cancelarCountdownENavegar('step2')" 
                           class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition shadow-lg">
                           <i class="fas fa-check-circle mr-2"></i> Continuar e Selecionar Disciplinas
                         </button>
@@ -2566,12 +2599,12 @@ async function processarEditalAntesDeStep2() {
                           ${isCountdownActive ? 'Aguardando...' : 'Tentar Novamente'}
                         </button>
                       ` : ''}
-                      <button onclick="renderEntrevistaStep1()" 
+                      <button onclick="cancelarCountdownENavegar('step1')" 
                         class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold transition border border-gray-200">
                         <i class="fas fa-file-upload mr-2"></i> Anexar Outro Arquivo
                       </button>
                       ${!canContinueManually && !isNoDisciplines && !isExtractionFailed ? `
-                        <button onclick="renderEntrevistaStep2()" 
+                        <button onclick="cancelarCountdownENavegar('step2')" 
                           class="w-full bg-gray-50 hover:bg-gray-100 text-gray-600 py-3 rounded-xl font-medium transition border border-gray-200">
                           <i class="fas fa-arrow-right mr-2"></i> Continuar sem Edital
                         </button>
@@ -2581,6 +2614,10 @@ async function processarEditalAntesDeStep2() {
                 </div>
               `;
             };
+            
+            // ✅ LIBERAR FLAG quando mostra tela de erro (usuário precisa agir)
+            isProcessingEdital = false;
+            console.log('🔓 Flag isProcessingEdital desativada (tela de erro)');
             
             // ✅ NOVO: Iniciar contador regressivo com retry automático
             if (canRetry) {
@@ -2602,6 +2639,7 @@ async function processarEditalAntesDeStep2() {
                 
                 if (countdown <= 0) {
                   clearInterval(countdownInterval);
+                  window.countdownInterval = null;
                   
                   // Atualizar UI para mostrar que está tentando novamente
                   if (retryButton) {
@@ -2671,9 +2709,14 @@ async function processarEditalAntesDeStep2() {
     // Sucesso! Ir para Step2
     atualizarFeedbackUI(5, `✅ Processamento concluído! Redirecionando...`, 'success');
     await new Promise(resolve => setTimeout(resolve, 1500));
+    isProcessingEdital = false; // ✅ Liberar flag antes de navegar
+    console.log('🔓 Flag isProcessingEdital desativada (sucesso)');
     renderEntrevistaStep2();
     
   } catch (error) {
+    isProcessingEdital = false; // ✅ Liberar flag em caso de erro
+    console.log('🔓 Flag isProcessingEdital desativada (erro)');
+    
     // Log completo do erro para debug
     console.error('❌ Erro ao processar edital (COMPLETO):', error);
     console.error('❌ Tipo do erro:', typeof error);
