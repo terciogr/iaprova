@@ -8661,10 +8661,25 @@ window.fecharModalAdmin = function() {
 
 // Exportar dados para arquivo JSON
 window.exportarDados = async function() {
+  // Mostrar modal de processamento
+  const modalHtml = `
+    <div id="modal-export-loading" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+      <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-sm w-full mx-4 text-center shadow-2xl">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+          <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-bold ${themes[currentTheme].text} mb-2">Exportando Backup</h3>
+        <p class="${themes[currentTheme].textSecondary} text-sm">Preparando seus dados para download...</p>
+        <div class="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-blue-500 to-blue-600 animate-pulse" style="width: 60%"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
   try {
-    showToast('Preparando backup...', 'info');
-    
-    const response = await axios.get(`/api/backup/export/${currentUser.id}`);
+    const response = await axios.get(`/api/backup/export/${currentUser.id}`, { timeout: 30000 });
     const backup = response.data;
     
     // Criar arquivo para download
@@ -8673,15 +8688,24 @@ window.exportarDados = async function() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `iaprova_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.style.display = 'none';
     document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
     
-    showToast(`Backup exportado! ${backup.stats.diasEstudados} dias de histórico.`, 'success');
+    // Forçar download
+    setTimeout(() => {
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    // Fechar modal e mostrar sucesso
+    document.getElementById('modal-export-loading')?.remove();
+    showToast(`✅ Backup exportado! ${backup.stats?.diasEstudados || 0} dias de histórico.`, 'success', 5000);
+    
   } catch (error) {
     console.error('Erro ao exportar:', error);
-    showToast('Erro ao exportar dados', 'error');
+    document.getElementById('modal-export-loading')?.remove();
+    showToast('❌ Erro ao exportar dados. Tente novamente.', 'error', 5000);
   }
 };
 
@@ -8699,7 +8723,7 @@ window.importarDados = function() {
       const backup = JSON.parse(text);
       
       if (!backup.version || !backup.data) {
-        showToast('Arquivo de backup inválido', 'error');
+        showToast('❌ Arquivo de backup inválido', 'error');
         return;
       }
       
@@ -8715,19 +8739,36 @@ window.importarDados = function() {
       
       if (!confirmar) return;
       
-      showToast('Importando dados...', 'info');
+      // Mostrar modal de processamento
+      const modalHtml = `
+        <div id="modal-import-loading" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-sm w-full mx-4 text-center shadow-2xl">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+              <i class="fas fa-spinner fa-spin text-green-500 text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-bold ${themes[currentTheme].text} mb-2">Importando Backup</h3>
+            <p class="${themes[currentTheme].textSecondary} text-sm">Restaurando seus dados...</p>
+            <div class="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-green-500 to-green-600 animate-pulse" style="width: 70%"></div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
       
       const response = await axios.post(`/api/backup/import/${currentUser.id}`, {
         backup,
         mode: 'merge'
-      });
+      }, { timeout: 60000 });
       
-      showToast(`Backup importado! ${response.data.stats.inserted} registros.`, 'success');
+      document.getElementById('modal-import-loading')?.remove();
+      showToast(`✅ Backup importado! ${response.data.stats?.inserted || 0} registros.`, 'success', 5000);
       fecharModalAdmin();
       renderDashboard();
     } catch (error) {
       console.error('Erro ao importar:', error);
-      showToast('Erro ao importar backup', 'error');
+      document.getElementById('modal-import-loading')?.remove();
+      showToast('❌ Erro ao importar backup', 'error');
     }
   };
   input.click();

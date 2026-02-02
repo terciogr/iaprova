@@ -1356,11 +1356,31 @@ app.get('/api/auth/google/status/:user_id', async (c) => {
   const user_id = c.req.param('user_id')
   
   try {
-    const user = await DB.prepare(`
-      SELECT google_id, google_email, google_picture, auth_provider, 
-             google_token_expires, last_sync_at
-      FROM users WHERE id = ?
-    `).bind(user_id).first() as any
+    // Primeiro, verificar se as colunas do Google existem
+    let user: any = null
+    
+    try {
+      user = await DB.prepare(`
+        SELECT google_id, google_email, google_picture, auth_provider, 
+               google_token_expires, last_sync_at
+        FROM users WHERE id = ?
+      `).bind(user_id).first()
+    } catch (columnError: any) {
+      // Se as colunas não existem, retornar status desconectado
+      if (columnError.message?.includes('no such column')) {
+        console.log('⚠️ Colunas Google ainda não existem - retornando status desconectado')
+        return c.json({
+          connected: false,
+          email: null,
+          picture: null,
+          authProvider: 'email',
+          tokenValid: false,
+          lastSync: null,
+          googleNotConfigured: true
+        })
+      }
+      throw columnError
+    }
     
     if (!user) {
       return c.json({ error: 'Usuário não encontrado' }, 404)
@@ -1373,13 +1393,21 @@ app.get('/api/auth/google/status/:user_id', async (c) => {
       connected: isConnected,
       email: user.google_email,
       picture: user.google_picture,
-      authProvider: user.auth_provider,
+      authProvider: user.auth_provider || 'email',
       tokenValid: isConnected && !tokenExpired,
       lastSync: user.last_sync_at
     })
   } catch (error) {
     console.error('Erro ao verificar status Google:', error)
-    return c.json({ error: 'Erro ao verificar status' }, 500)
+    // Retornar status desconectado em vez de erro
+    return c.json({
+      connected: false,
+      email: null,
+      picture: null,
+      authProvider: 'email',
+      tokenValid: false,
+      lastSync: null
+    })
   }
 })
 
