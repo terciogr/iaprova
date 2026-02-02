@@ -17229,15 +17229,7 @@ function atualizarInterfaceConfig() {
     radio.checked = radio.value === iaConfig.tom;
   });
   
-  // Temperatura
-  const tempSlider = document.getElementById('config-temperatura');
-  const tempValue = document.getElementById('temp-value');
-  if (tempSlider) {
-    tempSlider.value = iaConfig.temperatura;
-    if (tempValue) {
-      tempValue.textContent = Math.round(iaConfig.temperatura * 100) + '%';
-    }
-  }
+  // Temperatura removida - IA sempre objetiva (temperatura fixa 0.2 no backend)
   
   // Intensidade
   document.querySelectorAll('[name="config-intensidade"]').forEach(radio => {
@@ -17370,33 +17362,7 @@ window.openIAConfig = function() {
               </div>
             </div>
             
-            <!-- Temperatura/Criatividade -->
-            <div class="bg-[#E8EDF5]/30 rounded-xl p-5 border border-[#122D6A]/10">
-              <h3 class="text-lg font-bold text-[#122D6A] mb-4 flex items-center gap-2">
-                <i class="fas fa-thermometer-half"></i> Criatividade
-              </h3>
-              <div class="space-y-4">
-                <div class="flex justify-between text-sm text-gray-600">
-                  <span>Objetivo</span>
-                  <span id="temp-value" class="font-bold text-[#122D6A]">50%</span>
-                  <span>Criativo</span>
-                </div>
-                <input 
-                  type="range" 
-                  id="config-temperatura"
-                  min="0.1" 
-                  max="1.0" 
-                  step="0.1" 
-                  value="0.5"
-                  onchange="iaConfig.temperatura = parseFloat(this.value); document.getElementById('temp-value').textContent = Math.round(this.value * 100) + '%'"
-                  class="w-full accent-[#122D6A]"
-                >
-                <p class="text-xs text-gray-500">
-                  Baixo: Respostas mais previsíveis e consistentes<br>
-                  Alto: Respostas mais variadas e criativas
-                </p>
-              </div>
-            </div>
+            <!-- Nota: Criatividade removida - IA sempre objetiva -->
             
             <!-- Intensidade -->
             <div class="bg-[#E8EDF5]/30 rounded-xl p-5 border border-[#122D6A]/10">
@@ -17697,15 +17663,15 @@ function gerarPromptPersonalizado(tipo, conteudoBase) {
     personalizado: `exatamente ${config.extensaoCustom} caracteres`
   };
   
-  // Construir prompt personalizado
+  // Construir prompt personalizado (sem criatividade - IA sempre objetiva)
   let promptPersonalizado = `
     CONFIGURAÇÕES DE PERSONALIZAÇÃO (OBRIGATÓRIO SEGUIR):
     
     1. TOM: ${tomInstrucoes[config.tom]}
-    2. CRIATIVIDADE: ${Math.round(config.temperatura * 100)}% (${config.temperatura < 0.4 ? 'seja mais objetivo e previsível' : config.temperatura > 0.7 ? 'seja mais criativo e variado' : 'equilibre objetividade e criatividade'})
+    2. ESTILO: Seja OBJETIVO, DIRETO e PRECISO.
     3. INTENSIDADE: ${intensidadeInstrucoes[config.intensidade]}
     4. PROFUNDIDADE: ${profundidadeInstrucoes[config.profundidade]}
-    5. EXTENSÃO: Limite de ${extensaoLimites[config.extensao]}
+    5. EXTENSÃO: Mínimo de ${extensaoLimites[config.extensao]}
     `;
   
   // Adicionar instruções específicas por tipo de conteúdo

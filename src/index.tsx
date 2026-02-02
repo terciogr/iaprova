@@ -11392,16 +11392,16 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
       personalizado: `EXATAMENTE ${iaConfig.extensaoCustom} caracteres`
     }
     
-    // Instruções de personalização comuns
+    // Instruções de personalização comuns (SEM criatividade - sempre objetivo)
     const personalizacao = `
 === CONFIGURAÇÕES DE PERSONALIZAÇÃO OBRIGATÓRIAS ===
-1. TOM: ${tomInstrucoes[iaConfig.tom]}
-2. CRIATIVIDADE: ${Math.round(iaConfig.temperatura * 100)}% (${iaConfig.temperatura < 0.4 ? 'seja mais objetivo e previsível' : iaConfig.temperatura > 0.7 ? 'seja mais criativo e variado' : 'equilibre objetividade e criatividade'})
-3. INTENSIDADE: ${intensidadeInstrucoes[iaConfig.intensidade]}
-4. PROFUNDIDADE: ${profundidadeInstrucoes[iaConfig.profundidade]}
-5. EXTENSÃO: ${extensaoLimites[iaConfig.extensao]}
+1. TOM: ${tomInstrucoes[iaConfig.tom] || tomInstrucoes['didatico']}
+2. ESTILO: Seja OBJETIVO, DIRETO e PRECISO. Sem rodeios ou enrolação.
+3. INTENSIDADE: ${intensidadeInstrucoes[iaConfig.intensidade] || intensidadeInstrucoes['intermediaria']}
+4. PROFUNDIDADE: ${profundidadeInstrucoes[iaConfig.profundidade] || profundidadeInstrucoes['aplicada']}
+5. EXTENSÃO MÍNIMA: ${limiteCaracteres} caracteres (pode ultrapassar um pouco, mas NUNCA gere menos que isso)
 
-⚠️ REGRA CRÍTICA DE EXTENSÃO: Você DEVE gerar um texto com EXATAMENTE ${limiteCaracteres} caracteres (incluindo espaços e pontuação). Nem um caractere a mais, nem um a menos
+⚠️ REGRA CRÍTICA: O conteúdo DEVE ter NO MÍNIMO ${limiteCaracteres} caracteres. Gere conteúdo COMPLETO e DETALHADO.
 ==================================================
 `
     
@@ -11621,8 +11621,23 @@ REGRAS OBRIGATÓRIAS:
     // Usar apenas 1 modelo para evitar rate limit
     const modelos = ['gemini-2.5-flash']
     
-    // Para exercícios, usar temperatura mais baixa para focar no tópico
-    const tempExercicios = tipoConteudo === 'exercicios' ? 0.3 : (parseFloat(iaConfig.temperatura) || 0.7)
+    // ✅ SEMPRE usar temperatura BAIXA (0.2) para conteúdo mais objetivo e consistente
+    const temperaturaFixa = 0.2
+    
+    // ✅ Calcular maxOutputTokens baseado no tipo e extensão
+    // 1 token ≈ 4 caracteres, então multiplicamos por fator de segurança
+    let maxTokens = 8192 // padrão alto
+    if (tipoConteudo === 'flashcards') {
+      maxTokens = Math.max(qtdFlashcards * 200, 4000)
+    } else if (tipoConteudo === 'exercicios') {
+      maxTokens = Math.max(qtdExercicios * 400, 6000)
+    } else {
+      // Para teoria/resumo: garantir tokens suficientes para a extensão desejada
+      // limiteCaracteres / 3 (tokens) * 2 (margem de segurança)
+      maxTokens = Math.max(Math.ceil(limiteCaracteres / 1.5), 4000)
+    }
+    
+    console.log(`🎯 Configuração: temperatura=${temperaturaFixa}, maxTokens=${maxTokens}, extensão=${limiteCaracteres} chars`)
     
     const requestBody = {
       contents: [{
@@ -11631,11 +11646,10 @@ REGRAS OBRIGATÓRIAS:
         }]
       }],
       generationConfig: {
-        temperature: tempExercicios,
-        maxOutputTokens: tipoConteudo === 'flashcards' ? Math.max(qtdFlashcards * 150, 3000) :
-                         tipoConteudo === 'exercicios' ? Math.max(qtdExercicios * 300, 4000) :
-                         Math.max(Math.ceil(limiteCaracteres / 2.5), 500),
-        topP: 0.95
+        temperature: temperaturaFixa,
+        maxOutputTokens: maxTokens,
+        topP: 0.9,
+        topK: 40
       }
     }
     
