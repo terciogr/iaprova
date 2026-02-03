@@ -368,7 +368,7 @@ function isValidEmail(email: string): boolean {
 async function sendPasswordResetEmail(email: string, token: string, name: string, env?: any): Promise<boolean> {
   // Obter configurações do ambiente
   const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
-  const FROM_EMAIL = env?.FROM_EMAIL || 'onboarding@resend.dev';
+  const FROM_EMAIL = env?.FROM_EMAIL || 'noreply@iaprova.app';
   
   // URL de reset - usar APP_URL do ambiente ou fallback
   const APP_URL = env?.APP_URL || 'https://iaprova.app';
@@ -549,7 +549,7 @@ async function sendPasswordResetEmail(email: string, token: string, name: string
 async function sendVerificationEmail(email: string, token: string, name: string, env?: any): Promise<boolean> {
   // Obter configurações do ambiente
   const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
-  const FROM_EMAIL = env?.FROM_EMAIL || 'onboarding@resend.dev';
+  const FROM_EMAIL = env?.FROM_EMAIL || 'noreply@iaprova.app';
   const APP_URL = env?.APP_URL || 'https://iaprova.app';
   
   // URL de verificação
@@ -782,7 +782,7 @@ async function sendVerificationEmail(email: string, token: string, name: string,
 // Função para enviar email de boas-vindas após verificação (usando Resend)
 async function sendWelcomeEmail(email: string, name: string, env?: any): Promise<boolean> {
   const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
-  const FROM_EMAIL = env?.FROM_EMAIL || 'onboarding@resend.dev';
+  const FROM_EMAIL = env?.FROM_EMAIL || 'noreply@iaprova.app';
   const APP_URL = env?.APP_URL || 'https://iaprova.app';
   
   // Verificar se tem API key configurada
