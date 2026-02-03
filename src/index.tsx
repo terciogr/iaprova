@@ -1078,7 +1078,7 @@ app.post('/api/users', async (c) => {
       email: userEmail,
       message: emailSent 
         ? '✅ Cadastro realizado! Verifique seu email (inclusive a pasta de spam) para ativar sua conta.'
-        : '⚠️ Cadastro realizado! O serviço de email está em modo de teste. Use o link abaixo para verificar.',
+        : '✅ Cadastro realizado! Use o link abaixo para verificar seu email.',
       emailSent,
       needsVerification: true,
       // SEMPRE retornar token para permitir verificação manual
@@ -1507,6 +1507,159 @@ app.get('/api/admin/check', async (c) => {
   return c.json({ isAdmin: isAdminUser })
 })
 
+// Buscar detalhes de um usuário específico (admin)
+app.get('/api/admin/users/:id', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const userId = c.req.param('id')
+    const user = await DB.prepare(`
+      SELECT 
+        u.*,
+        (SELECT COUNT(*) FROM planos_estudo WHERE user_id = u.id) as total_planos,
+        (SELECT COUNT(*) FROM metas_diarias WHERE user_id = u.id) as total_metas,
+        (SELECT COUNT(*) FROM metas_diarias WHERE user_id = u.id AND concluida = 1) as metas_concluidas
+      FROM users u
+      WHERE u.id = ?
+    `).bind(userId).first()
+    
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404)
+    }
+    
+    // Buscar assinatura ativa
+    let subscription = null
+    try {
+      subscription = await DB.prepare(`
+        SELECT us.*, pp.name as plan_name, pp.price
+        FROM user_subscriptions us
+        JOIN payment_plans pp ON pp.id = us.plan_id
+        WHERE us.user_id = ? AND us.status = 'active'
+        ORDER BY us.id DESC
+        LIMIT 1
+      `).bind(userId).first()
+    } catch (e) {
+      console.log('Tabela de assinaturas pode não existir')
+    }
+    
+    return c.json({ user, subscription })
+  } catch (error) {
+    console.error('Erro ao buscar usuário:', error)
+    return c.json({ error: 'Erro ao buscar usuário' }, 500)
+  }
+})
+
+// Atualizar dados de um usuário (admin)
+app.put('/api/admin/users/:id', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const userId = c.req.param('id')
+    const { is_premium, premium_days, plan_id } = await c.req.json()
+    
+    // Atualizar premium do usuário
+    if (typeof is_premium !== 'undefined') {
+      if (is_premium && premium_days) {
+        await DB.prepare(`
+          UPDATE users 
+          SET is_premium = 1, premium_expires_at = DATE('now', '+' || ? || ' days')
+          WHERE id = ?
+        `).bind(premium_days, userId).run()
+      } else if (!is_premium) {
+        await DB.prepare(`
+          UPDATE users 
+          SET is_premium = 0, premium_expires_at = NULL
+          WHERE id = ?
+        `).bind(userId).run()
+      }
+    }
+    
+    // Se um plano foi especificado, criar/atualizar assinatura
+    if (plan_id) {
+      try {
+        // Buscar plano
+        const plan = await DB.prepare('SELECT * FROM payment_plans WHERE id = ?').bind(plan_id).first() as any
+        if (plan) {
+          // Desativar assinaturas anteriores
+          await DB.prepare(`
+            UPDATE user_subscriptions SET status = 'cancelled' WHERE user_id = ? AND status = 'active'
+          `).bind(userId).run()
+          
+          // Criar nova assinatura
+          await DB.prepare(`
+            INSERT INTO user_subscriptions (user_id, plan_id, status, amount_paid, starts_at, expires_at)
+            VALUES (?, ?, 'active', ?, DATE('now'), DATE('now', '+' || ? || ' days'))
+          `).bind(userId, plan_id, plan.price, plan.duration_days || 30).run()
+          
+          // Atualizar usuário como premium se plano não for gratuito
+          if (plan.price > 0) {
+            await DB.prepare(`
+              UPDATE users 
+              SET is_premium = 1, premium_expires_at = DATE('now', '+' || ? || ' days')
+              WHERE id = ?
+            `).bind(plan.duration_days || 30, userId).run()
+          }
+        }
+      } catch (e) {
+        console.log('Erro ao criar assinatura:', e)
+      }
+    }
+    
+    return c.json({ success: true, message: 'Usuário atualizado com sucesso' })
+  } catch (error) {
+    console.error('Erro ao atualizar usuário:', error)
+    return c.json({ error: 'Erro ao atualizar usuário' }, 500)
+  }
+})
+
+// Deletar usuário (admin) - CUIDADO!
+app.delete('/api/admin/users/:id', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const userId = c.req.param('id')
+    
+    // Verificar se não é o próprio admin
+    const user = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first() as any
+    if (user?.email === ADMIN_EMAIL) {
+      return c.json({ error: 'Não é possível deletar o administrador' }, 400)
+    }
+    
+    // Deletar dados relacionados primeiro
+    await DB.prepare('DELETE FROM metas_diarias WHERE user_id = ?').bind(userId).run()
+    await DB.prepare('DELETE FROM semanas_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)').bind(userId).run()
+    await DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)').bind(userId).run()
+    await DB.prepare('DELETE FROM planos_estudo WHERE user_id = ?').bind(userId).run()
+    await DB.prepare('DELETE FROM user_disciplinas WHERE user_id = ?').bind(userId).run()
+    await DB.prepare('DELETE FROM interviews WHERE user_id = ?').bind(userId).run()
+    
+    // Deletar assinaturas se existir a tabela
+    try {
+      await DB.prepare('DELETE FROM user_subscriptions WHERE user_id = ?').bind(userId).run()
+    } catch (e) {}
+    
+    // Deletar usuário
+    await DB.prepare('DELETE FROM users WHERE id = ?').bind(userId).run()
+    
+    return c.json({ success: true, message: 'Usuário deletado com sucesso' })
+  } catch (error) {
+    console.error('Erro ao deletar usuário:', error)
+    return c.json({ error: 'Erro ao deletar usuário' }, 500)
+  }
+})
+
 // ============== GOOGLE OAUTH ==============
 
 // Endpoint para iniciar autenticação Google (retorna URL de autorização)
@@ -1930,7 +2083,7 @@ app.post('/api/forgot-password', async (c) => {
     return c.json({ 
       message: emailSent 
         ? 'Se o email estiver cadastrado, você receberá instruções de recuperação. Se não receber, use o link abaixo.'
-        : 'O serviço de email está em modo de teste. Use o link abaixo para redefinir sua senha.',
+        : '✅ Use o link abaixo para redefinir sua senha.',
       success: true,
       // SEMPRE retornar token e URL para permitir reset manual
       devToken: resetToken,
@@ -2078,7 +2231,7 @@ app.post('/api/resend-verification', async (c) => {
     return c.json({ 
       message: emailSent 
         ? '✅ Email de verificação reenviado! Verifique sua caixa de entrada (e a pasta de spam). Se não receber, use o link abaixo.'
-        : '⚠️ O serviço de email está em modo de teste. Use o link abaixo para verificar seu email.',
+        : '✅ Use o link abaixo para verificar seu email.',
       emailSent,
       // SEMPRE retornar token e URL para permitir verificação manual
       devToken: newToken,
@@ -2432,15 +2585,31 @@ app.post('/api/editais/upload', async (c) => {
     console.error('❌ Erro crítico no upload:', error)
     
     // Retornar mensagem de erro detalhada
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+    const errorMessage = error instanceof Error ? error.message : 'Erro interno no servidor'
+    
+    // Mensagens amigáveis para erros comuns
+    let userFriendlyMessage = 'Erro ao fazer upload de editais'
+    let suggestion = 'Tente novamente ou use outro formato de arquivo'
+    
+    if (errorMessage.includes('USER_NOT_FOUND') || errorMessage.includes('FOREIGN KEY')) {
+      userFriendlyMessage = 'Sessão expirada'
+      suggestion = 'Faça login novamente'
+    } else if (errorMessage.includes('15MB') || errorMessage.includes('muito grande')) {
+      userFriendlyMessage = 'Arquivo muito grande'
+      suggestion = 'Use um arquivo menor que 15MB ou converta o PDF para TXT'
+    } else if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+      userFriendlyMessage = 'API temporariamente indisponível'
+      suggestion = 'Aguarde 2-3 minutos e tente novamente'
+    } else if (errorMessage.includes('escaneado') || errorMessage.includes('protegido')) {
+      userFriendlyMessage = 'PDF não extraível'
+      suggestion = 'Converta o PDF para TXT em https://www.ilovepdf.com/pt/pdf_para_texto'
+    }
+    
     return c.json({ 
-      error: 'Erro ao fazer upload de editais',
+      error: userFriendlyMessage,
       details: errorMessage,
-      hint: errorMessage.includes('USER_NOT_FOUND') 
-        ? 'Faça login novamente' 
-        : errorMessage.includes('FOREIGN KEY') 
-          ? 'Erro de integridade no banco. Verifique se o usuário está logado.'
-          : 'Verifique o formato do arquivo (PDF, TXT ou XLSX)'
+      suggestion: suggestion,
+      errorType: 'UPLOAD_ERROR'
     }, 500)
   }
 })
@@ -3640,28 +3809,44 @@ RETORNE APENAS JSON (sem markdown, sem explicações):
     `).bind(editalId).run()
 
     // Retornar erro detalhado
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+    const errorMessage = error instanceof Error ? error.message : 'Erro interno no servidor'
     console.error('❌ Detalhes do erro:', errorMessage)
     
-    // Identificar tipo de erro específico
-    let errorType = 'UNKNOWN_ERROR'
-    let userMessage = 'Erro ao processar edital com IA'
+    // Identificar tipo de erro específico e fornecer mensagem amigável
+    let errorType = 'PROCESSING_ERROR'
+    let userMessage = 'Erro ao processar edital'
+    let suggestion = 'Tente novamente ou use um formato diferente de arquivo'
+    let canRetry = true
     
-    if (errorMessage.includes('Gemini API falhou')) {
-      errorType = 'GEMINI_API_ERROR'
-      userMessage = 'Erro na comunicação com a API Gemini. Verifique a chave de API.'
-    } else if (errorMessage.includes('não retornou JSON válido')) {
-      errorType = 'INVALID_JSON_RESPONSE'
-      userMessage = 'A IA não conseguiu estruturar as disciplinas corretamente. Tente com um arquivo mais claro.'
-    } else if (errorMessage.includes('Texto do edital vazio')) {
+    if (errorMessage.includes('Gemini') || errorMessage.includes('API')) {
+      errorType = 'API_ERROR'
+      userMessage = 'Serviço de IA temporariamente indisponível'
+      suggestion = 'Aguarde alguns segundos e tente novamente'
+    } else if (errorMessage.includes('JSON') || errorMessage.includes('parse')) {
+      errorType = 'PARSE_ERROR'
+      userMessage = 'Não foi possível interpretar o conteúdo do edital'
+      suggestion = 'Converta o PDF para TXT em https://www.ilovepdf.com/pt/pdf_para_texto'
+    } else if (errorMessage.includes('vazio') || errorMessage.includes('empty')) {
       errorType = 'EMPTY_TEXT'
-      userMessage = 'O texto do edital está vazio. Verifique se o PDF foi extraído corretamente.'
+      userMessage = 'O arquivo não contém texto extraível'
+      suggestion = 'Use um PDF de texto (não escaneado) ou converta para TXT'
+    } else if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+      errorType = 'RATE_LIMIT'
+      userMessage = 'Muitas requisições simultâneas'
+      suggestion = 'Aguarde 30 segundos e tente novamente'
+    } else if (errorMessage.includes('muito grande') || errorMessage.includes('15MB')) {
+      errorType = 'FILE_TOO_LARGE'
+      userMessage = 'Arquivo muito grande'
+      suggestion = 'Use um arquivo menor que 15MB ou converta para TXT'
+      canRetry = false
     }
     
     return c.json({ 
       error: userMessage,
       errorType: errorType,
-      details: errorMessage
+      details: errorMessage,
+      suggestion: suggestion,
+      canRetry: canRetry
     }, 500)
   }
 })
@@ -12169,7 +12354,7 @@ REGRAS OBRIGATÓRIAS:
     console.error('❌ Erro ao gerar conteúdo do tópico:', error)
     return c.json({ 
       error: 'Erro no servidor ao gerar conteúdo',
-      details: error instanceof Error ? error.message : 'Erro desconhecido'
+      details: error instanceof Error ? error.message : 'Erro interno no servidor'
     }, 500)
   }
 })
@@ -12310,7 +12495,7 @@ REGRAS OBRIGATÓRIAS:
     console.error('❌ Erro ao gerar simulado:', error)
     return c.json({ 
       error: 'Erro no servidor ao gerar simulado',
-      details: error instanceof Error ? error.message : 'Erro desconhecido'
+      details: error instanceof Error ? error.message : 'Erro interno no servidor'
     }, 500)
   }
 })

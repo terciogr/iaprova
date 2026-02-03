@@ -2446,7 +2446,7 @@ async function processarEditalAntesDeStep2() {
         console.error(`❌ Status:`, procError?.response?.status);
         
         // Feedback visual de erro
-        const errorMsg = procError?.response?.data?.error || 'Erro desconhecido';
+        const errorMsg = procError?.response?.data?.error || procError?.message || 'Erro na comunicação com o servidor. Verifique sua conexão.';
         atualizarFeedbackUI(2, `❌ ERRO na Etapa 2: ${errorMsg}`, 'error');
         
         // Se for erro 400 ou 404, pode ser que já foi processado
@@ -2460,7 +2460,7 @@ async function processarEditalAntesDeStep2() {
         // Se for erro 400 ou 503, mostrar mensagem específica e opção de tentar novamente
         if (procError?.response?.status === 400 || procError?.response?.status === 503) {
           const errorData = procError?.response?.data;
-          const detailedError = errorData?.error || 'Erro desconhecido';
+          const detailedError = errorData?.error || errorData?.details || procError?.message || 'Erro na comunicação com o servidor';
           const errorType = errorData?.errorType || 'UNKNOWN';
           const suggestion = errorData?.suggestion || '';
           const step = errorData?.step || 2;
@@ -2730,7 +2730,7 @@ async function processarEditalAntesDeStep2() {
     console.error('❌ JSON do erro:', JSON.stringify(error, null, 2));
     
     // Atualizar UI com erro detalhado
-    atualizarFeedbackUI(etapaAtual, `❌ ERRO CRÍTICO: ${error.message || 'Erro desconhecido'}`, 'error');
+    atualizarFeedbackUI(etapaAtual, `❌ ERRO: ${error.message || error?.response?.data?.error || 'Erro na comunicação'}`, 'error');
     
     // Fallback: continuar sem edital
     let errorMsg = '⚠️ Não foi possível processar o edital automaticamente.\n\n';
@@ -2738,7 +2738,7 @@ async function processarEditalAntesDeStep2() {
     
     if (error.response) {
       // Erro HTTP do backend
-      const backendError = error.response.data?.error || 'Erro desconhecido';
+      const backendError = error.response.data?.error || error.response.data?.details || 'Erro no processamento do servidor';
       errorDetails = `Erro do servidor: ${backendError}`;
       errorMsg += `${errorDetails}\n\n`;
       
@@ -6393,7 +6393,7 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
         exibirConteudoGerado(response.data);
       }
     } else {
-      showToast('Erro ao gerar conteúdo: ' + (response.data.error || 'Erro desconhecido'), 'error');
+      showToast('Erro ao gerar conteúdo: ' + (response.data.error || 'Erro no servidor. Tente novamente.'), 'error');
     }
   } catch (error) {
     document.getElementById('loading-conteudo')?.remove();
@@ -8980,20 +8980,27 @@ window.atualizarDashboardAdmin = function() {
 // Ver lista de usuários
 window.verListaUsuarios = async function() {
   try {
-    const response = await axios.get('/api/admin/users?limit=50', {
+    const response = await axios.get('/api/admin/users?limit=100', {
       headers: { 'X-User-ID': currentUser.id }
     });
     const { users, pagination } = response.data;
+    
+    // Carregar planos disponíveis
+    let plans = [];
+    try {
+      const plansRes = await axios.get('/api/admin/plans', { headers: { 'X-User-ID': currentUser.id } });
+      plans = plansRes.data.plans || [];
+    } catch (e) {}
     
     const modal = document.createElement('div');
     modal.id = 'modal-admin-users';
     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
     modal.innerHTML = `
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
           <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
             <i class="fas fa-users text-blue-500"></i>
-            Lista de Usuários (${pagination.total})
+            Gerenciar Usuários (${pagination.total})
           </h3>
           <button onclick="document.getElementById('modal-admin-users')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
             <i class="fas fa-times text-xl"></i>
@@ -9001,39 +9008,209 @@ window.verListaUsuarios = async function() {
         </div>
         <div class="overflow-y-auto flex-1 p-4">
           <table class="w-full text-sm">
-            <thead class="bg-gray-100 dark:bg-gray-800">
+            <thead class="bg-gray-100 dark:bg-gray-800 sticky top-0">
               <tr>
                 <th class="p-2 text-left ${themes[currentTheme].text}">ID</th>
                 <th class="p-2 text-left ${themes[currentTheme].text}">Nome</th>
                 <th class="p-2 text-left ${themes[currentTheme].text}">Email</th>
                 <th class="p-2 text-center ${themes[currentTheme].text}">Verificado</th>
                 <th class="p-2 text-center ${themes[currentTheme].text}">Premium</th>
-                <th class="p-2 text-left ${themes[currentTheme].text}">Criado em</th>
+                <th class="p-2 text-center ${themes[currentTheme].text}">Ações</th>
               </tr>
             </thead>
             <tbody>
               ${users.map(u => `
-                <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50 dark:hover:bg-gray-800">
+                <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50 dark:hover:bg-gray-800" id="user-row-${u.id}">
                   <td class="p-2 ${themes[currentTheme].textSecondary}">${u.id}</td>
                   <td class="p-2 ${themes[currentTheme].text} font-medium">${u.name || '-'}</td>
                   <td class="p-2 ${themes[currentTheme].textSecondary} text-xs">${u.email}</td>
                   <td class="p-2 text-center">
                     ${u.email_verified ? '<i class="fas fa-check-circle text-green-500"></i>' : '<i class="fas fa-times-circle text-red-400"></i>'}
                   </td>
-                  <td class="p-2 text-center">
-                    ${u.is_premium ? '<i class="fas fa-crown text-yellow-500"></i>' : '<i class="fas fa-minus text-gray-300"></i>'}
+                  <td class="p-2 text-center" id="premium-status-${u.id}">
+                    ${u.is_premium ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs"><i class="fas fa-crown mr-1"></i>Premium</span>' : '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs">Free</span>'}
                   </td>
-                  <td class="p-2 ${themes[currentTheme].textMuted} text-xs">${u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '-'}</td>
+                  <td class="p-2 text-center">
+                    <div class="flex items-center justify-center gap-1">
+                      <button onclick="editarUsuarioAdmin(${u.id}, '${u.name || ''}', '${u.email}', ${u.is_premium ? 1 : 0})" 
+                        class="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Editar">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button onclick="togglePremiumAdmin(${u.id}, ${u.is_premium ? 0 : 1})" 
+                        class="p-1.5 ${u.is_premium ? 'text-gray-500 hover:bg-gray-50' : 'text-yellow-500 hover:bg-yellow-50'} rounded" 
+                        title="${u.is_premium ? 'Remover Premium' : 'Dar Premium'}">
+                        <i class="fas ${u.is_premium ? 'fa-user-minus' : 'fa-crown'}"></i>
+                      </button>
+                      ${u.email !== 'terciogomesrabelo@gmail.com' ? `
+                        <button onclick="deletarUsuarioAdmin(${u.id}, '${u.email}')" 
+                          class="p-1.5 text-red-500 hover:bg-red-50 rounded" title="Deletar">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      ` : ''}
+                    </div>
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
+        </div>
+        <div class="p-3 border-t ${themes[currentTheme].border} flex-shrink-0 text-center">
+          <p class="text-xs ${themes[currentTheme].textMuted}">
+            <i class="fas fa-info-circle mr-1"></i>
+            Clique nos ícones para gerenciar cada usuário
+          </p>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
   } catch (error) {
     showToast('❌ Erro ao carregar usuários', 'error');
+  }
+};
+
+// Toggle Premium para usuário (admin)
+window.togglePremiumAdmin = async function(userId, setPremium) {
+  try {
+    const days = setPremium ? 30 : 0;
+    await axios.put(`/api/admin/users/${userId}`, {
+      is_premium: setPremium,
+      premium_days: days
+    }, { headers: { 'X-User-ID': currentUser.id } });
+    
+    // Atualizar UI
+    const statusCell = document.getElementById(`premium-status-${userId}`);
+    if (statusCell) {
+      statusCell.innerHTML = setPremium 
+        ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs"><i class="fas fa-crown mr-1"></i>Premium</span>'
+        : '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs">Free</span>';
+    }
+    
+    showToast(setPremium ? '✅ Usuário agora é Premium!' : '✅ Premium removido!', 'success');
+  } catch (error) {
+    showToast('❌ Erro ao atualizar usuário', 'error');
+  }
+};
+
+// Editar usuário (admin)
+window.editarUsuarioAdmin = async function(userId, nome, email, isPremium) {
+  // Carregar planos disponíveis
+  let plans = [];
+  try {
+    const plansRes = await axios.get('/api/admin/plans', { headers: { 'X-User-ID': currentUser.id } });
+    plans = plansRes.data.plans || [];
+  } catch (e) {}
+  
+  const modal = document.createElement('div');
+  modal.id = 'modal-edit-user';
+  modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10001] p-4';
+  modal.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-md w-full p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
+          <i class="fas fa-user-edit text-blue-500"></i>
+          Editar Usuário #${userId}
+        </h3>
+        <button onclick="document.getElementById('modal-edit-user')?.remove()" class="${themes[currentTheme].textSecondary}">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium ${themes[currentTheme].text} mb-1">Nome</label>
+          <input type="text" id="edit-user-name" value="${nome}" disabled
+            class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} bg-gray-100 ${themes[currentTheme].text}">
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium ${themes[currentTheme].text} mb-1">Email</label>
+          <input type="text" value="${email}" disabled
+            class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} bg-gray-100 ${themes[currentTheme].text}">
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium ${themes[currentTheme].text} mb-1">Status Premium</label>
+          <select id="edit-user-premium" class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} ${themes[currentTheme].card}">
+            <option value="0" ${!isPremium ? 'selected' : ''}>Free (Gratuito)</option>
+            <option value="1" ${isPremium ? 'selected' : ''}>Premium</option>
+          </select>
+        </div>
+        
+        <div id="premium-days-container" style="display: ${isPremium ? 'block' : 'none'}">
+          <label class="block text-sm font-medium ${themes[currentTheme].text} mb-1">Dias de Premium</label>
+          <input type="number" id="edit-user-days" value="30" min="1" max="365"
+            class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} ${themes[currentTheme].card}">
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium ${themes[currentTheme].text} mb-1">Atribuir Plano</label>
+          <select id="edit-user-plan" class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} ${themes[currentTheme].card}">
+            <option value="">-- Manter atual --</option>
+            ${plans.map(p => `<option value="${p.id}">${p.name} (R$ ${p.price?.toFixed(2) || '0.00'})</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      
+      <div class="flex gap-3 mt-6">
+        <button onclick="document.getElementById('modal-edit-user')?.remove()" 
+          class="flex-1 px-4 py-2 rounded-lg border ${themes[currentTheme].border} ${themes[currentTheme].text}">
+          Cancelar
+        </button>
+        <button onclick="salvarUsuarioAdmin(${userId})" 
+          class="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white font-medium">
+          Salvar
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  // Toggle days input
+  document.getElementById('edit-user-premium').addEventListener('change', (e) => {
+    document.getElementById('premium-days-container').style.display = e.target.value === '1' ? 'block' : 'none';
+  });
+};
+
+// Salvar alterações do usuário (admin)
+window.salvarUsuarioAdmin = async function(userId) {
+  const isPremium = document.getElementById('edit-user-premium').value === '1';
+  const days = parseInt(document.getElementById('edit-user-days')?.value) || 30;
+  const planId = document.getElementById('edit-user-plan').value;
+  
+  try {
+    await axios.put(`/api/admin/users/${userId}`, {
+      is_premium: isPremium,
+      premium_days: days,
+      plan_id: planId || null
+    }, { headers: { 'X-User-ID': currentUser.id } });
+    
+    document.getElementById('modal-edit-user')?.remove();
+    showToast('✅ Usuário atualizado com sucesso!', 'success');
+    
+    // Recarregar lista
+    document.getElementById('modal-admin-users')?.remove();
+    verListaUsuarios();
+  } catch (error) {
+    showToast('❌ Erro ao salvar alterações', 'error');
+  }
+};
+
+// Deletar usuário (admin)
+window.deletarUsuarioAdmin = async function(userId, email) {
+  if (!confirm(`⚠️ ATENÇÃO!\n\nVocê está prestes a DELETAR permanentemente o usuário:\n${email}\n\nTodos os dados (planos, metas, progresso) serão perdidos.\n\nTem certeza?`)) {
+    return;
+  }
+  
+  try {
+    await axios.delete(`/api/admin/users/${userId}`, {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    
+    // Remover da tabela
+    document.getElementById(`user-row-${userId}`)?.remove();
+    showToast('✅ Usuário deletado com sucesso!', 'success');
+  } catch (error) {
+    showToast('❌ Erro ao deletar usuário', 'error');
   }
 };
 
@@ -10822,7 +10999,7 @@ async function gerarSimuladoMeta(metaId, disciplinaNome) {
       // Atualizar dashboard para mostrar o simulado
       renderDashboard();
     } else {
-      showModal(' Erro ao gerar simulado: ' + (response.data.error || 'Erro desconhecido'));
+      showModal(' Erro ao gerar simulado: ' + (response.data.error || 'Erro no servidor. Tente novamente.'));
       btn.innerHTML = btnOriginal;
       btn.disabled = false;
     }
@@ -15346,7 +15523,7 @@ window.gerarSimulado = async function() {
       
       showToast(`✅ Simulado gerado com ${response.data.questoes_geradas} questões!`, 'success');
     } else {
-      showToast('Erro ao gerar simulado: ' + (response.data.error || 'Erro desconhecido'), 'error');
+      showToast('Erro ao gerar simulado: ' + (response.data.error || 'Erro no servidor. Tente novamente.'), 'error');
     }
   } catch (error) {
     document.getElementById('loading-simulado')?.remove();
