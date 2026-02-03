@@ -840,6 +840,19 @@ function createUnifiedFAB() {
         </button>
       </div>
       
+      <!-- Botão Painel Admin (apenas para admin) -->
+      <div id="fab-admin-panel" class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item" style="display: none;">
+        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
+          Painel Admin
+        </span>
+        <button 
+          onclick="abrirPainelAdmin(); toggleFabMenu(); event.stopPropagation();"
+          class="w-12 h-12 bg-gradient-to-br from-red-600 to-red-700 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          title="Painel Administrador">
+          <i class="fas fa-shield-alt text-lg"></i>
+        </button>
+      </div>
+      
       <!-- Botão Administração -->
       <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
         <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
@@ -1081,6 +1094,14 @@ function createUnifiedFAB() {
     `;
     document.head.appendChild(styles);
   }
+  
+  // Mostrar botão de Painel Admin apenas para o administrador
+  setTimeout(() => {
+    const adminPanelBtn = document.getElementById('fab-admin-panel');
+    if (adminPanelBtn && currentUser?.email === 'terciogomesrabelo@gmail.com') {
+      adminPanelBtn.style.display = 'flex';
+    }
+  }, 100);
 }
 
 // Função para alternar o menu FAB
@@ -8681,6 +8702,479 @@ window.abrirAdministracao = async function() {
 
 window.fecharModalAdmin = function() {
   document.getElementById('modal-administracao')?.remove();
+};
+
+// ============== PAINEL ADMINISTRADOR (EXCLUSIVO) ==============
+// ⚠️ ACESSO RESTRITO: Apenas terciogomesrabelo@gmail.com
+
+const ADMIN_EMAIL = 'terciogomesrabelo@gmail.com';
+
+// Verificar se usuário atual é admin
+window.isCurrentUserAdmin = function() {
+  return currentUser?.email === ADMIN_EMAIL;
+};
+
+// Abrir painel do administrador
+window.abrirPainelAdmin = async function() {
+  if (!isCurrentUserAdmin()) {
+    showToast('❌ Acesso negado. Você não tem permissão para acessar esta área.', 'error');
+    return;
+  }
+  
+  // Mostrar loading
+  const loadingModal = document.createElement('div');
+  loadingModal.id = 'admin-loading';
+  loadingModal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]';
+  loadingModal.innerHTML = `
+    <div class="${themes[currentTheme].card} p-6 rounded-xl text-center">
+      <i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
+      <p class="${themes[currentTheme].text}">Carregando painel admin...</p>
+    </div>
+  `;
+  document.body.appendChild(loadingModal);
+  
+  try {
+    const response = await axios.get('/api/admin/dashboard', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    const stats = response.data;
+    
+    document.getElementById('admin-loading')?.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-admin-panel';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4';
+    modal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white flex-shrink-0">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                <i class="fas fa-shield-alt text-2xl"></i>
+              </div>
+              <div>
+                <h2 class="text-2xl font-bold">Painel Administrador</h2>
+                <p class="text-red-200 text-sm">Visão gerencial do IAprova</p>
+              </div>
+            </div>
+            <button onclick="fecharPainelAdmin()" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">
+              <i class="fas fa-times text-xl"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-6 overflow-y-auto flex-1">
+          <!-- Cards de Resumo -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <!-- Total Usuários -->
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
+              <div class="flex items-center justify-between mb-2">
+                <i class="fas fa-users text-2xl opacity-80"></i>
+                <span class="text-3xl font-bold">${stats.users.total}</span>
+              </div>
+              <p class="text-blue-100 text-sm">Total de Usuários</p>
+              <p class="text-blue-200 text-xs mt-1">
+                <i class="fas fa-check-circle mr-1"></i>${stats.users.verified} verificados
+              </p>
+            </div>
+            
+            <!-- Usuários Premium -->
+            <div class="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl p-4 text-white">
+              <div class="flex items-center justify-between mb-2">
+                <i class="fas fa-crown text-2xl opacity-80"></i>
+                <span class="text-3xl font-bold">${stats.users.premium}</span>
+              </div>
+              <p class="text-yellow-100 text-sm">Usuários Premium</p>
+              <p class="text-yellow-200 text-xs mt-1">
+                ${stats.users.total > 0 ? Math.round((stats.users.premium / stats.users.total) * 100) : 0}% da base
+              </p>
+            </div>
+            
+            <!-- Planos Ativos -->
+            <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 text-white">
+              <div class="flex items-center justify-between mb-2">
+                <i class="fas fa-book-open text-2xl opacity-80"></i>
+                <span class="text-3xl font-bold">${stats.planos.active}</span>
+              </div>
+              <p class="text-green-100 text-sm">Planos Ativos</p>
+              <p class="text-green-200 text-xs mt-1">
+                de ${stats.planos.total} total
+              </p>
+            </div>
+            
+            <!-- Emails Enviados -->
+            <div class="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl p-4 text-white">
+              <div class="flex items-center justify-between mb-2">
+                <i class="fas fa-envelope text-2xl opacity-80"></i>
+                <span class="text-3xl font-bold">${stats.emails.total}</span>
+              </div>
+              <p class="text-purple-100 text-sm">Emails Enviados</p>
+              <p class="text-purple-200 text-xs mt-1">
+                <i class="fas fa-redo mr-1"></i>${stats.emails.resend} reenviados
+              </p>
+            </div>
+          </div>
+          
+          <!-- Detalhes de Usuários -->
+          <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-line text-blue-500"></i>
+                Crescimento de Usuários
+              </h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Hoje</span>
+                  <span class="font-bold ${themes[currentTheme].text} text-lg">${stats.users.today}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Últimos 7 dias</span>
+                  <span class="font-bold ${themes[currentTheme].text} text-lg">${stats.users.this_week}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Últimos 30 dias</span>
+                  <span class="font-bold ${themes[currentTheme].text} text-lg">${stats.users.this_month}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-envelope-open-text text-purple-500"></i>
+                Detalhes de Emails
+              </h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Verificação</span>
+                  <span class="font-bold ${themes[currentTheme].text}">${stats.emails.verification}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Boas-vindas</span>
+                  <span class="font-bold ${themes[currentTheme].text}">${stats.emails.welcome}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Reset de senha</span>
+                  <span class="font-bold ${themes[currentTheme].text}">${stats.emails.password_reset}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Reenvios</span>
+                  <span class="font-bold ${themes[currentTheme].text}">${stats.emails.resend}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Metas e Assinaturas -->
+          <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-tasks text-green-500"></i>
+                Engajamento (Metas)
+              </h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Total de metas</span>
+                  <span class="font-bold ${themes[currentTheme].text}">${stats.metas.total}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Metas concluídas</span>
+                  <span class="font-bold text-green-600">${stats.metas.completed}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Taxa de conclusão</span>
+                  <span class="font-bold ${stats.metas.completion_rate >= 50 ? 'text-green-600' : 'text-yellow-600'}">${stats.metas.completion_rate}%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                  <div class="h-2 rounded-full ${stats.metas.completion_rate >= 50 ? 'bg-green-500' : 'bg-yellow-500'}" style="width: ${stats.metas.completion_rate}%"></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-credit-card text-yellow-500"></i>
+                Assinaturas (Em breve)
+              </h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Assinaturas ativas</span>
+                  <span class="font-bold text-green-600">${stats.subscriptions.active}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Pendentes</span>
+                  <span class="font-bold text-yellow-600">${stats.subscriptions.pending}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Receita total</span>
+                  <span class="font-bold text-green-600">R$ ${stats.subscriptions.revenue.toFixed(2)}</span>
+                </div>
+              </div>
+              <p class="text-xs ${themes[currentTheme].textMuted} mt-3 italic">
+                <i class="fas fa-info-circle mr-1"></i>Sistema de pagamentos será configurado em breve
+              </p>
+            </div>
+          </div>
+          
+          <!-- Ações Rápidas -->
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+            <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+              <i class="fas fa-bolt text-yellow-500"></i>
+              Ações Rápidas
+            </h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <button onclick="verListaUsuarios()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-center">
+                <i class="fas fa-users text-blue-500 text-xl mb-1"></i>
+                <p class="text-xs ${themes[currentTheme].text} font-medium">Ver Usuários</p>
+              </button>
+              <button onclick="verHistoricoEmails()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-purple-50 dark:hover:bg-purple-900/20 transition text-center">
+                <i class="fas fa-envelope text-purple-500 text-xl mb-1"></i>
+                <p class="text-xs ${themes[currentTheme].text} font-medium">Histórico Emails</p>
+              </button>
+              <button onclick="verPlanosDisponiveis()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition text-center">
+                <i class="fas fa-tags text-yellow-500 text-xl mb-1"></i>
+                <p class="text-xs ${themes[currentTheme].text} font-medium">Planos Preço</p>
+              </button>
+              <button onclick="atualizarDashboardAdmin()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-green-50 dark:hover:bg-green-900/20 transition text-center">
+                <i class="fas fa-sync text-green-500 text-xl mb-1"></i>
+                <p class="text-xs ${themes[currentTheme].text} font-medium">Atualizar</p>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="p-4 border-t ${themes[currentTheme].border} flex-shrink-0 bg-gray-50 dark:bg-gray-800">
+          <p class="text-center text-xs ${themes[currentTheme].textMuted}">
+            <i class="fas fa-shield-alt mr-1"></i>
+            Painel exclusivo para ${ADMIN_EMAIL}
+          </p>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+  } catch (error) {
+    document.getElementById('admin-loading')?.remove();
+    console.error('Erro ao carregar painel admin:', error);
+    
+    if (error.response?.status === 403) {
+      showToast('❌ Acesso negado. Você não tem permissão para acessar esta área.', 'error');
+    } else {
+      showToast('❌ Erro ao carregar painel admin. Tente novamente.', 'error');
+    }
+  }
+};
+
+window.fecharPainelAdmin = function() {
+  document.getElementById('modal-admin-panel')?.remove();
+};
+
+window.atualizarDashboardAdmin = function() {
+  fecharPainelAdmin();
+  abrirPainelAdmin();
+};
+
+// Ver lista de usuários
+window.verListaUsuarios = async function() {
+  try {
+    const response = await axios.get('/api/admin/users?limit=50', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    const { users, pagination } = response.data;
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-admin-users';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    modal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
+          <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
+            <i class="fas fa-users text-blue-500"></i>
+            Lista de Usuários (${pagination.total})
+          </h3>
+          <button onclick="document.getElementById('modal-admin-users')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        <div class="overflow-y-auto flex-1 p-4">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-100 dark:bg-gray-800">
+              <tr>
+                <th class="p-2 text-left ${themes[currentTheme].text}">ID</th>
+                <th class="p-2 text-left ${themes[currentTheme].text}">Nome</th>
+                <th class="p-2 text-left ${themes[currentTheme].text}">Email</th>
+                <th class="p-2 text-center ${themes[currentTheme].text}">Verificado</th>
+                <th class="p-2 text-center ${themes[currentTheme].text}">Premium</th>
+                <th class="p-2 text-left ${themes[currentTheme].text}">Criado em</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${users.map(u => `
+                <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td class="p-2 ${themes[currentTheme].textSecondary}">${u.id}</td>
+                  <td class="p-2 ${themes[currentTheme].text} font-medium">${u.name || '-'}</td>
+                  <td class="p-2 ${themes[currentTheme].textSecondary} text-xs">${u.email}</td>
+                  <td class="p-2 text-center">
+                    ${u.email_verified ? '<i class="fas fa-check-circle text-green-500"></i>' : '<i class="fas fa-times-circle text-red-400"></i>'}
+                  </td>
+                  <td class="p-2 text-center">
+                    ${u.is_premium ? '<i class="fas fa-crown text-yellow-500"></i>' : '<i class="fas fa-minus text-gray-300"></i>'}
+                  </td>
+                  <td class="p-2 ${themes[currentTheme].textMuted} text-xs">${u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  } catch (error) {
+    showToast('❌ Erro ao carregar usuários', 'error');
+  }
+};
+
+// Ver histórico de emails
+window.verHistoricoEmails = async function() {
+  try {
+    const response = await axios.get('/api/admin/emails?limit=50', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    const { emails, pagination } = response.data;
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-admin-emails';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    modal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
+          <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
+            <i class="fas fa-envelope text-purple-500"></i>
+            Histórico de Emails (${pagination.total})
+          </h3>
+          <button onclick="document.getElementById('modal-admin-emails')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        <div class="overflow-y-auto flex-1 p-4">
+          ${emails.length === 0 ? `
+            <div class="text-center py-8 ${themes[currentTheme].textSecondary}">
+              <i class="fas fa-inbox text-4xl mb-3 opacity-50"></i>
+              <p>Nenhum email registrado ainda</p>
+              <p class="text-xs mt-2">Os logs começam a aparecer após a migração ser aplicada</p>
+            </div>
+          ` : `
+            <table class="w-full text-sm">
+              <thead class="bg-gray-100 dark:bg-gray-800">
+                <tr>
+                  <th class="p-2 text-left ${themes[currentTheme].text}">Para</th>
+                  <th class="p-2 text-left ${themes[currentTheme].text}">Tipo</th>
+                  <th class="p-2 text-center ${themes[currentTheme].text}">Status</th>
+                  <th class="p-2 text-left ${themes[currentTheme].text}">Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${emails.map(e => `
+                  <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td class="p-2 ${themes[currentTheme].textSecondary} text-xs">${e.email_to}</td>
+                    <td class="p-2">
+                      <span class="px-2 py-1 rounded text-xs ${
+                        e.email_type === 'verification' ? 'bg-blue-100 text-blue-700' :
+                        e.email_type === 'welcome' ? 'bg-green-100 text-green-700' :
+                        e.email_type === 'password_reset' ? 'bg-red-100 text-red-700' :
+                        'bg-yellow-100 text-yellow-700'
+                      }">
+                        ${e.email_type}
+                      </span>
+                    </td>
+                    <td class="p-2 text-center">
+                      ${e.status === 'sent' ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-times text-red-500"></i>'}
+                    </td>
+                    <td class="p-2 ${themes[currentTheme].textMuted} text-xs">${e.created_at ? new Date(e.created_at).toLocaleString('pt-BR') : '-'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  } catch (error) {
+    showToast('❌ Erro ao carregar histórico de emails', 'error');
+  }
+};
+
+// Ver planos disponíveis
+window.verPlanosDisponiveis = async function() {
+  try {
+    const response = await axios.get('/api/admin/plans', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    const { plans } = response.data;
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-admin-plans';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    modal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
+          <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
+            <i class="fas fa-tags text-yellow-500"></i>
+            Planos de Pagamento
+          </h3>
+          <button onclick="document.getElementById('modal-admin-plans')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        <div class="overflow-y-auto flex-1 p-4">
+          ${plans && plans.length > 0 ? `
+            <div class="space-y-4">
+              ${plans.map(p => `
+                <div class="p-4 rounded-xl border ${themes[currentTheme].border} ${p.price === 0 ? 'bg-gray-50 dark:bg-gray-800' : 'bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20'}">
+                  <div class="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
+                        ${p.price > 0 ? '<i class="fas fa-crown text-yellow-500"></i>' : '<i class="fas fa-user text-gray-400"></i>'}
+                        ${p.name}
+                      </h4>
+                      <p class="${themes[currentTheme].textSecondary} text-sm">${p.description || ''}</p>
+                    </div>
+                    <div class="text-right">
+                      <p class="text-2xl font-bold ${p.price > 0 ? 'text-green-600' : themes[currentTheme].text}">
+                        ${p.price === 0 ? 'Grátis' : `R$ ${p.price.toFixed(2)}`}
+                      </p>
+                      ${p.duration_days > 0 ? `<p class="text-xs ${themes[currentTheme].textMuted}">${p.duration_days} dias</p>` : ''}
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2 mt-2">
+                    <span class="px-2 py-1 rounded text-xs ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                      ${p.is_active ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <div class="text-center py-8 ${themes[currentTheme].textSecondary}">
+              <i class="fas fa-tags text-4xl mb-3 opacity-50"></i>
+              <p>Nenhum plano configurado ainda</p>
+            </div>
+          `}
+          <p class="text-xs ${themes[currentTheme].textMuted} mt-4 text-center italic">
+            <i class="fas fa-info-circle mr-1"></i>
+            Os preços podem ser ajustados posteriormente no banco de dados
+          </p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  } catch (error) {
+    showToast('❌ Erro ao carregar planos', 'error');
+  }
 };
 
 // Exportar dados para arquivo JSON

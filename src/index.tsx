@@ -1147,6 +1147,366 @@ app.post('/api/login', async (c) => {
   }
 })
 
+// ============== MÓDULO ADMINISTRADOR (EXCLUSIVO) ==============
+// ⚠️ ACESSO RESTRITO: Apenas terciogomesrabelo@gmail.com
+
+const ADMIN_EMAIL = 'terciogomesrabelo@gmail.com'
+
+// Middleware para verificar se é admin
+async function isAdmin(c: any): Promise<boolean> {
+  const userId = c.req.header('X-User-ID')
+  if (!userId) return false
+  
+  const { DB } = c.env
+  const user = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first() as any
+  return user?.email === ADMIN_EMAIL
+}
+
+// Registrar log de email enviado
+async function logEmailSent(DB: any, userId: number | null, emailTo: string, emailType: string, status: string = 'sent') {
+  try {
+    await DB.prepare(`
+      INSERT INTO email_logs (user_id, email_to, email_type, status)
+      VALUES (?, ?, ?, ?)
+    `).bind(userId, emailTo, emailType, status).run()
+  } catch (e) {
+    console.log('⚠️ Erro ao registrar log de email (tabela pode não existir ainda):', e)
+  }
+}
+
+// Dashboard Admin - Estatísticas gerais
+app.get('/api/admin/dashboard', async (c) => {
+  const { DB } = c.env
+  
+  // Verificar se é admin
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    // Total de usuários
+    const totalUsers = await DB.prepare('SELECT COUNT(*) as count FROM users').first() as any
+    
+    // Usuários verificados
+    const verifiedUsers = await DB.prepare('SELECT COUNT(*) as count FROM users WHERE email_verified = 1').first() as any
+    
+    // Usuários premium
+    const premiumUsers = await DB.prepare('SELECT COUNT(*) as count FROM users WHERE is_premium = 1').first() as any
+    
+    // Usuários criados hoje
+    const todayUsers = await DB.prepare(`
+      SELECT COUNT(*) as count FROM users 
+      WHERE DATE(created_at) = DATE('now')
+    `).first() as any
+    
+    // Usuários criados nos últimos 7 dias
+    const weekUsers = await DB.prepare(`
+      SELECT COUNT(*) as count FROM users 
+      WHERE created_at >= DATE('now', '-7 days')
+    `).first() as any
+    
+    // Usuários criados nos últimos 30 dias
+    const monthUsers = await DB.prepare(`
+      SELECT COUNT(*) as count FROM users 
+      WHERE created_at >= DATE('now', '-30 days')
+    `).first() as any
+    
+    // Total de planos de estudo
+    const totalPlanos = await DB.prepare('SELECT COUNT(*) as count FROM planos_estudo').first() as any
+    
+    // Planos ativos
+    const activePlanos = await DB.prepare('SELECT COUNT(*) as count FROM planos_estudo WHERE ativo = 1').first() as any
+    
+    // Total de metas
+    const totalMetas = await DB.prepare('SELECT COUNT(*) as count FROM metas_diarias').first() as any
+    
+    // Metas concluídas
+    const completedMetas = await DB.prepare('SELECT COUNT(*) as count FROM metas_diarias WHERE concluida = 1').first() as any
+    
+    // Total de emails enviados (se tabela existir)
+    let emailStats = { total: 0, verification: 0, welcome: 0, password_reset: 0, resend: 0 }
+    try {
+      const totalEmails = await DB.prepare('SELECT COUNT(*) as count FROM email_logs').first() as any
+      const verificationEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_logs WHERE email_type = 'verification'").first() as any
+      const welcomeEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_logs WHERE email_type = 'welcome'").first() as any
+      const resetEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_logs WHERE email_type = 'password_reset'").first() as any
+      const resendEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_logs WHERE email_type = 'resend_verification'").first() as any
+      
+      emailStats = {
+        total: totalEmails?.count || 0,
+        verification: verificationEmails?.count || 0,
+        welcome: welcomeEmails?.count || 0,
+        password_reset: resetEmails?.count || 0,
+        resend: resendEmails?.count || 0
+      }
+    } catch (e) {
+      console.log('⚠️ Tabela email_logs não existe ainda')
+    }
+    
+    // Assinaturas (se tabela existir)
+    let subscriptionStats = { total: 0, active: 0, pending: 0, cancelled: 0, revenue: 0 }
+    try {
+      const totalSubs = await DB.prepare('SELECT COUNT(*) as count FROM user_subscriptions').first() as any
+      const activeSubs = await DB.prepare("SELECT COUNT(*) as count FROM user_subscriptions WHERE status = 'active'").first() as any
+      const pendingSubs = await DB.prepare("SELECT COUNT(*) as count FROM user_subscriptions WHERE status = 'pending'").first() as any
+      const cancelledSubs = await DB.prepare("SELECT COUNT(*) as count FROM user_subscriptions WHERE status = 'cancelled'").first() as any
+      const revenue = await DB.prepare("SELECT COALESCE(SUM(amount_paid), 0) as total FROM user_subscriptions WHERE status = 'active'").first() as any
+      
+      subscriptionStats = {
+        total: totalSubs?.count || 0,
+        active: activeSubs?.count || 0,
+        pending: pendingSubs?.count || 0,
+        cancelled: cancelledSubs?.count || 0,
+        revenue: revenue?.total || 0
+      }
+    } catch (e) {
+      console.log('⚠️ Tabela user_subscriptions não existe ainda')
+    }
+    
+    return c.json({
+      users: {
+        total: totalUsers?.count || 0,
+        verified: verifiedUsers?.count || 0,
+        premium: premiumUsers?.count || 0,
+        today: todayUsers?.count || 0,
+        this_week: weekUsers?.count || 0,
+        this_month: monthUsers?.count || 0
+      },
+      planos: {
+        total: totalPlanos?.count || 0,
+        active: activePlanos?.count || 0
+      },
+      metas: {
+        total: totalMetas?.count || 0,
+        completed: completedMetas?.count || 0,
+        completion_rate: totalMetas?.count > 0 ? Math.round((completedMetas?.count / totalMetas?.count) * 100) : 0
+      },
+      emails: emailStats,
+      subscriptions: subscriptionStats
+    })
+  } catch (error) {
+    console.error('Erro ao buscar dashboard admin:', error)
+    return c.json({ error: 'Erro ao buscar estatísticas' }, 500)
+  }
+})
+
+// Lista de usuários (paginada)
+app.get('/api/admin/users', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const page = parseInt(c.req.query('page') || '1')
+    const limit = parseInt(c.req.query('limit') || '20')
+    const search = c.req.query('search') || ''
+    const offset = (page - 1) * limit
+    
+    let query = `
+      SELECT 
+        u.id, u.name, u.email, u.email_verified, u.is_premium, 
+        u.premium_expires_at, u.created_at, u.auth_provider,
+        COUNT(DISTINCT pe.id) as total_planos,
+        COUNT(DISTINCT md.id) as total_metas
+      FROM users u
+      LEFT JOIN planos_estudo pe ON pe.user_id = u.id
+      LEFT JOIN metas_diarias md ON md.user_id = u.id
+    `
+    
+    if (search) {
+      query += ` WHERE u.name LIKE ? OR u.email LIKE ?`
+    }
+    
+    query += ` GROUP BY u.id ORDER BY u.created_at DESC LIMIT ? OFFSET ?`
+    
+    let users
+    if (search) {
+      users = await DB.prepare(query).bind(`%${search}%`, `%${search}%`, limit, offset).all()
+    } else {
+      users = await DB.prepare(query).bind(limit, offset).all()
+    }
+    
+    // Total para paginação
+    let countQuery = 'SELECT COUNT(*) as count FROM users'
+    if (search) {
+      countQuery += ' WHERE name LIKE ? OR email LIKE ?'
+    }
+    
+    let total
+    if (search) {
+      total = await DB.prepare(countQuery).bind(`%${search}%`, `%${search}%`).first() as any
+    } else {
+      total = await DB.prepare(countQuery).first() as any
+    }
+    
+    return c.json({
+      users: users.results,
+      pagination: {
+        page,
+        limit,
+        total: total?.count || 0,
+        pages: Math.ceil((total?.count || 0) / limit)
+      }
+    })
+  } catch (error) {
+    console.error('Erro ao listar usuários:', error)
+    return c.json({ error: 'Erro ao listar usuários' }, 500)
+  }
+})
+
+// Histórico de emails enviados
+app.get('/api/admin/emails', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const page = parseInt(c.req.query('page') || '1')
+    const limit = parseInt(c.req.query('limit') || '50')
+    const offset = (page - 1) * limit
+    
+    const emails = await DB.prepare(`
+      SELECT 
+        el.id, el.email_to, el.email_type, el.status, el.sent_at,
+        u.name as user_name
+      FROM email_logs el
+      LEFT JOIN users u ON u.id = el.user_id
+      ORDER BY el.sent_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(limit, offset).all()
+    
+    const total = await DB.prepare('SELECT COUNT(*) as count FROM email_logs').first() as any
+    
+    return c.json({
+      emails: emails.results,
+      pagination: {
+        page,
+        limit,
+        total: total?.count || 0,
+        pages: Math.ceil((total?.count || 0) / limit)
+      }
+    })
+  } catch (error) {
+    console.error('Erro ao listar emails:', error)
+    return c.json({ error: 'Erro ao listar emails' }, 500)
+  }
+})
+
+// Planos de pagamento disponíveis
+app.get('/api/admin/plans', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const plans = await DB.prepare('SELECT * FROM payment_plans ORDER BY price ASC').all()
+    return c.json({ plans: plans.results })
+  } catch (error) {
+    console.error('Erro ao listar planos:', error)
+    return c.json({ error: 'Erro ao listar planos' }, 500)
+  }
+})
+
+// Atualizar plano de pagamento
+app.put('/api/admin/plans/:id', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const planId = c.req.param('id')
+    const { name, description, price, duration_days, features, is_active } = await c.req.json()
+    
+    await DB.prepare(`
+      UPDATE payment_plans 
+      SET name = ?, description = ?, price = ?, duration_days = ?, features = ?, is_active = ?
+      WHERE id = ?
+    `).bind(name, description, price, duration_days, JSON.stringify(features), is_active ? 1 : 0, planId).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Erro ao atualizar plano:', error)
+    return c.json({ error: 'Erro ao atualizar plano' }, 500)
+  }
+})
+
+// Assinaturas dos usuários
+app.get('/api/admin/subscriptions', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const subscriptions = await DB.prepare(`
+      SELECT 
+        us.*, 
+        u.name as user_name, u.email as user_email,
+        pp.name as plan_name
+      FROM user_subscriptions us
+      JOIN users u ON u.id = us.user_id
+      JOIN payment_plans pp ON pp.id = us.plan_id
+      ORDER BY us.created_at DESC
+      LIMIT 100
+    `).all()
+    
+    return c.json({ subscriptions: subscriptions.results })
+  } catch (error) {
+    console.error('Erro ao listar assinaturas:', error)
+    return c.json({ error: 'Erro ao listar assinaturas' }, 500)
+  }
+})
+
+// Dar/remover premium manualmente (admin)
+app.post('/api/admin/users/:id/premium', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const userId = c.req.param('id')
+    const { is_premium, days } = await c.req.json()
+    
+    if (is_premium && days) {
+      // Ativar premium por X dias
+      await DB.prepare(`
+        UPDATE users 
+        SET is_premium = 1, premium_expires_at = DATE('now', '+' || ? || ' days')
+        WHERE id = ?
+      `).bind(days, userId).run()
+    } else {
+      // Remover premium
+      await DB.prepare(`
+        UPDATE users 
+        SET is_premium = 0, premium_expires_at = NULL
+        WHERE id = ?
+      `).bind(userId).run()
+    }
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Erro ao atualizar premium:', error)
+    return c.json({ error: 'Erro ao atualizar premium' }, 500)
+  }
+})
+
+// Verificar se usuário atual é admin
+app.get('/api/admin/check', async (c) => {
+  const isAdminUser = await isAdmin(c)
+  return c.json({ isAdmin: isAdminUser })
+})
+
 // ============== GOOGLE OAUTH ==============
 
 // Endpoint para iniciar autenticação Google (retorna URL de autorização)
