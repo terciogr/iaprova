@@ -199,6 +199,40 @@ Para adicionar novas bancas, edite:
 - **Validação** de entrada em todos os endpoints
 - **Rate limiting** automático pelo Cloudflare
 
+## 👑 Painel Administrador
+
+O sistema inclui um módulo de administração exclusivo para gestão da plataforma.
+
+### Acesso
+- **Restrito ao email**: terciogomesrabelo@gmail.com
+- **Botão no FAB**: Ícone de escudo vermelho
+
+### Funcionalidades
+- **Dashboard** com métricas de usuários, planos, emails e metas
+- **Gerenciamento de Usuários**: Listar, editar, atribuir premium, deletar
+- **Controle de Planos**: Atribuir planos independente de pagamento
+- **Histórico de Emails**: Verificação, boas-vindas, reset de senha
+- **Estatísticas de Assinaturas**: Preparado para integração de pagamento
+
+### Endpoints da API Admin
+- `GET /api/admin/dashboard` - Estatísticas gerais
+- `GET /api/admin/users` - Lista de usuários
+- `PUT /api/admin/users/:id` - Atualizar usuário
+- `POST /api/admin/users/:id/premium` - Atribuir premium
+- `GET /api/admin/plans` - Planos disponíveis
+- `GET /api/admin/emails` - Histórico de emails
+
+## 🔄 Últimas Atualizações
+
+### v2.0.0 (Fevereiro 2025)
+- ✅ **Módulo Admin**: Painel completo de administração
+- ✅ **Controle de Planos**: Admin pode atribuir planos a usuários
+- ✅ **Mensagens de Erro**: Melhorias nas mensagens de erro (mais amigáveis e informativas)
+- ✅ **Tratamento de PDF**: Fallback robusto com sugestões de conversão
+- ✅ **Google OAuth**: Autenticação com Google implementada
+- ✅ **Sistema de Email**: Integração completa com Resend
+- ✅ **Domínio Próprio**: Migração para iaprova.app
+
 ## 📝 Licença
 
 MIT License - Veja [LICENSE](LICENSE) para detalhes.
