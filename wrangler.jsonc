@@ -17,17 +17,18 @@
   //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
   //   }
   // ],
-  "r2_buckets": [
-    {
-      "binding": "EDITAIS",
-      "bucket_name": "iaprova-editais"
-    }
-  ],
+  // R2 desabilitado - habilite no dashboard Cloudflare se precisar
+  // "r2_buckets": [
+  //   {
+  //     "binding": "EDITAIS",
+  //     "bucket_name": "iaprova-editais"
+  //   }
+  // ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "iaprova-db",
-      "database_id": "placeholder-will-be-set-on-deploy"
+      "database_id": "8433bc55-361a-4091-9568-1a14d442cc60"
     }
   ],
   // "ai": {
