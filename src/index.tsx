@@ -371,7 +371,7 @@ async function sendPasswordResetEmail(email: string, token: string, name: string
   const FROM_EMAIL = env?.FROM_EMAIL || 'onboarding@resend.dev';
   
   // URL de reset - usar APP_URL do ambiente ou fallback
-  const APP_URL = env?.APP_URL || 'https://iaprova.pages.dev';
+  const APP_URL = env?.APP_URL || 'https://iaprova.app';
   const resetUrl = `${APP_URL}/resetar-senha?token=${token}`;
   
   console.log('🔐 Preparando envio de email de reset...');
@@ -550,7 +550,7 @@ async function sendVerificationEmail(email: string, token: string, name: string,
   // Obter configurações do ambiente
   const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
   const FROM_EMAIL = env?.FROM_EMAIL || 'onboarding@resend.dev';
-  const APP_URL = env?.APP_URL || 'https://iaprova.pages.dev';
+  const APP_URL = env?.APP_URL || 'https://iaprova.app';
   
   // URL de verificação
   const verificationUrl = `${APP_URL}/verificar-email?token=${token}`;
@@ -783,7 +783,7 @@ async function sendVerificationEmail(email: string, token: string, name: string,
 async function sendWelcomeEmail(email: string, name: string, env?: any): Promise<boolean> {
   const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
   const FROM_EMAIL = env?.FROM_EMAIL || 'onboarding@resend.dev';
-  const APP_URL = env?.APP_URL || 'https://iaprova.pages.dev';
+  const APP_URL = env?.APP_URL || 'https://iaprova.app';
   
   // Verificar se tem API key configurada
   if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
@@ -1054,7 +1054,7 @@ app.post('/api/users', async (c) => {
     
     // Gerar token de verificação
     const verificationToken = generateSecureToken()
-    const APP_URL = c.env?.APP_URL || 'https://iaprova.pages.dev'
+    const APP_URL = c.env?.APP_URL || 'https://iaprova.app'
     
     console.log('💾 Inserindo no banco:', { userName, userEmail, hasPassword: !!userPassword })
 
@@ -1152,7 +1152,7 @@ app.post('/api/login', async (c) => {
 // Endpoint para iniciar autenticação Google (retorna URL de autorização)
 app.get('/api/auth/google', async (c) => {
   const GOOGLE_CLIENT_ID = c.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID
-  const APP_URL = c.env.APP_URL || 'https://iaprova.pages.dev'
+  const APP_URL = c.env.APP_URL || 'https://iaprova.app'
   
   if (!GOOGLE_CLIENT_ID) {
     return c.json({ error: 'Google OAuth não configurado' }, 500)
@@ -1180,7 +1180,7 @@ app.get('/api/auth/google/callback', async (c) => {
   
   const GOOGLE_CLIENT_ID = c.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID
   const GOOGLE_CLIENT_SECRET = c.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET
-  const APP_URL = c.env.APP_URL || 'https://iaprova.pages.dev'
+  const APP_URL = c.env.APP_URL || 'https://iaprova.app'
   
   if (error) {
     return c.redirect(`${APP_URL}?error=google_auth_denied`)
@@ -1560,7 +1560,7 @@ app.post('/api/forgot-password', async (c) => {
     
     // Enviar email de reset
     const emailSent = await sendPasswordResetEmail(email, resetToken, user.name, c.env)
-    const APP_URL = c.env?.APP_URL || 'https://iaprova.pages.dev'
+    const APP_URL = c.env?.APP_URL || 'https://iaprova.app'
     const resetUrl = `${APP_URL}/resetar-senha?token=${resetToken}`
     
     console.log('🔐 Token de reset gerado:', resetToken)
@@ -1711,7 +1711,7 @@ app.post('/api/resend-verification', async (c) => {
     
     // Reenviar email
     const emailSent = await sendVerificationEmail(email, newToken, user.name, c.env)
-    const APP_URL = c.env?.APP_URL || 'https://iaprova.pages.dev'
+    const APP_URL = c.env?.APP_URL || 'https://iaprova.app'
     const verificationUrl = `${APP_URL}/verificar-email?token=${newToken}`
     
     // SEMPRE retornar o token para permitir verificação manual
