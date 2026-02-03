@@ -1224,17 +1224,7 @@ function renderEmailVerification(email, message, showResend = false) {
           ${email ? `<p class="text-xs text-[#122D6A] mt-2">Email: <strong>${email}</strong></p>` : ''}
         </div>
         
-        <!-- Aviso sobre serviço de email em teste -->
-        <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <p class="text-sm text-amber-800 mb-2">
-            <i class="fas fa-exclamation-triangle mr-2"></i>
-            <strong>Serviço de Email em Teste</strong>
-          </p>
-          <p class="text-xs text-amber-700">
-            O serviço de envio de emails está em modo de teste e pode não funcionar para todos os emails.
-            Se você não receber o email, clique em "Reenviar" para obter um link de verificação manual.
-          </p>
-        </div>
+        
         
         <!-- Botões -->
         <div class="space-y-3">
@@ -1377,14 +1367,7 @@ function createVerificationLinkScreen(email, verificationUrl, message) {
           Voltar ao Login
         </button>
         
-        <!-- Instruções -->
-        <div class="mt-6 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <p class="text-xs text-amber-800">
-            <i class="fas fa-info-circle mr-1"></i>
-            <strong>Nota:</strong> O serviço de email está em modo de teste. 
-            Use o link acima para verificar seu email manualmente.
-          </p>
-        </div>
+        
       </div>
     </div>
   `;
