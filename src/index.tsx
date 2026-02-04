@@ -2990,21 +2990,57 @@ app.post('/api/editais/upload', async (c) => {
         textoCompleto = await file.text()
         console.log(`✅ TXT lido: ${textoCompleto.length} caracteres`)
       } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-        // ✅ PDF: Extrair texto usando Gemini API
-        console.log(`📄 PDF detectado: ${file.name}. Iniciando extração...`)
+        // ✅ PDF: Verificar tamanho e processar
+        const arrayBuffer = await file.arrayBuffer()
+        const fileSizeMB = arrayBuffer.byteLength / (1024 * 1024)
+        
+        console.log(`📄 PDF detectado: ${file.name} (${fileSizeMB.toFixed(2)} MB)`)
+        
+        // ⚠️ PDFs muito grandes (>15MB): Salvar sem extrair texto agora
+        // O usuário deve converter para TXT manualmente
+        if (fileSizeMB > 15) {
+          console.warn(`⚠️ PDF muito grande (${fileSizeMB.toFixed(1)}MB). Salvando para processamento manual.`)
+          
+          // Salvar arquivo no R2 se disponível
+          if (EDITAIS) {
+            await EDITAIS.put(key, arrayBuffer, {
+              httpMetadata: { contentType: file.type }
+            })
+          }
+          
+          // Salvar no banco com instrução para converter
+          const result = await DB.prepare(`
+            INSERT INTO editais (user_id, nome_concurso, arquivo_url, texto_completo, status)
+            VALUES (?, ?, ?, ?, 'erro')
+          `).bind(
+            userId, 
+            nomeConcurso, 
+            key, 
+            `[PDF MUITO GRANDE - ${fileSizeMB.toFixed(1)}MB]\n\nO arquivo excede o limite de processamento automático (15MB).\n\nPor favor:\n1. Converta o PDF para TXT em: https://www.ilovepdf.com/pt/pdf_para_texto\n2. Ou use um arquivo XLSX com o cronograma de estudos\n3. Anexe o arquivo convertido novamente`,
+            ).run()
+          
+          return c.json({
+            error: `PDF muito grande (${fileSizeMB.toFixed(1)}MB). O limite para processamento automático é 15MB.`,
+            errorType: 'FILE_TOO_LARGE',
+            suggestion: `Opções:\n1. ✅ RECOMENDADO: Converta o PDF para TXT em https://www.ilovepdf.com/pt/pdf_para_texto\n2. Use um arquivo XLSX com o cronograma\n3. Divida o PDF em partes menores`,
+            fileSizeMB: fileSizeMB.toFixed(2),
+            maxSizeMB: 15,
+            editalId: result.meta.last_row_id
+          }, 413) // 413 = Payload Too Large
+        }
+        
+        // PDFs até 15MB: processar normalmente
+        console.log(`📄 Processando PDF (${fileSizeMB.toFixed(2)}MB)...`)
         
         try {
-          const arrayBuffer = await file.arrayBuffer()
           textoCompleto = await extractTextFromPDF(arrayBuffer, geminiKey)
           
           console.log(`✅ Extração concluída: ${textoCompleto.length} caracteres`)
           
-          // ✅ CRÍTICO: NUNCA rejeitar por tamanho - pode ser PDF válido
           if (textoCompleto.length < 50) {
             console.warn(`⚠️ Pouco texto extraído (${textoCompleto.length} chars) - mas continuando`)
           }
           
-          // Se realmente não extraiu NADA, aí sim avisar
           if (!textoCompleto || textoCompleto.trim().length === 0) {
             console.error(`❌ Nenhum texto extraído do PDF`)
             throw new Error('PDF não contém texto extraível (pode ser escaneado)')
@@ -13645,10 +13681,9 @@ app.get('/home', (c) => {
     <!-- Main App Script -->
     <script src="/static/app.js?v=${Date.now()}"></script>
     
-    <!-- PWA & Service Worker Registration -->
+    <!-- Service Worker Registration Only (PWA install já está configurado acima) -->
     <script>
-        let deferredPrompt = null;
-        
+        // Registrar Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
                 try {
@@ -13660,49 +13695,25 @@ app.get('/home', (c) => {
             });
         }
         
-        window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('📱 PWA pode ser instalado');
-            e.preventDefault();
-            deferredPrompt = e;
-            const dismissed = localStorage.getItem('pwa-banner-dismissed');
-            const dismissedTime = dismissed ? parseInt(dismissed) : 0;
-            if (!dismissed || (Date.now() - dismissedTime > 86400000)) {
-                setTimeout(() => showPWABanner(), 3000);
-            }
-        });
-        
-        window.addEventListener('appinstalled', () => {
-            console.log('✅ IAprova instalado como PWA!');
-            deferredPrompt = null;
-            hidePWABanner();
-            if (typeof showToast === 'function') showToast('🎉 IAprova instalado com sucesso!', 'success');
-        });
-        
-        function showPWABanner() {
-            const banner = document.getElementById('pwa-install-banner');
-            if (banner && deferredPrompt) banner.classList.add('show');
-        }
-        
-        function hidePWABanner() {
-            const banner = document.getElementById('pwa-install-banner');
-            if (banner) banner.classList.remove('show');
-        }
-        
-        function dismissPWABanner() {
-            hidePWABanner();
-            localStorage.setItem('pwa-banner-dismissed', Date.now().toString());
-        }
-        
+        // Funções de instalação PWA usando window.deferredPrompt (definido no head)
         async function installPWA() {
-            if (!deferredPrompt) {
+            if (!window.deferredPrompt) {
                 showManualInstallInstructions();
                 return;
             }
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log('📱 Resultado:', outcome);
-            deferredPrompt = null;
-            hidePWABanner();
+            try {
+                window.deferredPrompt.prompt();
+                const { outcome } = await window.deferredPrompt.userChoice;
+                console.log('📱 Resultado da instalação:', outcome);
+                if (outcome === 'accepted') {
+                    if (typeof showToast === 'function') showToast('🎉 IAprova instalado com sucesso!', 'success');
+                }
+                window.deferredPrompt = null;
+                window.pwaInstallReady = false;
+            } catch (err) {
+                console.error('Erro ao instalar:', err);
+                showManualInstallInstructions();
+            }
         }
         
         function showManualInstallInstructions() {
@@ -13723,9 +13734,9 @@ app.get('/home', (c) => {
             modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[10000] p-4';
             modal.innerHTML = '<div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center"><div class="w-16 h-16 bg-[#122D6A] rounded-2xl flex items-center justify-center mx-auto mb-4"><i class="fas fa-mobile-alt text-white text-2xl"></i></div><h3 class="text-xl font-bold text-gray-800 mb-4">Instalar IAprova</h3><div class="text-gray-600 text-sm">' + instructions + '</div><button onclick="document.getElementById(\\'install-instructions-modal\\').remove()" class="mt-6 w-full py-3 bg-[#122D6A] text-white rounded-xl font-bold">Entendi</button></div>';
             document.body.appendChild(modal);
-            hidePWABanner();
         }
         
+        // Expor funções globalmente
         window.showPWAInstallPrompt = installPWA;
         window.showManualInstallInstructions = showManualInstallInstructions;
     </script>

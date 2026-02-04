@@ -561,129 +561,8 @@ function hexToRgb(hex) {
 }
 
 // ============== PWA INSTALL PROMPT ==============
-// Capturar evento de instalação do PWA para uso posterior
-let deferredPrompt = null;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  // Prevenir o mini-infobar padrão do Chrome
-  e.preventDefault();
-  // Guardar o evento para usar depois
-  deferredPrompt = e;
-  window.deferredPrompt = e;
-  console.log('✅ PWA Install prompt capturado e pronto para uso');
-  
-  // Mostrar indicador no botão de instalação se existir
-  const installBtn = document.getElementById('fab-install-app');
-  if (installBtn) {
-    installBtn.style.display = 'flex';
-  }
-});
-
-// Função para mostrar o prompt de instalação nativo
-window.showPWAInstallPrompt = async function() {
-  if (!deferredPrompt) {
-    console.log('⚠️ Prompt de instalação não disponível');
-    // Mostrar instruções manuais como fallback
-    showManualInstallInstructions();
-    return false;
-  }
-  
-  try {
-    // Mostrar o prompt de instalação nativo
-    deferredPrompt.prompt();
-    
-    // Aguardar a escolha do usuário
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`📱 Usuário escolheu: ${outcome}`);
-    
-    if (outcome === 'accepted') {
-      showToast('🎉 IAprova está sendo instalado!', 'success');
-    } else {
-      showToast('Você pode instalar o app a qualquer momento pelo menu', 'info');
-    }
-    
-    // Limpar o prompt (só pode ser usado uma vez)
-    deferredPrompt = null;
-    window.deferredPrompt = null;
-    
-    return outcome === 'accepted';
-  } catch (error) {
-    console.error('Erro ao mostrar prompt de instalação:', error);
-    showManualInstallInstructions();
-    return false;
-  }
-};
-
-// Detectar quando o app foi instalado
-window.addEventListener('appinstalled', () => {
-  console.log('🎉 IAprova foi instalado com sucesso!');
-  showToast('✅ IAprova instalado com sucesso! Acesse pela tela inicial.', 'success');
-  deferredPrompt = null;
-  window.deferredPrompt = null;
-  
-  // Ocultar botão de instalação
-  const installBtn = document.getElementById('fab-install-app');
-  if (installBtn) {
-    installBtn.style.display = 'none';
-  }
-});
-
-// Função para mostrar instruções manuais (fallback)
-function showManualInstallInstructions() {
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isAndroid = /Android/.test(navigator.userAgent);
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-  
-  if (isStandalone) {
-    showToast('✅ O IAprova já está instalado como app!', 'success');
-    return;
-  }
-  
-  let title = 'Instalar IAprova';
-  let instructions = '';
-  
-  if (isIOS) {
-    instructions = `
-      <div class="text-left space-y-3">
-        <p class="text-gray-600 text-sm">No Safari do iPhone/iPad:</p>
-        <ol class="list-decimal list-inside space-y-2 text-sm">
-          <li>Toque em <strong>Compartilhar</strong> <i class="fas fa-share-square text-blue-500"></i></li>
-          <li>Role e toque em <strong>"Adicionar à Tela de Início"</strong></li>
-          <li>Toque em <strong>"Adicionar"</strong></li>
-        </ol>
-        <p class="text-amber-600 text-xs mt-2">
-          <i class="fas fa-info-circle mr-1"></i>Use o Safari para instalar
-        </p>
-      </div>
-    `;
-  } else if (isAndroid) {
-    instructions = `
-      <div class="text-left space-y-3">
-        <p class="text-gray-600 text-sm">No Chrome do Android:</p>
-        <ol class="list-decimal list-inside space-y-2 text-sm">
-          <li>Toque no menu <strong>⋮</strong> (3 pontos)</li>
-          <li>Toque em <strong>"Instalar app"</strong> ou <strong>"Adicionar à tela inicial"</strong></li>
-          <li>Confirme tocando em <strong>"Instalar"</strong></li>
-        </ol>
-      </div>
-    `;
-  } else {
-    instructions = `
-      <div class="text-left space-y-3">
-        <p class="text-gray-600 text-sm">No seu navegador:</p>
-        <ol class="list-decimal list-inside space-y-2 text-sm">
-          <li>Procure o ícone de instalação <i class="fas fa-download text-blue-500"></i> na barra de endereços</li>
-          <li>Ou acesse o menu do navegador e procure "Instalar app"</li>
-          <li>Confirme a instalação</li>
-        </ol>
-      </div>
-    `;
-  }
-  
-  showModal(instructions, { title, type: 'info' });
-}
-
-window.showManualInstallInstructions = showManualInstallInstructions;
+// NOTA: O listener de beforeinstallprompt está no HTML (head) para capturar o mais cedo possível
+// Aqui apenas definimos as funções que usam o window.deferredPrompt
 
 // Inicializar aplicação
 document.addEventListener('DOMContentLoaded', () => {
@@ -3367,9 +3246,81 @@ async function processarEditalAntesDeStep2() {
     console.log('📤 Enviando edital para backend...');
     atualizarFeedbackUI(1, 'Enviando arquivos para o servidor...');
     
-    const uploadRes = await axios.post('/api/editais/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    let uploadRes;
+    try {
+      uploadRes = await axios.post('/api/editais/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000 // 2 minutos de timeout
+      });
+    } catch (uploadError) {
+      console.error('❌ Erro no upload:', uploadError);
+      
+      // Verificar se é timeout (524) ou arquivo muito grande (413)
+      const status = uploadError?.response?.status;
+      const errorType = uploadError?.response?.data?.errorType;
+      
+      if (status === 524 || (uploadError.code === 'ECONNABORTED')) {
+        // Timeout do Cloudflare - PDF muito grande
+        atualizarFeedbackUI(1, '❌ Timeout: PDF muito grande para processar', 'error');
+        
+        document.getElementById('app').innerHTML = `
+          <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+            <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
+              <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
+                <i class="fas fa-clock text-orange-500 text-4xl"></i>
+              </div>
+              <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-3">
+                Tempo limite excedido
+              </h3>
+              <p class="text-gray-600 mb-4 text-sm">
+                O PDF é muito grande para processar automaticamente. O servidor demorou mais de 100 segundos e a conexão foi encerrada.
+              </p>
+              
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                <h4 class="font-semibold text-blue-800 mb-3">💡 Solução recomendada:</h4>
+                <ol class="text-sm text-blue-700 space-y-3">
+                  <li class="flex items-start gap-2">
+                    <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">1</span>
+                    <span>Acesse <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank" class="underline font-semibold">ilovepdf.com/pt/pdf_para_texto</a></span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">2</span>
+                    <span>Converta o PDF para TXT (muito mais rápido!)</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">3</span>
+                    <span>Volte aqui e anexe o arquivo TXT</span>
+                  </li>
+                </ol>
+              </div>
+              
+              <div class="flex flex-col gap-3">
+                <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank"
+                   class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all flex items-center justify-center gap-2">
+                  <i class="fas fa-external-link-alt"></i>
+                  Converter PDF para TXT
+                </a>
+                <button onclick="renderEntrevistaStep1()" 
+                        class="w-full py-3 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg font-semibold border ${themes[currentTheme].border} hover:opacity-80 transition-all flex items-center justify-center gap-2">
+                  <i class="fas fa-redo"></i>
+                  Tentar com outro arquivo
+                </button>
+                <button onclick="renderEntrevistaStep2()" 
+                        class="w-full py-2 text-gray-500 hover:text-gray-700 transition-all text-sm">
+                  Continuar sem edital →
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        isProcessingEdital = false;
+        return;
+      }
+      
+      // Outros erros de upload - re-lançar
+      throw uploadError;
+    }
 
     console.log('✅ Upload concluído:', uploadRes.data);
     atualizarFeedbackUI(1, `✅ Upload concluído! ${uploadRes.data.editais.length} edital(is) recebido(s).`, 'success');
@@ -3468,6 +3419,64 @@ async function processarEditalAntesDeStep2() {
                 atualizarFeedbackUI(step, `💡 ${line}`, 'error');
               }
             });
+          }
+          
+          // ✅ Verificar se é erro de arquivo muito grande (413)
+          if (errorType === 'FILE_TOO_LARGE' || uploadError?.response?.status === 413) {
+            const fileSizeMB = errorData?.fileSizeMB || '?';
+            const maxSizeMB = errorData?.maxSizeMB || 15;
+            
+            document.getElementById('app').innerHTML = `
+              <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+                <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
+                  <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
+                    <i class="fas fa-file-pdf text-orange-500 text-4xl"></i>
+                  </div>
+                  <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-3">
+                    PDF muito grande (${fileSizeMB}MB)
+                  </h3>
+                  <p class="text-gray-600 mb-4 text-sm">
+                    O limite para processamento automático é ${maxSizeMB}MB.
+                  </p>
+                  
+                  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                    <h4 class="font-semibold text-blue-800 mb-3">💡 Solução recomendada:</h4>
+                    <ol class="text-sm text-blue-700 space-y-3">
+                      <li class="flex items-start gap-2">
+                        <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">1</span>
+                        <span>Acesse <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank" class="underline font-semibold">ilovepdf.com/pt/pdf_para_texto</a></span>
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">2</span>
+                        <span>Faça upload do seu PDF e converta para TXT</span>
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">3</span>
+                        <span>Baixe o arquivo TXT e anexe aqui novamente</span>
+                      </li>
+                    </ol>
+                  </div>
+                  
+                  <div class="flex flex-col gap-3">
+                    <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank"
+                       class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all flex items-center justify-center gap-2">
+                      <i class="fas fa-external-link-alt"></i>
+                      Converter PDF para TXT
+                    </a>
+                    <button onclick="renderEntrevistaStep1()" 
+                            class="w-full py-3 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg font-semibold border ${themes[currentTheme].border} hover:opacity-80 transition-all flex items-center justify-center gap-2">
+                      <i class="fas fa-redo"></i>
+                      Anexar outro arquivo
+                    </button>
+                    <button onclick="renderEntrevistaStep2()" 
+                            class="w-full py-2 text-gray-500 hover:text-gray-700 transition-all text-sm">
+                      Continuar sem edital →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+            return;
           }
           
           // ✅ Mostrar tela de erro com opção de tentar novamente
