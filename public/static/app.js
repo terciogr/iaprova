@@ -3231,6 +3231,80 @@ async function processarEditalAntesDeStep2() {
   atualizarFeedbackUI(1, 'Iniciando processamento do edital...');
 
   try {
+    // 🔍 VERIFICAÇÃO PRÉVIA: Tamanho de arquivos PDF
+    const MAX_PDF_SIZE_MB = 15;
+    for (const file of interviewData.editais_arquivos) {
+      if (file.name.toLowerCase().endsWith('.pdf')) {
+        const fileSizeMB = file.size / (1024 * 1024);
+        if (fileSizeMB > MAX_PDF_SIZE_MB) {
+          console.warn(`⚠️ PDF muito grande detectado: ${file.name} (${fileSizeMB.toFixed(1)}MB)`);
+          atualizarFeedbackUI(1, '⚠️ PDF muito grande detectado!', 'warning');
+          
+          // Mostrar tela de arquivo grande ANTES de enviar
+          document.getElementById('app').innerHTML = `
+            <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+              <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
+                  <i class="fas fa-file-pdf text-orange-500 text-4xl"></i>
+                </div>
+                <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-3">
+                  PDF muito grande (${fileSizeMB.toFixed(1)}MB)
+                </h3>
+                <p class="text-gray-600 mb-4 text-sm">
+                  O arquivo <strong>${file.name}</strong> excede o limite de ${MAX_PDF_SIZE_MB}MB para processamento automático.
+                </p>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                  <h4 class="font-semibold text-blue-800 mb-3">💡 Solução rápida:</h4>
+                  <ol class="text-sm text-blue-700 space-y-3">
+                    <li class="flex items-start gap-2">
+                      <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">1</span>
+                      <span>Acesse <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank" class="underline font-semibold">ilovepdf.com/pt/pdf_para_texto</a></span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">2</span>
+                      <span>Converta o PDF para TXT (muito mais rápido!)</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">3</span>
+                      <span>Volte e anexe o arquivo TXT convertido</span>
+                    </li>
+                  </ol>
+                </div>
+                
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-left">
+                  <p class="text-amber-800 text-xs">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    <strong>Por quê?</strong> Arquivos TXT são processados instantaneamente, enquanto PDFs grandes podem demorar muito ou causar timeout.
+                  </p>
+                </div>
+                
+                <div class="flex flex-col gap-3">
+                  <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank"
+                     class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-external-link-alt"></i>
+                    Converter PDF para TXT
+                  </a>
+                  <button onclick="renderConcursoEspecifico()" 
+                          class="w-full py-3 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg font-semibold border ${themes[currentTheme].border} hover:opacity-80 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-redo"></i>
+                    Tentar com outro arquivo
+                  </button>
+                  <button onclick="renderEntrevistaStep2()" 
+                          class="w-full py-2 text-gray-500 hover:text-gray-700 transition-all text-sm">
+                    Continuar sem edital →
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          isProcessingEdital = false;
+          return; // Parar processamento
+        }
+      }
+    }
+    
     // 1️⃣ Upload de arquivos
     atualizarFeedbackUI(1, `Preparando upload de ${interviewData.editais_arquivos.length} arquivo(s)...`);
     
