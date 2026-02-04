@@ -992,6 +992,7 @@ function createUnifiedFAB() {
   fabContainer.className = 'fixed bottom-6 right-6 z-[9998]';
   
   // HTML do sistema FAB unificado (sem o overlay)
+  // FAB simplificado - opções movidas para página de Configurações
   fabContainer.innerHTML = `
     <!-- Container dos sub-botões -->
     <div id="fab-menu" class="absolute bottom-16 right-0 flex flex-col items-end gap-3 opacity-0 pointer-events-none transition-all duration-300 z-[9999]">
@@ -1022,46 +1023,20 @@ function createUnifiedFAB() {
         </button>
       </div>
       
-      <!-- Botão Minha Assinatura/Financeiro -->
+      <!-- Botão Configurações (acesso rápido) -->
       <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
         <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Minha Assinatura
+          Configurações
         </span>
         <button 
-          onclick="abrirMinhaAssinatura(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Minha Assinatura">
-          <i class="fas fa-credit-card text-lg"></i>
-        </button>
-      </div>
-      
-      <!-- Botão Administração -->
-      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
-        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Administração
-        </span>
-        <button 
-          onclick="abrirAdministracao(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Administração">
+          onclick="abrirConfiguracoes(); toggleFabMenu(); event.stopPropagation();"
+          class="w-12 h-12 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          title="Configurações">
           <i class="fas fa-cog text-lg"></i>
         </button>
       </div>
       
-      <!-- Botão Configurações IA -->
-      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
-        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Personalizar IA
-        </span>
-        <button 
-          onclick="openIAConfig(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-[#1A3A7F] to-[#122D6A] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Configurações de IA">
-          <i class="fas fa-brain text-lg"></i>
-        </button>
-      </div>
-      
-      <!-- Botão Chat Lilu -->
+      <!-- Botão Chat Lilu (acesso rápido) -->
       <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
         <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
           Assistente Lilu
@@ -1071,19 +1046,6 @@ function createUnifiedFAB() {
           class="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Conversar com Lilu">
           <i class="fas fa-robot text-lg"></i>
-        </button>
-      </div>
-      
-      <!-- Botão Instalar App -->
-      <div id="fab-install-app" class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
-        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Instalar App
-        </span>
-        <button 
-          onclick="showInstallInstructions(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Instalar como App">
-          <i class="fas fa-mobile-alt text-lg"></i>
         </button>
       </div>
     </div>
@@ -5555,6 +5517,13 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 <i class="fas fa-question-circle text-white text-sm group-hover:scale-110 transition-transform"></i>
               </button>
               
+              <!-- Botão de Configurações -->
+              <button onclick="abrirConfiguracoes()" 
+                class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group"
+                title="Configurações">
+                <i class="fas fa-cog text-white text-sm group-hover:scale-110 group-hover:rotate-90 transition-all duration-300"></i>
+              </button>
+              
               <!-- Avatar -->
               <div class="relative">
                 <button onclick="toggleUserMenu()" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 hover:scale-105 transition-all">
@@ -9576,6 +9545,248 @@ function logout() {
   // Voltar para a landing page (não para o login)
   renderLandingPage();
 }
+
+// ============== PÁGINA DE CONFIGURAÇÕES (ESTILO MICROSOFT) ==============
+
+window.abrirConfiguracoes = function() {
+  const app = document.getElementById('app');
+  
+  // Buscar informações do usuário para a seção de perfil
+  const userName = currentUser.name || 'Usuário';
+  const userEmail = currentUser.email || '';
+  const userInitial = userName.charAt(0).toUpperCase();
+  
+  app.innerHTML = '<div class="min-h-screen ' + themes[currentTheme].bg + '">' +
+    // Header
+    '<header class="bg-gradient-to-r from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F] shadow-lg">' +
+      '<div class="max-w-6xl mx-auto px-4 py-4">' +
+        '<div class="flex items-center gap-4">' +
+          '<button onclick="renderDashboard()" class="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition">' +
+            '<i class="fas fa-arrow-left text-white"></i>' +
+          '</button>' +
+          '<div>' +
+            '<h1 class="text-xl font-bold text-white">Configurações</h1>' +
+            '<p class="text-blue-200 text-sm">Gerencie suas preferências e conta</p>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</header>' +
+    
+    // Content
+    '<div class="max-w-6xl mx-auto px-4 py-6">' +
+      // User Profile Card
+      '<div class="' + themes[currentTheme].card + ' rounded-2xl shadow-lg p-6 mb-6 border ' + themes[currentTheme].border + '">' +
+        '<div class="flex items-center gap-4">' +
+          '<div class="w-16 h-16 rounded-full bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center text-white text-2xl font-bold">' +
+            userInitial +
+          '</div>' +
+          '<div class="flex-1">' +
+            '<h2 class="text-xl font-bold ' + themes[currentTheme].text + '">' + userName + '</h2>' +
+            '<p class="' + themes[currentTheme].textSecondary + '">' + userEmail + '</p>' +
+          '</div>' +
+          '<button onclick="abrirModalEditarPerfil()" class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex items-center gap-2">' +
+            '<i class="fas fa-pen"></i>' +
+            '<span class="hidden sm:inline">Editar Perfil</span>' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+      
+      // Settings Grid
+      '<div class="grid md:grid-cols-2 gap-4">' +
+        
+        // Minha Assinatura
+        '<button onclick="abrirMinhaAssinatura()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
+          '<div class="flex items-start gap-4">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+              '<i class="fas fa-credit-card text-white text-lg"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+              '<h3 class="font-semibold ' + themes[currentTheme].text + ' mb-1">Minha Assinatura</h3>' +
+              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Veja seu plano atual, histórico de pagamentos e faça upgrade</p>' +
+            '</div>' +
+            '<i class="fas fa-chevron-right ' + themes[currentTheme].textMuted + ' group-hover:translate-x-1 transition-transform"></i>' +
+          '</div>' +
+        '</button>' +
+        
+        // Importar/Exportar (antigo Administração)
+        '<button onclick="abrirImportarExportar()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
+          '<div class="flex items-start gap-4">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+              '<i class="fas fa-exchange-alt text-white text-lg"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+              '<h3 class="font-semibold ' + themes[currentTheme].text + ' mb-1">Importar / Exportar</h3>' +
+              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Backup dos seus dados, sincronização com Google e exportação</p>' +
+            '</div>' +
+            '<i class="fas fa-chevron-right ' + themes[currentTheme].textMuted + ' group-hover:translate-x-1 transition-transform"></i>' +
+          '</div>' +
+        '</button>' +
+        
+        // Personalizar IA
+        '<button onclick="openIAConfig()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
+          '<div class="flex items-start gap-4">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A3A7F] to-[#122D6A] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+              '<i class="fas fa-brain text-white text-lg"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+              '<h3 class="font-semibold ' + themes[currentTheme].text + ' mb-1">Personalizar IA</h3>' +
+              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Configure preferências de geração de conteúdo e estilo da IA</p>' +
+            '</div>' +
+            '<i class="fas fa-chevron-right ' + themes[currentTheme].textMuted + ' group-hover:translate-x-1 transition-transform"></i>' +
+          '</div>' +
+        '</button>' +
+        
+        // Assistente Lilu
+        '<button onclick="toggleChat()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
+          '<div class="flex items-start gap-4">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+              '<i class="fas fa-robot text-white text-lg"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+              '<h3 class="font-semibold ' + themes[currentTheme].text + ' mb-1">Assistente Lilu</h3>' +
+              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Converse com a IA para tirar dúvidas e receber orientações</p>' +
+            '</div>' +
+            '<i class="fas fa-chevron-right ' + themes[currentTheme].textMuted + ' group-hover:translate-x-1 transition-transform"></i>' +
+          '</div>' +
+        '</button>' +
+        
+        // Tema e Aparência
+        '<button onclick="abrirConfigTema()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
+          '<div class="flex items-start gap-4">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+              '<i class="fas fa-palette text-white text-lg"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+              '<h3 class="font-semibold ' + themes[currentTheme].text + ' mb-1">Tema e Aparência</h3>' +
+              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Modo claro/escuro e personalização visual</p>' +
+            '</div>' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="text-xs px-2 py-1 rounded-full ' + (currentTheme === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700') + '">' +
+                (currentTheme === 'dark' ? 'Escuro' : 'Claro') +
+              '</span>' +
+              '<i class="fas fa-chevron-right ' + themes[currentTheme].textMuted + ' group-hover:translate-x-1 transition-transform"></i>' +
+            '</div>' +
+          '</div>' +
+        '</button>' +
+        
+        // Instalar App
+        '<button onclick="showInstallInstructions()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
+          '<div class="flex items-start gap-4">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+              '<i class="fas fa-mobile-alt text-white text-lg"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+              '<h3 class="font-semibold ' + themes[currentTheme].text + ' mb-1">Instalar App</h3>' +
+              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Adicione o IAprova à tela inicial do seu dispositivo</p>' +
+            '</div>' +
+            '<i class="fas fa-chevron-right ' + themes[currentTheme].textMuted + ' group-hover:translate-x-1 transition-transform"></i>' +
+          '</div>' +
+        '</button>' +
+        
+      '</div>' +
+      
+      // Admin Section (apenas para admin)
+      '<div id="admin-section-config" class="mt-6 hidden">' +
+        '<h3 class="text-lg font-semibold ' + themes[currentTheme].text + ' mb-4 flex items-center gap-2">' +
+          '<i class="fas fa-shield-alt text-red-500"></i> Área Administrativa' +
+        '</h3>' +
+        '<button onclick="abrirPainelAdmin()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border-2 border-red-200 hover:border-red-500 hover:shadow-lg transition-all text-left group w-full">' +
+          '<div class="flex items-start gap-4">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+              '<i class="fas fa-user-shield text-white text-lg"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+              '<h3 class="font-semibold ' + themes[currentTheme].text + ' mb-1">Painel Administrativo</h3>' +
+              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Gerenciar usuários, assinaturas, emails e estatísticas do sistema</p>' +
+            '</div>' +
+            '<i class="fas fa-chevron-right ' + themes[currentTheme].textMuted + ' group-hover:translate-x-1 transition-transform"></i>' +
+          '</div>' +
+        '</button>' +
+      '</div>' +
+      
+      // Logout Section
+      '<div class="mt-8 pt-6 border-t ' + themes[currentTheme].border + '">' +
+        '<button onclick="logout()" class="w-full sm:w-auto px-6 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition flex items-center justify-center gap-2 font-medium">' +
+          '<i class="fas fa-sign-out-alt"></i>' +
+          'Sair da Conta' +
+        '</button>' +
+      '</div>' +
+      
+      // Version Info
+      '<div class="mt-6 text-center ' + themes[currentTheme].textMuted + ' text-xs">' +
+        '<p>IAprova v2.0 • Preparação Inteligente para Concursos</p>' +
+        '<p class="mt-1">© 2024-2026 Todos os direitos reservados</p>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  
+  // Verificar se é admin e mostrar seção admin
+  verificarAdminParaConfiguracoes();
+};
+
+// Verificar se usuário é admin para mostrar seção admin nas configurações
+async function verificarAdminParaConfiguracoes() {
+  try {
+    const response = await axios.get('/api/admin/check', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    if (response.data.isAdmin) {
+      const adminSection = document.getElementById('admin-section-config');
+      if (adminSection) adminSection.classList.remove('hidden');
+    }
+  } catch (e) {
+    // Não é admin, não mostrar seção
+  }
+}
+
+// Renomear função de Administração para Importar/Exportar
+window.abrirImportarExportar = window.abrirAdministracao;
+
+// Modal de configuração de tema
+window.abrirConfigTema = function() {
+  const modal = document.createElement('div');
+  modal.id = 'modal-tema';
+  modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4';
+  modal.innerHTML = '<div class="' + themes[currentTheme].card + ' rounded-2xl shadow-2xl max-w-md w-full p-6">' +
+    '<div class="flex items-center justify-between mb-6">' +
+      '<div class="flex items-center gap-3">' +
+        '<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">' +
+          '<i class="fas fa-palette text-white"></i>' +
+        '</div>' +
+        '<h3 class="text-lg font-bold ' + themes[currentTheme].text + '">Tema e Aparência</h3>' +
+      '</div>' +
+      '<button onclick="document.getElementById(\'modal-tema\').remove()" class="' + themes[currentTheme].textMuted + ' hover:' + themes[currentTheme].text + '">' +
+        '<i class="fas fa-times text-xl"></i>' +
+      '</button>' +
+    '</div>' +
+    
+    '<div class="space-y-4">' +
+      '<p class="' + themes[currentTheme].textSecondary + ' text-sm">Escolha o tema de sua preferência:</p>' +
+      
+      '<div class="grid grid-cols-2 gap-3">' +
+        '<button onclick="changeTheme(\'light\'); document.getElementById(\'modal-tema\').remove(); abrirConfiguracoes();" ' +
+          'class="p-4 rounded-xl border-2 ' + (currentTheme === 'light' ? 'border-[#122D6A] bg-blue-50' : themes[currentTheme].border + ' hover:border-gray-400') + ' transition flex flex-col items-center gap-2">' +
+          '<div class="w-12 h-12 rounded-lg bg-white border border-gray-200 flex items-center justify-center">' +
+            '<i class="fas fa-sun text-yellow-500 text-xl"></i>' +
+          '</div>' +
+          '<span class="font-medium ' + themes[currentTheme].text + '">Claro</span>' +
+          (currentTheme === 'light' ? '<i class="fas fa-check-circle text-[#122D6A]"></i>' : '') +
+        '</button>' +
+        
+        '<button onclick="changeTheme(\'dark\'); document.getElementById(\'modal-tema\').remove(); abrirConfiguracoes();" ' +
+          'class="p-4 rounded-xl border-2 ' + (currentTheme === 'dark' ? 'border-[#122D6A] bg-blue-900/20' : themes[currentTheme].border + ' hover:border-gray-400') + ' transition flex flex-col items-center gap-2">' +
+          '<div class="w-12 h-12 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center">' +
+            '<i class="fas fa-moon text-blue-300 text-xl"></i>' +
+          '</div>' +
+          '<span class="font-medium ' + themes[currentTheme].text + '">Escuro</span>' +
+          (currentTheme === 'dark' ? '<i class="fas fa-check-circle text-[#122D6A]"></i>' : '') +
+        '</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  
+  document.body.appendChild(modal);
+};
 
 // ============== MINHA ASSINATURA (ÁREA FINANCEIRA) ==============
 

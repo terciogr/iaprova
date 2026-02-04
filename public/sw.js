@@ -1,7 +1,7 @@
-// IAprova Service Worker v2.0
-const CACHE_NAME = 'iaprova-v2';
-const STATIC_CACHE = 'iaprova-static-v2';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v2';
+// IAprova Service Worker v3.0 - Atualização de ícones e configurações
+const CACHE_NAME = 'iaprova-v3';
+const STATIC_CACHE = 'iaprova-static-v3';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v3';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
@@ -10,6 +10,10 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/icons/favicon.svg',
   '/icons/icon-192x192.svg',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
+  '/icons/apple-touch-icon.png',
+  '/icons/favicon.png',
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://cdn.jsdelivr.net/npm/chart.js',
