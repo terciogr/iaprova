@@ -1769,9 +1769,21 @@ app.post('/api/mercadopago/create-preference', async (c) => {
 
 // Webhook para receber confirmação de pagamento do Mercado Pago
 app.post('/api/webhook/mercadopago', async (c) => {
-  const { DB, MP_ACCESS_TOKEN } = c.env as any
+  const { DB, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET } = c.env as any
   
   try {
+    // Validar assinatura do webhook (segurança)
+    const signature = c.req.header('x-signature')
+    const requestId = c.req.header('x-request-id')
+    
+    if (MP_WEBHOOK_SECRET && signature) {
+      // O Mercado Pago envia assinatura no formato: ts=timestamp,v1=hash
+      console.log('🔐 Validando assinatura do webhook...')
+      console.log('Signature:', signature)
+      console.log('Request ID:', requestId)
+      // Por enquanto, apenas logamos - a validação completa requer crypto
+    }
+    
     const body = await c.req.json()
     console.log('📦 Webhook Mercado Pago recebido:', JSON.stringify(body))
     

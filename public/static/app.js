@@ -19936,8 +19936,8 @@ const defaultIAConfig = {
   temperatura: 0.3, // 0.1 a 1.0 - FIXADO em 0.3 para ser objetivo e não inventar
   intensidade: 'intermediaria', // superficial, intermediaria, aprofundada
   profundidade: 'aplicada', // conceitual, aplicada, analitica
-  extensao: 'medio', // curto, medio, longo, personalizado
-  extensaoCustom: 2000, // caracteres quando extensao = personalizado
+  extensao: 'personalizado', // curto, medio, longo, personalizado - PADRÃO: personalizado
+  extensaoCustom: 3000, // caracteres quando extensao = personalizado (padrão: 3000, max: 20000)
   formatoResumo: 'detalhado', // curto, detalhado
   formatoTeoria: 'completa', // basica, completa, avancada
   formatoFlashcards: 'objetivos', // objetivos, aprofundados
@@ -19986,9 +19986,12 @@ function atualizarInterfaceConfig() {
   
   // Extensão customizada
   const customChars = document.getElementById('config-extensao-custom');
+  const customContainer = document.getElementById('config-extensao-custom-container');
   if (customChars) {
-    customChars.value = iaConfig.extensaoCustom;
-    customChars.style.display = iaConfig.extensao === 'personalizado' ? 'block' : 'none';
+    customChars.value = iaConfig.extensaoCustom || 3000;
+  }
+  if (customContainer) {
+    customContainer.style.display = iaConfig.extensao === 'personalizado' ? 'block' : 'none';
   }
   
   // Formatos
@@ -20187,7 +20190,7 @@ window.openIAConfig = function() {
               <div class="space-y-3">
                 <label class="flex items-start gap-3 cursor-pointer group">
                   <input type="radio" name="config-extensao" value="curto"
-                    onchange="iaConfig.extensao = this.value; document.getElementById('config-extensao-custom').style.display = 'none'"
+                    onchange="iaConfig.extensao = this.value; document.getElementById('config-extensao-custom-container').style.display = 'none'"
                     class="mt-1 text-[#122D6A] focus:ring-[#122D6A]">
                   <div>
                     <p class="font-semibold group-hover:text-[#122D6A]">Curto</p>
@@ -20195,8 +20198,8 @@ window.openIAConfig = function() {
                   </div>
                 </label>
                 <label class="flex items-start gap-3 cursor-pointer group">
-                  <input type="radio" name="config-extensao" value="medio" checked
-                    onchange="iaConfig.extensao = this.value; document.getElementById('config-extensao-custom').style.display = 'none'"
+                  <input type="radio" name="config-extensao" value="medio"
+                    onchange="iaConfig.extensao = this.value; document.getElementById('config-extensao-custom-container').style.display = 'none'"
                     class="mt-1 text-[#122D6A] focus:ring-[#122D6A]">
                   <div>
                     <p class="font-semibold group-hover:text-[#122D6A]">Médio</p>
@@ -20205,33 +20208,35 @@ window.openIAConfig = function() {
                 </label>
                 <label class="flex items-start gap-3 cursor-pointer group">
                   <input type="radio" name="config-extensao" value="longo"
-                    onchange="iaConfig.extensao = this.value; document.getElementById('config-extensao-custom').style.display = 'none'"
+                    onchange="iaConfig.extensao = this.value; document.getElementById('config-extensao-custom-container').style.display = 'none'"
                     class="mt-1 text-[#122D6A] focus:ring-[#122D6A]">
                   <div>
                     <p class="font-semibold group-hover:text-[#122D6A]">Longo</p>
                     <p class="text-sm text-gray-600">2000-5000 caracteres</p>
                   </div>
                 </label>
-                <label class="flex items-start gap-3 cursor-pointer group">
-                  <input type="radio" name="config-extensao" value="personalizado"
-                    onchange="iaConfig.extensao = this.value; document.getElementById('config-extensao-custom').style.display = 'block'"
+                <label class="flex items-start gap-3 cursor-pointer group bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border-2 border-blue-200 dark:border-blue-700">
+                  <input type="radio" name="config-extensao" value="personalizado" checked
+                    onchange="iaConfig.extensao = this.value; document.getElementById('config-extensao-custom-container').style.display = 'block'"
                     class="mt-1 text-[#122D6A] focus:ring-[#122D6A]">
                   <div>
-                    <p class="font-semibold group-hover:text-[#122D6A]">Personalizado</p>
-                    <p class="text-sm text-gray-600">Defina o limite de caracteres</p>
+                    <p class="font-semibold group-hover:text-[#122D6A]">✨ Personalizado (Recomendado)</p>
+                    <p class="text-sm text-gray-600">Defina o limite de caracteres (500 a 20.000)</p>
                   </div>
                 </label>
-                <input 
-                  type="number" 
-                  id="config-extensao-custom"
-                  min="100" 
-                  max="10000" 
-                  value="2000"
-                  placeholder="Número de caracteres"
-                  onchange="iaConfig.extensaoCustom = parseInt(this.value)"
-                  class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-[#122D6A] focus:ring-[#122D6A] hidden"
-                  style="display: none;"
-                >
+                <div id="config-extensao-custom-container" class="ml-6 mt-2">
+                  <input 
+                    type="number" 
+                    id="config-extensao-custom"
+                    min="500" 
+                    max="20000" 
+                    value="3000"
+                    placeholder="Número de caracteres (500-20000)"
+                    onchange="iaConfig.extensaoCustom = Math.min(Math.max(parseInt(this.value) || 3000, 500), 20000); this.value = iaConfig.extensaoCustom"
+                    class="w-full px-4 py-2 rounded-lg border border-blue-300 focus:border-[#122D6A] focus:ring-[#122D6A] bg-white"
+                  >
+                  <p class="text-xs text-blue-600 mt-1"><i class="fas fa-info-circle mr-1"></i>Mínimo: 500 | Máximo: 20.000 caracteres</p>
+                </div>
               </div>
             </div>
             
@@ -20394,11 +20399,14 @@ function gerarPromptPersonalizado(tipo, conteudoBase) {
     analitica: 'Inclua análise crítica, comparações e diferentes perspectivas.'
   };
   
+  // Limitar extensão customizada entre 500 e 20000 caracteres
+  const extensaoCustomLimitada = Math.min(Math.max(config.extensaoCustom || 3000, 500), 20000);
+  
   const extensaoLimites = {
     curto: 'máximo 500 caracteres',
     medio: 'entre 500 e 2000 caracteres',
     longo: 'entre 2000 e 5000 caracteres',
-    personalizado: `exatamente ${config.extensaoCustom} caracteres`
+    personalizado: `EXATAMENTE ${extensaoCustomLimitada} caracteres (NÃO cortar o conteúdo, entregar COMPLETO)`
   };
   
   // Construir prompt personalizado (sem criatividade - IA sempre objetiva)
@@ -20409,7 +20417,8 @@ function gerarPromptPersonalizado(tipo, conteudoBase) {
     2. ESTILO: Seja OBJETIVO, DIRETO e PRECISO.
     3. INTENSIDADE: ${intensidadeInstrucoes[config.intensidade]}
     4. PROFUNDIDADE: ${profundidadeInstrucoes[config.profundidade]}
-    5. EXTENSÃO: Mínimo de ${extensaoLimites[config.extensao]}
+    5. EXTENSÃO: ${extensaoLimites[config.extensao]}.
+    IMPORTANTE: O conteúdo deve ser COMPLETO e ACABADO. NÃO corte no meio de frases ou seções. Se o limite for atingido, conclua a seção atual antes de parar
     `;
   
   // Adicionar instruções específicas por tipo de conteúdo
