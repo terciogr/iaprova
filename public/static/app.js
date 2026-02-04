@@ -1367,16 +1367,16 @@ function checkUser() {
   
   const userId = localStorage.getItem('userId');
   const userEmail = localStorage.getItem('userEmail');
-  const hasSeenLanding = localStorage.getItem('hasSeenLanding');
   
   // Se usuário não está logado
   if (!userId || !userEmail) {
-    // Mostrar landing page apenas na primeira visita ou se não viu ainda
-    if (!hasSeenLanding && viewParam !== 'login') {
-      renderLandingPage();
+    // Se veio com ?view=login, mostrar tela de login diretamente
+    if (viewParam === 'login') {
+      renderLogin();
       return;
     }
-    renderLogin();
+    // Caso contrário, SEMPRE mostrar landing page de marketing
+    renderLandingPage();
     return;
   }
   
@@ -2202,10 +2202,14 @@ function renderLandingPage() {
   `;
 }
 
-// Função para ir para o login
+// Função para ir para o login (a partir da landing page)
 window.goToLogin = function() {
-  localStorage.setItem('hasSeenLanding', 'true');
   renderLogin();
+};
+
+// Função para voltar à landing page (a partir da tela de login)
+window.goToLanding = function() {
+  renderLandingPage();
 };
 
 // Função para scroll suave
@@ -2222,15 +2226,32 @@ function renderLogin() {
 
   const render = () => {
     document.getElementById('app').innerHTML = `
-      <div class="min-h-screen flex items-center justify-center bg-gradient-to-br ${c('primary').gradient}">
-        <div class="${themes[currentTheme].card} p-8 rounded-lg shadow-2xl w-full max-w-md">
-          <div class="text-center mb-8">
-            <i class="fas fa-brain text-6xl ${c('primary').icon} mb-4"></i>
-            <h1 class="text-4xl font-bold ${themes[currentTheme].text}">
-              <span class="${c('primary').text}">IA</span><span class="${c('secondary').text}">prova</span>
-            </h1>
-            <p class="${themes[currentTheme].textSecondary} mt-2">Preparação Inteligente para Concursos Públicos</p>
+      <div class="min-h-screen bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900">
+        <!-- Header com botão voltar -->
+        <div class="absolute top-0 left-0 right-0 p-4 flex items-center justify-between">
+          <button onclick="goToLanding()" class="flex items-center gap-2 text-white/80 hover:text-white transition">
+            <i class="fas fa-arrow-left"></i>
+            <span class="hidden sm:inline">Voltar ao início</span>
+          </button>
+          <div class="flex items-center gap-2 text-white">
+            <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+              <i class="fas fa-brain text-sm"></i>
+            </div>
+            <span class="font-bold">IAprova</span>
           </div>
+        </div>
+        
+        <div class="min-h-screen flex items-center justify-center px-4 py-16">
+          <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <div class="text-center mb-8">
+              <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <i class="fas fa-brain text-white text-3xl"></i>
+              </div>
+              <h1 class="text-3xl font-bold text-gray-800">
+                <span class="text-indigo-600">IA</span><span class="text-purple-600">prova</span>
+              </h1>
+              <p class="text-gray-500 mt-2">Faça login para continuar</p>
+            </div>
           
           <!-- Botões de alternância -->
           <div class="flex mb-6 bg-gray-100 rounded-lg p-1">
@@ -2312,8 +2333,17 @@ function renderLogin() {
               'Primeira vez aqui? Use o Cadastro acima.' : 
               'Já tem conta? Use o Login acima.'}
           </div>
+          
+          <!-- Link para voltar à landing -->
+          <div class="mt-6 pt-6 border-t border-gray-200 text-center">
+            <button onclick="goToLanding()" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+              <i class="fas fa-home mr-1"></i>
+              Voltar para a página inicial
+            </button>
+          </div>
         </div>
       </div>
+    </div>
     `;
 
     window.toggleMode = (loginMode) => {
