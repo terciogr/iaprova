@@ -4406,15 +4406,17 @@ async function renderEntrevistaStep3() {
   if (interviewData.disciplinas_do_edital && interviewData.disciplinas_do_edital.length > 0) {
     // 🎯 USAR DISCIPLINAS DO EDITAL
     console.log(`📄 Usando ${interviewData.disciplinas_do_edital.length} disciplinas do edital processado`);
-    console.log('📋 Disciplinas:', interviewData.disciplinas_do_edital.map(d => d.nome).join(', '));
+    console.log('📋 Disciplinas:', interviewData.disciplinas_do_edital.map(d => `${d.nome} (${d.total_topicos || d.topicos?.length || 0} tópicos)`).join(', '));
     
-    // Mapear para formato esperado (INCLUINDO PESO do edital)
+    // Mapear para formato esperado (INCLUINDO PESO e TÓPICOS do edital)
     disciplinasFiltradas = interviewData.disciplinas_do_edital.map(d => ({
       id: d.id || 0,
       nome: d.nome,
-      descricao: `Disciplina extraída do edital (${d.total_topicos || 0} tópicos)`,
+      descricao: `Disciplina extraída do edital (${d.total_topicos || d.topicos?.length || 0} tópicos)`,
       area: 'edital', // Flag especial
-      peso: d.peso || null // ✅ CORREÇÃO: Incluir peso do edital
+      peso: d.peso || null, // ✅ CORREÇÃO: Incluir peso do edital
+      total_topicos: d.total_topicos || d.topicos?.length || 0, // ✅ NOVO: Total de tópicos
+      topicos: d.topicos || [] // ✅ NOVO: Lista de tópicos para exibição
     }));
     
   } else {
