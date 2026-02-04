@@ -12743,13 +12743,13 @@ app.get('/', (c) => {
     <meta name="author" content="IAprova">
     
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#6366f1">
+    <meta name="theme-color" content="#122D6A">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="IAprova">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="IAprova">
-    <meta name="msapplication-TileColor" content="#6366f1">
+    <meta name="msapplication-TileColor" content="#122D6A">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
@@ -12804,7 +12804,7 @@ app.get('/', (c) => {
         /* Loading spinner */
         .spinner {
             border: 3px solid #f3f3f3;
-            border-top: 3px solid #6366f1;
+            border-top: 3px solid #122D6A;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -12883,7 +12883,7 @@ app.get('/', (c) => {
             bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            background: linear-gradient(135deg, #122D6A 0%, #8b5cf6 100%);
             color: white;
             padding: 16px;
             z-index: 9998;
@@ -12921,10 +12921,10 @@ app.get('/', (c) => {
     <!-- App Container -->
     <div id="app">
         <!-- Initial Loading Screen -->
-        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900">
+        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F]">
             <div class="text-center">
                 <div class="mb-6 animate-float">
-                    <div class="w-24 h-24 mx-auto pulse-glow rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                    <div class="w-24 h-24 mx-auto pulse-glow rounded-3xl bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] flex items-center justify-center">
                         <svg viewBox="0 0 64 64" class="w-16 h-16">
                             <circle cx="32" cy="32" r="20" fill="rgba(16,185,129,1)"/>
                             <path d="M24 32 L30 38 L42 26" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
@@ -12932,9 +12932,9 @@ app.get('/', (c) => {
                     </div>
                 </div>
                 <h1 class="text-white text-4xl font-bold mb-2">IAprova</h1>
-                <p class="text-indigo-200 text-lg mb-6">Preparação Inteligente para Concursos</p>
+                <p class="text-blue-200 text-lg mb-6">Preparação Inteligente para Concursos</p>
                 <div class="spinner mx-auto mb-4"></div>
-                <p class="text-indigo-100 text-sm">Carregando sistema...</p>
+                <p class="text-blue-100 text-sm">Carregando sistema...</p>
             </div>
         </div>
     </div>
@@ -12948,12 +12948,12 @@ app.get('/', (c) => {
                 </div>
                 <div>
                     <p class="font-bold">Instale o IAprova</p>
-                    <p class="text-sm text-indigo-200">Acesse como um app!</p>
+                    <p class="text-sm text-blue-200">Acesse como um app!</p>
                 </div>
             </div>
             <div class="flex gap-2">
                 <button onclick="dismissPWABanner()" class="px-3 py-2 text-sm opacity-70 hover:opacity-100">Depois</button>
-                <button onclick="installPWA()" class="px-4 py-2 bg-white text-indigo-600 rounded-lg font-bold text-sm">Instalar</button>
+                <button onclick="installPWA()" class="px-4 py-2 bg-white text-[#122D6A] rounded-lg font-bold text-sm">Instalar</button>
             </div>
         </div>
     </div>
@@ -13040,7 +13040,7 @@ app.get('/', (c) => {
             const modal = document.createElement('div');
             modal.id = 'install-instructions-modal';
             modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[10000] p-4';
-            modal.innerHTML = '<div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center"><div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4"><i class="fas fa-mobile-alt text-white text-2xl"></i></div><h3 class="text-xl font-bold text-gray-800 mb-4">Instalar IAprova</h3><div class="text-gray-600 text-sm">' + instructions + '</div><button onclick="document.getElementById(\\'install-instructions-modal\\').remove()" class="mt-6 w-full py-3 bg-indigo-600 text-white rounded-xl font-bold">Entendi</button></div>';
+            modal.innerHTML = '<div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center"><div class="w-16 h-16 bg-[#122D6A] rounded-2xl flex items-center justify-center mx-auto mb-4"><i class="fas fa-mobile-alt text-white text-2xl"></i></div><h3 class="text-xl font-bold text-gray-800 mb-4">Instalar IAprova</h3><div class="text-gray-600 text-sm">' + instructions + '</div><button onclick="document.getElementById(\\'install-instructions-modal\\').remove()" class="mt-6 w-full py-3 bg-[#122D6A] text-white rounded-xl font-bold">Entendi</button></div>';
             document.body.appendChild(modal);
             hidePWABanner();
         }
@@ -13648,7 +13648,7 @@ app.get('/manifest.json', async (c) => {
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0f172a",
-    "theme_color": "#6366f1",
+    "theme_color": "#122D6A",
     "orientation": "portrait-primary",
     "scope": "/",
     "lang": "pt-BR",

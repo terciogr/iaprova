@@ -886,15 +886,15 @@ window.showInstallInstructions = function() {
         <p class="text-gray-700 font-medium">Para instalar o IAprova no seu computador:</p>
         <ol class="list-none space-y-3">
           <li class="flex items-start gap-3">
-            <span class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">1</span>
+            <span class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-[#2A4A9F] font-bold">1</span>
             <span>Procure o ícone <i class="fas fa-plus-square text-gray-500"></i> na barra de endereços do navegador</span>
           </li>
           <li class="flex items-start gap-3">
-            <span class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">2</span>
+            <span class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-[#2A4A9F] font-bold">2</span>
             <span>Clique em <strong>"Instalar IAprova"</strong> quando aparecer a opção</span>
           </li>
           <li class="flex items-start gap-3">
-            <span class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">3</span>
+            <span class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-[#2A4A9F] font-bold">3</span>
             <span>Ou acesse o menu do navegador (⋮) e clique em <strong>"Instalar IAprova..."</strong></span>
           </li>
         </ol>
@@ -1042,7 +1042,7 @@ function createUnifiedFAB() {
         </span>
         <button 
           onclick="openIAConfig(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          class="w-12 h-12 bg-gradient-to-br from-purple-500 to-[#122D6A] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Configurações de IA">
           <i class="fas fa-brain text-lg"></i>
         </button>
@@ -1307,9 +1307,14 @@ window.toggleFabMenu = function() {
 }
 
 // Substituir a função antiga - agora usa o FAB unificado
+// IMPORTANTE: FAB só deve ser criado APÓS o login, não na landing page nem no login
 function addEmergencyBackButton() {
-  // O FAB unificado já inclui todos os botões necessários
-  createUnifiedFAB();
+  // Verificar se usuário está logado antes de criar o FAB
+  const userId = localStorage.getItem('userId');
+  const userEmail = localStorage.getItem('userEmail');
+  if (userId && userEmail) {
+    createUnifiedFAB();
+  }
 }
 
 function checkUser() {
@@ -2226,7 +2231,7 @@ function renderLogin() {
 
   const render = () => {
     document.getElementById('app').innerHTML = `
-      <div class="min-h-screen bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900">
+      <div class="min-h-screen bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F]">
         <!-- Header com botão voltar -->
         <div class="absolute top-0 left-0 right-0 p-4 flex items-center justify-between">
           <button onclick="goToLanding()" class="flex items-center gap-2 text-white/80 hover:text-white transition">
@@ -2244,11 +2249,11 @@ function renderLogin() {
         <div class="min-h-screen flex items-center justify-center px-4 py-16">
           <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
             <div class="text-center mb-8">
-              <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] rounded-2xl flex items-center justify-center shadow-lg">
                 <i class="fas fa-brain text-white text-3xl"></i>
               </div>
               <h1 class="text-3xl font-bold text-gray-800">
-                <span class="text-indigo-600">IA</span><span class="text-purple-600">prova</span>
+                <span class="text-[#122D6A]">IA</span><span class="text-[#2A4A9F]">prova</span>
               </h1>
               <p class="text-gray-500 mt-2">Faça login para continuar</p>
             </div>
@@ -2336,7 +2341,7 @@ function renderLogin() {
           
           <!-- Link para voltar à landing -->
           <div class="mt-6 pt-6 border-t border-gray-200 text-center">
-            <button onclick="goToLanding()" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+            <button onclick="goToLanding()" class="text-sm text-[#122D6A] hover:text-[#122D6A] font-medium">
               <i class="fas fa-home mr-1"></i>
               Voltar para a página inicial
             </button>
@@ -2536,17 +2541,24 @@ function renderEntrevistaStep1() {
   `;
 }
 
-// Função para voltar ao login
+// Função para voltar ao login/landing (logout)
 async function voltarAoLogin() {
-  const confirmed = await showConfirm('Deseja sair da entrevista e voltar ao login?\n\nOs dados da entrevista atual não serão salvos.', {
-    title: 'Sair da Entrevista',
+  const confirmed = await showConfirm('Deseja sair do sistema?\n\nVocê precisará fazer login novamente.', {
+    title: 'Sair do Sistema',
     confirmText: 'Sim, sair',
     cancelText: 'Continuar aqui',
     type: 'warning'
   });
   if (confirmed) {
+    // Remover FAB antes de sair
+    document.getElementById('unified-fab-container')?.remove();
+    document.getElementById('fab-overlay')?.remove();
+    
     localStorage.clear();
-    window.location.reload();
+    currentUser = null;
+    
+    // Ir para a landing page
+    renderLandingPage();
   }
 }
 
@@ -4853,6 +4865,9 @@ window.toggleTheme = function() {
 // ============== DASHBOARD ==============
 async function verificarEntrevista() {
   try {
+    // Criar FAB após login bem-sucedido (apenas quando usuário está autenticado)
+    createUnifiedFAB();
+    
     // Registrar acesso ao entrar no sistema (ANTES de verificar tutorial)
     registrarAcesso();
     
@@ -9162,8 +9177,12 @@ function logout() {
   // Limpar objeto global
   currentUser = null;
   
-  // Voltar para tela de login
-  renderLogin();
+  // Remover FAB ao fazer logout
+  document.getElementById('unified-fab-container')?.remove();
+  document.getElementById('fab-overlay')?.remove();
+  
+  // Voltar para a landing page (não para o login)
+  renderLandingPage();
 }
 
 // ============== ADMINISTRAÇÃO ==============
@@ -9420,7 +9439,7 @@ window.abrirPainelAdmin = async function() {
             </div>
             
             <!-- Emails Enviados -->
-            <div class="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl p-4 text-white">
+            <div class="bg-gradient-to-br from-purple-500 to-[#122D6A] rounded-xl p-4 text-white">
               <div class="flex items-center justify-between mb-2">
                 <i class="fas fa-envelope text-2xl opacity-80"></i>
                 <span class="text-3xl font-bold">${stats.emails.total}</span>
@@ -9543,7 +9562,7 @@ window.abrirPainelAdmin = async function() {
                 <i class="fas fa-users text-blue-500 text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Ver Usuários</p>
               </button>
-              <button onclick="verHistoricoEmails()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-purple-50 dark:hover:bg-purple-900/20 transition text-center">
+              <button onclick="verHistoricoEmails()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-purple-50 dark:hover:bg-[#1A3A7F]/20 transition text-center">
                 <i class="fas fa-envelope text-purple-500 text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Histórico Emails</p>
               </button>
@@ -12117,7 +12136,7 @@ function renderSecaoConteudo(conteudo, tipo) {
     
     return `
       <div class="space-y-6">
-        <div class="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-500">
+        <div class="bg-indigo-50 p-4 rounded-lg border-l-4 border-[#1A3A7F]">
           <p class="font-bold text-lg text-indigo-700 mb-2">${metodo}</p>
           ${introducao ? `<p class="${themes[currentTheme].text} mt-2">${introducao}</p>` : ''}
         </div>
@@ -15686,7 +15705,7 @@ function renderFlashcardsModal(flashcards, topicoNome, disciplinaNome, cardIndex
   window._currentFlashcardDiscipline = disciplinaNome;
   
   const modalHtml = `
-    <div id="modal-flashcards" class="fixed inset-0 bg-gradient-to-br from-cyan-900/90 via-indigo-900/90 to-blue-900/90 flex items-center justify-center z-50 p-4">
+    <div id="modal-flashcards" class="fixed inset-0 bg-gradient-to-br from-cyan-900/90 via-[#0D1F4D]/90 to-blue-900/90 flex items-center justify-center z-50 p-4">
       <div class="w-full max-w-2xl">
         <!-- Header -->
         <div class="text-center mb-6">
@@ -17577,7 +17596,7 @@ const tutorialSteps = [
       <p class="mb-3">Este botão flutuante dá acesso rápido a funcionalidades importantes:</p>
       <ul class="text-sm space-y-2">
         <li>🤖 <b class="text-blue-600">Assistente Lilu:</b> Tire dúvidas sobre qualquer assunto</li>
-        <li>🧠 <b class="text-purple-600">Personalizar IA:</b> Configure como o conteúdo é gerado (tom, extensão, profundidade)</li>
+        <li>🧠 <b class="text-[#2A4A9F]">Personalizar IA:</b> Configure como o conteúdo é gerado (tom, extensão, profundidade)</li>
         <li>⚙️ <b class="text-teal-600">Administração:</b> Backup, planos e configurações</li>
         <li>🚪 <b class="text-red-600">Sair:</b> Desconectar da conta</li>
       </ul>
