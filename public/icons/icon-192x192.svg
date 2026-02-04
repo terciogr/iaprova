@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#122D6A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1A3A7F;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="96" cy="96" r="90" fill="url(#grad1)"/>
+  
+  <!-- Brain icon stylized -->
+  <g transform="translate(40, 35) scale(0.55)">
+    <!-- Left hemisphere -->
+    <path d="M60 30 C30 30 20 60 20 90 C20 120 35 150 60 160 C70 165 80 165 90 160" 
+          fill="none" stroke="white" stroke-width="8" stroke-linecap="round"/>
+    <path d="M45 60 C35 65 30 80 35 95" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
+    <path d="M40 100 C35 110 40 125 55 130" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
+    
+    <!-- Right hemisphere -->
+    <path d="M140 30 C170 30 180 60 180 90 C180 120 165 150 140 160 C130 165 120 165 110 160" 
+          fill="none" stroke="white" stroke-width="8" stroke-linecap="round"/>
+    <path d="M155 60 C165 65 170 80 165 95" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
+    <path d="M160 100 C165 110 160 125 145 130" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
+    
+    <!-- Center connection -->
+    <path d="M90 40 L110 40 M90 80 L110 80 M90 120 L110 120" 
+          fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Check mark badge -->
+  <circle cx="145" cy="145" r="35" fill="#10B981"/>
+  <path d="M125 145 L140 160 L170 130" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

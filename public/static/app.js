@@ -803,6 +803,175 @@ function atualizarExibicaoAcessos() {
 }
 let fabMenuOpen = false;
 
+// Função para mostrar instruções de instalação do app
+window.showInstallInstructions = function() {
+  // Verificar se há o prompt de instalação disponível
+  if (typeof window.showPWAInstallPrompt === 'function' && window.deferredPrompt) {
+    window.showPWAInstallPrompt();
+    return;
+  }
+  
+  // Caso contrário, mostrar instruções manuais
+  if (typeof window.showManualInstallInstructions === 'function') {
+    window.showManualInstallInstructions();
+    return;
+  }
+  
+  // Fallback: criar modal com instruções
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  
+  // Se já está instalado
+  if (isStandalone) {
+    showToast('✅ O IAprova já está instalado como app!', 'success');
+    return;
+  }
+  
+  let instructions = '';
+  let deviceIcon = 'fa-mobile-alt';
+  
+  if (isIOS) {
+    deviceIcon = 'fa-apple';
+    instructions = `
+      <div class="text-left space-y-4">
+        <p class="text-gray-700 font-medium">Para instalar o IAprova no seu iPhone/iPad:</p>
+        <ol class="list-none space-y-3">
+          <li class="flex items-start gap-3">
+            <span class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">1</span>
+            <span>Toque no botão <strong>Compartilhar</strong> <i class="fas fa-share-square text-blue-500"></i> na barra inferior do Safari</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">2</span>
+            <span>Role a lista e toque em <strong>"Adicionar à Tela de Início"</strong> <i class="fas fa-plus-square text-gray-500"></i></span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">3</span>
+            <span>Toque em <strong>"Adicionar"</strong> no canto superior direito</span>
+          </li>
+        </ol>
+        <div class="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <p class="text-amber-800 text-sm">
+            <i class="fas fa-info-circle mr-2"></i>
+            <strong>Importante:</strong> Use o Safari para instalar. Outros navegadores não suportam instalação de apps.
+          </p>
+        </div>
+      </div>
+    `;
+  } else if (isAndroid) {
+    deviceIcon = 'fa-android';
+    instructions = `
+      <div class="text-left space-y-4">
+        <p class="text-gray-700 font-medium">Para instalar o IAprova no seu Android:</p>
+        <ol class="list-none space-y-3">
+          <li class="flex items-start gap-3">
+            <span class="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold">1</span>
+            <span>Toque no menu <strong>⋮</strong> (três pontos) no canto superior do Chrome</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold">2</span>
+            <span>Toque em <strong>"Instalar app"</strong> ou <strong>"Adicionar à tela inicial"</strong></span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold">3</span>
+            <span>Confirme tocando em <strong>"Instalar"</strong></span>
+          </li>
+        </ol>
+      </div>
+    `;
+  } else {
+    deviceIcon = 'fa-desktop';
+    instructions = `
+      <div class="text-left space-y-4">
+        <p class="text-gray-700 font-medium">Para instalar o IAprova no seu computador:</p>
+        <ol class="list-none space-y-3">
+          <li class="flex items-start gap-3">
+            <span class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">1</span>
+            <span>Procure o ícone <i class="fas fa-plus-square text-gray-500"></i> na barra de endereços do navegador</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">2</span>
+            <span>Clique em <strong>"Instalar IAprova"</strong> quando aparecer a opção</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">3</span>
+            <span>Ou acesse o menu do navegador (⋮) e clique em <strong>"Instalar IAprova..."</strong></span>
+          </li>
+        </ol>
+        <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <p class="text-blue-800 text-sm">
+            <i class="fas fa-lightbulb mr-2"></i>
+            <strong>Dica:</strong> No Chrome, Edge ou Brave você pode instalar diretamente. O Firefox não suporta instalação de PWAs.
+          </p>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Criar modal
+  const existingModal = document.getElementById('install-modal');
+  if (existingModal) existingModal.remove();
+  
+  const modal = document.createElement('div');
+  modal.id = 'install-modal';
+  modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[10000] p-4';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-scale-in">
+      <!-- Header -->
+      <div class="bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] p-6 text-center">
+        <div class="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <i class="fab ${deviceIcon} text-white text-3xl"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-white">Instalar IAprova</h3>
+        <p class="text-blue-200 mt-2">Acesse como um aplicativo nativo!</p>
+      </div>
+      
+      <!-- Content -->
+      <div class="p-6">
+        ${instructions}
+        
+        <!-- Benefícios -->
+        <div class="mt-6 pt-6 border-t border-gray-100">
+          <p class="text-gray-500 text-sm font-medium mb-3">Benefícios do app:</p>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="flex items-center gap-2 text-sm text-gray-600">
+              <i class="fas fa-bolt text-yellow-500"></i> Acesso rápido
+            </div>
+            <div class="flex items-center gap-2 text-sm text-gray-600">
+              <i class="fas fa-bell text-red-500"></i> Notificações
+            </div>
+            <div class="flex items-center gap-2 text-sm text-gray-600">
+              <i class="fas fa-wifi-slash text-blue-500"></i> Funciona offline
+            </div>
+            <div class="flex items-center gap-2 text-sm text-gray-600">
+              <i class="fas fa-mobile-alt text-green-500"></i> Tela cheia
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div class="p-4 bg-gray-50 flex gap-3">
+        <button onclick="document.getElementById('install-modal').remove()" 
+          class="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-100 transition">
+          Fechar
+        </button>
+        <button onclick="document.getElementById('install-modal').remove(); showToast('Siga os passos acima para instalar!', 'info');" 
+          class="flex-1 py-3 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white rounded-xl font-semibold hover:from-[#0D1F4D] hover:to-[#122D6A] transition">
+          Entendi!
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Fechar ao clicar fora
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+};
+
 function createUnifiedFAB() {
   // Remover botões antigos se existirem
   document.getElementById('emergency-back-btn')?.remove();
@@ -889,6 +1058,19 @@ function createUnifiedFAB() {
           class="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Conversar com Lilu">
           <i class="fas fa-robot text-lg"></i>
+        </button>
+      </div>
+      
+      <!-- Botão Instalar App -->
+      <div id="fab-install-app" class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
+        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
+          Instalar App
+        </span>
+        <button 
+          onclick="showInstallInstructions(); toggleFabMenu(); event.stopPropagation();"
+          class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          title="Instalar como App">
+          <i class="fas fa-mobile-alt text-lg"></i>
         </button>
       </div>
     </div>
@@ -1136,8 +1318,9 @@ function checkUser() {
   const googleAuth = urlParams.get('googleAuth');
   const userData = urlParams.get('user');
   const error = urlParams.get('error');
+  const viewParam = urlParams.get('view');
   
-  // Limpar parâmetros da URL
+  // Limpar parâmetros da URL (exceto view)
   if (googleAuth || error) {
     window.history.replaceState({}, document.title, window.location.pathname);
   }
@@ -1184,9 +1367,15 @@ function checkUser() {
   
   const userId = localStorage.getItem('userId');
   const userEmail = localStorage.getItem('userEmail');
+  const hasSeenLanding = localStorage.getItem('hasSeenLanding');
   
-  // SEMPRE mostrar login se não tiver email salvo (sessão expirada ou logout)
+  // Se usuário não está logado
   if (!userId || !userEmail) {
+    // Mostrar landing page apenas na primeira visita ou se não viu ainda
+    if (!hasSeenLanding && viewParam !== 'login') {
+      renderLandingPage();
+      return;
+    }
     renderLogin();
     return;
   }
@@ -1630,6 +1819,402 @@ async function resetPasswordWithToken(token) {
     setTimeout(() => renderLogin(), 3000);
   }
 }
+
+// ============== LANDING PAGE DE MARKETING ==============
+function renderLandingPage() {
+  document.getElementById('app').innerHTML = `
+    <div class="min-h-screen bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F] overflow-x-hidden">
+      
+      <!-- Header/Navbar -->
+      <nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] rounded-xl flex items-center justify-center">
+              <i class="fas fa-brain text-white text-lg"></i>
+            </div>
+            <span class="text-xl font-bold text-[#122D6A]">IAprova</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="goToLogin()" class="px-4 py-2 text-[#122D6A] font-semibold hover:bg-gray-100 rounded-lg transition">
+              Entrar
+            </button>
+            <button onclick="goToLogin()" class="px-4 py-2 bg-[#122D6A] text-white font-semibold rounded-lg hover:bg-[#0D1F4D] transition">
+              Começar Grátis
+            </button>
+          </div>
+        </div>
+      </nav>
+      
+      <!-- Hero Section -->
+      <section class="pt-24 pb-16 px-4 min-h-[90vh] flex items-center">
+        <div class="max-w-7xl mx-auto text-center">
+          <div class="mb-8">
+            <span class="inline-block px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-blue-200 text-sm font-medium mb-6">
+              🎯 +10.000 candidatos já aprovados
+            </span>
+          </div>
+          
+          <h1 class="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
+            Sua aprovação em<br>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-emerald-300">
+              concursos públicos
+            </span><br>
+            começa aqui
+          </h1>
+          
+          <p class="text-xl text-blue-200 mb-8 max-w-2xl mx-auto">
+            Inteligência Artificial que entende seu edital, cria seu plano de estudos personalizado 
+            e gera conteúdo no estilo da sua banca. <strong>Estude de forma inteligente, não difícil.</strong>
+          </p>
+          
+          <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            <button onclick="goToLogin()" 
+              class="px-8 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-lg font-bold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all transform hover:scale-105 shadow-lg shadow-emerald-500/30">
+              <i class="fas fa-rocket mr-2"></i>Começar Gratuitamente
+            </button>
+            <button onclick="scrollToSection('features')" 
+              class="px-8 py-4 bg-white/10 backdrop-blur-sm text-white text-lg font-semibold rounded-xl hover:bg-white/20 transition-all border border-white/20">
+              <i class="fas fa-play-circle mr-2"></i>Ver como funciona
+            </button>
+          </div>
+          
+          <!-- Trust badges -->
+          <div class="flex flex-wrap justify-center gap-6 text-blue-200/70 text-sm">
+            <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> Sem cartão de crédito</span>
+            <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> Acesso imediato</span>
+            <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> Cancele quando quiser</span>
+          </div>
+          
+          <!-- PWA Install Button -->
+          <div class="mt-8">
+            <button onclick="showManualInstallInstructions ? showManualInstallInstructions() : goToLogin()" 
+              class="inline-flex items-center gap-2 px-6 py-3 bg-white/5 backdrop-blur-sm text-blue-200 rounded-xl hover:bg-white/10 transition border border-white/10">
+              <i class="fas fa-mobile-alt"></i>
+              <span>Instalar como App</span>
+              <i class="fas fa-download text-xs opacity-70"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Features Section -->
+      <section id="features" class="py-20 px-4 bg-white">
+        <div class="max-w-7xl mx-auto">
+          <div class="text-center mb-16">
+            <span class="text-[#122D6A] font-semibold text-sm uppercase tracking-wider">Funcionalidades</span>
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mt-4">
+              Tudo que você precisa para <span class="text-[#122D6A]">ser aprovado</span>
+            </h2>
+          </div>
+          
+          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Feature 1 -->
+            <div class="p-6 rounded-2xl border border-gray-200 hover:border-[#122D6A]/30 hover:shadow-lg transition-all group">
+              <div class="w-14 h-14 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                <i class="fas fa-file-alt text-white text-xl"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Análise de Edital com IA</h3>
+              <p class="text-gray-600">
+                Envie seu edital em PDF e nossa IA extrai automaticamente as disciplinas, 
+                tópicos e pesos para criar seu plano personalizado.
+              </p>
+            </div>
+            
+            <!-- Feature 2 -->
+            <div class="p-6 rounded-2xl border border-gray-200 hover:border-[#122D6A]/30 hover:shadow-lg transition-all group">
+              <div class="w-14 h-14 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                <i class="fas fa-calendar-alt text-white text-xl"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Plano de Estudos Inteligente</h3>
+              <p class="text-gray-600">
+                Cronograma semanal adaptado ao seu tempo disponível, com metas diárias 
+                e tracking de progresso em tempo real.
+              </p>
+            </div>
+            
+            <!-- Feature 3 -->
+            <div class="p-6 rounded-2xl border border-gray-200 hover:border-[#122D6A]/30 hover:shadow-lg transition-all group">
+              <div class="w-14 h-14 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                <i class="fas fa-robot text-white text-xl"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Geração de Conteúdo</h3>
+              <p class="text-gray-600">
+                Teoria, exercícios, flashcards e resumos gerados por IA, 
+                adaptados ao estilo da sua banca organizadora.
+              </p>
+            </div>
+            
+            <!-- Feature 4 -->
+            <div class="p-6 rounded-2xl border border-gray-200 hover:border-[#122D6A]/30 hover:shadow-lg transition-all group">
+              <div class="w-14 h-14 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                <i class="fas fa-tasks text-white text-xl"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Questões no Estilo da Banca</h3>
+              <p class="text-gray-600">
+                Exercícios gerados no formato exato da sua banca: CEBRASPE, FCC, FGV, 
+                VUNESP e mais 11 bancas reconhecidas.
+              </p>
+            </div>
+            
+            <!-- Feature 5 -->
+            <div class="p-6 rounded-2xl border border-gray-200 hover:border-[#122D6A]/30 hover:shadow-lg transition-all group">
+              <div class="w-14 h-14 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                <i class="fas fa-chart-line text-white text-xl"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Dashboard de Progresso</h3>
+              <p class="text-gray-600">
+                Acompanhe seu desempenho com gráficos, estatísticas e métricas 
+                que mostram exatamente onde você precisa melhorar.
+              </p>
+            </div>
+            
+            <!-- Feature 6 -->
+            <div class="p-6 rounded-2xl border border-gray-200 hover:border-[#122D6A]/30 hover:shadow-lg transition-all group">
+              <div class="w-14 h-14 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                <i class="fas fa-mobile-alt text-white text-xl"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Acesso em Qualquer Lugar</h3>
+              <p class="text-gray-600">
+                Use no celular como um app! Instale na tela inicial e estude 
+                offline com seus materiais salvos.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- How it Works -->
+      <section class="py-20 px-4 bg-gray-50">
+        <div class="max-w-7xl mx-auto">
+          <div class="text-center mb-16">
+            <span class="text-[#122D6A] font-semibold text-sm uppercase tracking-wider">Como funciona</span>
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mt-4">
+              3 passos para sua <span class="text-[#122D6A]">aprovação</span>
+            </h2>
+          </div>
+          
+          <div class="grid md:grid-cols-3 gap-8">
+            <div class="text-center">
+              <div class="w-20 h-20 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#122D6A]/30">
+                <span class="text-3xl font-bold text-white">1</span>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-3">Envie seu edital</h3>
+              <p class="text-gray-600">
+                Faça upload do PDF do edital e deixe nossa IA analisar 
+                todas as disciplinas e conteúdos.
+              </p>
+            </div>
+            
+            <div class="text-center">
+              <div class="w-20 h-20 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#122D6A]/30">
+                <span class="text-3xl font-bold text-white">2</span>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-3">Receba seu plano</h3>
+              <p class="text-gray-600">
+                Em segundos, você terá um cronograma de estudos 
+                personalizado para seu tempo e objetivo.
+              </p>
+            </div>
+            
+            <div class="text-center">
+              <div class="w-20 h-20 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#122D6A]/30">
+                <span class="text-3xl font-bold text-white">3</span>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-3">Estude e aprove</h3>
+              <p class="text-gray-600">
+                Acesse teoria, exercícios e flashcards gerados especialmente 
+                para sua prova. É só estudar!
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Pricing Section -->
+      <section id="pricing" class="py-20 px-4 bg-white">
+        <div class="max-w-7xl mx-auto">
+          <div class="text-center mb-16">
+            <span class="text-[#122D6A] font-semibold text-sm uppercase tracking-wider">Planos</span>
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mt-4">
+              Invista na sua <span class="text-[#122D6A]">aprovação</span>
+            </h2>
+            <p class="text-gray-600 mt-4 max-w-2xl mx-auto">
+              Escolha o plano ideal para seus estudos. Todos os planos incluem acesso completo à plataforma.
+            </p>
+          </div>
+          
+          <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <!-- Plano Gratuito -->
+            <div class="p-8 rounded-2xl border-2 border-gray-200 hover:border-[#122D6A]/30 transition-all">
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Gratuito</h3>
+              <p class="text-gray-500 mb-6">Para conhecer a plataforma</p>
+              <div class="mb-6">
+                <span class="text-4xl font-bold text-gray-900">R$ 0</span>
+                <span class="text-gray-500">/sempre</span>
+              </div>
+              <ul class="space-y-3 mb-8">
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> 5 gerações de conteúdo/dia
+                </li>
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> 1 plano de estudos
+                </li>
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> 7 metas semanais
+                </li>
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> 1 simulado por semana
+                </li>
+              </ul>
+              <button onclick="goToLogin()" 
+                class="w-full py-3 border-2 border-[#122D6A] text-[#122D6A] font-semibold rounded-xl hover:bg-[#122D6A]/5 transition">
+                Começar Grátis
+              </button>
+            </div>
+            
+            <!-- Plano Premium Mensal - Destaque -->
+            <div class="p-8 rounded-2xl border-2 border-[#122D6A] bg-gradient-to-br from-[#122D6A]/5 to-transparent relative transform md:scale-105 shadow-xl">
+              <div class="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white text-sm font-bold rounded-full">
+                Mais Popular
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Premium Mensal</h3>
+              <p class="text-gray-500 mb-6">Para quem vai passar</p>
+              <div class="mb-6">
+                <span class="text-4xl font-bold text-gray-900">R$ 29,90</span>
+                <span class="text-gray-500">/mês</span>
+              </div>
+              <ul class="space-y-3 mb-8">
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> <strong>Ilimitado</strong> gerações de conteúdo
+                </li>
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> <strong>Ilimitado</strong> planos de estudos
+                </li>
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> <strong>Ilimitado</strong> metas semanais
+                </li>
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> <strong>Ilimitado</strong> simulados
+                </li>
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> Suporte prioritário
+                </li>
+              </ul>
+              <button onclick="goToLogin()" 
+                class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white font-semibold rounded-xl hover:from-[#0D1F4D] hover:to-[#122D6A] transition shadow-lg shadow-[#122D6A]/30">
+                Assinar Agora
+              </button>
+            </div>
+            
+            <!-- Plano Anual -->
+            <div class="p-8 rounded-2xl border-2 border-gray-200 hover:border-[#122D6A]/30 transition-all">
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Premium Anual</h3>
+              <p class="text-gray-500 mb-2">Economia de 30%</p>
+              <div class="mb-1">
+                <span class="text-4xl font-bold text-gray-900">R$ 249,90</span>
+                <span class="text-gray-500">/ano</span>
+              </div>
+              <p class="text-emerald-600 font-semibold text-sm mb-6">
+                <i class="fas fa-tag mr-1"></i> Apenas R$ 20,83/mês
+              </p>
+              <ul class="space-y-3 mb-8">
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> Tudo do Premium Mensal
+                </li>
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> <strong>30% de desconto</strong>
+                </li>
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> Acesso a novos recursos
+                </li>
+                <li class="flex items-center gap-2 text-gray-600">
+                  <i class="fas fa-check text-emerald-500"></i> Suporte VIP
+                </li>
+              </ul>
+              <button onclick="goToLogin()" 
+                class="w-full py-3 border-2 border-[#122D6A] text-[#122D6A] font-semibold rounded-xl hover:bg-[#122D6A]/5 transition">
+                Economizar 30%
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Bancas Section -->
+      <section class="py-16 px-4 bg-gray-50">
+        <div class="max-w-7xl mx-auto">
+          <div class="text-center mb-12">
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-900">
+              Questões adaptadas para <span class="text-[#122D6A]">15 bancas</span>
+            </h2>
+          </div>
+          <div class="flex flex-wrap justify-center gap-4">
+            ${['CEBRASPE', 'FCC', 'FGV', 'VUNESP', 'CESGRANRIO', 'IDECAN', 'AOCP', 'QUADRIX', 'CONSULPLAN', 'IBFC', 'IADES', 'FUNCAB', 'COPS-UEL', 'UFPR', 'Outras'].map(banca => `
+              <span class="px-4 py-2 bg-white rounded-full text-gray-700 text-sm font-medium shadow-sm border border-gray-200">
+                ${banca}
+              </span>
+            `).join('')}
+          </div>
+        </div>
+      </section>
+      
+      <!-- CTA Final -->
+      <section class="py-20 px-4 bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F]">
+        <div class="max-w-3xl mx-auto text-center">
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">
+            Pronto para começar sua jornada de aprovação?
+          </h2>
+          <p class="text-xl text-blue-200 mb-8">
+            Junte-se a milhares de candidatos que já estão estudando de forma mais inteligente.
+          </p>
+          <button onclick="goToLogin()" 
+            class="px-8 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-lg font-bold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all transform hover:scale-105 shadow-lg shadow-emerald-500/30">
+            <i class="fas fa-rocket mr-2"></i>Criar Conta Gratuita
+          </button>
+        </div>
+      </section>
+      
+      <!-- Footer -->
+      <footer class="py-12 px-4 bg-[#0D1F4D] border-t border-white/10">
+        <div class="max-w-7xl mx-auto">
+          <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] rounded-xl flex items-center justify-center">
+                <i class="fas fa-brain text-white text-lg"></i>
+              </div>
+              <span class="text-xl font-bold text-white">IAprova</span>
+            </div>
+            <p class="text-blue-200/70 text-sm">
+              © 2025 IAprova. Todos os direitos reservados.
+            </p>
+            <div class="flex items-center gap-4">
+              <button onclick="showManualInstallInstructions ? showManualInstallInstructions() : goToLogin()" 
+                class="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg text-white hover:bg-white/20 transition">
+                <i class="fas fa-mobile-alt"></i>
+                <span class="text-sm">Instalar App</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </footer>
+      
+    </div>
+  `;
+}
+
+// Função para ir para o login
+window.goToLogin = function() {
+  localStorage.setItem('hasSeenLanding', 'true');
+  renderLogin();
+};
+
+// Função para scroll suave
+window.scrollToSection = function(sectionId) {
+  const section = document.getElementById(sectionId);
+  if (section) {
+    section.scrollIntoView({ behavior: 'smooth' });
+  }
+};
 
 // ============== TELA DE LOGIN ==============
 function renderLogin() {

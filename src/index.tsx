@@ -13362,4 +13362,75 @@ app.get('/api/bancas/:nome', async (c) => {
   }
 })
 
+// ============== ARQUIVOS PWA ==============
+// Servir manifest.json
+app.get('/manifest.json', async (c) => {
+  const manifest = {
+    "name": "IAprova - Preparação Inteligente para Concursos",
+    "short_name": "IAprova",
+    "description": "Sistema inteligente de preparação para concursos públicos com IA. Planos de estudo personalizados, simulados adaptativos e conteúdo sob medida.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#6366f1",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "lang": "pt-BR",
+    "categories": ["education", "productivity"],
+    "icons": [
+      { "src": "/icons/icon-72x72.png", "sizes": "72x72", "type": "image/png", "purpose": "any" },
+      { "src": "/icons/icon-96x96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+      { "src": "/icons/icon-128x128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+      { "src": "/icons/icon-144x144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+      { "src": "/icons/icon-152x152.png", "sizes": "152x152", "type": "image/png", "purpose": "any" },
+      { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+      { "src": "/icons/icon-384x384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+      { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    ],
+    "shortcuts": [
+      {
+        "name": "Meu Plano de Estudos",
+        "short_name": "Plano",
+        "description": "Acesse seu plano de estudos personalizado",
+        "url": "/?action=plano",
+        "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
+      }
+    ]
+  }
+  return c.json(manifest)
+})
+
+// Servir Service Worker
+app.get('/sw.js', async (c) => {
+  const swContent = `
+const CACHE_NAME = 'iaprova-v1';
+const urlsToCache = [
+  '/',
+  '/static/app.js',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
+  'https://cdn.tailwindcss.com',
+  'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css',
+  'https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(urlsToCache))
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => response || fetch(event.request))
+  );
+});
+`;
+  return new Response(swContent, {
+    headers: { 'Content-Type': 'application/javascript' }
+  })
+})
+
 export default app
