@@ -7,15 +7,163 @@ import OpenAI from 'openai'
 import * as XLSX from 'xlsx'
 // EmailService movido para funções inline com templates atualizados
 
+// ✅ FUNÇÃO PARA PDFs GRANDES - USA FILES API DO GEMINI
+async function extractLargePDFWithFilesAPI(pdfBytes: Uint8Array, geminiKey: string): Promise<string> {
+  console.log('🚀 Usando Files API do Gemini para PDF grande...')
+  
+  // PASSO 1: Upload do arquivo para o Gemini Files API
+  const uploadUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${geminiKey}`
+  
+  // Criar FormData com o arquivo
+  const formData = new FormData()
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+  formData.append('file', blob, 'edital.pdf')
+  
+  console.log('📤 Fazendo upload do PDF para Gemini Files API...')
+  
+  const uploadResponse = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'X-Goog-Upload-Protocol': 'multipart',
+    },
+    body: formData
+  })
+  
+  if (!uploadResponse.ok) {
+    const errorText = await uploadResponse.text()
+    console.error('❌ Erro no upload:', uploadResponse.status, errorText)
+    throw new Error(`Falha no upload: ${uploadResponse.status}`)
+  }
+  
+  const uploadData = await uploadResponse.json() as any
+  const fileUri = uploadData.file?.uri
+  
+  if (!fileUri) {
+    console.error('❌ URI do arquivo não retornada:', uploadData)
+    throw new Error('URI do arquivo não retornada pelo Gemini')
+  }
+  
+  console.log('✅ Upload concluído. URI:', fileUri)
+  
+  // PASSO 2: Aguardar processamento do arquivo (pode levar alguns segundos)
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+  let fileReady = false
+  let attempts = 0
+  
+  while (!fileReady && attempts < 30) {
+    await sleep(2000)
+    attempts++
+    
+    const statusResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/${uploadData.file.name}?key=${geminiKey}`
+    )
+    
+    if (statusResponse.ok) {
+      const statusData = await statusResponse.json() as any
+      console.log(`📊 Status do arquivo (tentativa ${attempts}): ${statusData.state}`)
+      
+      if (statusData.state === 'ACTIVE') {
+        fileReady = true
+      } else if (statusData.state === 'FAILED') {
+        throw new Error('Processamento do arquivo falhou')
+      }
+    }
+  }
+  
+  if (!fileReady) {
+    throw new Error('Timeout aguardando processamento do arquivo')
+  }
+  
+  // PASSO 3: Gerar conteúdo usando o arquivo
+  console.log('📝 Gerando extração do texto com Gemini...')
+  
+  const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
+  
+  const generateResponse = await fetch(generateUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          {
+            file_data: {
+              mime_type: 'application/pdf',
+              file_uri: fileUri
+            }
+          },
+          {
+            text: `EXTRAIA O CONTEÚDO PROGRAMÁTICO COMPLETO deste edital de concurso.
+
+FOCO: Vá direto para os ANEXOS (geralmente Anexo II ou III) que contêm o CONTEÚDO PROGRAMÁTICO.
+
+EXTRAIA:
+1. TODAS as disciplinas (Português, Raciocínio Lógico, Informática, Conhecimentos Específicos, etc.)
+2. TODOS os tópicos de cada disciplina
+3. O quadro de provas com pesos se houver
+
+TRANSCREVA literalmente. NÃO resuma. NÃO comente.
+
+INICIE A TRANSCRIÇÃO:`
+          }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 65536
+      }
+    })
+  })
+  
+  if (!generateResponse.ok) {
+    const errorText = await generateResponse.text()
+    console.error('❌ Erro na geração:', generateResponse.status, errorText)
+    throw new Error(`Falha na geração: ${generateResponse.status}`)
+  }
+  
+  const generateData = await generateResponse.json() as any
+  const texto = generateData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  
+  console.log(`✅ Texto extraído: ${texto.length} caracteres`)
+  
+  // PASSO 4: Deletar o arquivo do Gemini (limpeza)
+  try {
+    await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/${uploadData.file.name}?key=${geminiKey}`,
+      { method: 'DELETE' }
+    )
+    console.log('🗑️ Arquivo temporário deletado do Gemini')
+  } catch (e) {
+    console.warn('⚠️ Falha ao deletar arquivo temporário (não crítico)')
+  }
+  
+  return texto
+}
+
 // ✅✅✅ FUNÇÃO OTIMIZADA DE EXTRAÇÃO DE PDF - RÁPIDA E EFICIENTE
 async function extractTextFromPDF(pdfBuffer: ArrayBuffer, geminiKey: string): Promise<string> {
-  console.log('⚡ Iniciando extração RÁPIDA de texto do PDF com Gemini API...')
+  console.log('⚡ Iniciando extração de texto do PDF com Gemini API...')
+  
+  const bytes = new Uint8Array(pdfBuffer)
+  const fileSizeMB = bytes.length / (1024 * 1024)
+  console.log(`📄 PDF: ${bytes.length} bytes (${fileSizeMB.toFixed(2)} MB)`)
+  
+  // Para PDFs muito grandes (>10MB), tentar usar Files API do Gemini
+  if (fileSizeMB > 10) {
+    console.log(`📦 PDF grande (${fileSizeMB.toFixed(1)}MB) - usando Files API do Gemini...`)
+    try {
+      const textoGrande = await extractLargePDFWithFilesAPI(bytes, geminiKey)
+      if (textoGrande && textoGrande.length > 500) {
+        return textoGrande
+      }
+    } catch (largeError) {
+      console.warn(`⚠️ Files API falhou, tentando método padrão...`, largeError)
+    }
+  }
   
   // Converter para base64 de forma otimizada
-  const bytes = new Uint8Array(pdfBuffer)
   let binary = ''
   const len = bytes.length
-  const chunkSize = 8192  // Processar em chunks para melhor performance
+  const chunkSize = 8192
   
   for (let i = 0; i < len; i += chunkSize) {
     const chunk = bytes.subarray(i, Math.min(i + chunkSize, len))
@@ -23,11 +171,11 @@ async function extractTextFromPDF(pdfBuffer: ArrayBuffer, geminiKey: string): Pr
   }
   const base64 = btoa(binary)
   
-  console.log(`📄 PDF: ${bytes.length} bytes (${base64.length} base64)`)
+  console.log(`📄 Base64: ${base64.length} caracteres`)
   
-  // Validar tamanho (limite ~15MB para Gemini)
-  if (base64.length > 20000000) {
-    throw new Error('PDF muito grande (>15MB). Use um arquivo menor.')
+  // Limite aumentado para 30MB em base64 (~22MB arquivo real)
+  if (base64.length > 40000000) {
+    throw new Error(`PDF muito grande (${fileSizeMB.toFixed(1)}MB). Converta para TXT em ilovepdf.com`)
   }
   
   // ✅ PROMPT OTIMIZADO PARA EDITAIS DE CONCURSOS - EXTRAÇÃO COMPLETA DOS ANEXOS
