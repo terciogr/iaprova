@@ -13087,7 +13087,7 @@ app.get('/', (c) => {
             bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(135deg, #122D6A 0%, #8b5cf6 100%);
+            background: linear-gradient(135deg, #0D1F4D 0%, #1A3A7F 100%);
             color: white;
             padding: 16px;
             z-index: 9998;
@@ -13777,7 +13777,7 @@ app.get('*', (c) => {
         /* Loading Spinner */
         .spinner {
             border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
+            border-top: 3px solid #122D6A;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -13792,7 +13792,7 @@ app.get('*', (c) => {
 <body>
     <!-- App Container -->
     <div id="app">
-        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-400 to-pink-400">
+        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F]">
             <div class="text-center">
                 <div class="spinner mx-auto mb-4"></div>
                 <p class="text-white text-lg">Carregando IAprova...</p>
