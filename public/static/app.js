@@ -929,18 +929,30 @@ function atualizarExibicaoAcessos() {
 let fabMenuOpen = false;
 
 // Função para mostrar instruções de instalação do app
-window.showInstallInstructions = function() {
-  // Verificar se há o prompt de instalação disponível
-  if (typeof window.showPWAInstallPrompt === 'function' && window.deferredPrompt) {
-    window.showPWAInstallPrompt();
-    return;
+window.showInstallInstructions = async function() {
+  console.log('🔍 Verificando prompt de instalação...', window.deferredPrompt);
+  
+  // PRIORIDADE 1: Usar o prompt nativo se disponível
+  if (window.deferredPrompt) {
+    try {
+      console.log('📱 Mostrando prompt nativo de instalação...');
+      window.deferredPrompt.prompt();
+      const { outcome } = await window.deferredPrompt.userChoice;
+      console.log('📱 Escolha do usuário:', outcome);
+      
+      if (outcome === 'accepted') {
+        showToast('🎉 IAprova está sendo instalado!', 'success');
+      }
+      
+      window.deferredPrompt = null;
+      return;
+    } catch (error) {
+      console.error('Erro ao mostrar prompt:', error);
+    }
   }
   
-  // Caso contrário, mostrar instruções manuais
-  if (typeof window.showManualInstallInstructions === 'function') {
-    window.showManualInstallInstructions();
-    return;
-  }
+  // PRIORIDADE 2: Instruções manuais (fallback)
+  console.log('⚠️ Prompt não disponível, mostrando instruções manuais');
   
   // Fallback: criar modal com instruções
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);

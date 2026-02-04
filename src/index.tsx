@@ -13233,6 +13233,22 @@ app.get('/home', (c) => {
     <meta name="keywords" content="concursos públicos, estudo, preparação, IA, inteligência artificial, plano de estudos, flashcards, questões">
     <meta name="author" content="IAprova">
     
+    <!-- PWA Install Prompt - DEVE ser o primeiro script para capturar o evento -->
+    <script>
+      // Capturar evento de instalação PWA o mais cedo possível
+      window.deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.deferredPrompt = e;
+        console.log('✅ PWA beforeinstallprompt capturado!');
+      });
+      
+      window.addEventListener('appinstalled', function() {
+        console.log('🎉 PWA instalado com sucesso!');
+        window.deferredPrompt = null;
+      });
+    </script>
+    
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#122D6A">
     <meta name="apple-mobile-web-app-capable" content="yes">
