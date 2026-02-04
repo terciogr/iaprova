@@ -1683,22 +1683,218 @@ app.post('/api/subscription/activate', async (c) => {
   }
 })
 
-// Webhook para receber confirmação de pagamento do Mercado Pago (futuro)
+// ============== MERCADO PAGO INTEGRATION ==============
+
+// Criar preferência de pagamento no Mercado Pago
+app.post('/api/mercadopago/create-preference', async (c) => {
+  const { DB, MP_ACCESS_TOKEN, APP_URL } = c.env as any
+  const { user_id, plan } = await c.req.json()
+  
+  if (!MP_ACCESS_TOKEN) {
+    return c.json({ error: 'Mercado Pago não configurado' }, 500)
+  }
+  
+  try {
+    // Buscar usuário
+    const user = await DB.prepare('SELECT email, name FROM users WHERE id = ?').bind(user_id).first() as any
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404)
+    }
+    
+    // Definir planos
+    const plans: Record<string, { title: string; price: number; days: number }> = {
+      mensal: { title: 'IAprova Premium Mensal', price: 29.90, days: 30 },
+      anual: { title: 'IAprova Premium Anual', price: 249.90, days: 365 }
+    }
+    
+    const selectedPlan = plans[plan]
+    if (!selectedPlan) {
+      return c.json({ error: 'Plano inválido' }, 400)
+    }
+    
+    // Criar preferência no Mercado Pago
+    const preference = {
+      items: [{
+        title: selectedPlan.title,
+        quantity: 1,
+        unit_price: selectedPlan.price,
+        currency_id: 'BRL'
+      }],
+      payer: {
+        email: user.email,
+        name: user.name
+      },
+      back_urls: {
+        success: `${APP_URL || 'https://iaprova.app'}/pagamento/sucesso`,
+        failure: `${APP_URL || 'https://iaprova.app'}/pagamento/falha`,
+        pending: `${APP_URL || 'https://iaprova.app'}/pagamento/pendente`
+      },
+      auto_return: 'approved',
+      external_reference: JSON.stringify({ user_id, plan, days: selectedPlan.days }),
+      notification_url: `${APP_URL || 'https://iaprova.app'}/api/webhook/mercadopago`,
+      statement_descriptor: 'IAPROVA',
+      expires: true,
+      expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24h
+    }
+    
+    const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(preference)
+    })
+    
+    const result = await response.json() as any
+    
+    if (result.error) {
+      console.error('Erro ao criar preferência:', result)
+      return c.json({ error: 'Erro ao criar pagamento' }, 500)
+    }
+    
+    console.log(`✅ Preferência criada: ${result.id} para usuário ${user_id}`)
+    
+    return c.json({
+      success: true,
+      preference_id: result.id,
+      init_point: result.init_point, // URL para redirecionar o usuário
+      sandbox_init_point: result.sandbox_init_point
+    })
+  } catch (error: any) {
+    console.error('Erro ao criar preferência:', error)
+    return c.json({ error: error.message }, 500)
+  }
+})
+
+// Webhook para receber confirmação de pagamento do Mercado Pago
 app.post('/api/webhook/mercadopago', async (c) => {
-  const { DB } = c.env
+  const { DB, MP_ACCESS_TOKEN } = c.env as any
   
   try {
     const body = await c.req.json()
     console.log('📦 Webhook Mercado Pago recebido:', JSON.stringify(body))
     
-    // TODO: Implementar validação do webhook do Mercado Pago
-    // Por enquanto, apenas loga a requisição
+    // Verificar tipo de notificação
+    if (body.type !== 'payment' && body.action !== 'payment.created' && body.action !== 'payment.updated') {
+      console.log('Notificação ignorada:', body.type, body.action)
+      return c.json({ received: true })
+    }
     
-    return c.json({ received: true })
-  } catch (error) {
+    // Buscar detalhes do pagamento na API do Mercado Pago
+    const paymentId = body.data?.id || body.id
+    if (!paymentId) {
+      console.log('Payment ID não encontrado')
+      return c.json({ received: true })
+    }
+    
+    const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
+    })
+    
+    const payment = await paymentResponse.json() as any
+    console.log('💳 Detalhes do pagamento:', JSON.stringify(payment))
+    
+    // Verificar se pagamento foi aprovado
+    if (payment.status !== 'approved') {
+      console.log(`Pagamento ${paymentId} não aprovado: ${payment.status}`)
+      return c.json({ received: true, status: payment.status })
+    }
+    
+    // Extrair dados do external_reference
+    let userData
+    try {
+      userData = JSON.parse(payment.external_reference)
+    } catch {
+      console.error('external_reference inválido:', payment.external_reference)
+      return c.json({ error: 'Referência inválida' }, 400)
+    }
+    
+    const { user_id, plan, days } = userData
+    
+    // Calcular data de expiração
+    const now = new Date()
+    const expiresAt = new Date(now.getTime() + (days || 30) * 24 * 60 * 60 * 1000).toISOString()
+    
+    // Atualizar usuário com assinatura ativa
+    await DB.prepare(`
+      UPDATE users SET 
+        subscription_status = 'active',
+        subscription_plan = ?,
+        subscription_expires_at = ?,
+        payment_id = ?,
+        payment_date = ?
+      WHERE id = ?
+    `).bind(plan, expiresAt, paymentId.toString(), now.toISOString(), user_id).run()
+    
+    console.log(`✅ Assinatura ${plan} ativada para usuário ${user_id} até ${expiresAt}`)
+    
+    // Registrar histórico de pagamento
+    try {
+      await DB.prepare(`
+        INSERT INTO payment_history (user_id, payment_id, plan, amount, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(user_id, paymentId.toString(), plan, payment.transaction_amount, 'approved', now.toISOString()).run()
+    } catch (e) {
+      console.log('Tabela payment_history não existe, ignorando histórico')
+    }
+    
+    return c.json({ 
+      received: true, 
+      processed: true,
+      user_id,
+      plan,
+      expires_at: expiresAt
+    })
+  } catch (error: any) {
     console.error('Erro no webhook:', error)
     return c.json({ error: 'Erro ao processar webhook' }, 500)
   }
+})
+
+// Verificar status de pagamento
+app.get('/api/mercadopago/payment-status/:payment_id', async (c) => {
+  const { MP_ACCESS_TOKEN } = c.env as any
+  const paymentId = c.req.param('payment_id')
+  
+  try {
+    const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
+    })
+    
+    const payment = await response.json() as any
+    
+    return c.json({
+      status: payment.status,
+      status_detail: payment.status_detail,
+      amount: payment.transaction_amount,
+      date: payment.date_approved || payment.date_created
+    })
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500)
+  }
+})
+
+// Callback de retorno após pagamento
+app.get('/pagamento/sucesso', async (c) => {
+  const { DB } = c.env
+  const paymentId = c.req.query('payment_id')
+  const status = c.req.query('status')
+  const externalReference = c.req.query('external_reference')
+  
+  console.log(`💰 Retorno de pagamento: ${paymentId}, status: ${status}`)
+  
+  // Redirecionar para o app com parâmetros
+  return c.redirect(`/?payment=success&payment_id=${paymentId}&status=${status}`)
+})
+
+app.get('/pagamento/falha', async (c) => {
+  return c.redirect('/?payment=failed')
+})
+
+app.get('/pagamento/pendente', async (c) => {
+  const paymentId = c.req.query('payment_id')
+  return c.redirect(`/?payment=pending&payment_id=${paymentId}`)
 })
 
 // ============== MÓDULO ADMINISTRADOR (EXCLUSIVO) ==============
@@ -10432,6 +10628,46 @@ app.post('/api/backup/import/:user_id', async (c) => {
   }
 })
 
+// Função auxiliar para gerar backup do usuário (evita fetch interno)
+async function generateUserBackup(DB: any, user_id: string) {
+  console.log(`📦 Gerando backup do usuário ${user_id}...`)
+  
+  const user = await DB.prepare('SELECT id, name, email, created_at FROM users WHERE id = ?').bind(user_id).first()
+  if (!user) throw new Error('Usuário não encontrado')
+  
+  const { results: interviews } = await DB.prepare('SELECT * FROM interviews WHERE user_id = ?').bind(user_id).all()
+  const { results: planos } = await DB.prepare('SELECT * FROM planos_estudo WHERE user_id = ?').bind(user_id).all()
+  const planoIds = planos.map((p: any) => p.id).join(',') || '0'
+  const { results: ciclos } = await DB.prepare(`SELECT * FROM ciclos_estudo WHERE plano_id IN (${planoIds})`).all()
+  const { results: userDisciplinas } = await DB.prepare('SELECT * FROM user_disciplinas WHERE user_id = ?').bind(user_id).all()
+  const { results: historico } = await DB.prepare('SELECT * FROM historico_estudos WHERE user_id = ?').bind(user_id).all()
+  const { results: metasDiarias } = await DB.prepare('SELECT * FROM metas_diarias WHERE user_id = ?').bind(user_id).all()
+  const { results: metasSemana } = await DB.prepare('SELECT * FROM metas_semana WHERE user_id = ?').bind(user_id).all()
+  const { results: semanas } = await DB.prepare('SELECT * FROM semanas_estudo WHERE user_id = ?').bind(user_id).all()
+  const { results: simulados } = await DB.prepare('SELECT * FROM simulados_historico WHERE user_id = ?').bind(user_id).all()
+  const { results: progressoTopicos } = await DB.prepare('SELECT * FROM user_topicos_progresso WHERE user_id = ?').bind(user_id).all()
+  const { results: conteudos } = await DB.prepare('SELECT * FROM conteudo_estudo WHERE user_id = ?').bind(user_id).all()
+  const { results: exercicios } = await DB.prepare('SELECT * FROM exercicios_resultados WHERE user_id = ?').bind(user_id).all()
+  const { results: materiais } = await DB.prepare('SELECT * FROM materiais_salvos WHERE user_id = ?').bind(user_id).all()
+  
+  return {
+    version: '1.0',
+    exportedAt: new Date().toISOString(),
+    user: { id: user.id, name: user.name, email: user.email, createdAt: user.created_at },
+    data: {
+      interviews, planos, ciclos, userDisciplinas, historico,
+      metasDiarias, metasSemana, semanas, simulados,
+      progressoTopicos, conteudos, exercicios, materiais
+    },
+    stats: {
+      totalPlanos: planos.length,
+      totalMetas: metasDiarias.length + metasSemana.length,
+      diasEstudados: historico.length,
+      totalSimulados: simulados.length
+    }
+  }
+}
+
 // Salvar backup no Google Drive
 app.post('/api/backup/google-drive/save', async (c) => {
   const { DB } = c.env
@@ -10440,7 +10676,7 @@ app.post('/api/backup/google-drive/save', async (c) => {
   try {
     // Buscar token do usuário
     const user = await DB.prepare(`
-      SELECT google_access_token, google_token_expires 
+      SELECT google_access_token, google_refresh_token, google_token_expires 
       FROM users WHERE id = ?
     `).bind(user_id).first() as any
     
@@ -10448,14 +10684,47 @@ app.post('/api/backup/google-drive/save', async (c) => {
       return c.json({ error: 'Conecte sua conta Google primeiro' }, 400)
     }
     
-    // Verificar se token expirou
+    let accessToken = user.google_access_token
+    
+    // Verificar se token expirou e tentar refresh
     if (new Date(user.google_token_expires) < new Date()) {
-      return c.json({ error: 'Token expirado, reconecte sua conta Google', needsReauth: true }, 401)
+      console.log('🔄 Token expirado, tentando refresh...')
+      
+      if (!user.google_refresh_token) {
+        return c.json({ error: 'Token expirado, reconecte sua conta Google', needsReauth: true }, 401)
+      }
+      
+      // Tentar refresh do token
+      const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = c.env as any
+      const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          refresh_token: user.google_refresh_token,
+          grant_type: 'refresh_token'
+        })
+      })
+      
+      const refreshResult = await refreshResponse.json() as any
+      
+      if (refreshResult.error) {
+        console.error('Erro no refresh:', refreshResult)
+        return c.json({ error: 'Token expirado, reconecte sua conta Google', needsReauth: true }, 401)
+      }
+      
+      // Atualizar token no banco
+      accessToken = refreshResult.access_token
+      const newExpires = new Date(Date.now() + refreshResult.expires_in * 1000).toISOString()
+      await DB.prepare('UPDATE users SET google_access_token = ?, google_token_expires = ? WHERE id = ?')
+        .bind(accessToken, newExpires, user_id).run()
+      
+      console.log('✅ Token renovado com sucesso')
     }
     
-    // Exportar dados
-    const exportResponse = await fetch(`${c.req.url.split('/api')[0]}/api/backup/export/${user_id}`)
-    const backup = await exportResponse.json()
+    // Gerar backup diretamente (sem fetch interno)
+    const backup = await generateUserBackup(DB, user_id)
     
     // Criar arquivo no Google Drive
     const metadata = {

@@ -574,6 +574,13 @@ document.addEventListener('DOMContentLoaded', () => {
   applyTheme(currentTheme);
   checkUser();
   
+  // Verificar retorno de pagamento (Mercado Pago)
+  setTimeout(() => {
+    if (typeof verificarRetornoPagamento === 'function') {
+      verificarRetornoPagamento();
+    }
+  }, 500);
+  
   // Adicionar botão de emergência "Voltar ao Login"
   addEmergencyBackButton();
 });
@@ -10311,32 +10318,47 @@ window.abrirMinhaAssinatura = async function() {
   
   let upgradeSection = '';
   if (['trial', 'trial_expired', 'expired', 'free'].includes(subscriptionDetails.status)) {
-    let planButtons = '';
-    subscriptionDetails.upgradePlans.forEach(function(plan) {
-      const borderClass = plan.id === 'anual' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-gray-200 hover:border-[#122D6A]';
-      const savingsHtml = plan.savings ? '<span class="text-xs text-emerald-600 font-semibold">' + plan.savings + '</span>' : '';
-      
-      planButtons += '<button onclick="window.open(\'' + plan.link + '\', \'_blank\')" ' +
-        'class="w-full p-4 rounded-xl border-2 ' + borderClass + ' transition text-left">' +
-        '<div class="flex justify-between items-center">' +
-          '<div>' +
-            '<h5 class="font-bold ' + themes[currentTheme].text + '">' + plan.name + '</h5>' +
-            '<p class="text-sm ' + themes[currentTheme].textMuted + '">' + plan.duration + '</p>' +
-            savingsHtml +
-          '</div>' +
-          '<div class="text-right">' +
-            '<p class="text-xl font-bold text-[#122D6A]">R$ ' + plan.price.toFixed(2).replace('.', ',') + '</p>' +
-            '<i class="fas fa-external-link-alt text-gray-400"></i>' +
-          '</div>' +
-        '</div>' +
-      '</button>';
-    });
-    
+    // Botões de upgrade com integração Mercado Pago
     upgradeSection = '<div class="border-t ' + themes[currentTheme].border + ' pt-6">' +
       '<h4 class="font-semibold ' + themes[currentTheme].text + ' mb-4">' +
         '<i class="fas fa-arrow-up mr-2 text-emerald-500"></i>Fazer Upgrade' +
       '</h4>' +
-      '<div class="grid gap-3">' + planButtons + '</div>' +
+      '<div class="grid gap-3">' +
+        // Plano Anual (destacado)
+        '<button onclick="iniciarPagamento(\'anual\')" ' +
+          'class="w-full p-4 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition text-left relative overflow-hidden">' +
+          '<div class="absolute top-0 right-0 bg-emerald-500 text-white text-xs px-2 py-1 rounded-bl-lg font-bold">MELHOR VALOR</div>' +
+          '<div class="flex justify-between items-center">' +
+            '<div>' +
+              '<h5 class="font-bold ' + themes[currentTheme].text + '">Premium Anual</h5>' +
+              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Acesso por 365 dias</p>' +
+              '<span class="text-xs text-emerald-600 font-semibold">Economize R$ 109,00!</span>' +
+            '</div>' +
+            '<div class="text-right">' +
+              '<p class="text-sm line-through ' + themes[currentTheme].textMuted + '">R$ 358,80</p>' +
+              '<p class="text-xl font-bold text-emerald-600">R$ 249,90</p>' +
+              '<p class="text-xs ' + themes[currentTheme].textMuted + '">ou R$ 20,83/mês</p>' +
+            '</div>' +
+          '</div>' +
+        '</button>' +
+        // Plano Mensal
+        '<button onclick="iniciarPagamento(\'mensal\')" ' +
+          'class="w-full p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-[#122D6A] transition text-left">' +
+          '<div class="flex justify-between items-center">' +
+            '<div>' +
+              '<h5 class="font-bold ' + themes[currentTheme].text + '">Premium Mensal</h5>' +
+              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Acesso por 30 dias</p>' +
+            '</div>' +
+            '<div class="text-right">' +
+              '<p class="text-xl font-bold text-[#122D6A]">R$ 29,90</p>' +
+              '<p class="text-xs ' + themes[currentTheme].textMuted + '">/mês</p>' +
+            '</div>' +
+          '</div>' +
+        '</button>' +
+      '</div>' +
+      '<p class="text-xs ' + themes[currentTheme].textMuted + ' mt-4 text-center">' +
+        '<i class="fas fa-lock mr-1"></i>Pagamento seguro via Mercado Pago' +
+      '</p>' +
     '</div>';
   }
   
@@ -11433,6 +11455,98 @@ window.carregarDoDrive = async function() {
   } catch (error) {
     console.error('Erro ao carregar do Drive:', error);
     showToast(error.response?.data?.error || 'Erro ao carregar do Drive', 'error');
+  }
+};
+
+// ============== PAGAMENTOS MERCADO PAGO ==============
+
+// Iniciar pagamento via Mercado Pago
+window.iniciarPagamento = async function(plano) {
+  // Fechar modal de assinatura
+  document.getElementById('modal-assinatura')?.remove();
+  
+  // Mostrar modal de carregamento
+  const loadingModal = document.createElement('div');
+  loadingModal.id = 'modal-payment-loading';
+  loadingModal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]';
+  loadingModal.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
+      <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#009EE3] to-[#00BFFF] flex items-center justify-center">
+        <i class="fas fa-spinner fa-spin text-white text-3xl"></i>
+      </div>
+      <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-2">Preparando pagamento...</h3>
+      <p class="${themes[currentTheme].textSecondary}">Aguarde, você será redirecionado para o Mercado Pago</p>
+    </div>
+  `;
+  document.body.appendChild(loadingModal);
+  
+  try {
+    // Criar preferência de pagamento
+    const response = await axios.post('/api/mercadopago/create-preference', {
+      user_id: currentUser.id,
+      plan: plano
+    });
+    
+    if (response.data.init_point) {
+      // Redirecionar para o Mercado Pago
+      console.log('Redirecionando para Mercado Pago:', response.data.init_point);
+      window.location.href = response.data.init_point;
+    } else {
+      throw new Error('URL de pagamento não recebida');
+    }
+  } catch (error) {
+    console.error('Erro ao criar pagamento:', error);
+    document.getElementById('modal-payment-loading')?.remove();
+    showToast(error.response?.data?.error || 'Erro ao iniciar pagamento. Tente novamente.', 'error');
+  }
+};
+
+// Verificar se retornou de um pagamento
+window.verificarRetornoPagamento = function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const paymentStatus = urlParams.get('payment');
+  const paymentId = urlParams.get('payment_id');
+  
+  if (!paymentStatus) return;
+  
+  // Limpar URL
+  window.history.replaceState({}, document.title, window.location.pathname);
+  
+  if (paymentStatus === 'success') {
+    // Mostrar modal de sucesso
+    const successModal = document.createElement('div');
+    successModal.id = 'modal-payment-success';
+    successModal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]';
+    successModal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl p-8 max-w-md w-full mx-4 text-center">
+        <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+          <i class="fas fa-check text-white text-5xl"></i>
+        </div>
+        <h2 class="text-2xl font-bold ${themes[currentTheme].text} mb-3">Pagamento Aprovado! 🎉</h2>
+        <p class="${themes[currentTheme].textSecondary} mb-6">
+          Sua assinatura Premium foi ativada com sucesso!<br>
+          Aproveite todos os recursos exclusivos.
+        </p>
+        <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 mb-6">
+          <p class="text-sm text-emerald-700 dark:text-emerald-300">
+            <i class="fas fa-info-circle mr-2"></i>
+            Seus dados de assinatura foram atualizados automaticamente.
+          </p>
+        </div>
+        <button onclick="document.getElementById('modal-payment-success')?.remove(); renderDashboard();" 
+          class="w-full px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition">
+          <i class="fas fa-rocket mr-2"></i>Começar a usar
+        </button>
+      </div>
+    `;
+    document.body.appendChild(successModal);
+    
+    // Recarregar dados do usuário
+    verificarEntrevista();
+  } else if (paymentStatus === 'pending') {
+    showToast('⏳ Pagamento pendente. Assim que for confirmado, sua assinatura será ativada.', 'warning', 8000);
+  } else if (paymentStatus === 'failed') {
+    showToast('❌ Pagamento não aprovado. Tente novamente ou use outro método de pagamento.', 'error', 8000);
   }
 };
 
