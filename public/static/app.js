@@ -1061,7 +1061,7 @@ function createUnifiedFAB() {
       
       <!-- Ícone principal com transição suave -->
       <div class="relative z-10 flex items-center justify-center">
-        <i class="fas fa-layer-group text-xl transition-all duration-300" id="fab-icon"></i>
+        <i class="fas fa-brain text-xl transition-all duration-300" id="fab-icon"></i>
       </div>
       
       <!-- Indicador de notificação -->
@@ -5553,7 +5553,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                 class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-white hover:bg-white/20 transition-all text-xs font-medium group"
               >
                 <div class="w-5 h-5 rounded bg-white/20 flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <i class="fas fa-th text-white text-[9px]"></i>
+                  <i class="fas fa-brain text-white text-[9px]"></i>
                 </div>
                 <span class="hidden sm:inline">Menu</span>
                 <i class="fas fa-chevron-down text-[10px] transition-transform duration-300" id="panel-chevron"></i>
