@@ -5101,7 +5101,16 @@ async function renderEntrevistaStep3() {
   });
 }
 
+// Flag para evitar múltiplos cliques
+let isFinalizingInterview = false;
+
 async function finalizarEntrevista() {
+  // ✅ Evitar múltiplos cliques
+  if (isFinalizingInterview) {
+    console.log('⚠️ Finalização já em andamento, ignorando clique duplicado');
+    return;
+  }
+  
   try {
     // Validação final
     if (!interviewData.disciplinas || interviewData.disciplinas.length === 0) {
@@ -5109,17 +5118,88 @@ async function finalizarEntrevista() {
       return;
     }
 
+    // ✅ ATIVAR FLAG e mostrar tela de loading
+    isFinalizingInterview = true;
+    
+    // Mostrar tela de loading bonita
+    document.getElementById('app').innerHTML = `
+      <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+        <div class="${themes[currentTheme].card} rounded-2xl p-8 max-w-md w-full text-center shadow-2xl">
+          <!-- Ícone animado -->
+          <div class="relative w-24 h-24 mx-auto mb-6">
+            <div class="absolute inset-0 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] rounded-full animate-pulse"></div>
+            <div class="absolute inset-2 ${themes[currentTheme].card} rounded-full flex items-center justify-center">
+              <i class="fas fa-brain text-4xl text-[#122D6A] animate-bounce"></i>
+            </div>
+          </div>
+          
+          <h2 class="text-2xl font-bold ${themes[currentTheme].text} mb-3">
+            Finalizando sua análise...
+          </h2>
+          
+          <p class="text-gray-500 mb-6">
+            Estamos criando seu plano de estudos personalizado
+          </p>
+          
+          <!-- Barra de progresso -->
+          <div class="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
+            <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] h-2 rounded-full animate-loading-bar"></div>
+          </div>
+          
+          <!-- Etapas sendo processadas -->
+          <div id="loading-steps" class="text-left space-y-2 mt-6">
+            <div class="flex items-center gap-3 text-sm text-gray-600">
+              <i class="fas fa-spinner fa-spin text-[#122D6A]"></i>
+              <span>Salvando suas preferências...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <style>
+        @keyframes loading-bar {
+          0% { width: 0%; margin-left: 0; }
+          50% { width: 70%; margin-left: 0; }
+          100% { width: 100%; margin-left: 0; }
+        }
+        .animate-loading-bar {
+          animation: loading-bar 2s ease-in-out infinite;
+        }
+      </style>
+    `;
+    
+    // Função para atualizar etapas de loading
+    const atualizarEtapaLoading = (texto, concluido = false) => {
+      const stepsDiv = document.getElementById('loading-steps');
+      if (stepsDiv) {
+        const icon = concluido 
+          ? '<i class="fas fa-check-circle text-green-500"></i>'
+          : '<i class="fas fa-spinner fa-spin text-[#122D6A]"></i>';
+        const color = concluido ? 'text-green-600' : 'text-gray-600';
+        stepsDiv.innerHTML += `
+          <div class="flex items-center gap-3 text-sm ${color}">
+            ${icon}
+            <span>${texto}</span>
+          </div>
+        `;
+      }
+    };
+
     // Salvar entrevista (o backend já cria o plano automaticamente)
+    atualizarEtapaLoading('Salvando entrevista...', false);
     const response = await axios.post('/api/interviews', interviewData);
+    atualizarEtapaLoading('Entrevista salva!', true);
     const { interview_id, plano_id, diagnostico } = response.data;
 
     console.log('✅ Entrevista e plano criados:', { interview_id, plano_id });
+    atualizarEtapaLoading('Plano de estudos criado!', true);
 
     // ✅ CORREÇÃO: Edital JÁ foi processado ANTES (em processarEditalAntesDeStep2)
     // Não precisa processar novamente aqui
 
     // ✅ NOVO: Gerar metas semanais automaticamente (começando HOJE, não próxima segunda)
     try {
+      atualizarEtapaLoading('Gerando metas semanais...', false);
       console.log('🎯 Gerando metas semanais automaticamente...');
       const hoje = new Date().toISOString().split('T')[0];
       const metasResponse = await axios.post(`/api/metas/gerar-semana/${currentUser.id}`, {
@@ -5127,14 +5207,27 @@ async function finalizarEntrevista() {
         data_inicio: hoje // ✅ CORREÇÃO: Usar data de hoje, não próxima segunda
       });
       console.log('✅ Metas semanais geradas automaticamente:', metasResponse.data);
+      atualizarEtapaLoading('Metas semanais criadas!', true);
     } catch (metasError) {
       console.error('⚠️ Erro ao gerar metas automaticamente (não crítico):', metasError);
+      atualizarEtapaLoading('Metas serão geradas depois', true);
       // Não bloqueia a finalização da entrevista
     }
+
+    atualizarEtapaLoading('Preparando resultado...', true);
+    
+    // Pequeno delay para o usuário ver a última etapa
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // ✅ Resetar flag antes de mostrar resultado
+    isFinalizingInterview = false;
 
     // Mostrar resultado
     renderResultadoEntrevista(diagnostico, { plano_id, interview_id });
   } catch (error) {
+    // ✅ Resetar flag em caso de erro
+    isFinalizingInterview = false;
+    
     console.error('Erro ao finalizar entrevista:', error);
     
     // Mensagem amigável baseada no erro
