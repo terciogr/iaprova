@@ -1,7 +1,7 @@
-// IAprova Service Worker v1.0
-const CACHE_NAME = 'iaprova-v1';
-const STATIC_CACHE = 'iaprova-static-v1';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v1';
+// IAprova Service Worker v2.0
+const CACHE_NAME = 'iaprova-v2';
+const STATIC_CACHE = 'iaprova-static-v2';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v2';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [

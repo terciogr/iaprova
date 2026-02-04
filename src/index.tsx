@@ -1264,6 +1264,137 @@ app.get('/api/subscription/status/:userId', async (c) => {
   }
 })
 
+// Obter detalhes completos da assinatura para área financeira
+app.get('/api/subscription/details/:userId', async (c) => {
+  const { DB } = c.env
+  const userId = c.req.param('userId')
+  
+  try {
+    const user = await DB.prepare(`
+      SELECT id, email, name, trial_started_at, trial_expires_at, subscription_status, 
+             subscription_plan, subscription_expires_at, payment_id, payment_date, created_at
+      FROM users WHERE id = ?
+    `).bind(userId).first() as any
+    
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404)
+    }
+    
+    const now = new Date()
+    let planInfo: any = {
+      status: 'free',
+      statusLabel: 'Gratuito',
+      currentPlan: 'Teste Grátis',
+      price: 0,
+      startDate: null,
+      expiresAt: null,
+      daysRemaining: 0,
+      isActive: false,
+      paymentHistory: []
+    }
+    
+    // Se é admin
+    if (user.email === 'terciogomesrabelo@gmail.com') {
+      planInfo = {
+        status: 'admin',
+        statusLabel: 'Administrador',
+        currentPlan: 'Acesso Administrativo',
+        price: 0,
+        startDate: user.created_at,
+        expiresAt: null,
+        daysRemaining: -1, // infinito
+        isActive: true,
+        paymentHistory: []
+      }
+    }
+    // Se tem assinatura ativa
+    else if (user.subscription_status === 'active' && user.subscription_expires_at) {
+      const expiresAt = new Date(user.subscription_expires_at)
+      const isExpired = expiresAt <= now
+      const daysRemaining = Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+      
+      planInfo = {
+        status: isExpired ? 'expired' : 'active',
+        statusLabel: isExpired ? 'Expirado' : 'Ativo',
+        currentPlan: user.subscription_plan === 'anual' ? 'Premium Anual' : 'Premium Mensal',
+        price: user.subscription_plan === 'anual' ? 249.90 : 29.90,
+        startDate: user.payment_date,
+        expiresAt: user.subscription_expires_at,
+        daysRemaining: daysRemaining,
+        isActive: !isExpired,
+        paymentId: user.payment_id,
+        paymentHistory: user.payment_date ? [{
+          date: user.payment_date,
+          plan: user.subscription_plan === 'anual' ? 'Premium Anual' : 'Premium Mensal',
+          amount: user.subscription_plan === 'anual' ? 249.90 : 29.90,
+          status: 'paid'
+        }] : []
+      }
+    }
+    // Se está no período de trial
+    else if (user.trial_started_at && user.trial_expires_at) {
+      const trialExpires = new Date(user.trial_expires_at)
+      const isExpired = trialExpires <= now
+      const daysRemaining = Math.max(0, Math.ceil((trialExpires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+      
+      planInfo = {
+        status: isExpired ? 'trial_expired' : 'trial',
+        statusLabel: isExpired ? 'Trial Expirado' : 'Período de Teste',
+        currentPlan: 'Teste Grátis (7 dias)',
+        price: 0,
+        startDate: user.trial_started_at,
+        expiresAt: user.trial_expires_at,
+        daysRemaining: daysRemaining,
+        isActive: !isExpired,
+        paymentHistory: []
+      }
+    }
+    // Usuário novo sem trial iniciado
+    else {
+      planInfo = {
+        status: 'new',
+        statusLabel: 'Novo',
+        currentPlan: 'Sem plano ativo',
+        price: 0,
+        startDate: user.created_at,
+        expiresAt: null,
+        daysRemaining: 0,
+        isActive: false,
+        paymentHistory: []
+      }
+    }
+    
+    return c.json({
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      memberSince: user.created_at,
+      ...planInfo,
+      upgradePlans: [
+        {
+          id: 'mensal',
+          name: 'Premium Mensal',
+          price: 29.90,
+          duration: '30 dias',
+          link: PAYMENT_LINKS.mensal
+        },
+        {
+          id: 'anual',
+          name: 'Premium Anual',
+          price: 249.90,
+          duration: '365 dias',
+          savings: '30% de desconto',
+          link: PAYMENT_LINKS.anual
+        }
+      ]
+    })
+    
+  } catch (error) {
+    console.error('Erro ao obter detalhes da assinatura:', error)
+    return c.json({ error: 'Erro ao obter detalhes' }, 500)
+  }
+})
+
 // Obter links de pagamento
 app.get('/api/subscription/payment-links', async (c) => {
   return c.json({
@@ -6618,11 +6749,33 @@ app.post('/api/interviews', async (c) => {
     try {
       console.log('🎯 Criando plano automaticamente para entrevista', interview_id)
       
+      // ✅ LIMITE: Verificar se usuário já tem 3 planos
+      const { results: planosExistentes } = await DB.prepare(`
+        SELECT id, nome FROM planos_estudo WHERE user_id = ?
+      `).bind(data.user_id).all()
+      
+      const MAX_PLANOS = 3
+      
       // ✅ NOVO: Verificar se já existe plano com o mesmo nome
       const nomePlanoAuto = `Plano ${data.concurso_nome || data.area_geral || 'Novo'}`
       const planoExistenteAuto = await DB.prepare(`
         SELECT id, nome FROM planos_estudo WHERE user_id = ? AND nome = ?
       `).bind(data.user_id, nomePlanoAuto).first() as any
+      
+      // Se o plano com mesmo nome já existe, vamos substituí-lo (não conta como novo)
+      // Se não existe e já tem 3 planos, bloquear
+      if (!planoExistenteAuto && planosExistentes.length >= MAX_PLANOS) {
+        console.log(`⚠️ Usuário ${data.user_id} já atingiu o limite de ${MAX_PLANOS} planos`)
+        return c.json({
+          success: true,
+          interview: { id: interview_id },
+          diagnostico,
+          warning: `Limite de ${MAX_PLANOS} planos de estudo atingido. Exclua um plano existente para criar um novo.`,
+          limitReached: true,
+          maxPlanos: MAX_PLANOS,
+          planosAtuais: planosExistentes.length
+        }, 200)
+      }
       
       if (planoExistenteAuto) {
         console.log(`🔄 Plano "${nomePlanoAuto}" já existe (ID ${planoExistenteAuto.id}). Substituindo...`)
@@ -6740,6 +6893,8 @@ app.get('/api/interviews/:interview_id', async (c) => {
 })
 
 // ============== ROTAS DE PLANO DE ESTUDOS ==============
+const MAX_PLANOS_POR_USUARIO = 3
+
 app.post('/api/planos', async (c) => {
   const { DB } = c.env
   const { user_id, interview_id, substituir_existente } = await c.req.json()
@@ -6761,6 +6916,23 @@ app.post('/api/planos', async (c) => {
       FROM planos_estudo 
       WHERE user_id = ? AND nome = ?
     `).bind(user_id, nomePlano).first() as any
+    
+    // ✅ LIMITE: Verificar quantidade de planos do usuário
+    const { results: todosPlanosUsuario } = await DB.prepare(`
+      SELECT id, nome FROM planos_estudo WHERE user_id = ?
+    `).bind(user_id).all()
+    
+    // Se não é substituição e já tem 3+ planos, bloquear
+    if (!planoExistente && todosPlanosUsuario.length >= MAX_PLANOS_POR_USUARIO) {
+      return c.json({
+        error: 'LIMITE_PLANOS_ATINGIDO',
+        message: `Você atingiu o limite de ${MAX_PLANOS_POR_USUARIO} planos de estudo.`,
+        limite: MAX_PLANOS_POR_USUARIO,
+        planosAtuais: todosPlanosUsuario.length,
+        planos: todosPlanosUsuario.map(p => ({ id: p.id, nome: p.nome })),
+        dica: 'Exclua um plano existente para criar um novo.'
+      }, 403)
+    }
 
     if (planoExistente && !substituir_existente) {
       // Plano já existe - perguntar se quer substituir
@@ -6857,6 +7029,34 @@ app.post('/api/planos', async (c) => {
   } catch (error) {
     console.error('Erro ao gerar plano:', error)
     return c.json({ error: 'Erro ao gerar plano de estudos' }, 500)
+  }
+})
+
+// Contar planos do usuário e verificar limite
+app.get('/api/planos/count/:user_id', async (c) => {
+  const { DB } = c.env
+  const user_id = c.req.param('user_id')
+
+  try {
+    const { results: planos } = await DB.prepare(`
+      SELECT id, nome, ativo, created_at FROM planos_estudo WHERE user_id = ?
+    `).bind(user_id).all()
+    
+    return c.json({
+      total: planos.length,
+      limite: MAX_PLANOS_POR_USUARIO,
+      podecriarNovo: planos.length < MAX_PLANOS_POR_USUARIO,
+      restante: Math.max(0, MAX_PLANOS_POR_USUARIO - planos.length),
+      planos: planos.map(p => ({
+        id: p.id,
+        nome: p.nome,
+        ativo: p.ativo === 1,
+        created_at: p.created_at
+      }))
+    })
+  } catch (error) {
+    console.error('Erro ao contar planos:', error)
+    return c.json({ error: 'Erro ao contar planos' }, 500)
   }
 })
 
@@ -13801,7 +14001,7 @@ app.get('*', (c) => {
     </div>
     
     <!-- Main App Script -->
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=${Date.now()}"></script>
 </body>
 </html>`)
 })
