@@ -1147,6 +1147,210 @@ app.post('/api/login', async (c) => {
   }
 })
 
+// ============== SISTEMA DE TRIAL E ASSINATURA ==============
+
+// Links de pagamento do Mercado Pago
+const PAYMENT_LINKS = {
+  mensal: 'https://mpago.la/13tzztx',    // R$ 29,90
+  anual: 'https://mpago.la/2ZBgz1w'      // R$ 249,90
+}
+
+// Verificar status da assinatura do usuário
+app.get('/api/subscription/status/:userId', async (c) => {
+  const { DB } = c.env
+  const userId = c.req.param('userId')
+  
+  try {
+    const user = await DB.prepare(`
+      SELECT id, email, trial_started_at, trial_expires_at, subscription_status, 
+             subscription_plan, subscription_expires_at, payment_id, payment_date, created_at
+      FROM users WHERE id = ?
+    `).bind(userId).first() as any
+    
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404)
+    }
+    
+    const now = new Date()
+    let status = user.subscription_status || 'new'
+    let daysRemaining = 0
+    let isActive = false
+    let needsPayment = false
+    
+    // Se é admin, sempre tem acesso
+    if (user.email === 'terciogomesrabelo@gmail.com') {
+      return c.json({
+        status: 'admin',
+        isActive: true,
+        needsPayment: false,
+        isAdmin: true,
+        message: 'Acesso administrativo ilimitado'
+      })
+    }
+    
+    // Se nunca iniciou trial, iniciar agora
+    if (!user.trial_started_at) {
+      const trialStart = now.toISOString()
+      const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 dias
+      
+      await DB.prepare(`
+        UPDATE users SET 
+          trial_started_at = ?,
+          trial_expires_at = ?,
+          subscription_status = 'trial'
+        WHERE id = ?
+      `).bind(trialStart, trialEnd, userId).run()
+      
+      return c.json({
+        status: 'trial',
+        isActive: true,
+        needsPayment: false,
+        trialStarted: trialStart,
+        trialExpires: trialEnd,
+        daysRemaining: 7,
+        message: 'Período de teste iniciado! Você tem 7 dias grátis.'
+      })
+    }
+    
+    // Verificar se tem assinatura ativa
+    if (user.subscription_status === 'active' && user.subscription_expires_at) {
+      const subExpires = new Date(user.subscription_expires_at)
+      if (subExpires > now) {
+        daysRemaining = Math.ceil((subExpires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        return c.json({
+          status: 'active',
+          isActive: true,
+          needsPayment: false,
+          plan: user.subscription_plan,
+          expiresAt: user.subscription_expires_at,
+          daysRemaining,
+          message: `Assinatura ${user.subscription_plan} ativa`
+        })
+      } else {
+        // Assinatura expirou
+        await DB.prepare(`UPDATE users SET subscription_status = 'expired' WHERE id = ?`).bind(userId).run()
+        status = 'expired'
+      }
+    }
+    
+    // Verificar trial
+    if (user.trial_expires_at) {
+      const trialExpires = new Date(user.trial_expires_at)
+      if (trialExpires > now) {
+        daysRemaining = Math.ceil((trialExpires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        return c.json({
+          status: 'trial',
+          isActive: true,
+          needsPayment: false,
+          trialExpires: user.trial_expires_at,
+          daysRemaining,
+          message: `${daysRemaining} dias restantes no período de teste`
+        })
+      }
+    }
+    
+    // Trial expirou e não tem assinatura
+    return c.json({
+      status: 'expired',
+      isActive: false,
+      needsPayment: true,
+      paymentLinks: PAYMENT_LINKS,
+      message: 'Seu período de teste expirou. Escolha um plano para continuar.'
+    })
+    
+  } catch (error) {
+    console.error('Erro ao verificar assinatura:', error)
+    return c.json({ error: 'Erro ao verificar status da assinatura' }, 500)
+  }
+})
+
+// Obter links de pagamento
+app.get('/api/subscription/payment-links', async (c) => {
+  return c.json({
+    plans: [
+      {
+        id: 'mensal',
+        name: 'Premium Mensal',
+        price: 29.90,
+        duration: 30,
+        link: PAYMENT_LINKS.mensal,
+        features: ['Acesso ilimitado', 'Suporte prioritário', 'Todas as funcionalidades']
+      },
+      {
+        id: 'anual',
+        name: 'Premium Anual',
+        price: 249.90,
+        pricePerMonth: 20.83,
+        duration: 365,
+        link: PAYMENT_LINKS.anual,
+        savings: '30% de desconto',
+        features: ['Acesso ilimitado', 'Suporte VIP', 'Todas as funcionalidades', 'Novos recursos em primeira mão']
+      }
+    ]
+  })
+})
+
+// Ativar assinatura após pagamento confirmado (chamado manualmente pelo admin ou webhook)
+app.post('/api/subscription/activate', async (c) => {
+  const { DB } = c.env
+  const { userId, plan, paymentId, activatedBy } = await c.req.json()
+  
+  // Verificar se quem está ativando é admin
+  const adminCheck = c.req.header('X-User-ID')
+  if (adminCheck) {
+    const admin = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(adminCheck).first() as any
+    if (admin?.email !== 'terciogomesrabelo@gmail.com') {
+      return c.json({ error: 'Apenas administradores podem ativar assinaturas' }, 403)
+    }
+  }
+  
+  try {
+    const now = new Date()
+    const durationDays = plan === 'anual' ? 365 : 30
+    const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString()
+    
+    await DB.prepare(`
+      UPDATE users SET 
+        subscription_status = 'active',
+        subscription_plan = ?,
+        subscription_expires_at = ?,
+        payment_id = ?,
+        payment_date = ?
+      WHERE id = ?
+    `).bind(plan, expiresAt, paymentId || 'manual_' + Date.now(), now.toISOString(), userId).run()
+    
+    console.log(`✅ Assinatura ${plan} ativada para usuário ${userId} até ${expiresAt}`)
+    
+    return c.json({
+      success: true,
+      message: `Assinatura ${plan} ativada com sucesso!`,
+      expiresAt,
+      durationDays
+    })
+  } catch (error) {
+    console.error('Erro ao ativar assinatura:', error)
+    return c.json({ error: 'Erro ao ativar assinatura' }, 500)
+  }
+})
+
+// Webhook para receber confirmação de pagamento do Mercado Pago (futuro)
+app.post('/api/webhook/mercadopago', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    const body = await c.req.json()
+    console.log('📦 Webhook Mercado Pago recebido:', JSON.stringify(body))
+    
+    // TODO: Implementar validação do webhook do Mercado Pago
+    // Por enquanto, apenas loga a requisição
+    
+    return c.json({ received: true })
+  } catch (error) {
+    console.error('Erro no webhook:', error)
+    return c.json({ error: 'Erro ao processar webhook' }, 500)
+  }
+})
+
 // ============== MÓDULO ADMINISTRADOR (EXCLUSIVO) ==============
 // ⚠️ ACESSO RESTRITO: Apenas terciogomesrabelo@gmail.com
 
@@ -12836,8 +13040,8 @@ app.get('/', (c) => {
         .animate-float { animation: float 3s ease-in-out infinite; }
         
         @keyframes pulseGlow {
-            0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
-            50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); }
+            0%, 100% { box-shadow: 0 0 20px rgba(18, 45, 106, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(18, 45, 106, 0.6); }
         }
         .pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
         

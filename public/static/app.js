@@ -7,8 +7,8 @@ let currentStep = 'login';
 let interviewData = {};
 let disciplinasDisponiveis = [];
 let currentTheme = localStorage.getItem('theme') || 'light';
-let customColors = JSON.parse(localStorage.getItem('customColors') || '{"primary": "#8b5cf6", "secondary": "#ec4899", "accent": "#3b82f6"}');
-let rgbColors = JSON.parse(localStorage.getItem('rgbColors') || '{"primary": "#8b5cf6", "secondary": "#ec4899", "accent": "#3b82f6"}');
+let customColors = JSON.parse(localStorage.getItem('customColors') || '{"primary": "#1A3A7F", "secondary": "#ec4899", "accent": "#3b82f6"}');
+let rgbColors = JSON.parse(localStorage.getItem('rgbColors') || '{"primary": "#1A3A7F", "secondary": "#ec4899", "accent": "#3b82f6"}');
 
 // Temas disponíveis - EXPANDIDO COM MAIS VARIAÇÕES
 const themes = {
@@ -886,15 +886,15 @@ window.showInstallInstructions = function() {
         <p class="text-gray-700 font-medium">Para instalar o IAprova no seu computador:</p>
         <ol class="list-none space-y-3">
           <li class="flex items-start gap-3">
-            <span class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-[#2A4A9F] font-bold">1</span>
+            <span class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-[#2A4A9F] font-bold">1</span>
             <span>Procure o ícone <i class="fas fa-plus-square text-gray-500"></i> na barra de endereços do navegador</span>
           </li>
           <li class="flex items-start gap-3">
-            <span class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-[#2A4A9F] font-bold">2</span>
+            <span class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-[#2A4A9F] font-bold">2</span>
             <span>Clique em <strong>"Instalar IAprova"</strong> quando aparecer a opção</span>
           </li>
           <li class="flex items-start gap-3">
-            <span class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-[#2A4A9F] font-bold">3</span>
+            <span class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-[#2A4A9F] font-bold">3</span>
             <span>Ou acesse o menu do navegador (⋮) e clique em <strong>"Instalar IAprova..."</strong></span>
           </li>
         </ol>
@@ -1042,7 +1042,7 @@ function createUnifiedFAB() {
         </span>
         <button 
           onclick="openIAConfig(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-purple-500 to-[#122D6A] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          class="w-12 h-12 bg-gradient-to-br from-[#1A3A7F] to-[#122D6A] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Configurações de IA">
           <i class="fas fa-brain text-lg"></i>
         </button>
@@ -4865,6 +4865,26 @@ window.toggleTheme = function() {
 // ============== DASHBOARD ==============
 async function verificarEntrevista() {
   try {
+    // PRIMEIRO: Verificar status da assinatura/trial
+    console.log('🔍 Verificando status da assinatura...');
+    const subResponse = await axios.get(`/api/subscription/status/${currentUser.id}`);
+    const subscription = subResponse.data;
+    
+    console.log('📋 Status da assinatura:', subscription);
+    
+    // Se trial/assinatura expirou, mostrar tela de pagamento
+    if (!subscription.isActive && subscription.needsPayment) {
+      console.log('⚠️ Acesso expirado, mostrando tela de pagamento...');
+      mostrarTelaAssinaturaExpirada(subscription);
+      return;
+    }
+    
+    // Se está no trial, mostrar banner informativo
+    if (subscription.status === 'trial' && subscription.daysRemaining <= 3) {
+      // Salvar info do trial para mostrar banner no dashboard
+      window.trialInfo = subscription;
+    }
+    
     // Criar FAB após login bem-sucedido (apenas quando usuário está autenticado)
     createUnifiedFAB();
     
@@ -4888,6 +4908,188 @@ async function verificarEntrevista() {
     iniciarEntrevista();
   }
 }
+
+// Mostrar tela quando assinatura/trial expirou
+function mostrarTelaAssinaturaExpirada(subscription) {
+  document.getElementById('app').innerHTML = `
+    <div class="min-h-screen bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F] flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+        
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] p-6 text-center">
+          <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-clock text-white text-3xl"></i>
+          </div>
+          <h2 class="text-2xl font-bold text-white">Seu período de teste terminou</h2>
+          <p class="text-blue-200 mt-2">Continue sua jornada de aprovação!</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-6">
+          <p class="text-gray-600 text-center mb-6">
+            Obrigado por experimentar o IAprova! Para continuar tendo acesso a todas as funcionalidades, 
+            escolha um dos planos abaixo:
+          </p>
+          
+          <!-- Planos -->
+          <div class="space-y-4">
+            <!-- Plano Mensal -->
+            <div class="border-2 border-gray-200 rounded-xl p-4 hover:border-[#122D6A] transition cursor-pointer" onclick="selecionarPlano('mensal')">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="font-bold text-gray-800">Premium Mensal</h3>
+                  <p class="text-gray-500 text-sm">Acesso por 30 dias</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-2xl font-bold text-[#122D6A]">R$ 29,90</p>
+                  <p class="text-gray-400 text-xs">/mês</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Plano Anual - Destaque -->
+            <div class="border-2 border-[#122D6A] rounded-xl p-4 bg-blue-50 relative cursor-pointer" onclick="selecionarPlano('anual')">
+              <div class="absolute -top-3 left-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                MAIS POPULAR - 30% OFF
+              </div>
+              <div class="flex items-center justify-between mt-2">
+                <div>
+                  <h3 class="font-bold text-gray-800">Premium Anual</h3>
+                  <p class="text-gray-500 text-sm">Acesso por 365 dias</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-2xl font-bold text-[#122D6A]">R$ 249,90</p>
+                  <p class="text-emerald-600 text-xs font-semibold">≈ R$ 20,83/mês</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Benefícios -->
+          <div class="mt-6 p-4 bg-gray-50 rounded-xl">
+            <p class="font-semibold text-gray-700 mb-3">O que você terá acesso:</p>
+            <ul class="space-y-2 text-sm text-gray-600">
+              <li class="flex items-center gap-2"><i class="fas fa-check text-emerald-500"></i> Planos de estudo personalizados ilimitados</li>
+              <li class="flex items-center gap-2"><i class="fas fa-check text-emerald-500"></i> Geração de conteúdo com IA ilimitada</li>
+              <li class="flex items-center gap-2"><i class="fas fa-check text-emerald-500"></i> Simulados adaptativos ilimitados</li>
+              <li class="flex items-center gap-2"><i class="fas fa-check text-emerald-500"></i> Flashcards e exercícios personalizados</li>
+              <li class="flex items-center gap-2"><i class="fas fa-check text-emerald-500"></i> Suporte prioritário</li>
+            </ul>
+          </div>
+          
+          <!-- Botão de sair -->
+          <div class="mt-6 text-center">
+            <button onclick="logout()" class="text-gray-500 text-sm hover:text-gray-700">
+              <i class="fas fa-sign-out-alt mr-1"></i> Sair e voltar depois
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Selecionar plano e redirecionar para pagamento
+window.selecionarPlano = function(plano) {
+  const links = {
+    mensal: 'https://mpago.la/13tzztx',
+    anual: 'https://mpago.la/2ZBgz1w'
+  };
+  
+  // Salvar qual plano foi selecionado para verificar depois
+  localStorage.setItem('selectedPlan', plano);
+  localStorage.setItem('paymentInitiated', Date.now().toString());
+  
+  // Mostrar modal de confirmação
+  const modal = document.createElement('div');
+  modal.id = 'payment-modal';
+  modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[10000] p-4';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full text-center">
+      <div class="w-16 h-16 bg-[#122D6A] rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-credit-card text-white text-2xl"></i>
+      </div>
+      <h3 class="text-xl font-bold text-gray-800 mb-2">Finalizar Pagamento</h3>
+      <p class="text-gray-600 mb-4">
+        Você será redirecionado para o Mercado Pago para finalizar o pagamento do plano 
+        <strong>${plano === 'anual' ? 'Premium Anual (R$ 249,90)' : 'Premium Mensal (R$ 29,90)'}</strong>.
+      </p>
+      <p class="text-sm text-gray-500 mb-6">
+        Após a confirmação do pagamento, seu acesso será liberado automaticamente.
+      </p>
+      <div class="flex gap-3">
+        <button onclick="document.getElementById('payment-modal').remove()" 
+          class="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50">
+          Cancelar
+        </button>
+        <button onclick="window.open('${links[plano]}', '_blank'); document.getElementById('payment-modal').remove(); mostrarAguardandoPagamento();" 
+          class="flex-1 py-3 bg-[#122D6A] text-white rounded-xl font-semibold hover:bg-[#0D1F4D]">
+          <i class="fas fa-external-link-alt mr-2"></i>Pagar
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+};
+
+// Mostrar tela aguardando confirmação de pagamento
+window.mostrarAguardandoPagamento = function() {
+  document.getElementById('app').innerHTML = `
+    <div class="min-h-screen bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F] flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
+        <div class="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <i class="fas fa-hourglass-half text-yellow-600 text-3xl animate-pulse"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Aguardando Pagamento</h2>
+        <p class="text-gray-600 mb-6">
+          Complete o pagamento na janela do Mercado Pago. Após a confirmação, 
+          seu acesso será liberado automaticamente.
+        </p>
+        
+        <div class="bg-blue-50 p-4 rounded-xl mb-6">
+          <p class="text-sm text-[#122D6A]">
+            <i class="fas fa-info-circle mr-2"></i>
+            Se já realizou o pagamento, aguarde alguns minutos para a confirmação 
+            ou entre em contato pelo suporte.
+          </p>
+        </div>
+        
+        <div class="space-y-3">
+          <button onclick="verificarPagamento()" class="w-full py-3 bg-[#122D6A] text-white rounded-xl font-semibold hover:bg-[#0D1F4D]">
+            <i class="fas fa-sync-alt mr-2"></i>Verificar Pagamento
+          </button>
+          <button onclick="mostrarTelaAssinaturaExpirada({})" class="w-full py-3 border border-gray-300 text-gray-600 rounded-xl font-semibold hover:bg-gray-50">
+            Voltar
+          </button>
+        </div>
+        
+        <p class="mt-6 text-xs text-gray-400">
+          Problemas? Entre em contato: suporte@iaprova.app
+        </p>
+      </div>
+    </div>
+  `;
+};
+
+// Verificar se pagamento foi confirmado
+window.verificarPagamento = async function() {
+  try {
+    showToast('Verificando pagamento...', 'info');
+    const response = await axios.get(`/api/subscription/status/${currentUser.id}`);
+    
+    if (response.data.isActive) {
+      showToast('🎉 Pagamento confirmado! Bem-vindo ao IAprova Premium!', 'success');
+      localStorage.removeItem('selectedPlan');
+      localStorage.removeItem('paymentInitiated');
+      setTimeout(() => verificarEntrevista(), 1500);
+    } else {
+      showToast('Pagamento ainda não confirmado. Aguarde alguns minutos.', 'info');
+    }
+  } catch (error) {
+    console.error('Erro ao verificar pagamento:', error);
+    showToast('Erro ao verificar. Tente novamente.', 'error');
+  }
+};
 
 function irParaDashboard() {
   renderDashboard();
@@ -6469,8 +6671,8 @@ window.verMateriaisTopico = async function(topicoId, topicoNome, disciplinaNome)
       teoria: { icon: 'fa-book', color: 'blue', label: 'Teoria' },
       exercicios: { icon: 'fa-tasks', color: 'green', label: 'Exercícios' },
       resumo: { icon: 'fa-sticky-note', color: 'yellow', label: 'Resumo' },
-      flashcards: { icon: 'fa-clone', color: 'purple', label: 'Flashcards' },
-      upload: { icon: 'fa-file-upload', color: 'indigo', label: 'Upload' },
+      flashcards: { icon: 'fa-clone', color: 'blue', label: 'Flashcards' },
+      upload: { icon: 'fa-file-upload', color: 'blue', label: 'Upload' },
       anotacao: { icon: 'fa-edit', color: 'gray', label: 'Anotação' }
     };
     
@@ -7055,7 +7257,7 @@ window.exibirConteudoGerado = function(data) {
     'teoria': { label: 'Teoria Completa', icon: 'fa-book', color: 'blue' },
     'exercicios': { label: 'Exercícios', icon: 'fa-tasks', color: 'green' },
     'resumo': { label: 'Resumo Esquematizado', icon: 'fa-sticky-note', color: 'yellow' },
-    'flashcards': { label: 'Flashcards', icon: 'fa-clone', color: 'purple' }
+    'flashcards': { label: 'Flashcards', icon: 'fa-clone', color: 'blue' }
   }[tipo] || { label: 'Conteúdo', icon: 'fa-file', color: 'gray' };
   
   // Converter markdown simples para HTML
@@ -9296,8 +9498,8 @@ window.abrirAdministracao = async function() {
               <p class="${themes[currentTheme].textMuted} text-xs">Backup na nuvem</p>
             </button>
             <button onclick="carregarDoDrive()" 
-              class="p-4 rounded-xl border-2 border-dashed border-purple-200 hover:border-purple-400 hover:bg-purple-50 transition-all text-center">
-              <i class="fas fa-cloud-download-alt text-purple-500 text-2xl mb-2"></i>
+              class="p-4 rounded-xl border-2 border-dashed border-blue-200 hover:border-[#2A4A9F] hover:bg-blue-50 transition-all text-center">
+              <i class="fas fa-cloud-download-alt text-[#1A3A7F] text-2xl mb-2"></i>
               <p class="font-medium ${themes[currentTheme].text} text-sm">Carregar do Drive</p>
               <p class="${themes[currentTheme].textMuted} text-xs">Restaurar da nuvem</p>
             </button>
@@ -9439,13 +9641,13 @@ window.abrirPainelAdmin = async function() {
             </div>
             
             <!-- Emails Enviados -->
-            <div class="bg-gradient-to-br from-purple-500 to-[#122D6A] rounded-xl p-4 text-white">
+            <div class="bg-gradient-to-br from-[#1A3A7F] to-[#122D6A] rounded-xl p-4 text-white">
               <div class="flex items-center justify-between mb-2">
                 <i class="fas fa-envelope text-2xl opacity-80"></i>
                 <span class="text-3xl font-bold">${stats.emails.total}</span>
               </div>
-              <p class="text-purple-100 text-sm">Emails Enviados</p>
-              <p class="text-purple-200 text-xs mt-1">
+              <p class="text-blue-100 text-sm">Emails Enviados</p>
+              <p class="text-blue-200 text-xs mt-1">
                 <i class="fas fa-redo mr-1"></i>${stats.emails.resend} reenviados
               </p>
             </div>
@@ -9476,7 +9678,7 @@ window.abrirPainelAdmin = async function() {
             
             <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
               <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
-                <i class="fas fa-envelope-open-text text-purple-500"></i>
+                <i class="fas fa-envelope-open-text text-[#1A3A7F]"></i>
                 Detalhes de Emails
               </h3>
               <div class="space-y-3">
@@ -9562,8 +9764,8 @@ window.abrirPainelAdmin = async function() {
                 <i class="fas fa-users text-blue-500 text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Ver Usuários</p>
               </button>
-              <button onclick="verHistoricoEmails()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-purple-50 dark:hover:bg-[#1A3A7F]/20 transition text-center">
-                <i class="fas fa-envelope text-purple-500 text-xl mb-1"></i>
+              <button onclick="verHistoricoEmails()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-blue-50 dark:hover:bg-[#1A3A7F]/20 transition text-center">
+                <i class="fas fa-envelope text-[#1A3A7F] text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Histórico Emails</p>
               </button>
               <button onclick="verPlanosDisponiveis()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition text-center">
@@ -9727,18 +9929,11 @@ window.togglePremiumAdmin = async function(userId, setPremium) {
 
 // Editar usuário (admin)
 window.editarUsuarioAdmin = async function(userId, nome, email, isPremium) {
-  // Carregar planos disponíveis
-  let plans = [];
-  try {
-    const plansRes = await axios.get('/api/admin/plans', { headers: { 'X-User-ID': currentUser.id } });
-    plans = plansRes.data.plans || [];
-  } catch (e) {}
-  
   const modal = document.createElement('div');
   modal.id = 'modal-edit-user';
   modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10001] p-4';
   modal.innerHTML = `
-    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-md w-full p-6">
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
         <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
           <i class="fas fa-user-edit text-blue-500"></i>
@@ -9762,8 +9957,32 @@ window.editarUsuarioAdmin = async function(userId, nome, email, isPremium) {
             class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} bg-gray-100 ${themes[currentTheme].text}">
         </div>
         
+        <!-- Seção de Assinatura -->
+        <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+          <h4 class="font-bold text-[#122D6A] dark:text-blue-300 mb-3">
+            <i class="fas fa-crown mr-2"></i>Ativar Assinatura
+          </h4>
+          
+          <div class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium ${themes[currentTheme].text} mb-1">Plano</label>
+              <select id="edit-user-subscription" class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} ${themes[currentTheme].card}">
+                <option value="">-- Selecione --</option>
+                <option value="mensal">Premium Mensal (30 dias)</option>
+                <option value="anual">Premium Anual (365 dias)</option>
+              </select>
+            </div>
+            
+            <button onclick="ativarAssinaturaAdmin(${userId})" 
+              class="w-full px-4 py-2 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition">
+              <i class="fas fa-check-circle mr-2"></i>Ativar Assinatura
+            </button>
+          </div>
+        </div>
+        
+        <!-- Status Premium Legacy -->
         <div>
-          <label class="block text-sm font-medium ${themes[currentTheme].text} mb-1">Status Premium</label>
+          <label class="block text-sm font-medium ${themes[currentTheme].text} mb-1">Status Premium (legacy)</label>
           <select id="edit-user-premium" class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} ${themes[currentTheme].card}">
             <option value="0" ${!isPremium ? 'selected' : ''}>Free (Gratuito)</option>
             <option value="1" ${isPremium ? 'selected' : ''}>Premium</option>
@@ -9774,14 +9993,6 @@ window.editarUsuarioAdmin = async function(userId, nome, email, isPremium) {
           <label class="block text-sm font-medium ${themes[currentTheme].text} mb-1">Dias de Premium</label>
           <input type="number" id="edit-user-days" value="30" min="1" max="365"
             class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} ${themes[currentTheme].card}">
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium ${themes[currentTheme].text} mb-1">Atribuir Plano</label>
-          <select id="edit-user-plan" class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} ${themes[currentTheme].card}">
-            <option value="">-- Manter atual --</option>
-            ${plans.map(p => `<option value="${p.id}">${p.name} (R$ ${p.price?.toFixed(2) || '0.00'})</option>`).join('')}
-          </select>
         </div>
       </div>
       
@@ -9803,6 +10014,33 @@ window.editarUsuarioAdmin = async function(userId, nome, email, isPremium) {
   document.getElementById('edit-user-premium').addEventListener('change', (e) => {
     document.getElementById('premium-days-container').style.display = e.target.value === '1' ? 'block' : 'none';
   });
+};
+
+// Ativar assinatura via admin
+window.ativarAssinaturaAdmin = async function(userId) {
+  const plano = document.getElementById('edit-user-subscription').value;
+  if (!plano) {
+    showToast('Selecione um plano primeiro', 'error');
+    return;
+  }
+  
+  try {
+    const response = await axios.post('/api/subscription/activate', {
+      userId,
+      plan: plano,
+      paymentId: 'admin_manual_' + Date.now(),
+      activatedBy: currentUser.id
+    }, { headers: { 'X-User-ID': currentUser.id } });
+    
+    showToast(`✅ Assinatura ${plano} ativada com sucesso!`, 'success');
+    document.getElementById('modal-edit-user')?.remove();
+    
+    // Recarregar lista
+    verListaUsuarios();
+  } catch (error) {
+    console.error('Erro ao ativar assinatura:', error);
+    showToast('Erro ao ativar assinatura: ' + (error.response?.data?.error || 'Erro desconhecido'), 'error');
+  }
 };
 
 // Salvar alterações do usuário (admin)
@@ -9863,7 +10101,7 @@ window.verHistoricoEmails = async function() {
       <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
           <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
-            <i class="fas fa-envelope text-purple-500"></i>
+            <i class="fas fa-envelope text-[#1A3A7F]"></i>
             Histórico de Emails (${pagination.total})
           </h3>
           <button onclick="document.getElementById('modal-admin-emails')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
@@ -10254,7 +10492,7 @@ window.openCustomThemeModal = (themeToEdit) => {
               class="w-16 h-10 rounded border-2 border-gray-300 cursor-pointer">
             <input type="text" id="colorPrimaryHex" value="${currentColors.primary}" 
               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1A3A7F] dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              placeholder="#8b5cf6">
+              placeholder="#1A3A7F">
           </div>
         </div>
         
@@ -10307,21 +10545,21 @@ window.openCustomThemeModal = (themeToEdit) => {
       <div class="mb-6">
         <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Presets Rápidos:</p>
         <div class="grid grid-cols-4 gap-2">
-          <button onclick="applyPreset('#8b5cf6', '#ec4899', '#3b82f6')" 
+          <button onclick="applyPreset('#1A3A7F', '#ec4899', '#3b82f6')" 
             class="h-10 rounded border-2 border-gray-300 hover:border-white transition"
-            style="background: linear-gradient(135deg, #8b5cf6, #ec4899, #3b82f6)"
+            style="background: linear-gradient(135deg, #1A3A7F, #ec4899, #3b82f6)"
             title="Roxo + Rosa + Azul"></button>
           <button onclick="applyPreset('#f59e0b', '#ef4444', '#dc2626')" 
             class="h-10 rounded border-2 border-gray-300 hover:border-white transition"
             style="background: linear-gradient(135deg, #f59e0b, #ef4444, #dc2626)"
             title="Laranja + Vermelho"></button>
-          <button onclick="applyPreset('#10b981', '#3b82f6', '#8b5cf6')" 
+          <button onclick="applyPreset('#10b981', '#3b82f6', '#1A3A7F')" 
             class="h-10 rounded border-2 border-gray-300 hover:border-white transition"
-            style="background: linear-gradient(135deg, #10b981, #3b82f6, #8b5cf6)"
+            style="background: linear-gradient(135deg, #10b981, #3b82f6, #1A3A7F)"
             title="Verde + Azul + Roxo"></button>
-          <button onclick="applyPreset('#f472b6', '#a855f7', '#6366f1')" 
+          <button onclick="applyPreset('#f472b6', '#2A4A9F', '#122D6A')" 
             class="h-10 rounded border-2 border-gray-300 hover:border-white transition"
-            style="background: linear-gradient(135deg, #f472b6, #a855f7, #6366f1)"
+            style="background: linear-gradient(135deg, #f472b6, #2A4A9F, #122D6A)"
             title="Rosa + Roxo + Indigo"></button>
         </div>
       </div>
@@ -12136,8 +12374,8 @@ function renderSecaoConteudo(conteudo, tipo) {
     
     return `
       <div class="space-y-6">
-        <div class="bg-indigo-50 p-4 rounded-lg border-l-4 border-[#1A3A7F]">
-          <p class="font-bold text-lg text-indigo-700 mb-2">${metodo}</p>
+        <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-[#1A3A7F]">
+          <p class="font-bold text-lg text-[#122D6A] mb-2">${metodo}</p>
           ${introducao ? `<p class="${themes[currentTheme].text} mt-2">${introducao}</p>` : ''}
         </div>
         
@@ -12991,7 +13229,7 @@ function addChatMessage(role, content, id = null) {
   // Estilos diferentes para usuário e Lilu
   const bgColor = isUser 
     ? 'bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-2xl rounded-tr-sm' 
-    : 'bg-white text-gray-800 rounded-2xl rounded-tl-sm border border-purple-100';
+    : 'bg-white text-gray-800 rounded-2xl rounded-tl-sm border border-blue-100';
   const alignment = isUser ? 'ml-auto' : 'mr-auto';
   
   const messageHtml = `
@@ -13723,7 +13961,7 @@ function renderCelulaMeta(meta, mobile = false) {
   // Ícones e cores por tipo
   const tipoConfig = {
     teoria: { icone: '📖', cor: 'blue', label: 'Teoria' },
-    exercicios: { icone: '📝', cor: 'purple', label: 'Exercícios' },
+    exercicios: { icone: '📝', cor: 'blue', label: 'Exercícios' },
     revisao: { icone: '🎯', cor: 'orange', label: 'Revisão' }
   }
   
@@ -17794,7 +18032,7 @@ function createTutorialElements() {
       }
       
       .tutorial-progress-dot.active {
-        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        background: linear-gradient(135deg, #3b82f6, #1A3A7F);
         transform: scale(1.2);
       }
       
