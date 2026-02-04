@@ -5962,132 +5962,132 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               <!-- Seção KPIs + Ações em Grid Adaptativo -->
               <div class="stats-card grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
                 
-                <!-- KPIs Cards Mini - Fundo escuro com texto claro -->
-                <div onclick="mostrarDetalheScore()" class="group cursor-pointer bg-white/10 backdrop-blur rounded-xl p-2.5 border border-white/20 hover:bg-white/20 hover:shadow-md transition-all">
+                <!-- KPIs Cards Mini - Padrão consistente (fundo branco forçado no painel escuro) -->
+                <div onclick="mostrarDetalheScore()" class="group cursor-pointer bg-white dark:bg-gray-800 rounded-xl p-2.5 border border-gray-200 dark:border-gray-700 hover:border-[#4A90D9] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4A90D9] to-[#6BB6FF] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-fire text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
-                      <p class="text-base font-bold text-white leading-tight">${stats.streak_atual}</p>
-                      <p class="text-[9px] text-white/70 uppercase tracking-wide">Streak</p>
+                      <p class="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">${stats.streak_atual}</p>
+                      <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Streak</p>
                     </div>
                   </div>
                 </div>
                 
-                <div class="group cursor-pointer bg-white/10 backdrop-blur rounded-xl p-2.5 border border-white/20 hover:bg-white/20 hover:shadow-md transition-all">
+                <div class="group cursor-pointer bg-white dark:bg-gray-800 rounded-xl p-2.5 border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-calendar-check text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
-                      <p class="text-base font-bold ${themes[currentTheme].text} leading-tight">${stats.dias_estudados}</p>
-                      <p class="text-[9px] ${themes[currentTheme].textSecondary} uppercase tracking-wide">Dias</p>
+                      <p class="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">${stats.dias_estudados}</p>
+                      <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Dias</p>
                     </div>
                   </div>
                 </div>
                 
                 <!-- Novo Card de Acessos -->
-                <div class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#4A6AC0] hover:shadow-md transition-all">
+                <div class="group cursor-pointer bg-white dark:bg-gray-800 rounded-xl p-2.5 border border-gray-200 dark:border-gray-700 hover:border-[#4A6AC0] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4A6AC0] to-[#2A4A9F] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-eye text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
-                      <p id="stats-acessos" class="text-base font-bold ${themes[currentTheme].text} leading-tight">0</p>
-                      <p class="text-[9px] ${themes[currentTheme].textSecondary} uppercase tracking-wide">Acessos</p>
+                      <p id="stats-acessos" class="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">0</p>
+                      <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Acessos</p>
                     </div>
                   </div>
                 </div>
                 
-                <div class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#122D6A] hover:shadow-md transition-all">
+                <div class="group cursor-pointer bg-white dark:bg-gray-800 rounded-xl p-2.5 border border-gray-200 dark:border-gray-700 hover:border-[#122D6A] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#122D6A] to-[#0A1839] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-clock text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
-                      <p class="text-base font-bold ${themes[currentTheme].text} leading-tight">${stats.horas_totais}h</p>
-                      <p class="text-[9px] ${themes[currentTheme].textSecondary} uppercase tracking-wide">Horas</p>
+                      <p class="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">${stats.horas_totais}h</p>
+                      <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Horas</p>
                     </div>
                   </div>
                 </div>
                 
-                <div class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#6BB6FF] hover:shadow-md transition-all">
+                <div class="group cursor-pointer bg-white dark:bg-gray-800 rounded-xl p-2.5 border border-gray-200 dark:border-gray-700 hover:border-[#6BB6FF] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#6BB6FF] to-[#3A5AB0] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-chart-line text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
-                      <p class="text-base font-bold ${themes[currentTheme].text} leading-tight">${mediaDiaria}</p>
-                      <p class="text-[9px] ${themes[currentTheme].textSecondary} uppercase tracking-wide">Min/dia</p>
+                      <p class="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">${mediaDiaria}</p>
+                      <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Min/dia</p>
                     </div>
                   </div>
                 </div>
                 
-                <div onclick="mostrarDetalheScore()" class="group cursor-pointer ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#3A5AB0] hover:shadow-md transition-all">
+                <div onclick="mostrarDetalheScore()" class="group cursor-pointer bg-white dark:bg-gray-800 rounded-xl p-2.5 border border-gray-200 dark:border-gray-700 hover:border-[#3A5AB0] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#122D6A] to-[#3A5AB0] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-trophy text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
                       <p class="text-base font-bold text-[#2A4A9F] dark:text-blue-400 leading-tight">${scoreData.score}</p>
-                      <p class="text-[9px] ${themes[currentTheme].textSecondary} uppercase tracking-wide">Score</p>
+                      <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Score</p>
                     </div>
                   </div>
                 </div>
                 
                 <!-- Ações Rápidas -->
-                <button onclick="renderPortfolioDisciplinas()" class="group ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#122D6A] hover:shadow-md transition-all">
+                <button onclick="renderPortfolioDisciplinas()" class="group bg-white dark:bg-gray-800 rounded-xl p-2.5 border border-gray-200 dark:border-gray-700 hover:border-[#122D6A] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-[#E8EDF5] dark:bg-[#0A1839]/50 flex items-center justify-center flex-shrink-0 group-hover:bg-[#122D6A] transition-colors shadow-sm">
                       <i class="fas fa-book-open text-[#122D6A] dark:text-blue-400 group-hover:text-white text-xs transition-colors"></i>
                     </div>
                     <div class="min-w-0 text-left">
-                      <p class="text-base font-bold ${themes[currentTheme].text} leading-tight">${plano.diagnostico.total_disciplinas}</p>
-                      <p class="text-[9px] ${themes[currentTheme].textSecondary} uppercase tracking-wide">Disciplinas</p>
+                      <p class="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">${plano.diagnostico.total_disciplinas}</p>
+                      <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Disciplinas</p>
                     </div>
                   </div>
                 </button>
                 
-                <button onclick="renderPortfolioDisciplinas()" class="group ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#6BB6FF] hover:shadow-md transition-all">
+                <button onclick="renderPortfolioDisciplinas()" class="group bg-white dark:bg-gray-800 rounded-xl p-2.5 border border-gray-200 dark:border-gray-700 hover:border-[#6BB6FF] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-[#E8EDF5] dark:bg-[#0D1F4D]/20 flex items-center justify-center flex-shrink-0 group-hover:bg-[#3A5AB0] transition-colors shadow-sm">
                       <i class="fas fa-exclamation-circle text-[#3A5AB0] group-hover:text-white text-xs transition-colors"></i>
                     </div>
                     <div class="min-w-0 text-left">
-                      <p class="text-base font-bold ${themes[currentTheme].text} leading-tight">${plano.diagnostico.nunca_estudadas}</p>
-                      <p class="text-[9px] ${themes[currentTheme].textSecondary} uppercase tracking-wide">Pendentes</p>
+                      <p class="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">${plano.diagnostico.nunca_estudadas}</p>
+                      <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Pendentes</p>
                     </div>
                   </div>
                 </button>
                 
-                <button onclick="renderCalendario()" class="group ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#122D6A] hover:shadow-md transition-all">
+                <button onclick="renderCalendario()" class="group bg-white dark:bg-gray-800 rounded-xl p-2.5 border border-gray-200 dark:border-gray-700 hover:border-[#122D6A] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-[#E8EDF5] dark:bg-[#0A1839]/20 flex items-center justify-center flex-shrink-0 group-hover:bg-[#122D6A] transition-colors shadow-sm">
                       <i class="fas fa-calendar-alt text-[#122D6A] dark:text-blue-400 group-hover:text-white text-xs transition-colors"></i>
                     </div>
                     <div class="min-w-0 text-left">
-                      <p class="text-xs font-semibold ${themes[currentTheme].text} leading-tight">Ver</p>
-                      <p class="text-[9px] ${themes[currentTheme].textSecondary} uppercase tracking-wide">Calendário</p>
+                      <p class="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-tight">Ver</p>
+                      <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Calendário</p>
                     </div>
                   </div>
                 </button>
                 
-                <button onclick="window.renderDashboardSimulados()" class="group ${themes[currentTheme].card} rounded-xl p-2.5 border ${themes[currentTheme].border} hover:border-[#4A6AC0] hover:shadow-md transition-all">
+                <button onclick="window.renderDashboardSimulados()" class="group bg-white dark:bg-gray-800 rounded-xl p-2.5 border border-gray-200 dark:border-gray-700 hover:border-[#4A6AC0] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-[#E8EDF5] dark:bg-[#0D1F4D]/20 flex items-center justify-center flex-shrink-0 group-hover:bg-[#6BB6FF]/50 transition-colors shadow-sm">
                       <i class="fas fa-edit text-[#3A5AB0] dark:text-[#6BB6FF] group-hover:text-white text-xs transition-colors"></i>
                     </div>
                     <div class="min-w-0 text-left">
-                      <p class="text-xs font-semibold ${themes[currentTheme].text} leading-tight">Fazer</p>
-                      <p class="text-[9px] ${themes[currentTheme].textSecondary} uppercase tracking-wide">Simulados</p>
+                      <p class="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-tight">Fazer</p>
+                      <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Simulados</p>
                     </div>
                   </div>
                 </button>
               </div>
               
               <!-- Footer do Painel - Info Simplificada -->
-              <div class="flex flex-wrap items-center gap-2 pt-2 border-t ${themes[currentTheme].border}">
+              <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-white/20">
                 <div class="flex items-center gap-1.5 px-2 py-1 rounded-full ${currentTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800/50'}">
                   <i class="fas fa-book text-[#122D6A] text-[9px]"></i>
                   <span class="text-[9px] ${themes[currentTheme].text}">${plano.diagnostico?.total_disciplinas || 0} disc.</span>
@@ -10143,8 +10143,7 @@ async function verificarAdminParaConfiguracoes() {
   }
 }
 
-// Renomear função de Administração para Importar/Exportar
-window.abrirImportarExportar = window.abrirAdministracao;
+// NOTA: abrirImportarExportar é definido após abrirAdministracao (mais abaixo no arquivo)
 
 // Modal de configuração de tema
 window.abrirConfigTema = function() {
@@ -10220,16 +10219,17 @@ window.abrirMinhaAssinatura = async function() {
   };
   
   const getStatusColor = (status) => {
+    // Cores consistentes para todos os temas (claro/escuro)
     const colors = {
-      'active': 'text-emerald-600 bg-emerald-100',
-      'trial': 'text-blue-600 bg-blue-100',
-      'trial_expired': 'text-red-600 bg-red-100',
-      'expired': 'text-red-600 bg-red-100',
-      'admin': 'text-purple-600 bg-purple-100',
-      'new': 'text-gray-600 bg-gray-100',
-      'free': 'text-gray-600 bg-gray-100'
+      'active': 'text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/40',
+      'trial': 'text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900/40',
+      'trial_expired': 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/40',
+      'expired': 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/40',
+      'admin': 'text-purple-700 bg-purple-100 dark:text-purple-300 dark:bg-purple-900/40',
+      'new': 'text-gray-700 bg-gray-100 dark:text-gray-300 dark:bg-gray-800/60',
+      'free': 'text-gray-700 bg-gray-100 dark:text-gray-300 dark:bg-gray-800/60'
     };
-    return colors[status] || 'text-gray-600 bg-gray-100';
+    return colors[status] || 'text-gray-700 bg-gray-100 dark:text-gray-300 dark:bg-gray-800/60';
   };
   
   const getStatusIcon = (status) => {
@@ -10358,7 +10358,7 @@ window.abrirMinhaAssinatura = async function() {
         '<i class="fas fa-times text-xl"></i>' +
       '</button>' +
     '</div>' +
-    '<div class="mb-6 p-4 rounded-xl border ' + themes[currentTheme].border + ' bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">' +
+    '<div class="mb-6 p-4 rounded-xl border ' + themes[currentTheme].border + ' ' + themes[currentTheme].card + '">' +
       '<div class="flex items-center gap-4 mb-4">' +
         '<div class="w-16 h-16 rounded-full ' + statusColor + ' flex items-center justify-center">' +
           '<i class="' + statusIcon + ' text-2xl"></i>' +
@@ -10381,10 +10381,10 @@ window.abrirMinhaAssinatura = async function() {
       startDateSection +
       expiresSection +
     '</div>' +
-    '<div class="mb-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">' +
+    '<div class="mb-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700">' +
       '<div class="flex items-center gap-2 mb-2">' +
-        '<i class="fas fa-book-open text-blue-600"></i>' +
-        '<span class="font-semibold text-blue-800 dark:text-blue-200">Planos de Estudo</span>' +
+        '<i class="fas fa-book-open text-blue-600 dark:text-blue-400"></i>' +
+        '<span class="font-semibold text-blue-800 dark:text-blue-300">Planos de Estudo</span>' +
       '</div>' +
       '<div class="flex items-center justify-between">' +
         '<span class="' + themes[currentTheme].textSecondary + '">Utilizados</span>' +
@@ -10557,6 +10557,9 @@ window.abrirAdministracao = async function() {
 window.fecharModalAdmin = function() {
   document.getElementById('modal-administracao')?.remove();
 };
+
+// Alias para o botão Importar/Exportar
+window.abrirImportarExportar = window.abrirAdministracao;
 
 // ============== PAINEL ADMINISTRADOR (EXCLUSIVO) ==============
 // ⚠️ ACESSO RESTRITO: Apenas terciogomesrabelo@gmail.com
