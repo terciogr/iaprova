@@ -13134,6 +13134,18 @@ app.get('/api/materiais/item/:id', async (c) => {
   }
 })
 
+// ============== ROTA DE LOGIN (URL SEPARADA) ==============
+// Redireciona /login para a raiz com parâmetro view=login
+app.get('/login', (c) => {
+  return c.redirect('/?view=login')
+})
+
+// ============== ROTA DE CADASTRO (URL SEPARADA) ==============
+// Redireciona /cadastro para a raiz com parâmetro view=cadastro
+app.get('/cadastro', (c) => {
+  return c.redirect('/?view=cadastro')
+})
+
 // ============== ROTA PRINCIPAL (FRONTEND) ==============
 app.get('/', (c) => {
   return c.html(`<!DOCTYPE html>

@@ -1355,7 +1355,12 @@ function checkUser() {
       renderLogin();
       return;
     }
-    // Caso contrário, SEMPRE mostrar landing page de marketing
+    // Se veio com ?view=cadastro, mostrar tela de cadastro diretamente
+    if (viewParam === 'cadastro') {
+      renderCadastro();
+      return;
+    }
+    // Caso contrário, SEMPRE mostrar landing page de marketing (página inicial)
     renderLandingPage();
     return;
   }
@@ -2275,6 +2280,19 @@ window.toggleLandingPassword = function() {
   }
 };
 
+// Função para renderizar página de cadastro (redireciona para landing com foco no form)
+function renderCadastro() {
+  renderLandingPage();
+  // Aguardar renderização e focar no formulário de cadastro
+  setTimeout(() => {
+    const emailInput = document.getElementById('landing-email');
+    if (emailInput) {
+      emailInput.focus();
+      emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 300);
+}
+
 // Handler de cadastro na landing page
 window.handleLandingSignup = async function(event) {
   event.preventDefault();
@@ -2693,24 +2711,40 @@ function renderEntrevistaStep1() {
   `;
 }
 
-// Função para voltar ao login/landing (logout)
-async function voltarAoLogin() {
-  const confirmed = await showConfirm('Deseja sair do sistema?\n\nVocê precisará fazer login novamente.', {
-    title: 'Sair do Sistema',
-    confirmText: 'Sim, sair',
-    cancelText: 'Continuar aqui',
-    type: 'warning'
-  });
-  if (confirmed) {
-    // Remover FAB antes de sair
-    document.getElementById('unified-fab-container')?.remove();
-    document.getElementById('fab-overlay')?.remove();
+// Função para voltar ao login/landing (logout) - GLOBAL
+window.voltarAoLogin = async function() {
+  try {
+    const confirmed = await showConfirm('Deseja sair do sistema?\n\nVocê precisará fazer login novamente.', {
+      title: 'Sair do Sistema',
+      confirmText: 'Sim, sair',
+      cancelText: 'Continuar aqui',
+      type: 'warning'
+    });
     
-    localStorage.clear();
+    if (confirmed) {
+      // Remover FAB antes de sair
+      document.getElementById('unified-fab-container')?.remove();
+      document.getElementById('fab-overlay')?.remove();
+      
+      // Limpar dados do usuário
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userPicture');
+      localStorage.removeItem('authProvider');
+      localStorage.removeItem('userCreatedAt');
+      currentUser = null;
+      
+      // Redirecionar para a landing page (raiz do site)
+      window.location.href = '/';
+    }
+  } catch (error) {
+    console.error('Erro ao fazer logout:', error);
+    // Fallback: redirecionar direto
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userEmail');
     currentUser = null;
-    
-    // Ir para a landing page
-    renderLandingPage();
+    window.location.href = '/';
   }
 }
 
