@@ -1336,8 +1336,7 @@ function checkUser() {
       
       showToast('Login com Google realizado com sucesso!', 'success');
       
-      // Contabilizar acesso e verificar entrevista
-      contabilizarAcesso();
+      // Verificar entrevista (acesso será contabilizado apenas se tiver plano)
       verificarEntrevista();
       return;
     } catch (e) {
@@ -2273,8 +2272,7 @@ window.handleLandingSignup = async function(event) {
       
       showToast('🎉 Conta criada com sucesso! Bem-vindo ao IAprova!', 'success');
       
-      // Ir para verificação/entrevista
-      contabilizarAcesso();
+      // Ir para verificação/entrevista (acesso será contabilizado apenas se tiver plano)
       verificarEntrevista();
     }
   } catch (error) {
@@ -2304,7 +2302,6 @@ window.handleLandingSignup = async function(event) {
           };
           
           showToast('Login realizado com sucesso!', 'success');
-          contabilizarAcesso();
           verificarEntrevista();
           return;
         }
@@ -2475,10 +2472,8 @@ function renderLogin() {
           localStorage.setItem('userName', currentUser.name || '');
           localStorage.setItem('userCreatedAt', currentUser.created_at || '');
           
-          // Contabilizar acesso
-          contabilizarAcesso();
-          
           console.log('📊 Verificando entrevista...');
+          // Acesso será contabilizado apenas se tiver plano criado
           verificarEntrevista();
         } else {
           // Cadastro
@@ -2532,14 +2527,22 @@ async function iniciarEntrevista() {
     disciplinas_do_edital: [] // Novo campo
   };
   
-  // Verificar se é primeiro acesso (novo usuário)
-  const primeiroAcesso = localStorage.getItem('primeiro_acesso_' + currentUser.id);
-  if (!primeiroAcesso) {
-    // Marcar que já viu boas-vindas
-    localStorage.setItem('primeiro_acesso_' + currentUser.id, 'true');
+  // Verificar se usuário já tem algum plano criado (indica que já completou o fluxo antes)
+  try {
+    const planosResponse = await axios.get(`/api/planos/count/${currentUser.id}`);
+    const temPlano = planosResponse.data && planosResponse.data.total > 0;
+    
+    if (!temPlano) {
+      // Usuário nunca criou um plano - mostrar boas-vindas
+      renderBoasVindas();
+    } else {
+      // Usuário já tem plano(s) - ir direto para entrevista (está criando novo plano)
+      renderEntrevistaStep1();
+    }
+  } catch (error) {
+    console.log('Erro ao verificar planos, mostrando boas-vindas:', error);
+    // Em caso de erro, mostrar boas-vindas por segurança
     renderBoasVindas();
-  } else {
-    renderEntrevistaStep1();
   }
 }
 
@@ -5094,18 +5097,18 @@ async function verificarEntrevista() {
     // Criar FAB após login bem-sucedido (apenas quando usuário está autenticado)
     createUnifiedFAB();
     
-    // Registrar acesso ao entrar no sistema (ANTES de verificar tutorial)
-    registrarAcesso();
-    
     console.log('🔍 Verificando entrevista para usuário:', currentUser.id);
     const response = await axios.get(`/api/interviews/user/${currentUser.id}`);
     console.log('📋 Resposta da verificação:', response.data);
     
     if (response.data && response.data.length > 0) {
       console.log('✅ Entrevista encontrada, indo para dashboard...');
+      // Registrar acesso APENAS quando usuário já tem plano/entrevista
+      registrarAcesso();
       renderDashboard();
     } else {
       console.log('⚠️ Sem entrevista, iniciando processo...');
+      // NÃO registrar acesso - usuário ainda não completou o primeiro fluxo
       iniciarEntrevista();
     }
   } catch (error) {
