@@ -13237,16 +13237,42 @@ app.get('/home', (c) => {
     <script>
       // Capturar evento de instalação PWA o mais cedo possível
       window.deferredPrompt = null;
+      window.pwaInstallReady = false;
+      
       window.addEventListener('beforeinstallprompt', function(e) {
+        // Impedir que o Chrome mostre o mini-infobar automaticamente
         e.preventDefault();
+        // Guardar o evento para usar quando o usuário clicar em "Instalar"
         window.deferredPrompt = e;
-        console.log('✅ PWA beforeinstallprompt capturado!');
+        window.pwaInstallReady = true;
+        console.log('✅ PWA: Prompt de instalação capturado e pronto!');
+        
+        // Adicionar indicador visual se o botão existir
+        var installBtn = document.getElementById('fab-install-app');
+        if (installBtn) {
+          installBtn.style.display = 'flex';
+          // Adicionar badge de "pronto para instalar"
+          var badge = installBtn.querySelector('.install-ready-badge');
+          if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'install-ready-badge absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full';
+            installBtn.querySelector('button')?.appendChild(badge);
+          }
+        }
       });
       
       window.addEventListener('appinstalled', function() {
-        console.log('🎉 PWA instalado com sucesso!');
+        console.log('🎉 PWA: IAprova instalado com sucesso!');
         window.deferredPrompt = null;
+        window.pwaInstallReady = false;
+        
+        // Ocultar botão de instalação
+        var installBtn = document.getElementById('fab-install-app');
+        if (installBtn) installBtn.style.display = 'none';
       });
+      
+      // Log inicial para debug
+      console.log('🔧 PWA: Listener de beforeinstallprompt registrado');
     </script>
     
     <!-- PWA Meta Tags -->
