@@ -13764,18 +13764,24 @@ app.get('/home', (c) => {
     <meta name="application-name" content="IAprova">
     <meta name="msapplication-TileColor" content="#122D6A">
     
-    <!-- Open Graph / Facebook -->
+    <!-- Open Graph / Facebook / WhatsApp -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://iaprova.app/">
     <meta property="og:title" content="IAprova - Preparação Inteligente para Concursos">
     <meta property="og:description" content="Estude de forma inteligente com IA. Planos personalizados, questões no estilo da sua banca e muito mais!">
-    <meta property="og:image" content="https://iaprova.app/icons/icon-512x512.png">
+    <meta property="og:image" content="https://iaprova.app/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:site_name" content="IAprova">
+    <meta property="og:locale" content="pt_BR">
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://iaprova.app/">
     <meta property="twitter:title" content="IAprova - Preparação Inteligente para Concursos">
     <meta property="twitter:description" content="Estude de forma inteligente com IA. Planos personalizados, questões no estilo da sua banca e muito mais!">
+    <meta property="twitter:image" content="https://iaprova.app/og-image.png">
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
