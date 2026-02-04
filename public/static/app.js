@@ -3259,7 +3259,7 @@ async function processarEditalAntesDeStep2() {
                   <ol class="text-sm text-blue-700 space-y-3">
                     <li class="flex items-start gap-2">
                       <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">1</span>
-                      <span>Acesse <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank" class="underline font-semibold">ilovepdf.com/pt/pdf_para_texto</a></span>
+                      <span>Acesse <a href="https://smallpdf.com/pdf-to-text" target="_blank" class="underline font-semibold">smallpdf.com/pdf-to-text</a></span>
                     </li>
                     <li class="flex items-start gap-2">
                       <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">2</span>
@@ -3280,7 +3280,7 @@ async function processarEditalAntesDeStep2() {
                 </div>
                 
                 <div class="flex flex-col gap-3">
-                  <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank"
+                  <a href="https://smallpdf.com/pdf-to-text" target="_blank"
                      class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all flex items-center justify-center gap-2">
                     <i class="fas fa-external-link-alt"></i>
                     Converter PDF para TXT
@@ -3355,7 +3355,7 @@ async function processarEditalAntesDeStep2() {
                 <ol class="text-sm text-blue-700 space-y-3">
                   <li class="flex items-start gap-2">
                     <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">1</span>
-                    <span>Acesse <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank" class="underline font-semibold">ilovepdf.com/pt/pdf_para_texto</a></span>
+                    <span>Acesse <a href="https://smallpdf.com/pdf-to-text" target="_blank" class="underline font-semibold">smallpdf.com/pdf-to-text</a></span>
                   </li>
                   <li class="flex items-start gap-2">
                     <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">2</span>
@@ -3369,7 +3369,7 @@ async function processarEditalAntesDeStep2() {
               </div>
               
               <div class="flex flex-col gap-3">
-                <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank"
+                <a href="https://smallpdf.com/pdf-to-text" target="_blank"
                    class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all flex items-center justify-center gap-2">
                   <i class="fas fa-external-link-alt"></i>
                   Converter PDF para TXT
@@ -3518,7 +3518,7 @@ async function processarEditalAntesDeStep2() {
                     <ol class="text-sm text-blue-700 space-y-3">
                       <li class="flex items-start gap-2">
                         <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">1</span>
-                        <span>Acesse <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank" class="underline font-semibold">ilovepdf.com/pt/pdf_para_texto</a></span>
+                        <span>Acesse <a href="https://smallpdf.com/pdf-to-text" target="_blank" class="underline font-semibold">smallpdf.com/pdf-to-text</a></span>
                       </li>
                       <li class="flex items-start gap-2">
                         <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">2</span>
@@ -3532,7 +3532,7 @@ async function processarEditalAntesDeStep2() {
                   </div>
                   
                   <div class="flex flex-col gap-3">
-                    <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank"
+                    <a href="https://smallpdf.com/pdf-to-text" target="_blank"
                        class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all flex items-center justify-center gap-2">
                       <i class="fas fa-external-link-alt"></i>
                       Converter PDF para TXT
@@ -3597,11 +3597,11 @@ async function processarEditalAntesDeStep2() {
                 <li>• <strong>✅ Continue e selecione disciplinas manualmente</strong> (mais rápido)</li>
                 <li>• O texto pode não conter a seção de <strong>Conteúdo Programático</strong></li>
                 <li>• Use um arquivo XLSX com cronograma de estudos</li>
-                <li>• Converta o PDF para TXT em <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank" class="text-[#1A3A7F] underline">ilovepdf.com</a></li>
+                <li>• Converta o PDF para TXT em <a href="https://smallpdf.com/pdf-to-text" target="_blank" class="text-[#1A3A7F] underline">smallpdf.com</a></li>
               `;
             } else {
               sugestoes = `
-                <li>• Converta o PDF para TXT em <a href="https://www.ilovepdf.com/pt/pdf_para_texto" target="_blank" class="text-[#1A3A7F] underline">ilovepdf.com</a></li>
+                <li>• Converta o PDF para TXT em <a href="https://smallpdf.com/pdf-to-text" target="_blank" class="text-[#1A3A7F] underline">smallpdf.com</a></li>
                 <li>• Use um arquivo XLSX com cronograma de estudos</li>
                 <li>• Continue sem edital e adicione disciplinas manualmente</li>
               `;
@@ -20455,7 +20455,7 @@ window.showHelpTopic = function(topic) {
         <div class="space-y-2 text-sm">
           <p>📄 Formatos aceitos: PDF, TXT</p>
           <p>⚠️ Se o PDF der erro, converta para TXT em:</p>
-          <p class="text-blue-600">ilovepdf.com/pt/pdf_para_texto</p>
+          <p class="text-blue-600">smallpdf.com/pdf-to-text</p>
           <p>✅ A IA analisará automaticamente o conteúdo</p>
         </div>
       `

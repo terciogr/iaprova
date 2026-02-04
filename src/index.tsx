@@ -175,7 +175,7 @@ async function extractTextFromPDF(pdfBuffer: ArrayBuffer, geminiKey: string): Pr
   
   // Limite aumentado para 30MB em base64 (~22MB arquivo real)
   if (base64.length > 40000000) {
-    throw new Error(`PDF muito grande (${fileSizeMB.toFixed(1)}MB). Converta para TXT em ilovepdf.com`)
+    throw new Error(`PDF muito grande (${fileSizeMB.toFixed(1)}MB). Converta para TXT em smallpdf.com`)
   }
   
   // ✅ PROMPT OTIMIZADO PARA EDITAIS DE CONCURSOS - EXTRAÇÃO COMPLETA DOS ANEXOS
@@ -330,7 +330,7 @@ INICIE A TRANSCRIÇÃO DO CONTEÚDO PROGRAMÁTICO (ANEXOS):`
     `Falha ao extrair texto do PDF.\n` +
     `Erros: ${allErrors.join(', ')}\n\n` +
     `SOLUÇÕES:\n` +
-    `1. ✅ RECOMENDADO: Converta o PDF para TXT em https://www.ilovepdf.com/pt/pdf_para_texto\n` +
+    `1. ✅ RECOMENDADO: Converta o PDF para TXT em https://smallpdf.com/pdf-to-text\n` +
     `2. Use um arquivo XLSX com o cronograma de estudos\n` +
     `3. Aguarde 2-3 minutos (possível rate limit da API Gemini)`
   )
@@ -3016,13 +3016,13 @@ app.post('/api/editais/upload', async (c) => {
             userId, 
             nomeConcurso, 
             key, 
-            `[PDF MUITO GRANDE - ${fileSizeMB.toFixed(1)}MB]\n\nO arquivo excede o limite de processamento automático (15MB).\n\nPor favor:\n1. Converta o PDF para TXT em: https://www.ilovepdf.com/pt/pdf_para_texto\n2. Ou use um arquivo XLSX com o cronograma de estudos\n3. Anexe o arquivo convertido novamente`,
+            `[PDF MUITO GRANDE - ${fileSizeMB.toFixed(1)}MB]\n\nO arquivo excede o limite de processamento automático (15MB).\n\nPor favor:\n1. Converta o PDF para TXT em: https://smallpdf.com/pdf-to-text\n2. Ou use um arquivo XLSX com o cronograma de estudos\n3. Anexe o arquivo convertido novamente`,
             ).run()
           
           return c.json({
             error: `PDF muito grande (${fileSizeMB.toFixed(1)}MB). O limite para processamento automático é 15MB.`,
             errorType: 'FILE_TOO_LARGE',
-            suggestion: `Opções:\n1. ✅ RECOMENDADO: Converta o PDF para TXT em https://www.ilovepdf.com/pt/pdf_para_texto\n2. Use um arquivo XLSX com o cronograma\n3. Divida o PDF em partes menores`,
+            suggestion: `Opções:\n1. ✅ RECOMENDADO: Converta o PDF para TXT em https://smallpdf.com/pdf-to-text\n2. Use um arquivo XLSX com o cronograma\n3. Divida o PDF em partes menores`,
             fileSizeMB: fileSizeMB.toFixed(2),
             maxSizeMB: 15,
             editalId: result.meta.last_row_id
@@ -3049,7 +3049,7 @@ app.post('/api/editais/upload', async (c) => {
           console.error(`❌ Erro ao extrair texto do PDF:`, pdfError)
           
           // Salvar mesmo assim com placeholder
-          textoCompleto = `[ERRO NA EXTRAÇÃO]\n\nArquivo: ${file.name}\nErro: ${pdfError.message}\n\nSugestões:\n- Converta o PDF para TXT em https://www.ilovepdf.com/pt/pdf_para_texto\n- Use planilha XLSX para processamento mais rápido\n- Verifique se o PDF não está protegido ou escaneado`
+          textoCompleto = `[ERRO NA EXTRAÇÃO]\n\nArquivo: ${file.name}\nErro: ${pdfError.message}\n\nSugestões:\n- Converta o PDF para TXT em https://smallpdf.com/pdf-to-text\n- Use planilha XLSX para processamento mais rápido\n- Verifique se o PDF não está protegido ou escaneado`
           
           console.log(`⚠️ PDF salvo com erro. Usuário pode converter para TXT.`)
         }
@@ -3192,7 +3192,7 @@ app.post('/api/editais/upload', async (c) => {
       suggestion = 'Aguarde 2-3 minutos e tente novamente'
     } else if (errorMessage.includes('escaneado') || errorMessage.includes('protegido')) {
       userFriendlyMessage = 'PDF não extraível'
-      suggestion = 'Converta o PDF para TXT em https://www.ilovepdf.com/pt/pdf_para_texto'
+      suggestion = 'Converta o PDF para TXT em https://smallpdf.com/pdf-to-text'
     }
     
     return c.json({ 
@@ -3504,7 +3504,7 @@ app.post('/api/editais/processar/:id', async (c) => {
         return c.json({ 
           error: 'API de IA temporariamente sobrecarregada. A extração do PDF falhou.',
           errorType: 'API_RATE_LIMIT',
-          suggestion: 'A API Gemini atingiu o limite de requisições. Opções:\n1. Aguarde 2-3 minutos e tente novamente\n2. Converta o PDF para TXT em https://www.ilovepdf.com/pt/pdf_para_texto\n3. Use um arquivo XLSX com cronograma de estudos',
+          suggestion: 'A API Gemini atingiu o limite de requisições. Opções:\n1. Aguarde 2-3 minutos e tente novamente\n2. Converta o PDF para TXT em https://smallpdf.com/pdf-to-text\n3. Use um arquivo XLSX com cronograma de estudos',
           textLength: textoLimpo.length,
           step: 2,
           stepName: 'Extração de texto do PDF',
@@ -3516,7 +3516,7 @@ app.post('/api/editais/processar/:id', async (c) => {
       return c.json({ 
         error: `Texto do edital muito curto (${textoLimpo.length} caracteres). O PDF pode estar protegido ou ser escaneado.`,
         errorType: 'INSUFFICIENT_TEXT',
-        suggestion: 'Possíveis causas:\n• PDF protegido ou escaneado (imagem)\n• Erro na extração de texto pela IA\n• Arquivo corrompido\n\nSoluções:\n1. Converta o PDF para TXT em https://www.ilovepdf.com/pt/pdf_para_texto\n2. Use um arquivo XLSX com cronograma de estudos\n3. Copie manualmente o conteúdo programático para um arquivo TXT',
+        suggestion: 'Possíveis causas:\n• PDF protegido ou escaneado (imagem)\n• Erro na extração de texto pela IA\n• Arquivo corrompido\n\nSoluções:\n1. Converta o PDF para TXT em https://smallpdf.com/pdf-to-text\n2. Use um arquivo XLSX com cronograma de estudos\n3. Copie manualmente o conteúdo programático para um arquivo TXT',
         textLength: textoLimpo.length,
         step: 2,
         stepName: 'Validação do conteúdo',
@@ -4149,7 +4149,7 @@ RETORNE APENAS JSON (sem markdown, sem explicações):
         return c.json({ 
           error: 'A IA não conseguiu identificar disciplinas no texto do edital.',
           errorType: 'NO_DISCIPLINES_FOUND',
-          suggestion: `Possíveis causas:\n• O arquivo pode estar protegido ou escaneado\n• O conteúdo programático pode estar em formato não reconhecível\n• O texto pode estar truncado\n\nSoluções:\n1. Converta o PDF para TXT em https://www.ilovepdf.com/pt/pdf_para_texto\n2. Use um arquivo XLSX com cronograma de estudos\n3. Copie apenas a seção "Conteúdo Programático" para um arquivo TXT`,
+          suggestion: `Possíveis causas:\n• O arquivo pode estar protegido ou escaneado\n• O conteúdo programático pode estar em formato não reconhecível\n• O texto pode estar truncado\n\nSoluções:\n1. Converta o PDF para TXT em https://smallpdf.com/pdf-to-text\n2. Use um arquivo XLSX com cronograma de estudos\n3. Copie apenas a seção "Conteúdo Programático" para um arquivo TXT`,
           textLength: textoEdital.length,
           textPreview: textoEdital.substring(0, 200),
           step: 4,
@@ -4415,7 +4415,7 @@ RETORNE APENAS JSON (sem markdown, sem explicações):
     } else if (errorMessage.includes('JSON') || errorMessage.includes('parse')) {
       errorType = 'PARSE_ERROR'
       userMessage = 'Não foi possível interpretar o conteúdo do edital'
-      suggestion = 'Converta o PDF para TXT em https://www.ilovepdf.com/pt/pdf_para_texto'
+      suggestion = 'Converta o PDF para TXT em https://smallpdf.com/pdf-to-text'
     } else if (errorMessage.includes('vazio') || errorMessage.includes('empty')) {
       errorType = 'EMPTY_TEXT'
       userMessage = 'O arquivo não contém texto extraível'
@@ -4562,22 +4562,36 @@ app.get('/api/editais/:id/disciplinas', async (c) => {
   const editalId = c.req.param('id')
 
   try {
-    // ✅ CORREÇÃO v20.12: Contar tópicos da tabela topicos_edital (tópicos reais do usuário)
+    // ✅ CORREÇÃO v20.13: Contar tópicos da tabela edital_topicos (tópicos do edital processado)
+    // A tabela edital_topicos vincula via edital_disciplina_id (ed.id)
     const { results: disciplinas } = await DB.prepare(`
       SELECT 
-        COALESCE(ed.disciplina_id, ed.id) as id,
+        ed.id,
         ed.nome,
         ed.ordem,
         ed.peso,
         ed.disciplina_id as disciplina_id_real,
-        (SELECT COUNT(*) FROM topicos_edital te WHERE te.disciplina_id = COALESCE(ed.disciplina_id, ed.id)) as total_topicos
+        (SELECT COUNT(*) FROM edital_topicos et WHERE et.edital_disciplina_id = ed.id) as total_topicos
       FROM edital_disciplinas ed
       WHERE ed.edital_id = ?
       ORDER BY ed.ordem
     `).bind(editalId).all()
 
-    console.log(`📋 Disciplinas do edital ${editalId}:`, disciplinas.map(d => `${d.nome} (ID: ${d.id}, topicos: ${d.total_topicos}, peso: ${d.peso || 'N/A'})`).join(', '))
-    return c.json(disciplinas)
+    // ✅ Também buscar os tópicos de cada disciplina para enviar ao frontend
+    const disciplinasComTopicos = await Promise.all(disciplinas.map(async (d: any) => {
+      const { results: topicos } = await DB.prepare(`
+        SELECT id, nome, ordem FROM edital_topicos WHERE edital_disciplina_id = ? ORDER BY ordem
+      `).bind(d.id).all()
+      
+      return {
+        ...d,
+        total_topicos: topicos.length,
+        topicos: topicos
+      }
+    }))
+
+    console.log(`📋 Disciplinas do edital ${editalId}:`, disciplinasComTopicos.map((d: any) => `${d.nome} (ID: ${d.id}, topicos: ${d.total_topicos}, peso: ${d.peso || 'N/A'})`).join(', '))
+    return c.json(disciplinasComTopicos)
   } catch (error) {
     console.error('Erro ao buscar disciplinas do edital:', error)
     return c.json({ error: 'Erro ao buscar disciplinas' }, 500)
@@ -12282,7 +12296,7 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
         return c.json({ 
           error: 'Erro ao processar PDF. Tente converter para TXT.',
           details: error?.message || 'Falha na extração do texto',
-          suggestion: 'Use https://www.ilovepdf.com/pt/pdf_para_texto para converter o PDF em TXT'
+          suggestion: 'Use https://smallpdf.com/pdf-to-text para converter o PDF em TXT'
         }, 500)
       }
     } else if (file.type === 'text/plain') {
