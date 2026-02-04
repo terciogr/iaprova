@@ -12732,48 +12732,324 @@ app.get('/api/materiais/item/:id', async (c) => {
 
 // ============== ROTA PRINCIPAL (FRONTEND) ==============
 app.get('/', (c) => {
-  return c.html(`
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>IAprova - Preparação Inteligente para Concursos Públicos</title>
-        <meta name="description" content="Plataforma de estudos com IA para concursos públicos. Planos personalizados, conteúdo adaptado ao seu cargo e acompanhamento inteligente.">
-        <meta name="keywords" content="concursos públicos, estudos, IA, preparação, edital, cargo">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-        <style>
-          /* Scrollbar hide for mobile calendar */
-          .scrollbar-hide::-webkit-scrollbar { display: none; }
-          .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-          
-          /* Barras listradas para semanas futuras */
-          .bg-stripes {
-            background-image: repeating-linear-gradient(
-              45deg,
-              transparent,
-              transparent 5px,
-              rgba(255, 255, 255, 0.15) 5px,
-              rgba(255, 255, 255, 0.15) 10px
-            );
-          }
-        </style>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-          body { font-family: 'Inter', sans-serif; }
-        </style>
-    </head>
-    <body class="bg-white">
-        <div id="app"></div>
+  return c.html(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IAprova - Preparação Inteligente para Concursos Públicos</title>
+    <meta name="description" content="Sistema inteligente de preparação para concursos públicos com IA. Planos de estudo personalizados, geração de conteúdo e muito mais!">
+    <meta name="keywords" content="concursos públicos, estudo, preparação, IA, inteligência artificial, plano de estudos, flashcards, questões">
+    <meta name="author" content="IAprova">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="IAprova">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="IAprova">
+    <meta name="msapplication-TileColor" content="#6366f1">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://iaprova.app/">
+    <meta property="og:title" content="IAprova - Preparação Inteligente para Concursos">
+    <meta property="og:description" content="Estude de forma inteligente com IA. Planos personalizados, questões no estilo da sua banca e muito mais!">
+    <meta property="og:image" content="https://iaprova.app/icons/icon-512x512.png">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://iaprova.app/">
+    <meta property="twitter:title" content="IAprova - Preparação Inteligente para Concursos">
+    <meta property="twitter:description" content="Estude de forma inteligente com IA. Planos personalizados, questões no estilo da sua banca e muito mais!">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         
-        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
-        <script src="/static/app.js?v=${Date.now()}"></script>
-    </body>
-    </html>
-  `)
+        * { box-sizing: border-box; }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overscroll-behavior: none;
+        }
+        
+        #app { min-height: 100vh; min-height: 100dvh; }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #6366f1;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-scale-in { animation: scaleIn 0.3s ease-in-out; }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); }
+        }
+        .pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
+        
+        /* Scrollbar */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        
+        /* Glass effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            animation: slideIn 0.3s ease-in-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        .toast.info { background: #3b82f6; }
+        
+        /* PWA Install Banner */
+        .pwa-install-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            padding: 16px;
+            z-index: 9998;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        .pwa-install-banner.show { transform: translateY(0); }
+        
+        /* Standalone mode */
+        @media all and (display-mode: standalone) {
+            body {
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
+        
+        /* iOS specific */
+        @supports (-webkit-touch-callout: none) {
+            body { min-height: -webkit-fill-available; }
+        }
+        
+        /* Stripes for future weeks */
+        .bg-stripes {
+            background-image: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 5px,
+                rgba(255, 255, 255, 0.15) 5px,
+                rgba(255, 255, 255, 0.15) 10px
+            );
+        }
+    </style>
+</head>
+<body class="bg-white">
+    <!-- App Container -->
+    <div id="app">
+        <!-- Initial Loading Screen -->
+        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900">
+            <div class="text-center">
+                <div class="mb-6 animate-float">
+                    <div class="w-24 h-24 mx-auto pulse-glow rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <svg viewBox="0 0 64 64" class="w-16 h-16">
+                            <circle cx="32" cy="32" r="20" fill="rgba(16,185,129,1)"/>
+                            <path d="M24 32 L30 38 L42 26" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                </div>
+                <h1 class="text-white text-4xl font-bold mb-2">IAprova</h1>
+                <p class="text-indigo-200 text-lg mb-6">Preparação Inteligente para Concursos</p>
+                <div class="spinner mx-auto mb-4"></div>
+                <p class="text-indigo-100 text-sm">Carregando sistema...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PWA Install Banner (hidden by default) -->
+    <div id="pwa-install-banner" class="pwa-install-banner">
+        <div class="max-w-md mx-auto flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-mobile-alt text-xl"></i>
+                </div>
+                <div>
+                    <p class="font-bold">Instale o IAprova</p>
+                    <p class="text-sm text-indigo-200">Acesse como um app!</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="dismissPWABanner()" class="px-3 py-2 text-sm opacity-70 hover:opacity-100">Depois</button>
+                <button onclick="installPWA()" class="px-4 py-2 bg-white text-indigo-600 rounded-lg font-bold text-sm">Instalar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+    
+    <!-- Main App Script -->
+    <script src="/static/app.js?v=${Date.now()}"></script>
+    
+    <!-- PWA & Service Worker Registration -->
+    <script>
+        let deferredPrompt = null;
+        
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+                    console.log('✅ Service Worker registrado:', registration.scope);
+                } catch (error) {
+                    console.log('⚠️ Service Worker não registrado:', error);
+                }
+            });
+        }
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('📱 PWA pode ser instalado');
+            e.preventDefault();
+            deferredPrompt = e;
+            const dismissed = localStorage.getItem('pwa-banner-dismissed');
+            const dismissedTime = dismissed ? parseInt(dismissed) : 0;
+            if (!dismissed || (Date.now() - dismissedTime > 86400000)) {
+                setTimeout(() => showPWABanner(), 3000);
+            }
+        });
+        
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ IAprova instalado como PWA!');
+            deferredPrompt = null;
+            hidePWABanner();
+            if (typeof showToast === 'function') showToast('🎉 IAprova instalado com sucesso!', 'success');
+        });
+        
+        function showPWABanner() {
+            const banner = document.getElementById('pwa-install-banner');
+            if (banner && deferredPrompt) banner.classList.add('show');
+        }
+        
+        function hidePWABanner() {
+            const banner = document.getElementById('pwa-install-banner');
+            if (banner) banner.classList.remove('show');
+        }
+        
+        function dismissPWABanner() {
+            hidePWABanner();
+            localStorage.setItem('pwa-banner-dismissed', Date.now().toString());
+        }
+        
+        async function installPWA() {
+            if (!deferredPrompt) {
+                showManualInstallInstructions();
+                return;
+            }
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('📱 Resultado:', outcome);
+            deferredPrompt = null;
+            hidePWABanner();
+        }
+        
+        function showManualInstallInstructions() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const isAndroid = /Android/.test(navigator.userAgent);
+            let instructions = '';
+            
+            if (isIOS) {
+                instructions = '<p class="mb-4">Para instalar no iPhone/iPad:</p><ol class="list-decimal list-inside space-y-2 text-left"><li>Toque em <strong>Compartilhar</strong> <i class="fas fa-share-square"></i></li><li>Toque em <strong>"Adicionar à Tela de Início"</strong></li><li>Toque em <strong>"Adicionar"</strong></li></ol>';
+            } else if (isAndroid) {
+                instructions = '<p class="mb-4">Para instalar no Android:</p><ol class="list-decimal list-inside space-y-2 text-left"><li>Toque no menu <strong>⋮</strong></li><li>Toque em <strong>"Instalar app"</strong></li><li>Confirme</li></ol>';
+            } else {
+                instructions = '<p class="mb-4">Para instalar:</p><ol class="list-decimal list-inside space-y-2 text-left"><li>Clique no ícone <i class="fas fa-plus-square"></i> na barra de endereços</li><li>Ou menu do navegador → <strong>"Instalar IAprova"</strong></li></ol>';
+            }
+            
+            const modal = document.createElement('div');
+            modal.id = 'install-instructions-modal';
+            modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[10000] p-4';
+            modal.innerHTML = '<div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center"><div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4"><i class="fas fa-mobile-alt text-white text-2xl"></i></div><h3 class="text-xl font-bold text-gray-800 mb-4">Instalar IAprova</h3><div class="text-gray-600 text-sm">' + instructions + '</div><button onclick="document.getElementById(\\'install-instructions-modal\\').remove()" class="mt-6 w-full py-3 bg-indigo-600 text-white rounded-xl font-bold">Entendi</button></div>';
+            document.body.appendChild(modal);
+            hidePWABanner();
+        }
+        
+        window.showPWAInstallPrompt = installPWA;
+        window.showManualInstallInstructions = showManualInstallInstructions;
+    </script>
+</body>
+</html>`)
 })
 
 // ============== SIMULADOS - HISTÓRICO E DASHBOARD ==============
