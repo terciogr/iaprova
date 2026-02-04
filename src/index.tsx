@@ -446,6 +446,33 @@ const app = new Hono<{ Bindings: Bindings }>()
 // Middleware
 app.use('/api/*', cors())
 
+// Servir imagem Open Graph (para WhatsApp, Facebook, Twitter)
+// IMPORTANTE: Esta rota garante que a imagem seja servida corretamente para crawlers
+// A imagem está em public/og-image.png e é copiada para dist/og-image.png no build
+app.get('/og-image.png', async (c) => {
+  // Servir a imagem diretamente do Cloudflare Pages Assets
+  // Cloudflare Pages serve arquivos de public/ automaticamente em /
+  const assetUrl = new URL('/og-image.png', c.req.url)
+  
+  try {
+    // Tentar buscar o asset estático
+    const response = await c.env.ASSETS?.fetch(assetUrl)
+    if (response && response.ok) {
+      return new Response(response.body, {
+        headers: {
+          'Content-Type': 'image/png',
+          'Cache-Control': 'public, max-age=86400'
+        }
+      })
+    }
+  } catch (e) {
+    console.log('Erro ao buscar og-image via ASSETS:', e)
+  }
+  
+  // Fallback: retornar 404 com mensagem clara
+  return c.text('Open Graph image not found', 404)
+})
+
 // Servir arquivos estáticos manualmente para evitar problemas
 app.get('/static/*', async (c) => {
   const path = c.req.path.replace('/static/', '')
