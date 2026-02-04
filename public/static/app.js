@@ -9586,8 +9586,8 @@ window.abrirMinhaAssinatura = async function() {
   
   try {
     const [subResponse, planosResponse] = await Promise.all([
-      axios.get(`/api/subscription/details/${currentUser.id}`),
-      axios.get(`/api/planos/count/${currentUser.id}`)
+      axios.get('/api/subscription/details/' + currentUser.id),
+      axios.get('/api/planos/count/' + currentUser.id)
     ]);
     subscriptionDetails = subResponse.data;
     planosInfo = planosResponse.data;
@@ -9630,157 +9630,162 @@ window.abrirMinhaAssinatura = async function() {
     return icons[status] || 'fas fa-question-circle';
   };
   
+  const statusColor = getStatusColor(subscriptionDetails.status);
+  const statusIcon = getStatusIcon(subscriptionDetails.status);
+  const progressWidth = (planosInfo.total / planosInfo.limite) * 100;
+  
+  let priceSection = '';
+  if (subscriptionDetails.price > 0) {
+    priceSection = '<div class="text-center py-3 border-t ' + themes[currentTheme].border + '">' +
+      '<p class="' + themes[currentTheme].textSecondary + ' text-sm">Valor do plano</p>' +
+      '<p class="text-2xl font-bold ' + themes[currentTheme].text + '">R$ ' + subscriptionDetails.price.toFixed(2).replace('.', ',') + '</p>' +
+    '</div>';
+  }
+  
+  let startDateSection = '';
+  if (subscriptionDetails.startDate) {
+    startDateSection = '<div class="flex justify-between items-center py-2 border-b ' + themes[currentTheme].border + '">' +
+      '<span class="' + themes[currentTheme].textSecondary + '">Início do plano</span>' +
+      '<span class="font-medium ' + themes[currentTheme].text + '">' + formatDate(subscriptionDetails.startDate) + '</span>' +
+    '</div>';
+  }
+  
+  let expiresSection = '';
+  if (subscriptionDetails.expiresAt) {
+    const daysClass = subscriptionDetails.daysRemaining <= 7 ? 'text-red-600' : themes[currentTheme].text;
+    const daysValueClass = subscriptionDetails.daysRemaining <= 7 ? 'text-red-600' : 'text-emerald-600';
+    const daysText = subscriptionDetails.daysRemaining === -1 ? '∞ Ilimitado' : subscriptionDetails.daysRemaining + ' dias';
+    
+    expiresSection = '<div class="flex justify-between items-center py-2 border-b ' + themes[currentTheme].border + '">' +
+      '<span class="' + themes[currentTheme].textSecondary + '">Válido até</span>' +
+      '<span class="font-medium ' + daysClass + '">' + formatDate(subscriptionDetails.expiresAt) + '</span>' +
+    '</div>' +
+    '<div class="flex justify-between items-center py-2 border-b ' + themes[currentTheme].border + '">' +
+      '<span class="' + themes[currentTheme].textSecondary + '">Dias restantes</span>' +
+      '<span class="font-bold ' + daysValueClass + '">' + daysText + '</span>' +
+    '</div>';
+  }
+  
+  const planosText = planosInfo.podecriarNovo 
+    ? 'Você pode criar mais ' + planosInfo.restante + ' plano(s)'
+    : 'Limite atingido. Exclua um plano para criar outro.';
+  
+  let paymentHistorySection = '';
+  if (subscriptionDetails.paymentHistory && subscriptionDetails.paymentHistory.length > 0) {
+    let historyItems = '';
+    subscriptionDetails.paymentHistory.forEach(function(p) {
+      historyItems += '<div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">' +
+        '<div>' +
+          '<p class="font-medium ' + themes[currentTheme].text + '">' + p.plan + '</p>' +
+          '<p class="text-xs ' + themes[currentTheme].textMuted + '">' + formatDate(p.date) + '</p>' +
+        '</div>' +
+        '<div class="text-right">' +
+          '<p class="font-bold text-emerald-600">R$ ' + p.amount.toFixed(2).replace('.', ',') + '</p>' +
+          '<p class="text-xs text-emerald-500">✓ Pago</p>' +
+        '</div>' +
+      '</div>';
+    });
+    
+    paymentHistorySection = '<div class="mb-6">' +
+      '<h4 class="font-semibold ' + themes[currentTheme].text + ' mb-3">' +
+        '<i class="fas fa-history mr-2 text-gray-500"></i>Histórico de Pagamentos' +
+      '</h4>' +
+      '<div class="space-y-2">' + historyItems + '</div>' +
+    '</div>';
+  }
+  
+  let upgradeSection = '';
+  if (['trial', 'trial_expired', 'expired', 'free'].includes(subscriptionDetails.status)) {
+    let planButtons = '';
+    subscriptionDetails.upgradePlans.forEach(function(plan) {
+      const borderClass = plan.id === 'anual' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-gray-200 hover:border-[#122D6A]';
+      const savingsHtml = plan.savings ? '<span class="text-xs text-emerald-600 font-semibold">' + plan.savings + '</span>' : '';
+      
+      planButtons += '<button onclick="window.open(\'' + plan.link + '\', \'_blank\')" ' +
+        'class="w-full p-4 rounded-xl border-2 ' + borderClass + ' transition text-left">' +
+        '<div class="flex justify-between items-center">' +
+          '<div>' +
+            '<h5 class="font-bold ' + themes[currentTheme].text + '">' + plan.name + '</h5>' +
+            '<p class="text-sm ' + themes[currentTheme].textMuted + '">' + plan.duration + '</p>' +
+            savingsHtml +
+          '</div>' +
+          '<div class="text-right">' +
+            '<p class="text-xl font-bold text-[#122D6A]">R$ ' + plan.price.toFixed(2).replace('.', ',') + '</p>' +
+            '<i class="fas fa-external-link-alt text-gray-400"></i>' +
+          '</div>' +
+        '</div>' +
+      '</button>';
+    });
+    
+    upgradeSection = '<div class="border-t ' + themes[currentTheme].border + ' pt-6">' +
+      '<h4 class="font-semibold ' + themes[currentTheme].text + ' mb-4">' +
+        '<i class="fas fa-arrow-up mr-2 text-emerald-500"></i>Fazer Upgrade' +
+      '</h4>' +
+      '<div class="grid gap-3">' + planButtons + '</div>' +
+    '</div>';
+  }
+  
   const modal = document.createElement('div');
   modal.id = 'modal-assinatura';
   modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4';
-  modal.innerHTML = \`
-    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-            <i class="fas fa-credit-card text-white text-xl"></i>
-          </div>
-          <div>
-            <h3 class="text-lg font-bold ${themes[currentTheme].text}">Minha Assinatura</h3>
-            <p class="${themes[currentTheme].textSecondary} text-sm">Detalhes do seu plano</p>
-          </div>
-        </div>
-        <button onclick="document.getElementById('modal-assinatura').remove()" class="${themes[currentTheme].textSecondary} hover:text-gray-600">
-          <i class="fas fa-times text-xl"></i>
-        </button>
-      </div>
-      
-      <!-- Status Card -->
-      <div class="mb-6 p-4 rounded-xl border ${themes[currentTheme].border} bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
-        <div class="flex items-center gap-4 mb-4">
-          <div class="w-16 h-16 rounded-full \${getStatusColor(subscriptionDetails.status)} flex items-center justify-center">
-            <i class="\${getStatusIcon(subscriptionDetails.status)} text-2xl"></i>
-          </div>
-          <div class="flex-1">
-            <h4 class="text-xl font-bold ${themes[currentTheme].text}">\${subscriptionDetails.currentPlan}</h4>
-            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium \${getStatusColor(subscriptionDetails.status)}">
-              <i class="\${getStatusIcon(subscriptionDetails.status)} text-xs"></i>
-              \${subscriptionDetails.statusLabel}
-            </span>
-          </div>
-        </div>
-        
-        \${subscriptionDetails.price > 0 ? \`
-          <div class="text-center py-3 border-t ${themes[currentTheme].border}">
-            <p class="${themes[currentTheme].textSecondary} text-sm">Valor do plano</p>
-            <p class="text-2xl font-bold ${themes[currentTheme].text}">R$ \${subscriptionDetails.price.toFixed(2).replace('.', ',')}</p>
-          </div>
-        \` : ''}
-      </div>
-      
-      <!-- Detalhes -->
-      <div class="space-y-3 mb-6">
-        <div class="flex justify-between items-center py-2 border-b ${themes[currentTheme].border}">
-          <span class="${themes[currentTheme].textSecondary}">Membro desde</span>
-          <span class="font-medium ${themes[currentTheme].text}">\${formatDate(subscriptionDetails.memberSince)}</span>
-        </div>
-        
-        \${subscriptionDetails.startDate ? \`
-          <div class="flex justify-between items-center py-2 border-b ${themes[currentTheme].border}">
-            <span class="${themes[currentTheme].textSecondary}">Início do plano</span>
-            <span class="font-medium ${themes[currentTheme].text}">\${formatDate(subscriptionDetails.startDate)}</span>
-          </div>
-        \` : ''}
-        
-        \${subscriptionDetails.expiresAt ? \`
-          <div class="flex justify-between items-center py-2 border-b ${themes[currentTheme].border}">
-            <span class="${themes[currentTheme].textSecondary}">Válido até</span>
-            <span class="font-medium \${subscriptionDetails.daysRemaining <= 7 ? 'text-red-600' : themes[currentTheme].text}">\${formatDate(subscriptionDetails.expiresAt)}</span>
-          </div>
-          <div class="flex justify-between items-center py-2 border-b ${themes[currentTheme].border}">
-            <span class="${themes[currentTheme].textSecondary}">Dias restantes</span>
-            <span class="font-bold \${subscriptionDetails.daysRemaining <= 7 ? 'text-red-600' : 'text-emerald-600'}">
-              \${subscriptionDetails.daysRemaining === -1 ? '∞ Ilimitado' : subscriptionDetails.daysRemaining + ' dias'}
-            </span>
-          </div>
-        \` : ''}
-      </div>
-      
-      <!-- Planos de Estudo -->
-      <div class="mb-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-        <div class="flex items-center gap-2 mb-2">
-          <i class="fas fa-book-open text-blue-600"></i>
-          <span class="font-semibold text-blue-800 dark:text-blue-200">Planos de Estudo</span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="${themes[currentTheme].textSecondary}">Utilizados</span>
-          <span class="font-bold ${themes[currentTheme].text}">\${planosInfo.total} de \${planosInfo.limite}</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2 mt-2 dark:bg-gray-700">
-          <div class="bg-blue-600 h-2 rounded-full transition-all" style="width: \${(planosInfo.total / planosInfo.limite) * 100}%"></div>
-        </div>
-        <p class="text-xs ${themes[currentTheme].textMuted} mt-2">
-          \${planosInfo.podecriarNovo 
-            ? \`Você pode criar mais \${planosInfo.restante} plano(s)\`
-            : 'Limite atingido. Exclua um plano para criar outro.'}
-        </p>
-      </div>
-      
-      \${subscriptionDetails.paymentHistory.length > 0 ? \`
-        <!-- Histórico de Pagamentos -->
-        <div class="mb-6">
-          <h4 class="font-semibold ${themes[currentTheme].text} mb-3">
-            <i class="fas fa-history mr-2 text-gray-500"></i>Histórico de Pagamentos
-          </h4>
-          <div class="space-y-2">
-            \${subscriptionDetails.paymentHistory.map(p => \`
-              <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
-                <div>
-                  <p class="font-medium ${themes[currentTheme].text}">\${p.plan}</p>
-                  <p class="text-xs ${themes[currentTheme].textMuted}">\${formatDate(p.date)}</p>
-                </div>
-                <div class="text-right">
-                  <p class="font-bold text-emerald-600">R$ \${p.amount.toFixed(2).replace('.', ',')}</p>
-                  <p class="text-xs text-emerald-500">✓ Pago</p>
-                </div>
-              </div>
-            \`).join('')}
-          </div>
-        </div>
-      \` : ''}
-      
-      <!-- Upgrade Options -->
-      \${(subscriptionDetails.status === 'trial' || subscriptionDetails.status === 'trial_expired' || subscriptionDetails.status === 'expired' || subscriptionDetails.status === 'free') ? \`
-        <div class="border-t ${themes[currentTheme].border} pt-6">
-          <h4 class="font-semibold ${themes[currentTheme].text} mb-4">
-            <i class="fas fa-arrow-up mr-2 text-emerald-500"></i>Fazer Upgrade
-          </h4>
-          <div class="grid gap-3">
-            \${subscriptionDetails.upgradePlans.map(plan => \`
-              <button 
-                onclick="window.open('\${plan.link}', '_blank')"
-                class="w-full p-4 rounded-xl border-2 \${plan.id === 'anual' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-gray-200 hover:border-[#122D6A]'} transition text-left">
-                <div class="flex justify-between items-center">
-                  <div>
-                    <h5 class="font-bold ${themes[currentTheme].text}">\${plan.name}</h5>
-                    <p class="text-sm ${themes[currentTheme].textMuted}">\${plan.duration}</p>
-                    \${plan.savings ? \`<span class="text-xs text-emerald-600 font-semibold">\${plan.savings}</span>\` : ''}
-                  </div>
-                  <div class="text-right">
-                    <p class="text-xl font-bold text-[#122D6A]">R$ \${plan.price.toFixed(2).replace('.', ',')}</p>
-                    <i class="fas fa-external-link-alt text-gray-400"></i>
-                  </div>
-                </div>
-              </button>
-            \`).join('')}
-          </div>
-        </div>
-      \` : ''}
-      
-      <!-- Footer -->
-      <div class="mt-6 pt-4 border-t ${themes[currentTheme].border} text-center">
-        <p class="text-xs ${themes[currentTheme].textMuted}">
-          Dúvidas sobre sua assinatura? Entre em contato pelo suporte.
-        </p>
-      </div>
-    </div>
-  \`;
+  modal.innerHTML = '<div class="' + themes[currentTheme].card + ' rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">' +
+    '<div class="flex items-center justify-between mb-6">' +
+      '<div class="flex items-center gap-3">' +
+        '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">' +
+          '<i class="fas fa-credit-card text-white text-xl"></i>' +
+        '</div>' +
+        '<div>' +
+          '<h3 class="text-lg font-bold ' + themes[currentTheme].text + '">Minha Assinatura</h3>' +
+          '<p class="' + themes[currentTheme].textSecondary + ' text-sm">Detalhes do seu plano</p>' +
+        '</div>' +
+      '</div>' +
+      '<button onclick="document.getElementById(\'modal-assinatura\').remove()" class="' + themes[currentTheme].textSecondary + ' hover:text-gray-600">' +
+        '<i class="fas fa-times text-xl"></i>' +
+      '</button>' +
+    '</div>' +
+    '<div class="mb-6 p-4 rounded-xl border ' + themes[currentTheme].border + ' bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">' +
+      '<div class="flex items-center gap-4 mb-4">' +
+        '<div class="w-16 h-16 rounded-full ' + statusColor + ' flex items-center justify-center">' +
+          '<i class="' + statusIcon + ' text-2xl"></i>' +
+        '</div>' +
+        '<div class="flex-1">' +
+          '<h4 class="text-xl font-bold ' + themes[currentTheme].text + '">' + subscriptionDetails.currentPlan + '</h4>' +
+          '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ' + statusColor + '">' +
+            '<i class="' + statusIcon + ' text-xs"></i>' +
+            subscriptionDetails.statusLabel +
+          '</span>' +
+        '</div>' +
+      '</div>' +
+      priceSection +
+    '</div>' +
+    '<div class="space-y-3 mb-6">' +
+      '<div class="flex justify-between items-center py-2 border-b ' + themes[currentTheme].border + '">' +
+        '<span class="' + themes[currentTheme].textSecondary + '">Membro desde</span>' +
+        '<span class="font-medium ' + themes[currentTheme].text + '">' + formatDate(subscriptionDetails.memberSince) + '</span>' +
+      '</div>' +
+      startDateSection +
+      expiresSection +
+    '</div>' +
+    '<div class="mb-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">' +
+      '<div class="flex items-center gap-2 mb-2">' +
+        '<i class="fas fa-book-open text-blue-600"></i>' +
+        '<span class="font-semibold text-blue-800 dark:text-blue-200">Planos de Estudo</span>' +
+      '</div>' +
+      '<div class="flex items-center justify-between">' +
+        '<span class="' + themes[currentTheme].textSecondary + '">Utilizados</span>' +
+        '<span class="font-bold ' + themes[currentTheme].text + '">' + planosInfo.total + ' de ' + planosInfo.limite + '</span>' +
+      '</div>' +
+      '<div class="w-full bg-gray-200 rounded-full h-2 mt-2 dark:bg-gray-700">' +
+        '<div class="bg-blue-600 h-2 rounded-full transition-all" style="width: ' + progressWidth + '%"></div>' +
+      '</div>' +
+      '<p class="text-xs ' + themes[currentTheme].textMuted + ' mt-2">' + planosText + '</p>' +
+    '</div>' +
+    paymentHistorySection +
+    upgradeSection +
+    '<div class="mt-6 pt-4 border-t ' + themes[currentTheme].border + ' text-center">' +
+      '<p class="text-xs ' + themes[currentTheme].textMuted + '">Dúvidas sobre sua assinatura? Entre em contato pelo suporte.</p>' +
+    '</div>' +
+  '</div>';
   
   document.body.appendChild(modal);
 };
