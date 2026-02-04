@@ -1009,6 +1009,77 @@ async function sendWelcomeEmail(email: string, name: string, env?: any): Promise
 }
 
 // ============== ROTAS DE USUÁRIOS ==============
+
+// Alias para /api/register (usado pela landing page)
+app.post('/api/register', async (c) => {
+  const { DB } = c.env
+  const body = await c.req.json()
+  
+  const email = body.email?.toLowerCase()?.trim()
+  const password = body.password || body.senha
+  const name = body.name || body.nome || email?.split('@')[0] || 'Usuário'
+  
+  console.log('📝 Registro via landing:', { email, hasPassword: !!password })
+
+  // Validar campos obrigatórios
+  if (!email) {
+    return c.json({ error: 'Email é obrigatório' }, 400)
+  }
+  
+  if (!password || password.length < 4) {
+    return c.json({ error: 'Senha deve ter pelo menos 4 caracteres' }, 400)
+  }
+  
+  // Validar formato do email
+  if (!isValidEmail(email)) {
+    return c.json({ error: 'Email inválido' }, 400)
+  }
+
+  try {
+    // Verificar se email já existe
+    const existingUser = await DB.prepare(
+      'SELECT id, email_verified, password FROM users WHERE email = ?'
+    ).bind(email).first() as {id: number, email_verified: number, password: string} | undefined
+
+    if (existingUser) {
+      // Se usuário existe, tentar fazer login automático
+      if (existingUser.password === password) {
+        // Senha correta - fazer login
+        const user = await DB.prepare(
+          'SELECT id, email, name, created_at FROM users WHERE id = ?'
+        ).bind(existingUser.id).first()
+        
+        return c.json({ 
+          user,
+          message: 'Login realizado com sucesso!',
+          isLogin: true
+        })
+      } else {
+        return c.json({ error: 'Email já cadastrado. Use a opção de login ou recupere sua senha.' }, 400)
+      }
+    }
+
+    // Criar novo usuário
+    const result = await DB.prepare(
+      `INSERT INTO users (name, email, password, email_verified, trial_started_at, trial_expires_at, subscription_status) 
+       VALUES (?, ?, ?, 1, datetime('now'), datetime('now', '+7 days'), 'trial')`
+    ).bind(name, email, password).run()
+
+    // Buscar usuário criado
+    const newUser = await DB.prepare(
+      'SELECT id, email, name, created_at FROM users WHERE id = ?'
+    ).bind(result.meta.last_row_id).first()
+
+    return c.json({ 
+      user: newUser,
+      message: '🎉 Conta criada com sucesso! Bem-vindo ao IAprova!'
+    })
+  } catch (error) {
+    console.error('Erro no registro:', error)
+    return c.json({ error: 'Erro ao criar conta. Tente novamente.' }, 500)
+  }
+})
+
 app.post('/api/users', async (c) => {
   const { DB } = c.env
   const body = await c.req.json()
