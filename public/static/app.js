@@ -1048,6 +1048,19 @@ function createUnifiedFAB() {
           <i class="fas fa-robot text-lg"></i>
         </button>
       </div>
+      
+      <!-- Botão Instalar App -->
+      <div id="fab-install-app" class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
+        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
+          Instalar App
+        </span>
+        <button 
+          onclick="showInstallInstructions(); toggleFabMenu(); event.stopPropagation();"
+          class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          title="Instalar App">
+          <i class="fas fa-download text-lg"></i>
+        </button>
+      </div>
     </div>
     
     <!-- Botão Principal (FAB) -->
@@ -1257,6 +1270,13 @@ function createUnifiedFAB() {
     const adminPanelBtn = document.getElementById('fab-admin-panel');
     if (adminPanelBtn && currentUser?.email === 'terciogomesrabelo@gmail.com') {
       adminPanelBtn.style.display = 'flex';
+    }
+    
+    // Ocultar botão de instalação se já está instalado como PWA
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const installBtn = document.getElementById('fab-install-app');
+    if (installBtn && isStandalone) {
+      installBtn.style.display = 'none';
     }
   }, 100);
 }
@@ -3724,7 +3744,7 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
                         class="px-4 py-2 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg hover:opacity-80 transition-colors border ${themes[currentTheme].border}">
                   Cancelar
                 </button>
-                <button onclick="confirmarDisciplinasRevisao()" 
+                <button id="btnConfirmarDisciplinas" onclick="confirmarDisciplinasRevisao()" 
                         class="px-6 py-2 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all font-semibold flex items-center gap-2">
                   <i class="fas fa-check"></i> Confirmar e Salvar
                 </button>
@@ -3779,7 +3799,7 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
     window.confirmarDisciplinasRevisao = async () => {
       try {
         // Mostrar loading
-        const btnConfirmar = document.querySelector('#modalRevisaoDisciplinas button:last-child');
+        const btnConfirmar = document.getElementById('btnConfirmarDisciplinas');
         if (btnConfirmar) {
           btnConfirmar.disabled = true;
           btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Salvando...';
@@ -3805,7 +3825,7 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
         showModal('Erro ao salvar disciplinas. Tente novamente.', { type: 'error' });
         
         // Restaurar botão
-        const btnConfirmar = document.querySelector('#modalRevisaoDisciplinas button:last-child');
+        const btnConfirmar = document.getElementById('btnConfirmarDisciplinas');
         if (btnConfirmar) {
           btnConfirmar.disabled = false;
           btnConfirmar.innerHTML = '<i class="fas fa-check"></i> Confirmar e Salvar';
