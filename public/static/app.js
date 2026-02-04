@@ -1852,55 +1852,117 @@ function renderLandingPage() {
       
       <!-- Hero Section -->
       <section class="pt-24 pb-16 px-4 min-h-[90vh] flex items-center">
-        <div class="max-w-7xl mx-auto text-center">
-          <div class="mb-8">
-            <span class="inline-block px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-blue-200 text-sm font-medium mb-6">
-              🎯 +10.000 candidatos já aprovados
-            </span>
-          </div>
-          
-          <h1 class="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
-            Sua aprovação em<br>
-            <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-emerald-300">
-              concursos públicos
-            </span><br>
-            começa aqui
-          </h1>
-          
-          <p class="text-xl text-blue-200 mb-8 max-w-2xl mx-auto">
-            Inteligência Artificial que entende seu edital, cria seu plano de estudos personalizado 
-            e gera conteúdo no estilo da sua banca. <strong>Estude de forma inteligente, não difícil.</strong>
-          </p>
-          
-          <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <button onclick="goToLogin()" 
-              class="px-8 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-lg font-bold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all transform hover:scale-105 shadow-lg shadow-emerald-500/30">
-              <i class="fas fa-rocket mr-2"></i>Começar Gratuitamente
-            </button>
-            <button onclick="scrollToSection('features')" 
-              class="px-8 py-4 bg-white/10 backdrop-blur-sm text-white text-lg font-semibold rounded-xl hover:bg-white/20 transition-all border border-white/20">
-              <i class="fas fa-play-circle mr-2"></i>Ver como funciona
-            </button>
-          </div>
-          
-          <!-- Trust badges -->
-          <div class="flex flex-wrap justify-center gap-6 text-blue-200/70 text-sm">
-            <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> Sem cartão de crédito</span>
-            <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> Acesso imediato</span>
-            <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> Cancele quando quiser</span>
-          </div>
-          
-          <!-- PWA Install Button -->
-          <div class="mt-8">
-            <button onclick="showManualInstallInstructions ? showManualInstallInstructions() : goToLogin()" 
-              class="inline-flex items-center gap-2 px-6 py-3 bg-white/5 backdrop-blur-sm text-blue-200 rounded-xl hover:bg-white/10 transition border border-white/10">
-              <i class="fas fa-mobile-alt"></i>
-              <span>Instalar como App</span>
-              <i class="fas fa-download text-xs opacity-70"></i>
-            </button>
+        <div class="max-w-7xl mx-auto w-full">
+          <div class="grid lg:grid-cols-2 gap-12 items-center">
+            
+            <!-- Lado esquerdo - Conteúdo -->
+            <div class="text-center lg:text-left">
+              <div class="mb-6">
+                <span class="inline-block px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-blue-200 text-sm font-medium">
+                  🎯 +10.000 candidatos já aprovados
+                </span>
+              </div>
+              
+              <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+                Sua aprovação em<br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-emerald-300">
+                  concursos públicos
+                </span><br>
+                começa aqui
+              </h1>
+              
+              <p class="text-lg text-blue-200 mb-8 max-w-xl">
+                Inteligência Artificial que entende seu edital, cria seu plano de estudos personalizado 
+                e gera conteúdo no estilo da sua banca. <strong>Estude de forma inteligente, não difícil.</strong>
+              </p>
+              
+              <!-- Trust badges -->
+              <div class="flex flex-wrap justify-center lg:justify-start gap-4 text-blue-200/70 text-sm mb-6">
+                <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> 7 dias grátis</span>
+                <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> Sem cartão</span>
+                <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> Cancele quando quiser</span>
+              </div>
+              
+              <button onclick="scrollToSection('features')" 
+                class="px-6 py-3 bg-white/10 backdrop-blur-sm text-white font-semibold rounded-xl hover:bg-white/20 transition-all border border-white/20">
+                <i class="fas fa-play-circle mr-2"></i>Ver como funciona
+              </button>
+            </div>
+            
+            <!-- Lado direito - Formulário de Cadastro -->
+            <div class="w-full max-w-md mx-auto lg:ml-auto">
+              <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl">
+                <div class="text-center mb-6">
+                  <div class="w-16 h-16 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-brain text-white text-2xl"></i>
+                  </div>
+                  <h2 class="text-xl font-bold text-white mb-1">Comece sua jornada</h2>
+                  <p class="text-blue-200 text-sm">7 dias grátis para testar todas as funcionalidades</p>
+                </div>
+                
+                <form id="landing-signup-form" onsubmit="handleLandingSignup(event)" class="space-y-4">
+                  <div>
+                    <input type="email" id="landing-email" 
+                      class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200/60 focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 transition"
+                      placeholder="Seu email"
+                      required
+                      oninput="this.value = this.value.toLowerCase()">
+                  </div>
+                  <div class="relative">
+                    <input type="password" id="landing-password" 
+                      class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200/60 focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 transition pr-10"
+                      placeholder="Crie uma senha"
+                      minlength="4"
+                      required>
+                    <button type="button" onclick="toggleLandingPassword()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-200/60 hover:text-white transition">
+                      <i id="landing-password-icon" class="fas fa-eye"></i>
+                    </button>
+                  </div>
+                  
+                  <button type="submit" 
+                    class="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-lg font-bold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all transform hover:scale-[1.02] shadow-lg shadow-emerald-500/30">
+                    <i class="fas fa-rocket mr-2"></i>Começar Grátis
+                  </button>
+                </form>
+                
+                <div class="mt-4">
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="flex-1 h-px bg-white/20"></div>
+                    <span class="text-blue-200/60 text-sm">ou</span>
+                    <div class="flex-1 h-px bg-white/20"></div>
+                  </div>
+                  
+                  <button onclick="loginComGoogle()" 
+                    class="w-full py-3 bg-white text-gray-700 font-semibold rounded-xl hover:bg-gray-100 transition flex items-center justify-center gap-3">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Continuar com Google
+                  </button>
+                </div>
+                
+                <p class="text-center text-blue-200/60 text-sm mt-4">
+                  Já tem conta? 
+                  <button onclick="goToLogin()" class="text-white hover:underline font-semibold">Entrar</button>
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
+      
+      <!-- PWA Install Button - Flutuante no mobile -->
+      <div class="fixed bottom-4 left-4 right-4 lg:hidden z-40">
+        <button onclick="showManualInstallInstructions ? showManualInstallInstructions() : null" 
+          class="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#122D6A]/90 backdrop-blur-sm text-white rounded-xl border border-white/10 shadow-lg">
+          <i class="fas fa-mobile-alt"></i>
+          <span>Instalar como App</span>
+          <i class="fas fa-download text-xs opacity-70"></i>
+        </button>
+      </div>
       
       <!-- Features Section -->
       <section id="features" class="py-20 px-4 bg-white">
@@ -2222,6 +2284,121 @@ window.scrollToSection = function(sectionId) {
   const section = document.getElementById(sectionId);
   if (section) {
     section.scrollIntoView({ behavior: 'smooth' });
+  }
+};
+
+// Toggle de senha na landing page
+window.toggleLandingPassword = function() {
+  const input = document.getElementById('landing-password');
+  const icon = document.getElementById('landing-password-icon');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.className = 'fas fa-eye-slash';
+  } else {
+    input.type = 'password';
+    icon.className = 'fas fa-eye';
+  }
+};
+
+// Handler de cadastro na landing page
+window.handleLandingSignup = async function(event) {
+  event.preventDefault();
+  
+  const email = document.getElementById('landing-email').value.trim().toLowerCase();
+  const password = document.getElementById('landing-password').value;
+  
+  // Validar email
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    showToast('Email inválido. Use um formato válido como nome@exemplo.com', 'error');
+    return;
+  }
+  
+  // Validar senha
+  if (password.length < 4) {
+    showToast('A senha deve ter pelo menos 4 caracteres', 'error');
+    return;
+  }
+  
+  // Desabilitar botão e mostrar loading
+  const btn = event.target.querySelector('button[type="submit"]');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Criando conta...';
+  
+  try {
+    // Tentar cadastrar
+    const response = await axios.post('/api/register', { email, password });
+    
+    if (response.data && response.data.user) {
+      const user = response.data.user;
+      
+      // Salvar dados da sessão
+      localStorage.setItem('userId', user.id);
+      localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('userName', user.name || '');
+      localStorage.setItem('userCreatedAt', user.created_at || '');
+      localStorage.setItem('authProvider', 'email');
+      
+      currentUser = {
+        id: user.id,
+        email: user.email,
+        name: user.name || '',
+        created_at: user.created_at,
+        authProvider: 'email'
+      };
+      
+      showToast('🎉 Conta criada com sucesso! Bem-vindo ao IAprova!', 'success');
+      
+      // Ir para verificação/entrevista
+      contabilizarAcesso();
+      verificarEntrevista();
+    }
+  } catch (error) {
+    console.error('Erro no cadastro:', error);
+    
+    // Se o email já existe, tentar fazer login
+    if (error.response?.data?.message?.includes('cadastrado') || 
+        error.response?.data?.error?.includes('cadastrado')) {
+      try {
+        const loginResponse = await axios.post('/api/login', { email, password });
+        
+        if (loginResponse.data && loginResponse.data.user) {
+          const user = loginResponse.data.user;
+          
+          localStorage.setItem('userId', user.id);
+          localStorage.setItem('userEmail', user.email);
+          localStorage.setItem('userName', user.name || '');
+          localStorage.setItem('userCreatedAt', user.created_at || '');
+          localStorage.setItem('authProvider', 'email');
+          
+          currentUser = {
+            id: user.id,
+            email: user.email,
+            name: user.name || '',
+            created_at: user.created_at,
+            authProvider: 'email'
+          };
+          
+          showToast('Login realizado com sucesso!', 'success');
+          contabilizarAcesso();
+          verificarEntrevista();
+          return;
+        }
+      } catch (loginError) {
+        // Se falhou no login também, mostrar erro específico
+        if (loginError.response?.data?.message?.includes('Senha incorreta')) {
+          showToast('Email já cadastrado. Senha incorreta.', 'error');
+        } else {
+          showToast('Email já cadastrado. Use a opção "Entrar".', 'error');
+        }
+      }
+    } else {
+      showToast(error.response?.data?.message || 'Erro ao criar conta. Tente novamente.', 'error');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
   }
 };
 
