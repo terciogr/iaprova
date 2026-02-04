@@ -2532,7 +2532,114 @@ async function iniciarEntrevista() {
     disciplinas_do_edital: [] // Novo campo
   };
   
-  renderEntrevistaStep1();
+  // Verificar se é primeiro acesso (novo usuário)
+  const primeiroAcesso = localStorage.getItem('primeiro_acesso_' + currentUser.id);
+  if (!primeiroAcesso) {
+    // Marcar que já viu boas-vindas
+    localStorage.setItem('primeiro_acesso_' + currentUser.id, 'true');
+    renderBoasVindas();
+  } else {
+    renderEntrevistaStep1();
+  }
+}
+
+// ============== TELA DE BOAS-VINDAS PARA NOVOS USUÁRIOS ==============
+function renderBoasVindas() {
+  const userName = currentUser.name || currentUser.email?.split('@')[0] || 'Estudante';
+  const firstName = userName.split(' ')[0];
+  
+  document.getElementById('app').innerHTML = `
+    <div class="min-h-screen bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F] flex items-center justify-center p-4">
+      <div class="max-w-lg w-full">
+        
+        <!-- Card Principal -->
+        <div class="bg-white rounded-3xl shadow-2xl overflow-hidden">
+          
+          <!-- Header com animação -->
+          <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] p-6 text-center">
+            <div class="w-20 h-20 mx-auto bg-white/20 rounded-2xl flex items-center justify-center mb-4 animate-bounce">
+              <i class="fas fa-brain text-4xl text-white"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-white mb-2">
+              Olá, ${firstName}! 👋
+            </h1>
+            <p class="text-blue-200 text-sm">
+              Bem-vindo ao IAprova
+            </p>
+          </div>
+          
+          <!-- Conteúdo -->
+          <div class="p-6">
+            
+            <h2 class="text-lg font-semibold text-gray-800 text-center mb-4">
+              Vamos criar seu plano de estudos em <span class="text-[#122D6A]">3 passos simples</span>:
+            </h2>
+            
+            <!-- Passos -->
+            <div class="space-y-3 mb-6">
+              
+              <div class="flex items-center gap-4 p-3 bg-blue-50 rounded-xl">
+                <div class="w-10 h-10 bg-[#122D6A] rounded-full flex items-center justify-center flex-shrink-0">
+                  <span class="text-white font-bold">1</span>
+                </div>
+                <div>
+                  <p class="font-medium text-gray-800">Escolha seu objetivo</p>
+                  <p class="text-xs text-gray-500">Concurso específico ou área geral</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center gap-4 p-3 bg-blue-50 rounded-xl">
+                <div class="w-10 h-10 bg-[#122D6A] rounded-full flex items-center justify-center flex-shrink-0">
+                  <span class="text-white font-bold">2</span>
+                </div>
+                <div>
+                  <p class="font-medium text-gray-800">Conte sobre você</p>
+                  <p class="text-xs text-gray-500">Tempo disponível e experiência</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center gap-4 p-3 bg-blue-50 rounded-xl">
+                <div class="w-10 h-10 bg-[#122D6A] rounded-full flex items-center justify-center flex-shrink-0">
+                  <span class="text-white font-bold">3</span>
+                </div>
+                <div>
+                  <p class="font-medium text-gray-800">Pronto!</p>
+                  <p class="text-xs text-gray-500">A IA cria seu plano personalizado</p>
+                </div>
+              </div>
+              
+            </div>
+            
+            <!-- Info Trial -->
+            <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 mb-6">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <i class="fas fa-gift text-white"></i>
+                </div>
+                <div>
+                  <p class="font-medium text-emerald-800">🎉 7 dias grátis para testar!</p>
+                  <p class="text-xs text-emerald-600">Acesso completo a todas as funcionalidades</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Botão -->
+            <button onclick="renderEntrevistaStep1()" 
+              class="w-full bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white py-4 rounded-xl font-bold text-lg hover:from-[#0D1F4D] hover:to-[#1A3A7F] transition-all transform hover:scale-[1.02] shadow-lg">
+              <i class="fas fa-rocket mr-2"></i>
+              Começar Agora
+            </button>
+            
+            <p class="text-center text-xs text-gray-400 mt-4">
+              Leva menos de 2 minutos ⚡
+            </p>
+            
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  `;
 }
 
 function renderEntrevistaStep1() {
