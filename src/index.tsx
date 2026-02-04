@@ -2346,7 +2346,7 @@ app.get('/api/auth/google/callback', async (c) => {
       console.log(`✅ Novo usuário ${user.id} criado via Google OAuth`)
     }
     
-    // Redirecionar com dados do usuário
+    // Redirecionar com dados do usuário para /home
     const userData = encodeURIComponent(JSON.stringify({
       id: user.id,
       name: user.name || googleUser.name,
@@ -2355,7 +2355,8 @@ app.get('/api/auth/google/callback', async (c) => {
       authProvider: 'google'
     }))
     
-    return c.redirect(`${APP_URL}?googleAuth=success&user=${userData}`)
+    // ✅ CORREÇÃO: Redirecionar para /home para garantir que checkUser processe corretamente
+    return c.redirect(`${APP_URL}/home?googleAuth=success&user=${userData}`)
     
   } catch (error) {
     console.error('Erro no callback Google:', error)

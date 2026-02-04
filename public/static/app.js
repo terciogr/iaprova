@@ -1336,14 +1336,13 @@ function checkUser() {
   const error = urlParams.get('error');
   const viewParam = urlParams.get('view');
   
-  // Limpar parâmetros da URL (exceto view)
-  if (googleAuth || error) {
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
+  console.log('🔍 checkUser - Parâmetros:', { googleAuth, userData: userData ? 'presente' : 'ausente', error, viewParam });
   
   // Tratar erro do Google
   if (error) {
     console.error('❌ Erro no login Google:', error);
+    // Limpar parâmetros da URL
+    window.history.replaceState({}, document.title, window.location.pathname);
     showToast('Erro ao fazer login com Google. Tente novamente.', 'error');
     renderLogin();
     return;
@@ -1364,20 +1363,33 @@ function checkUser() {
       };
       
       // Salvar dados da sessão
-      localStorage.setItem('userId', user.id);
+      localStorage.setItem('userId', String(user.id));
       localStorage.setItem('userEmail', user.email);
       localStorage.setItem('userName', user.name || '');
       localStorage.setItem('userPicture', user.picture || '');
       localStorage.setItem('authProvider', 'google');
       
-      showToast('Login com Google realizado com sucesso!', 'success');
+      // Limpar parâmetros da URL DEPOIS de processar
+      window.history.replaceState({}, document.title, '/home');
       
-      // Verificar entrevista (acesso será contabilizado apenas se tiver plano)
+      showToast('🎉 Login com Google realizado com sucesso!', 'success');
+      
+      // Verificar entrevista e ir para dashboard/entrevista
+      console.log('🚀 Redirecionando após login Google...');
       verificarEntrevista();
       return;
     } catch (e) {
       console.error('Erro ao processar dados do Google:', e);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      showToast('Erro ao processar login do Google', 'error');
+      renderLogin();
+      return;
     }
+  }
+  
+  // Limpar parâmetros restantes da URL se houver
+  if (googleAuth || error) {
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
   
   const userId = localStorage.getItem('userId');
