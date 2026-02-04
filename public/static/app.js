@@ -5442,10 +5442,13 @@ async function verificarEntrevista() {
       return;
     }
     
-    // Se está no trial, mostrar banner informativo
-    if (subscription.status === 'trial' && subscription.daysRemaining <= 3) {
+    // Se está no trial, salvar info para mostrar banner no dashboard
+    if (subscription.status === 'trial') {
       // Salvar info do trial para mostrar banner no dashboard
       window.trialInfo = subscription;
+    } else {
+      // Limpar info se não está mais em trial
+      window.trialInfo = null;
     }
     
     // Criar FAB após login bem-sucedido (apenas quando usuário está autenticado)
@@ -5841,8 +5844,34 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
     }
   }
 
+  // ✅ NOVO: Verificar trial/assinatura para banner discreto
+  let trialBanner = '';
+  if (window.trialInfo && window.trialInfo.status === 'trial') {
+    const diasRestantes = window.trialInfo.daysRemaining;
+    const corFundo = diasRestantes <= 1 ? 'from-red-500 to-red-600' : 
+                     diasRestantes <= 3 ? 'from-amber-500 to-orange-500' : 
+                     'from-blue-500 to-blue-600';
+    const textoUrgencia = diasRestantes <= 1 ? '⚠️ Último dia!' : 
+                          diasRestantes <= 3 ? '⏰ Expirando em breve!' : 
+                          '🎁 Período de teste';
+    
+    trialBanner = `
+      <div class="bg-gradient-to-r ${corFundo} text-white px-4 py-2 text-center text-sm">
+        <div class="max-w-7xl mx-auto flex items-center justify-center gap-2 flex-wrap">
+          <span>${textoUrgencia}</span>
+          <span class="font-bold">${diasRestantes} ${diasRestantes === 1 ? 'dia restante' : 'dias restantes'}</span>
+          <span class="hidden sm:inline">•</span>
+          <button onclick="abrirMinhaAssinatura()" class="underline hover:no-underline font-medium">
+            Assinar agora <i class="fas fa-arrow-right ml-1 text-xs"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
   document.getElementById('app').innerHTML = `
     <div class="min-h-screen ${themes[currentTheme].bg}">
+      ${trialBanner}
       <!-- HEADER AZUL CONSISTENTE -->
       <header class="sticky top-0 z-50 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white shadow-lg">
         <!-- Barra Principal -->
@@ -7013,56 +7042,59 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                   ` : `
                     <div class="space-y-2 max-h-96 overflow-y-auto">
                       ${disc.topicos.map((topico, index) => `
-                        <div class="flex items-center gap-3 p-3 rounded-lg border ${topico.vezes_estudado > 0 ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'} hover:shadow-sm transition"
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border ${topico.vezes_estudado > 0 ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-700' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'} hover:shadow-sm transition"
                              data-topico-nome="${(topico.nome || '').replace(/"/g, '&quot;')}">
-                          <!-- Checkbox de revisão -->
-                          <button onclick="event.stopPropagation(); toggleRevisaoTopico(${topico.id}, ${topico.vezes_estudado > 0 ? 'false' : 'true'}, ${disc.disciplina_id})"
-                                  class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition flex-shrink-0
-                                         ${topico.vezes_estudado > 0 ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'}">
-                            ${topico.vezes_estudado > 0 ? '<i class="fas fa-check text-xs"></i>' : ''}
-                          </button>
-                          
-                          <!-- Info do tópico -->
-                          <div class="flex-1 min-w-0">
-                            <p class="${themes[currentTheme].text} truncate font-medium">
-                              ${index + 1}. ${topico.nome}
-                            </p>
-                            <div class="flex items-center gap-3 mt-0.5 flex-wrap">
-                              ${topico.peso ? `<span class="text-xs text-gray-500">Peso: ${topico.peso}</span>` : ''}
-                              ${topico.vezes_estudado > 0 ? `
-                                <span class="text-xs text-[#2A4A9F] font-medium">
-                                  <i class="fas fa-redo mr-1"></i>${topico.vezes_estudado}x revisado
-                                </span>
-                              ` : `
-                                <span class="text-xs text-gray-400">
-                                  <i class="fas fa-clock mr-1"></i>Não revisado
-                                </span>
-                              `}
-                              ${topico.ultima_vez ? `
-                                <span class="text-xs text-gray-500">
-                                  Última: ${new Date(topico.ultima_vez).toLocaleDateString('pt-BR')}
-                                </span>
-                              ` : ''}
+                          <!-- Linha principal: Checkbox + Nome -->
+                          <div class="flex items-center gap-3 flex-1 min-w-0">
+                            <!-- Checkbox de revisão -->
+                            <button onclick="event.stopPropagation(); toggleRevisaoTopico(${topico.id}, ${topico.vezes_estudado > 0 ? 'false' : 'true'}, ${disc.disciplina_id})"
+                                    class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition flex-shrink-0
+                                           ${topico.vezes_estudado > 0 ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'}">
+                              ${topico.vezes_estudado > 0 ? '<i class="fas fa-check text-xs"></i>' : ''}
+                            </button>
+                            
+                            <!-- Info do tópico -->
+                            <div class="flex-1 min-w-0">
+                              <p class="${themes[currentTheme].text} truncate font-medium text-sm">
+                                ${index + 1}. ${topico.nome}
+                              </p>
+                              <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                                ${topico.peso ? `<span class="text-xs text-gray-500">Peso: ${topico.peso}</span>` : ''}
+                                ${topico.vezes_estudado > 0 ? `
+                                  <span class="text-xs text-[#2A4A9F] font-medium">
+                                    <i class="fas fa-redo mr-1"></i>${topico.vezes_estudado}x
+                                  </span>
+                                ` : `
+                                  <span class="text-xs text-gray-400">
+                                    <i class="fas fa-clock mr-1"></i>Novo
+                                  </span>
+                                `}
+                                ${topico.ultima_vez ? `
+                                  <span class="text-xs text-gray-500 hidden sm:inline">
+                                    ${new Date(topico.ultima_vez).toLocaleDateString('pt-BR')}
+                                  </span>
+                                ` : ''}
                             </div>
                           </div>
+                          </div>
                           
-                          <!-- Botões de ação -->
-                          <div class="flex items-center gap-1 flex-shrink-0">
+                          <!-- Botões de ação - RESPONSIVOS -->
+                          <div class="flex items-center justify-end gap-1 sm:gap-1 flex-shrink-0 mt-2 sm:mt-0 pl-9 sm:pl-0">
                             <button onclick="event.stopPropagation(); verMateriaisTopico(${topico.id}, '${(topico.nome || '').replace(/'/g, "\\'")}', '${disc.nome.replace(/'/g, "\\'")}')"
-                                    class="p-2 text-[#2A4A9F] hover:bg-[#2A4A9F]/10 rounded-lg transition" title="Ver materiais salvos">
-                              <i class="fas fa-folder-open text-sm"></i>
+                                    class="p-1.5 sm:p-2 text-[#2A4A9F] hover:bg-[#2A4A9F]/10 rounded-lg transition" title="Ver materiais salvos">
+                              <i class="fas fa-folder-open text-xs sm:text-sm"></i>
                             </button>
                             <button onclick="event.stopPropagation(); gerarConteudoTopico(${topico.id}, '${(topico.nome || '').replace(/'/g, "\\'")}', '${disc.nome.replace(/'/g, "\\'")}')"
-                                    class="p-2 text-[#122D6A] hover:bg-[#6BB6FF]/10 rounded-lg transition" title="Gerar conteúdo com IA">
-                              <i class="fas fa-magic text-sm"></i>
+                                    class="p-1.5 sm:p-2 text-[#122D6A] hover:bg-[#6BB6FF]/10 rounded-lg transition" title="Gerar conteúdo com IA">
+                              <i class="fas fa-magic text-xs sm:text-sm"></i>
                             </button>
                             <button onclick="event.stopPropagation(); editarTopicoGestao(${topico.id}, '${(topico.nome || '').replace(/'/g, "\\'")}', ${topico.peso || 1})"
-                                    class="p-2 text-blue-500 hover:bg-[#122D6A]/10 rounded-lg transition" title="Editar">
-                              <i class="fas fa-edit text-sm"></i>
+                                    class="p-1.5 sm:p-2 text-blue-500 hover:bg-[#122D6A]/10 rounded-lg transition" title="Editar">
+                              <i class="fas fa-edit text-xs sm:text-sm"></i>
                             </button>
                             <button onclick="event.stopPropagation(); excluirTopicoGestao(${topico.id}, ${disc.disciplina_id})"
-                                    class="p-2 text-red-500 hover:bg-red-100 rounded-lg transition" title="Excluir">
-                              <i class="fas fa-trash text-sm"></i>
+                                    class="p-1.5 sm:p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition" title="Excluir">
+                              <i class="fas fa-trash text-xs sm:text-sm"></i>
                             </button>
                           </div>
                         </div>

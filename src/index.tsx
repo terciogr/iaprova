@@ -1742,14 +1742,26 @@ app.post('/api/mercadopago/create-preference', async (c) => {
     // Criar preferência no Mercado Pago
     const preference = {
       items: [{
+        id: plan,
         title: selectedPlan.title,
+        description: `Assinatura ${plan === 'anual' ? 'Anual' : 'Mensal'} do IAprova - Preparação Inteligente para Concursos`,
         quantity: 1,
         unit_price: selectedPlan.price,
         currency_id: 'BRL'
       }],
       payer: {
         email: user.email,
-        name: user.name
+        name: user.name || 'Usuário IAprova'
+      },
+      // ✅ Habilitar todos os métodos de pagamento
+      payment_methods: {
+        // Excluir apenas métodos que não queremos
+        excluded_payment_types: [],
+        excluded_payment_methods: [],
+        // Parcelas: até 12x para plano anual, até 3x para mensal
+        installments: plan === 'anual' ? 12 : 3,
+        // Valor mínimo parcela
+        default_installments: 1
       },
       back_urls: {
         success: `${APP_URL || 'https://iaprova.app'}/pagamento/sucesso`,
@@ -1760,6 +1772,8 @@ app.post('/api/mercadopago/create-preference', async (c) => {
       external_reference: JSON.stringify({ user_id, plan, days: selectedPlan.days }),
       notification_url: `${APP_URL || 'https://iaprova.app'}/api/webhook/mercadopago`,
       statement_descriptor: 'IAPROVA',
+      // Habilitar binário mode para processar pagamento sem pendências
+      binary_mode: false,
       expires: true,
       expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24h
     }
