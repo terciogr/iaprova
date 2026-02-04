@@ -560,6 +560,131 @@ function hexToRgb(hex) {
   } : { r: 139, g: 92, b: 246 }; // fallback purple
 }
 
+// ============== PWA INSTALL PROMPT ==============
+// Capturar evento de instalação do PWA para uso posterior
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevenir o mini-infobar padrão do Chrome
+  e.preventDefault();
+  // Guardar o evento para usar depois
+  deferredPrompt = e;
+  window.deferredPrompt = e;
+  console.log('✅ PWA Install prompt capturado e pronto para uso');
+  
+  // Mostrar indicador no botão de instalação se existir
+  const installBtn = document.getElementById('fab-install-app');
+  if (installBtn) {
+    installBtn.style.display = 'flex';
+  }
+});
+
+// Função para mostrar o prompt de instalação nativo
+window.showPWAInstallPrompt = async function() {
+  if (!deferredPrompt) {
+    console.log('⚠️ Prompt de instalação não disponível');
+    // Mostrar instruções manuais como fallback
+    showManualInstallInstructions();
+    return false;
+  }
+  
+  try {
+    // Mostrar o prompt de instalação nativo
+    deferredPrompt.prompt();
+    
+    // Aguardar a escolha do usuário
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`📱 Usuário escolheu: ${outcome}`);
+    
+    if (outcome === 'accepted') {
+      showToast('🎉 IAprova está sendo instalado!', 'success');
+    } else {
+      showToast('Você pode instalar o app a qualquer momento pelo menu', 'info');
+    }
+    
+    // Limpar o prompt (só pode ser usado uma vez)
+    deferredPrompt = null;
+    window.deferredPrompt = null;
+    
+    return outcome === 'accepted';
+  } catch (error) {
+    console.error('Erro ao mostrar prompt de instalação:', error);
+    showManualInstallInstructions();
+    return false;
+  }
+};
+
+// Detectar quando o app foi instalado
+window.addEventListener('appinstalled', () => {
+  console.log('🎉 IAprova foi instalado com sucesso!');
+  showToast('✅ IAprova instalado com sucesso! Acesse pela tela inicial.', 'success');
+  deferredPrompt = null;
+  window.deferredPrompt = null;
+  
+  // Ocultar botão de instalação
+  const installBtn = document.getElementById('fab-install-app');
+  if (installBtn) {
+    installBtn.style.display = 'none';
+  }
+});
+
+// Função para mostrar instruções manuais (fallback)
+function showManualInstallInstructions() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  
+  if (isStandalone) {
+    showToast('✅ O IAprova já está instalado como app!', 'success');
+    return;
+  }
+  
+  let title = 'Instalar IAprova';
+  let instructions = '';
+  
+  if (isIOS) {
+    instructions = `
+      <div class="text-left space-y-3">
+        <p class="text-gray-600 text-sm">No Safari do iPhone/iPad:</p>
+        <ol class="list-decimal list-inside space-y-2 text-sm">
+          <li>Toque em <strong>Compartilhar</strong> <i class="fas fa-share-square text-blue-500"></i></li>
+          <li>Role e toque em <strong>"Adicionar à Tela de Início"</strong></li>
+          <li>Toque em <strong>"Adicionar"</strong></li>
+        </ol>
+        <p class="text-amber-600 text-xs mt-2">
+          <i class="fas fa-info-circle mr-1"></i>Use o Safari para instalar
+        </p>
+      </div>
+    `;
+  } else if (isAndroid) {
+    instructions = `
+      <div class="text-left space-y-3">
+        <p class="text-gray-600 text-sm">No Chrome do Android:</p>
+        <ol class="list-decimal list-inside space-y-2 text-sm">
+          <li>Toque no menu <strong>⋮</strong> (3 pontos)</li>
+          <li>Toque em <strong>"Instalar app"</strong> ou <strong>"Adicionar à tela inicial"</strong></li>
+          <li>Confirme tocando em <strong>"Instalar"</strong></li>
+        </ol>
+      </div>
+    `;
+  } else {
+    instructions = `
+      <div class="text-left space-y-3">
+        <p class="text-gray-600 text-sm">No seu navegador:</p>
+        <ol class="list-decimal list-inside space-y-2 text-sm">
+          <li>Procure o ícone de instalação <i class="fas fa-download text-blue-500"></i> na barra de endereços</li>
+          <li>Ou acesse o menu do navegador e procure "Instalar app"</li>
+          <li>Confirme a instalação</li>
+        </ol>
+      </div>
+    `;
+  }
+  
+  showModal(instructions, { title, type: 'info' });
+}
+
+window.showManualInstallInstructions = showManualInstallInstructions;
+
 // Inicializar aplicação
 document.addEventListener('DOMContentLoaded', () => {
   // Se tema RGB ou custom, resetar para light
