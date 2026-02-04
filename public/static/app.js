@@ -1469,17 +1469,8 @@ async function resendVerificationEmail(email) {
     
     const response = await axios.post('/api/resend-verification', { email });
     
-    // Se tem token (modo dev ou email não pôde ser enviado)
-    if (response.data.devToken) {
-      const verificationUrl = response.data.verificationUrl || 
-        (window.location.origin + '/verificar-email?token=' + response.data.devToken);
-      
-      console.log('🔗 Token de verificação:', response.data.devToken);
-      console.log('🔗 URL de verificação:', verificationUrl);
-      
-      // Mostrar tela com link de verificação
-      document.getElementById('app').innerHTML = createVerificationLinkScreen(email, verificationUrl, response.data.message);
-    } else if (response.data.alreadyVerified) {
+    // Email já verificado
+    if (response.data.alreadyVerified) {
       showModal('Seu email já foi verificado! Você pode fazer login agora.', { 
         type: 'success',
         title: 'Email Verificado'
@@ -1620,73 +1611,12 @@ function showForgotPassword() {
       
       const response = await axios.post('/api/forgot-password', { email });
       
-      // SEMPRE mostrar link quando houver devToken (independente se email foi enviado ou não)
-      if (response.data.devToken) {
-        console.log('🔐 Token de reset:', response.data.devToken);
-        const resetUrl = response.data.resetUrl || `${window.location.origin}/resetar-senha?token=${response.data.devToken}`;
-        
-        // Mostrar tela com link de reset
-        document.getElementById('app').innerHTML = `
-          <div class="min-h-screen flex items-center justify-center bg-gradient-to-br ${c('primary').gradient}">
-            <div class="${themes[currentTheme].card} p-8 rounded-lg shadow-2xl w-full max-w-md">
-              <div class="text-center mb-6">
-                <div class="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
-                  <i class="fas fa-key text-4xl text-red-600"></i>
-                </div>
-                <h2 class="text-2xl font-bold ${themes[currentTheme].text}">Redefinir Senha</h2>
-                <p class="text-sm text-gray-500 mt-2">${email}</p>
-              </div>
-              
-              <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <p class="text-sm text-amber-800 mb-2">
-                  <i class="fas fa-info-circle mr-2"></i>
-                  <strong>Serviço de Email em Teste</strong>
-                </p>
-                <p class="text-xs text-amber-700">
-                  ${response.data.message || 'Use o link abaixo para redefinir sua senha.'}
-                </p>
-              </div>
-              
-              <div class="bg-gray-100 p-4 rounded-lg mb-4">
-                <label class="block text-xs font-medium text-gray-600 mb-2">
-                  <i class="fas fa-link mr-1"></i>
-                  Clique no botão ou copie o link:
-                </label>
-                <div class="flex gap-2 mb-3">
-                  <input type="text" 
-                    value="${resetUrl}"
-                    class="flex-1 p-2 text-xs border rounded bg-white font-mono"
-                    onclick="this.select()"
-                    readonly>
-                  <button onclick="navigator.clipboard.writeText('${resetUrl}'); showToast('Link copiado!', 'success')"
-                    class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700">
-                    <i class="fas fa-copy"></i>
-                  </button>
-                </div>
-              </div>
-              
-              <a href="${resetUrl}" 
-                class="block w-full bg-gradient-to-r from-red-600 to-red-700 text-white text-center py-4 rounded-lg font-bold text-lg hover:from-red-700 hover:to-red-800 transition shadow-lg mb-4">
-                <i class="fas fa-key mr-2"></i>
-                Redefinir Minha Senha
-              </a>
-              
-              <button onclick="renderLogin()" 
-                class="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition">
-                <i class="fas fa-arrow-left mr-2"></i>
-                Voltar ao Login
-              </button>
-            </div>
-          </div>
-        `;
-      } else {
-        // Produção - email enviado de verdade
-        showModal(response.data.message || 'Se o email estiver cadastrado, você receberá instruções de recuperação.', {
-          type: 'success',
-          title: 'Email Enviado!'
-        });
-        setTimeout(() => renderLogin(), 3000);
-      }
+      // Email enviado com sucesso - mostrar mensagem de confirmação
+      showModal(response.data.message || 'Se o email estiver cadastrado, você receberá instruções de recuperação em breve.', {
+        type: 'success',
+        title: 'Email Enviado!'
+      });
+      setTimeout(() => renderLogin(), 3000);
     } catch (error) {
       console.error('Erro ao enviar email:', error);
       const errorData = error.response?.data;
@@ -1839,7 +1769,7 @@ function renderLandingPage() {
             <div class="text-center lg:text-left">
               <div class="mb-6">
                 <span class="inline-block px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-blue-200 text-sm font-medium">
-                  🎯 +10.000 candidatos já aprovados
+                  🎯 Preparação inteligente com IA
                 </span>
               </div>
               
@@ -2251,12 +2181,12 @@ function renderLandingPage() {
 
 // Função para ir para o login (a partir da landing page)
 window.goToLogin = function() {
-  renderLogin();
+  window.location.href = '/login';
 };
 
 // Função para voltar à landing page (a partir da tela de login)
 window.goToLanding = function() {
-  renderLandingPage();
+  window.location.href = '/home';
 };
 
 // Função para scroll suave
@@ -2559,25 +2489,8 @@ function renderLogin() {
             // Se precisa verificação de email
             if (response.data.needsVerification) {
               console.log('📧 Verificação necessária:', response.data);
-              
-              // SEMPRE mostrar link quando houver token (para permitir verificação manual)
-              if (response.data.devToken) {
-                const verificationUrl = response.data.verificationUrl || 
-                  `${window.location.origin}/verificar-email?token=${response.data.devToken}`;
-                
-                console.log('🔗 URL de verificação:', verificationUrl);
-                
-                // Mostrar tela com link de verificação
-                document.getElementById('app').innerHTML = createVerificationLinkScreen(
-                  email, 
-                  verificationUrl, 
-                  response.data.message
-                );
-                return;
-              }
-              
-              // Fallback: mostrar tela de verificação padrão
-              renderEmailVerification(email, response.data.message);
+              // Mostrar tela de verificação padrão (email será enviado automaticamente)
+              renderEmailVerification(email, response.data.message || 'Verifique seu email para continuar.');
             } else {
               showModal('Cadastro realizado com sucesso! Faça login agora.', { type: 'success', title: 'Bem-vindo!' });
               isLoginMode = true;
@@ -2735,8 +2648,8 @@ window.voltarAoLogin = async function() {
       localStorage.removeItem('userCreatedAt');
       currentUser = null;
       
-      // Redirecionar para a landing page (raiz do site)
-      window.location.href = '/';
+      // Redirecionar para a landing page
+      window.location.href = '/home';
     }
   } catch (error) {
     console.error('Erro ao fazer logout:', error);
@@ -2744,7 +2657,7 @@ window.voltarAoLogin = async function() {
     localStorage.removeItem('userId');
     localStorage.removeItem('userEmail');
     currentUser = null;
-    window.location.href = '/';
+    window.location.href = '/home';
   }
 }
 

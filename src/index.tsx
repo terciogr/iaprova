@@ -13134,20 +13134,24 @@ app.get('/api/materiais/item/:id', async (c) => {
   }
 })
 
-// ============== ROTA DE LOGIN (URL SEPARADA) ==============
-// Redireciona /login para a raiz com parâmetro view=login
-app.get('/login', (c) => {
-  return c.redirect('/?view=login')
-})
-
-// ============== ROTA DE CADASTRO (URL SEPARADA) ==============
-// Redireciona /cadastro para a raiz com parâmetro view=cadastro
-app.get('/cadastro', (c) => {
-  return c.redirect('/?view=cadastro')
-})
-
-// ============== ROTA PRINCIPAL (FRONTEND) ==============
+// ============== ROTA RAIZ - REDIRECIONA PARA /home ==============
 app.get('/', (c) => {
+  return c.redirect('/home')
+})
+
+// ============== ROTA /login - TELA DE LOGIN ==============
+app.get('/login', (c) => {
+  // Retorna a página com parâmetro view=login para o frontend
+  return c.redirect('/home?view=login')
+})
+
+// ============== ROTA /cadastro - TELA DE CADASTRO ==============
+app.get('/cadastro', (c) => {
+  return c.redirect('/home?view=cadastro')
+})
+
+// ============== ROTA /home - PÁGINA PRINCIPAL (LANDING/LOGIN/DASHBOARD) ==============
+app.get('/home', (c) => {
   return c.html(`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
