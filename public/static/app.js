@@ -19930,7 +19930,7 @@ styleSheet.textContent = `
 `;
 document.head.appendChild(styleSheet);
 
-// Inicializar aplicação
+// Inicializar aplicação - Handler para rotas especiais (verificação de email/reset senha)
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 IAprova iniciando...');
   
@@ -19942,29 +19942,16 @@ document.addEventListener('DOMContentLoaded', function() {
   // Se está na página de reset de senha
   if (pathname === '/resetar-senha' && verificationToken) {
     resetPasswordWithToken(verificationToken);
+    return; // Não executar checkUser()
   }
   // Se tem token de verificação de email
   else if (pathname === '/verificar-email' && verificationToken) {
     verifyEmailToken(verificationToken);
-  }
-  // Rota normal
-  else {
-    // Verificar se há usuário salvo
-    const savedUser = localStorage.getItem('userId');
-    if (savedUser) {
-      currentUser = {
-        id: parseInt(savedUser),
-        email: localStorage.getItem('userEmail'),
-        name: localStorage.getItem('userName')
-      };
-      renderDashboard();
-    } else {
-      renderLogin();
-    }
+    return; // Não executar checkUser()
   }
   
-  // Criar botão de ajuda após um tempo
-  setTimeout(createHelpButton, 1000);
+  // NOTA: A lógica principal de roteamento está no primeiro DOMContentLoaded (checkUser)
+  // Este handler apenas trata rotas especiais de verificação/reset
 });
 
 // Mostrar banca detectada após upload
