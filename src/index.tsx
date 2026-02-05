@@ -2215,6 +2215,143 @@ app.get('/api/admin/users', async (c) => {
   }
 })
 
+// ============== RELATÓRIO FINANCEIRO ADMIN ==============
+app.get('/api/admin/financeiro', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    // Período selecionado (padrão: 30 dias)
+    const periodo = c.req.query('periodo') || '30' // 7, 30, 90, 365, all
+    
+    let whereClause = ''
+    if (periodo !== 'all') {
+      whereClause = `WHERE u.payment_date >= DATE('now', '-${periodo} days')`
+    }
+    
+    // Buscar todos os usuários com assinatura ativa ou histórico de pagamento
+    const { results: pagamentos } = await DB.prepare(`
+      SELECT 
+        u.id, u.name, u.email, u.subscription_status, u.subscription_plan,
+        u.subscription_expires_at, u.payment_id, u.payment_date, u.created_at,
+        CASE 
+          WHEN u.subscription_plan = 'anual' THEN 249.90
+          WHEN u.subscription_plan = 'mensal' THEN 29.90
+          ELSE 0
+        END as valor_pago
+      FROM users u
+      WHERE u.subscription_status IN ('active', 'expired') OR u.payment_id IS NOT NULL
+      ORDER BY u.payment_date DESC
+    `).all()
+    
+    // Estatísticas gerais
+    const totalUsuarios = await DB.prepare('SELECT COUNT(*) as count FROM users').first() as any
+    const usuariosPremium = await DB.prepare(`SELECT COUNT(*) as count FROM users WHERE subscription_status = 'active'`).first() as any
+    const usuariosTrial = await DB.prepare(`SELECT COUNT(*) as count FROM users WHERE subscription_status = 'trial'`).first() as any
+    const usuariosExpirados = await DB.prepare(`SELECT COUNT(*) as count FROM users WHERE subscription_status = 'expired'`).first() as any
+    
+    // Calcular receitas por período
+    const receitaHoje = await DB.prepare(`
+      SELECT COUNT(*) as qtd, 
+             SUM(CASE WHEN subscription_plan = 'anual' THEN 249.90 WHEN subscription_plan = 'mensal' THEN 29.90 ELSE 0 END) as total
+      FROM users 
+      WHERE DATE(payment_date) = DATE('now') AND subscription_status IN ('active', 'expired')
+    `).first() as any
+    
+    const receita7dias = await DB.prepare(`
+      SELECT COUNT(*) as qtd,
+             SUM(CASE WHEN subscription_plan = 'anual' THEN 249.90 WHEN subscription_plan = 'mensal' THEN 29.90 ELSE 0 END) as total
+      FROM users 
+      WHERE payment_date >= DATE('now', '-7 days') AND subscription_status IN ('active', 'expired')
+    `).first() as any
+    
+    const receita30dias = await DB.prepare(`
+      SELECT COUNT(*) as qtd,
+             SUM(CASE WHEN subscription_plan = 'anual' THEN 249.90 WHEN subscription_plan = 'mensal' THEN 29.90 ELSE 0 END) as total
+      FROM users 
+      WHERE payment_date >= DATE('now', '-30 days') AND subscription_status IN ('active', 'expired')
+    `).first() as any
+    
+    const receitaTotal = await DB.prepare(`
+      SELECT COUNT(*) as qtd,
+             SUM(CASE WHEN subscription_plan = 'anual' THEN 249.90 WHEN subscription_plan = 'mensal' THEN 29.90 ELSE 0 END) as total
+      FROM users 
+      WHERE subscription_status IN ('active', 'expired') AND payment_id IS NOT NULL
+    `).first() as any
+    
+    // Distribuição por plano
+    const planoMensal = await DB.prepare(`
+      SELECT COUNT(*) as qtd FROM users WHERE subscription_plan = 'mensal' AND subscription_status = 'active'
+    `).first() as any
+    
+    const planoAnual = await DB.prepare(`
+      SELECT COUNT(*) as qtd FROM users WHERE subscription_plan = 'anual' AND subscription_status = 'active'
+    `).first() as any
+    
+    // Previsão de cancelamentos (assinaturas expirando nos próximos 7 dias)
+    const expirandoProximosSete = await DB.prepare(`
+      SELECT COUNT(*) as qtd FROM users 
+      WHERE subscription_status = 'active' 
+      AND subscription_expires_at BETWEEN DATE('now') AND DATE('now', '+7 days')
+    `).first() as any
+    
+    // Taxa de conversão (trial -> premium)
+    const totalTrialHistorico = await DB.prepare(`
+      SELECT COUNT(*) as qtd FROM users WHERE trial_started_at IS NOT NULL
+    `).first() as any
+    
+    const convertidos = await DB.prepare(`
+      SELECT COUNT(*) as qtd FROM users WHERE trial_started_at IS NOT NULL AND subscription_status IN ('active', 'expired')
+    `).first() as any
+    
+    const taxaConversao = totalTrialHistorico?.qtd > 0 
+      ? Math.round((convertidos?.qtd / totalTrialHistorico?.qtd) * 100) 
+      : 0
+    
+    // MRR (Monthly Recurring Revenue) - Receita Recorrente Mensal
+    const mrr = (planoMensal?.qtd || 0) * 29.90 + ((planoAnual?.qtd || 0) * 249.90 / 12)
+    
+    // ARR (Annual Recurring Revenue) - Receita Recorrente Anual
+    const arr = mrr * 12
+    
+    return c.json({
+      resumo: {
+        total_usuarios: totalUsuarios?.count || 0,
+        usuarios_premium: usuariosPremium?.count || 0,
+        usuarios_trial: usuariosTrial?.count || 0,
+        usuarios_expirados: usuariosExpirados?.count || 0,
+        taxa_conversao: taxaConversao
+      },
+      receita: {
+        hoje: { qtd: receitaHoje?.qtd || 0, valor: receitaHoje?.total || 0 },
+        ultimos_7_dias: { qtd: receita7dias?.qtd || 0, valor: receita7dias?.total || 0 },
+        ultimos_30_dias: { qtd: receita30dias?.qtd || 0, valor: receita30dias?.total || 0 },
+        total: { qtd: receitaTotal?.qtd || 0, valor: receitaTotal?.total || 0 }
+      },
+      metricas: {
+        mrr: mrr,
+        arr: arr,
+        ticket_medio: receitaTotal?.qtd > 0 ? (receitaTotal?.total / receitaTotal?.qtd) : 0,
+        ltv_estimado: mrr > 0 ? (mrr * 12) / Math.max(1, usuariosPremium?.count || 1) : 0
+      },
+      planos: {
+        mensal: { qtd: planoMensal?.qtd || 0, receita_mensal: (planoMensal?.qtd || 0) * 29.90 },
+        anual: { qtd: planoAnual?.qtd || 0, receita_mensal: ((planoAnual?.qtd || 0) * 249.90) / 12 }
+      },
+      alertas: {
+        expirando_7_dias: expirandoProximosSete?.qtd || 0
+      },
+      pagamentos: pagamentos
+    })
+  } catch (error: any) {
+    console.error('Erro ao gerar relatório financeiro:', error)
+    return c.json({ error: 'Erro ao gerar relatório financeiro', details: error.message }, 500)
+  }
+})
+
 // Histórico de emails enviados
 app.get('/api/admin/emails', async (c) => {
   const { DB } = c.env

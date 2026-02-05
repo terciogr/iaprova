@@ -7871,9 +7871,17 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
 window.exibirConteudoGerado = function(data) {
   const { topico_nome, disciplina_nome, disciplina_id, topico_id, tipo, conteudo, caracteres, gerado_em, material_id, regenerado } = data;
   
-  // Remover qualquer modal de conteúdo existente antes de exibir o novo
-  document.getElementById('modal-conteudo-gerado')?.remove();
-  document.getElementById('modal-loading-regeneracao')?.remove();
+  console.log('🔄 Iniciando exibição de conteúdo...', { regenerado, tipo });
+  
+  // Remover TODOS os modais de conteúdo existentes de forma robusta
+  const modaisAntigos = document.querySelectorAll('#modal-conteudo-gerado, #modal-loading-regeneracao');
+  modaisAntigos.forEach(modal => {
+    console.log('🗑️ Removendo modal antigo:', modal.id);
+    modal.remove();
+  });
+  
+  // Pequeno delay para garantir que o DOM foi atualizado
+  setTimeout(() => {}, 10);
   
   // Material já foi salvo automaticamente no backend (material_id)
   console.log('✅ Exibindo conteúdo:', { tipo, topico_nome, disciplina_nome, material_id, regenerado });
@@ -7975,7 +7983,30 @@ window.exibirConteudoGerado = function(data) {
             <textarea id="feedback-critica" rows="3" 
                       class="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#122D6A] focus:border-[#122D6A]"
                       placeholder="Ex: Faltou explicar melhor o conceito X, precisa de mais exemplos práticos, está muito resumido..."></textarea>
-            <div class="flex gap-2 mt-3 justify-end">
+            
+            <!-- Slider de tamanho do conteúdo -->
+            <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <label class="text-sm font-medium text-gray-700 flex items-center gap-2 mb-2">
+                <i class="fas fa-text-height text-blue-600"></i>
+                Tamanho do novo conteúdo:
+              </label>
+              <div class="flex items-center gap-3">
+                <input type="range" id="slider-tamanho-conteudo" min="1" max="4" value="3" 
+                       class="flex-1 h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
+                       oninput="atualizarLabelTamanho(this.value)">
+                <span id="label-tamanho-conteudo" class="text-sm font-semibold text-[#122D6A] min-w-[80px] text-center">
+                  Longo
+                </span>
+              </div>
+              <div class="flex justify-between text-xs text-gray-500 mt-1 px-1">
+                <span>Curto</span>
+                <span>Médio</span>
+                <span>Longo</span>
+                <span>Completo</span>
+              </div>
+            </div>
+            
+            <div class="flex gap-2 mt-4 justify-end">
               <button onclick="cancelarFeedbackNegativo()" 
                       class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm">
                 Cancelar
@@ -8052,6 +8083,33 @@ window.darFeedbackConteudo = async function(tipo) {
   console.log('📊 Feedback registrado:', tipo);
 }
 
+// Função para atualizar label do slider de tamanho
+window.atualizarLabelTamanho = function(valor) {
+  const labels = {
+    '1': 'Curto',
+    '2': 'Médio', 
+    '3': 'Longo',
+    '4': 'Completo'
+  };
+  const labelEl = document.getElementById('label-tamanho-conteudo');
+  if (labelEl) {
+    labelEl.textContent = labels[valor] || 'Longo';
+  }
+}
+
+// Função para obter extensão baseada no slider
+function getExtensaoFromSlider() {
+  const slider = document.getElementById('slider-tamanho-conteudo');
+  const valor = slider?.value || '3';
+  const extensoes = {
+    '1': 'curto',
+    '2': 'medio',
+    '3': 'longo',
+    '4': 'completo'
+  };
+  return extensoes[valor] || 'longo';
+}
+
 window.abrirFeedbackNegativo = function() {
   document.getElementById('feedback-buttons')?.classList.add('hidden');
   document.getElementById('feedback-negativo-form')?.classList.remove('hidden');
@@ -8078,16 +8136,24 @@ window.regenerarConteudoComFeedback = async function() {
   
   const { topico_nome, disciplina_nome, disciplina_id, topico_id, tipo } = window.conteudoAtualDados;
   
-  // Fechar modal atual
-  document.getElementById('modal-conteudo-gerado')?.remove();
+  // Obter tamanho selecionado do slider
+  const extensao = getExtensaoFromSlider();
+  console.log('📏 Tamanho selecionado:', extensao);
+  
+  // Fechar modal atual de forma robusta
+  const modalAtual = document.getElementById('modal-conteudo-gerado');
+  if (modalAtual) {
+    modalAtual.remove();
+    console.log('🗑️ Modal de conteúdo removido');
+  }
   
   // Mostrar modal de loading com progresso
-  mostrarLoadingRegeneracao(topico_nome, tipo, critica);
+  mostrarLoadingRegeneracao(topico_nome, tipo, critica, extensao);
   
   try {
-    console.log('🔄 Regenerando com feedback:', { topico_nome, disciplina_nome, tipo, critica });
+    console.log('🔄 Regenerando com feedback:', { topico_nome, disciplina_nome, tipo, critica, extensao });
     
-    // Chamar API para gerar novo conteúdo incluindo a crítica
+    // Chamar API para gerar novo conteúdo incluindo a crítica e extensão
     const response = await axios.post('/api/topicos/gerar-conteudo', {
       user_id: currentUser.id,
       topico_id: topico_id,
@@ -8096,7 +8162,10 @@ window.regenerarConteudoComFeedback = async function() {
       disciplina_id: disciplina_id,
       tipo: tipo,
       feedback_usuario: critica,
-      regenerar: true
+      regenerar: true,
+      config_ia: {
+        extensao: extensao
+      }
     }, {
       headers: {
         'X-User-ID': currentUser.id
@@ -8140,13 +8209,20 @@ window.regenerarConteudoComFeedback = async function() {
 }
 
 // Modal de loading para regeneração de conteúdo
-function mostrarLoadingRegeneracao(topico, tipo, feedback) {
+function mostrarLoadingRegeneracao(topico, tipo, feedback, extensao = 'longo') {
   const tipoLabel = {
     'teoria': 'Teoria',
     'exercicios': 'Exercícios',
     'resumo': 'Resumo',
     'flashcards': 'Flashcards'
   }[tipo] || tipo;
+  
+  const extensaoLabel = {
+    'curto': '📄 Curto',
+    'medio': '📋 Médio',
+    'longo': '📑 Longo',
+    'completo': '📚 Completo'
+  }[extensao] || '📑 Longo';
   
   const modalHtml = `
     <div id="modal-loading-regeneracao" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
@@ -8178,6 +8254,14 @@ function mostrarLoadingRegeneracao(topico, tipo, feedback) {
             <strong>Aplicando sua sugestão:</strong>
           </p>
           <p class="text-xs text-amber-700 mt-1 italic">"${feedback.substring(0, 100)}${feedback.length > 100 ? '...' : ''}"</p>
+        </div>
+        
+        <!-- Tamanho selecionado -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-4 inline-block">
+          <span class="text-sm text-blue-800">
+            <i class="fas fa-text-height mr-1"></i>
+            Tamanho: <strong>${extensaoLabel}</strong>
+          </span>
         </div>
         
         <!-- Mensagens de progresso -->
@@ -11476,10 +11560,14 @@ window.abrirPainelAdmin = async function() {
               <i class="fas fa-bolt text-yellow-500"></i>
               Ações Rápidas
             </h3>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
               <button onclick="verListaUsuarios()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-center">
                 <i class="fas fa-users text-blue-500 text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Ver Usuários</p>
+              </button>
+              <button onclick="verRelatorioFinanceiro()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition text-center">
+                <i class="fas fa-chart-line text-emerald-500 text-xl mb-1"></i>
+                <p class="text-xs ${themes[currentTheme].text} font-medium">Financeiro</p>
               </button>
               <button onclick="verHistoricoEmails()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-blue-50 dark:hover:bg-[#1A3A7F]/20 transition text-center">
                 <i class="fas fa-envelope text-[#1A3A7F] text-xl mb-1"></i>
@@ -11528,6 +11616,339 @@ window.fecharPainelAdmin = function() {
 window.atualizarDashboardAdmin = function() {
   fecharPainelAdmin();
   abrirPainelAdmin();
+};
+
+// ============== RELATÓRIO FINANCEIRO ==============
+window.verRelatorioFinanceiro = async function(periodo = '30') {
+  try {
+    showToast('📊 Carregando relatório financeiro...', 'info');
+    
+    const response = await axios.get(`/api/admin/financeiro?periodo=${periodo}`, {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    const data = response.data;
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-relatorio-financeiro';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    modal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white flex-shrink-0">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                <i class="fas fa-chart-line text-2xl"></i>
+              </div>
+              <div>
+                <h2 class="text-2xl font-bold">Relatório Financeiro</h2>
+                <p class="text-emerald-100 text-sm">Métricas e faturamento do IAprova</p>
+              </div>
+            </div>
+            <button onclick="document.getElementById('modal-relatorio-financeiro')?.remove()" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">
+              <i class="fas fa-times text-xl"></i>
+            </button>
+          </div>
+          
+          <!-- Filtro de período -->
+          <div class="mt-4 flex gap-2 flex-wrap">
+            <button onclick="verRelatorioFinanceiro('7')" class="px-3 py-1 rounded-full text-sm ${periodo === '7' ? 'bg-white text-emerald-600' : 'bg-white/20 hover:bg-white/30'}">7 dias</button>
+            <button onclick="verRelatorioFinanceiro('30')" class="px-3 py-1 rounded-full text-sm ${periodo === '30' ? 'bg-white text-emerald-600' : 'bg-white/20 hover:bg-white/30'}">30 dias</button>
+            <button onclick="verRelatorioFinanceiro('90')" class="px-3 py-1 rounded-full text-sm ${periodo === '90' ? 'bg-white text-emerald-600' : 'bg-white/20 hover:bg-white/30'}">90 dias</button>
+            <button onclick="verRelatorioFinanceiro('365')" class="px-3 py-1 rounded-full text-sm ${periodo === '365' ? 'bg-white text-emerald-600' : 'bg-white/20 hover:bg-white/30'}">1 ano</button>
+            <button onclick="verRelatorioFinanceiro('all')" class="px-3 py-1 rounded-full text-sm ${periodo === 'all' ? 'bg-white text-emerald-600' : 'bg-white/20 hover:bg-white/30'}">Todos</button>
+          </div>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-6 overflow-y-auto flex-1">
+          <!-- Cards de Métricas Principais -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <!-- MRR -->
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white">
+              <div class="flex items-center justify-between mb-2">
+                <i class="fas fa-sync-alt text-2xl opacity-80"></i>
+                <span class="text-2xl font-bold">R$ ${(data.metricas.mrr || 0).toFixed(2)}</span>
+              </div>
+              <p class="text-emerald-100 text-sm">MRR</p>
+              <p class="text-emerald-200 text-xs">Receita Recorrente Mensal</p>
+            </div>
+            
+            <!-- ARR -->
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
+              <div class="flex items-center justify-between mb-2">
+                <i class="fas fa-calendar-alt text-2xl opacity-80"></i>
+                <span class="text-2xl font-bold">R$ ${(data.metricas.arr || 0).toFixed(2)}</span>
+              </div>
+              <p class="text-blue-100 text-sm">ARR</p>
+              <p class="text-blue-200 text-xs">Receita Recorrente Anual</p>
+            </div>
+            
+            <!-- Ticket Médio -->
+            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white">
+              <div class="flex items-center justify-between mb-2">
+                <i class="fas fa-receipt text-2xl opacity-80"></i>
+                <span class="text-2xl font-bold">R$ ${(data.metricas.ticket_medio || 0).toFixed(2)}</span>
+              </div>
+              <p class="text-purple-100 text-sm">Ticket Médio</p>
+              <p class="text-purple-200 text-xs">Por assinatura</p>
+            </div>
+            
+            <!-- Taxa Conversão -->
+            <div class="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl p-4 text-white">
+              <div class="flex items-center justify-between mb-2">
+                <i class="fas fa-percentage text-2xl opacity-80"></i>
+                <span class="text-2xl font-bold">${data.resumo.taxa_conversao || 0}%</span>
+              </div>
+              <p class="text-amber-100 text-sm">Conversão</p>
+              <p class="text-amber-200 text-xs">Trial → Premium</p>
+            </div>
+          </div>
+          
+          <!-- Receita por Período -->
+          <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-money-bill-wave text-emerald-500"></i>
+                Receita por Período
+              </h3>
+              <div class="space-y-4">
+                <div class="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                  <div>
+                    <span class="${themes[currentTheme].text} font-medium">Hoje</span>
+                    <p class="text-xs ${themes[currentTheme].textSecondary}">${data.receita.hoje.qtd} pagamento(s)</p>
+                  </div>
+                  <span class="text-xl font-bold text-emerald-600">R$ ${(data.receita.hoje.valor || 0).toFixed(2)}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div>
+                    <span class="${themes[currentTheme].text} font-medium">Últimos 7 dias</span>
+                    <p class="text-xs ${themes[currentTheme].textSecondary}">${data.receita.ultimos_7_dias.qtd} pagamento(s)</p>
+                  </div>
+                  <span class="text-xl font-bold text-blue-600">R$ ${(data.receita.ultimos_7_dias.valor || 0).toFixed(2)}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                  <div>
+                    <span class="${themes[currentTheme].text} font-medium">Últimos 30 dias</span>
+                    <p class="text-xs ${themes[currentTheme].textSecondary}">${data.receita.ultimos_30_dias.qtd} pagamento(s)</p>
+                  </div>
+                  <span class="text-xl font-bold text-purple-600">R$ ${(data.receita.ultimos_30_dias.valor || 0).toFixed(2)}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-gray-100 dark:bg-gray-700 rounded-lg border-2 border-emerald-500">
+                  <div>
+                    <span class="${themes[currentTheme].text} font-bold">Total Histórico</span>
+                    <p class="text-xs ${themes[currentTheme].textSecondary}">${data.receita.total.qtd} pagamento(s)</p>
+                  </div>
+                  <span class="text-2xl font-bold text-emerald-600">R$ ${(data.receita.total.valor || 0).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-users text-blue-500"></i>
+                Usuários por Status
+              </h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-user mr-2"></i>Total de usuários</span>
+                  <span class="font-bold ${themes[currentTheme].text} text-lg">${data.resumo.total_usuarios}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-crown mr-2 text-yellow-500"></i>Premium ativos</span>
+                  <span class="font-bold text-yellow-600 text-lg">${data.resumo.usuarios_premium}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-hourglass-half mr-2 text-blue-500"></i>Em trial</span>
+                  <span class="font-bold text-blue-600">${data.resumo.usuarios_trial}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-times-circle mr-2 text-red-500"></i>Expirados</span>
+                  <span class="font-bold text-red-600">${data.resumo.usuarios_expirados}</span>
+                </div>
+                
+                ${data.alertas.expirando_7_dias > 0 ? `
+                  <div class="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 rounded-lg">
+                    <p class="text-sm text-amber-800 dark:text-amber-200">
+                      <i class="fas fa-exclamation-triangle mr-2"></i>
+                      <strong>${data.alertas.expirando_7_dias}</strong> assinatura(s) expirando nos próximos 7 dias
+                    </p>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+          
+          <!-- Distribuição por Plano -->
+          <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-pie-chart text-purple-500"></i>
+                Distribuição por Plano
+              </h3>
+              <div class="space-y-4">
+                <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div class="flex justify-between items-center mb-2">
+                    <span class="${themes[currentTheme].text} font-medium">
+                      <i class="fas fa-calendar-day mr-2"></i>Plano Mensal
+                    </span>
+                    <span class="font-bold text-blue-600">${data.planos.mensal.qtd} assinantes</span>
+                  </div>
+                  <p class="text-sm ${themes[currentTheme].textSecondary}">
+                    Receita mensal: <strong class="text-blue-600">R$ ${(data.planos.mensal.receita_mensal || 0).toFixed(2)}</strong>
+                  </p>
+                </div>
+                <div class="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                  <div class="flex justify-between items-center mb-2">
+                    <span class="${themes[currentTheme].text} font-medium">
+                      <i class="fas fa-crown mr-2"></i>Plano Anual
+                    </span>
+                    <span class="font-bold text-yellow-600">${data.planos.anual.qtd} assinantes</span>
+                  </div>
+                  <p class="text-sm ${themes[currentTheme].textSecondary}">
+                    Receita mensal: <strong class="text-yellow-600">R$ ${(data.planos.anual.receita_mensal || 0).toFixed(2)}</strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-bar text-teal-500"></i>
+                Métricas de Negócio
+              </h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">LTV Estimado</span>
+                  <span class="font-bold text-emerald-600">R$ ${(data.metricas.ltv_estimado || 0).toFixed(2)}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">% Premium da base</span>
+                  <span class="font-bold ${themes[currentTheme].text}">
+                    ${data.resumo.total_usuarios > 0 ? Math.round((data.resumo.usuarios_premium / data.resumo.total_usuarios) * 100) : 0}%
+                  </span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Média mensal/ano</span>
+                  <span class="font-bold text-blue-600">R$ ${((data.metricas.arr || 0) / 12).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Lista de Pagamentos -->
+          ${data.pagamentos && data.pagamentos.length > 0 ? `
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-list text-gray-500"></i>
+                Histórico de Pagamentos (${data.pagamentos.length})
+              </h3>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="border-b ${themes[currentTheme].border}">
+                      <th class="text-left py-2 ${themes[currentTheme].textSecondary}">Usuário</th>
+                      <th class="text-left py-2 ${themes[currentTheme].textSecondary}">Plano</th>
+                      <th class="text-left py-2 ${themes[currentTheme].textSecondary}">Valor</th>
+                      <th class="text-left py-2 ${themes[currentTheme].textSecondary}">Status</th>
+                      <th class="text-left py-2 ${themes[currentTheme].textSecondary}">Data</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${data.pagamentos.slice(0, 20).map(p => `
+                      <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="py-2">
+                          <div class="${themes[currentTheme].text} font-medium">${p.name || 'N/A'}</div>
+                          <div class="text-xs ${themes[currentTheme].textSecondary}">${p.email}</div>
+                        </td>
+                        <td class="py-2">
+                          <span class="px-2 py-1 rounded-full text-xs ${p.subscription_plan === 'anual' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}">
+                            ${p.subscription_plan === 'anual' ? 'Anual' : 'Mensal'}
+                          </span>
+                        </td>
+                        <td class="py-2 font-medium text-emerald-600">R$ ${(p.valor_pago || 0).toFixed(2)}</td>
+                        <td class="py-2">
+                          <span class="px-2 py-1 rounded-full text-xs ${p.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+                            ${p.subscription_status === 'active' ? 'Ativo' : 'Expirado'}
+                          </span>
+                        </td>
+                        <td class="py-2 ${themes[currentTheme].textSecondary}">${p.payment_date ? new Date(p.payment_date).toLocaleDateString('pt-BR') : 'N/A'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+                ${data.pagamentos.length > 20 ? `
+                  <p class="text-center text-sm ${themes[currentTheme].textSecondary} mt-4">
+                    Mostrando 20 de ${data.pagamentos.length} pagamentos
+                  </p>
+                ` : ''}
+              </div>
+            </div>
+          ` : `
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-8 text-center">
+              <i class="fas fa-receipt text-4xl text-gray-300 mb-4"></i>
+              <p class="${themes[currentTheme].textSecondary}">Nenhum pagamento registrado ainda</p>
+            </div>
+          `}
+        </div>
+        
+        <!-- Footer -->
+        <div class="p-4 border-t ${themes[currentTheme].border} flex-shrink-0 bg-gray-50 dark:bg-gray-800 flex justify-between items-center">
+          <p class="text-xs ${themes[currentTheme].textMuted}">
+            <i class="fas fa-clock mr-1"></i>
+            Atualizado em ${new Date().toLocaleString('pt-BR')}
+          </p>
+          <button onclick="exportarRelatorioFinanceiro()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-sm">
+            <i class="fas fa-download mr-2"></i>Exportar CSV
+          </button>
+        </div>
+      </div>
+    `;
+    
+    // Remover modal anterior se existir
+    document.getElementById('modal-relatorio-financeiro')?.remove();
+    document.body.appendChild(modal);
+    
+  } catch (error) {
+    console.error('Erro ao carregar relatório financeiro:', error);
+    showToast('❌ Erro ao carregar relatório financeiro', 'error');
+  }
+};
+
+// Exportar relatório financeiro para CSV
+window.exportarRelatorioFinanceiro = async function() {
+  try {
+    const response = await axios.get('/api/admin/financeiro?periodo=all', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    const data = response.data;
+    
+    // Criar CSV
+    let csv = 'Nome,Email,Plano,Valor,Status,Data Pagamento\\n';
+    data.pagamentos.forEach(p => {
+      csv += `"${p.name || ''}","${p.email}","${p.subscription_plan || ''}","${p.valor_pago || 0}","${p.subscription_status || ''}","${p.payment_date || ''}"\\n`;
+    });
+    
+    // Adicionar resumo
+    csv += '\\n\\nRESUMO\\n';
+    csv += `Total de Usuários,${data.resumo.total_usuarios}\\n`;
+    csv += `Usuários Premium,${data.resumo.usuarios_premium}\\n`;
+    csv += `Receita Total,R$ ${(data.receita.total.valor || 0).toFixed(2)}\\n`;
+    csv += `MRR,R$ ${(data.metricas.mrr || 0).toFixed(2)}\\n`;
+    csv += `ARR,R$ ${(data.metricas.arr || 0).toFixed(2)}\\n`;
+    
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `relatorio_financeiro_iaprova_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    
+    showToast('✅ Relatório exportado com sucesso!', 'success');
+  } catch (error) {
+    console.error('Erro ao exportar:', error);
+    showToast('❌ Erro ao exportar relatório', 'error');
+  }
 };
 
 // Ver lista de usuários
