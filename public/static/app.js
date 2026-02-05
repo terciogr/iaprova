@@ -224,6 +224,15 @@ function getModalContainer() {
   return container;
 }
 
+// Função genérica para fechar modal
+window.fecharModal = function() {
+  const modal = document.getElementById('modal-container');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.innerHTML = '';
+  }
+}
+
 // Modal de Alerta (substitui alert())
 function showModal(message, options = {}) {
   const {
@@ -7024,11 +7033,11 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
               </div>
               
               <!-- Lista de Tópicos (expandível) -->
-              <div id="topicos-${disc.disciplina_id}" class="hidden border-t ${themes[currentTheme].border} bg-gray-50 dark:bg-slate-800/50">
+              <div id="topicos-${disc.disciplina_id}" class="hidden border-t border-gray-200 bg-white">
                 <div class="p-4">
                   <!-- Botões de ação -->
                   <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-                    <h4 class="font-semibold ${themes[currentTheme].text}">
+                    <h4 class="font-semibold text-gray-900">
                       <i class="fas fa-list mr-2"></i>Tópicos da Disciplina
                     </h4>
                     <div class="flex gap-2">
@@ -7044,7 +7053,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                   </div>
                   
                   ${disc.topicos.length === 0 ? `
-                    <div class="text-center py-8 ${themes[currentTheme].textSecondary}">
+                    <div class="text-center py-8 text-gray-600">
                       <i class="fas fa-inbox text-4xl mb-2 opacity-50"></i>
                       <p>Nenhum tópico cadastrado</p>
                       <button onclick="event.stopPropagation(); adicionarTopicoNaDisciplina(${disc.disciplina_id}, '${disc.nome.replace(/'/g, "\\'")}')"
@@ -7055,7 +7064,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                   ` : `
                     <div class="space-y-2 max-h-96 overflow-y-auto">
                       ${disc.topicos.map((topico, index) => `
-                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border ${topico.vezes_estudado > 0 ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-700' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'} hover:shadow-sm transition"
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border ${topico.vezes_estudado > 0 ? 'bg-green-50 border-green-300 text-gray-800' : 'bg-gray-50 border-gray-200 text-gray-800'} hover:shadow-sm transition"
                              data-topico-nome="${(topico.nome || '').replace(/"/g, '&quot;')}">
                           <!-- Linha principal: Checkbox + Nome -->
                           <div class="flex items-center gap-3 flex-1 min-w-0">
@@ -7068,7 +7077,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                             
                             <!-- Info do tópico -->
                             <div class="flex-1 min-w-0">
-                              <p class="${themes[currentTheme].text} truncate font-medium text-sm">
+                              <p class="text-gray-900 truncate font-medium text-sm">
                                 ${index + 1}. ${topico.nome}
                               </p>
                               <div class="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -8158,8 +8167,8 @@ window.previewTopicosImportacao = function() {
 function processarTextoTopicos(texto) {
   if (!texto || !texto.trim()) return [];
   
-  // Primeiro, dividir por quebras de linha
-  let linhas = texto.split(/\\n|\\r\\n|\\r/);
+  // Primeiro, dividir por quebras de linha (suporta diferentes formatos)
+  let linhas = texto.split(/\n|\r\n|\r/);
   
   let topicos = [];
   
@@ -8174,9 +8183,9 @@ function processarTextoTopicos(texto) {
       if (!parte) continue;
       
       // Remover numeração comum: "1.", "1)", "a)", "a.", "-", "•", "*"
-      parte = parte.replace(/^[\\d]+[.)\\s]+/, ''); // Remove "1.", "1)", "1 "
-      parte = parte.replace(/^[a-zA-Z][.)\\s]+/, ''); // Remove "a.", "a)", "a "
-      parte = parte.replace(/^[-•*]\\s*/, ''); // Remove "-", "•", "*"
+      parte = parte.replace(/^[\d]+[.)\s]+/, ''); // Remove "1.", "1)", "1 "
+      parte = parte.replace(/^[a-zA-Z][.)\s]+/, ''); // Remove "a.", "a)", "a "
+      parte = parte.replace(/^[-•*]\s*/, ''); // Remove "-", "•", "*"
       parte = parte.trim();
       
       // Verificar se ainda tem conteúdo válido (pelo menos 3 caracteres)
