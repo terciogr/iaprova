@@ -11120,27 +11120,93 @@ app.post('/api/backup/google-drive/save', async (c) => {
     // Gerar backup diretamente (sem fetch interno)
     const backup = await generateUserBackup(DB, user_id)
     
-    // Criar arquivo no Google Drive
-    const metadata = {
-      name: `iaprova_backup_${new Date().toISOString().split('T')[0]}.json`,
-      mimeType: 'application/json',
-      parents: ['appDataFolder'] // Pasta oculta específica do app
+    console.log('📦 Backup gerado, tamanho:', JSON.stringify(backup).length, 'bytes')
+    
+    // Primeiro, buscar ou criar pasta IAprova no Drive
+    let folderId = null
+    
+    // Buscar pasta existente
+    const folderSearchResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='IAprova Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      { headers: { 'Authorization': `Bearer ${accessToken}` } }
+    )
+    const folderSearchResult = await folderSearchResponse.json() as any
+    
+    console.log('📁 Busca de pasta:', folderSearchResult)
+    
+    if (folderSearchResult.error) {
+      console.error('Erro ao buscar pasta:', folderSearchResult.error)
+      
+      // Verificar se é erro de API não habilitada
+      const errorMsg = folderSearchResult.error.message || ''
+      if (errorMsg.includes('has not been used') || errorMsg.includes('disabled')) {
+        return c.json({ 
+          error: 'A API do Google Drive não está habilitada. Entre em contato com o suporte.',
+          details: 'API do Google Drive precisa ser ativada no console do Google Cloud.'
+        }, 503)
+      }
+      
+      return c.json({ 
+        error: 'Erro ao acessar Google Drive. Verifique as permissões.',
+        details: folderSearchResult.error.message 
+      }, 500)
     }
     
-    // Primeiro, verificar se já existe um backup anterior
+    if (folderSearchResult.files?.length > 0) {
+      folderId = folderSearchResult.files[0].id
+      console.log('📁 Pasta encontrada:', folderId)
+    } else {
+      // Criar pasta IAprova
+      const createFolderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: 'IAprova Backups',
+          mimeType: 'application/vnd.google-apps.folder'
+        })
+      })
+      const createFolderResult = await createFolderResponse.json() as any
+      
+      if (createFolderResult.error) {
+        console.error('Erro ao criar pasta:', createFolderResult.error)
+        return c.json({ 
+          error: 'Erro ao criar pasta no Google Drive',
+          details: createFolderResult.error.message 
+        }, 500)
+      }
+      
+      folderId = createFolderResult.id
+      console.log('📁 Pasta criada:', folderId)
+    }
+    
+    // Buscar backup existente na pasta
     const searchResponse = await fetch(
-      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name contains 'iaprova_backup'`,
+      `https://www.googleapis.com/drive/v3/files?q=name contains 'iaprova_backup' and '${folderId}' in parents and trashed=false`,
       { headers: { 'Authorization': `Bearer ${accessToken}` } }
     )
     const searchResult = await searchResponse.json() as any
     
     let fileId = null
     if (searchResult.files?.length > 0) {
-      // Atualizar arquivo existente
       fileId = searchResult.files[0].id
+      console.log('📄 Arquivo existente encontrado:', fileId)
     }
     
-    // Upload do arquivo
+    // Criar metadata do arquivo
+    const metadata: any = {
+      name: `iaprova_backup_${new Date().toISOString().split('T')[0]}.json`,
+      mimeType: 'application/json'
+    }
+    
+    // Só adiciona parents se for criar novo arquivo
+    if (!fileId) {
+      metadata.parents = [folderId]
+    }
+    
+    // Upload do arquivo usando multipart
     const boundary = '-------314159265358979323846'
     const delimiter = `\r\n--${boundary}\r\n`
     const closeDelimiter = `\r\n--${boundary}--`
@@ -11158,6 +11224,8 @@ app.post('/api/backup/google-drive/save', async (c) => {
       ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
       : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'
     
+    console.log('📤 Fazendo upload para:', uploadUrl)
+    
     const uploadResponse = await fetch(uploadUrl, {
       method: fileId ? 'PATCH' : 'POST',
       headers: {
@@ -11170,8 +11238,11 @@ app.post('/api/backup/google-drive/save', async (c) => {
     const uploadResult = await uploadResponse.json() as any
     
     if (uploadResult.error) {
-      console.error('Erro no upload:', uploadResult.error)
-      return c.json({ error: 'Falha ao salvar no Google Drive' }, 500)
+      console.error('❌ Erro no upload:', JSON.stringify(uploadResult.error))
+      return c.json({ 
+        error: 'Falha ao salvar no Google Drive',
+        details: uploadResult.error.message || 'Erro desconhecido'
+      }, 500)
     }
     
     // Atualizar data do último sync
@@ -11243,9 +11314,27 @@ app.post('/api/backup/google-drive/load', async (c) => {
       console.log('✅ Token renovado com sucesso')
     }
     
-    // Buscar arquivo de backup
+    // Primeiro, buscar pasta IAprova
+    const folderSearchResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='IAprova Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      { headers: { 'Authorization': `Bearer ${accessToken}` } }
+    )
+    const folderSearchResult = await folderSearchResponse.json() as any
+    
+    if (folderSearchResult.error) {
+      console.error('Erro ao buscar pasta:', folderSearchResult.error)
+      return c.json({ error: 'Erro ao acessar Google Drive' }, 500)
+    }
+    
+    if (!folderSearchResult.files?.length) {
+      return c.json({ error: 'Nenhum backup encontrado. Faça um backup primeiro.' }, 404)
+    }
+    
+    const folderId = folderSearchResult.files[0].id
+    
+    // Buscar arquivo de backup na pasta
     const searchResponse = await fetch(
-      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name contains 'iaprova_backup'&orderBy=modifiedTime desc`,
+      `https://www.googleapis.com/drive/v3/files?q=name contains 'iaprova_backup' and '${folderId}' in parents and trashed=false&orderBy=modifiedTime desc&fields=files(id,name,modifiedTime)`,
       { headers: { 'Authorization': `Bearer ${accessToken}` } }
     )
     const searchResult = await searchResponse.json() as any
@@ -11255,12 +11344,18 @@ app.post('/api/backup/google-drive/load', async (c) => {
     }
     
     const fileId = searchResult.files[0].id
+    console.log('📄 Carregando backup:', fileId)
     
     // Download do arquivo
     const downloadResponse = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
       { headers: { 'Authorization': `Bearer ${accessToken}` } }
     )
+    
+    if (!downloadResponse.ok) {
+      console.error('Erro no download:', downloadResponse.status)
+      return c.json({ error: 'Erro ao baixar backup' }, 500)
+    }
     
     const backup = await downloadResponse.json()
     

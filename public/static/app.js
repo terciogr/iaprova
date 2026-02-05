@@ -8025,12 +8025,18 @@ window.adicionarTopicoNaDisciplina = async function(disciplinaId, disciplinaNome
 
 // ✅ NOVA FUNÇÃO: Importar tópicos em lote
 window.importarTopicosEmLote = function(disciplinaId, disciplinaNome) {
+  // Mostrar loading imediato
+  showToast('⏳ Abrindo importação...', 'info');
+  
   const modal = document.getElementById('modal-container');
-  if (!modal) return;
+  if (!modal) {
+    showToast('❌ Erro ao abrir modal', 'error');
+    return;
+  }
 
   modal.innerHTML = `
     <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onclick="fecharModal()">
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden" onclick="event.stopPropagation()">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden" onclick="event.stopPropagation()">
         
         <!-- Header -->
         <div class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 md:p-6">
@@ -8042,13 +8048,13 @@ window.importarTopicosEmLote = function(disciplinaId, disciplinaNome) {
         </div>
         
         <!-- Body -->
-        <div class="p-4 md:p-6 max-h-[60vh] overflow-y-auto">
-          <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 rounded">
-            <p class="text-sm ${themes[currentTheme].text}">
+        <div class="p-4 md:p-6 max-h-[60vh] overflow-y-auto bg-white">
+          <div class="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+            <p class="text-sm text-gray-800">
               <i class="fas fa-info-circle text-blue-500 mr-2"></i>
               <strong>Dica:</strong> Cole os tópicos do edital. O sistema separa automaticamente por:
             </p>
-            <ul class="text-xs ${themes[currentTheme].textSecondary} mt-2 ml-6 list-disc">
+            <ul class="text-xs text-gray-600 mt-2 ml-6 list-disc">
               <li><strong>Quebra de linha</strong> (Enter) - cada linha = 1 tópico</li>
               <li><strong>Ponto e vírgula (;)</strong> - separa múltiplos tópicos na mesma linha</li>
               <li><strong>Numeração</strong> - Remove automaticamente "1.", "1)", "a)", etc.</li>
@@ -8056,14 +8062,14 @@ window.importarTopicosEmLote = function(disciplinaId, disciplinaNome) {
           </div>
           
           <div class="mb-4">
-            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">
+            <label class="block text-gray-800 text-sm font-semibold mb-2">
               <i class="fas fa-clipboard-list mr-1"></i>
               Cole os tópicos aqui:
             </label>
             <textarea 
               id="importar-topicos-texto"
               rows="10"
-              class="w-full px-4 py-3 ${themes[currentTheme].input} rounded-lg border-2 ${themes[currentTheme].border} focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+              class="w-full px-4 py-3 bg-white text-gray-900 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
               placeholder="Exemplo:
 1. Língua Portuguesa
 2. Interpretação de texto; Gramática; Redação oficial
@@ -8074,7 +8080,7 @@ Ou cole direto do edital..."></textarea>
           </div>
           
           <div class="mb-4">
-            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">
+            <label class="block text-gray-800 text-sm font-semibold mb-2">
               <i class="fas fa-balance-scale mr-1"></i>
               Peso padrão para todos os tópicos:
             </label>
@@ -8084,25 +8090,25 @@ Ou cole direto do edital..."></textarea>
               value="1" 
               min="1" 
               max="10"
-              class="w-24 px-3 py-2 ${themes[currentTheme].input} rounded-lg border ${themes[currentTheme].border} focus:ring-2 focus:ring-emerald-500">
+              class="w-24 px-3 py-2 bg-white text-gray-900 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500">
           </div>
           
           <!-- Preview -->
           <div id="preview-topicos" class="hidden">
-            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">
+            <label class="block text-gray-800 text-sm font-semibold mb-2">
               <i class="fas fa-eye mr-1"></i>
               Preview (<span id="preview-count">0</span> tópicos detectados):
             </label>
-            <div id="preview-lista" class="max-h-40 overflow-y-auto p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
+            <div id="preview-lista" class="max-h-40 overflow-y-auto p-3 bg-gray-100 rounded-lg text-sm text-gray-800">
             </div>
           </div>
         </div>
         
         <!-- Footer -->
-        <div class="p-4 md:p-6 border-t ${themes[currentTheme].border} flex flex-col sm:flex-row gap-2">
+        <div class="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row gap-2">
           <button 
             onclick="previewTopicosImportacao()"
-            class="flex-1 py-2.5 px-4 bg-gray-200 dark:bg-gray-700 ${themes[currentTheme].text} rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition flex items-center justify-center gap-2">
+            class="flex-1 py-2.5 px-4 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition flex items-center justify-center gap-2">
             <i class="fas fa-search"></i>
             Visualizar Preview
           </button>
@@ -8114,7 +8120,7 @@ Ou cole direto do edital..."></textarea>
           </button>
           <button 
             onclick="fecharModal()"
-            class="flex-1 sm:flex-none py-2.5 px-4 border ${themes[currentTheme].border} rounded-lg ${themes[currentTheme].text} hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+            class="flex-1 sm:flex-none py-2.5 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition">
             Cancelar
           </button>
         </div>
