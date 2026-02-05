@@ -4425,11 +4425,16 @@ async function renderEntrevistaStep3() {
   if (interviewData.disciplinas_do_edital && interviewData.disciplinas_do_edital.length > 0) {
     // 🎯 USAR DISCIPLINAS DO EDITAL
     console.log(`📄 Usando ${interviewData.disciplinas_do_edital.length} disciplinas do edital processado`);
-    console.log('📋 Disciplinas:', interviewData.disciplinas_do_edital.map(d => `${d.nome} (${d.total_topicos || d.topicos?.length || 0} tópicos)`).join(', '));
+    console.log('📋 Disciplinas:', interviewData.disciplinas_do_edital.map(d => `${d.nome} (${d.total_topicos || d.topicos?.length || 0} tópicos, ID real: ${d.disciplina_id_real || 'N/A'})`).join(', '));
     
     // Mapear para formato esperado (INCLUINDO PESO e TÓPICOS do edital)
+    // ✅ CORREÇÃO CRÍTICA v21: Usar disciplina_id_real (da tabela disciplinas) em vez de ed.id (tabela edital_disciplinas)
+    // O backend espera IDs da tabela `disciplinas`, não de `edital_disciplinas`
     disciplinasFiltradas = interviewData.disciplinas_do_edital.map(d => ({
-      id: d.id || 0,
+      // ✅ PRIORIZAR disciplina_id_real (ID real da tabela disciplinas)
+      // Fallback para d.id se disciplina_id_real não existir (compatibilidade)
+      id: d.disciplina_id_real || d.id || 0,
+      edital_disciplina_id: d.id, // Guardar o ID do edital_disciplinas para referência
       nome: d.nome,
       descricao: `Disciplina extraída do edital (${d.total_topicos || d.topicos?.length || 0} tópicos)`,
       area: 'edital', // Flag especial
@@ -4437,6 +4442,8 @@ async function renderEntrevistaStep3() {
       total_topicos: d.total_topicos || d.topicos?.length || 0, // ✅ NOVO: Total de tópicos
       topicos: d.topicos || [] // ✅ NOVO: Lista de tópicos para exibição
     }));
+    
+    console.log('📊 IDs mapeados:', disciplinasFiltradas.map(d => `${d.nome}: ID=${d.id}, edital_disciplina_id=${d.edital_disciplina_id}`).join(', '));
     
   } else {
     // 🔄 FALLBACK: Carregar disciplinas padrão se não houver edital

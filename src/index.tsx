@@ -2863,6 +2863,8 @@ app.get('/api/verify-email/:token', async (c) => {
   const { DB } = c.env
   const token = c.req.param('token')
   
+  console.log('🔐 Verificação de email - Token recebido:', token?.substring(0, 10) + '...')
+  
   if (!token) {
     return c.json({ error: 'Token inválido' }, 400)
   }
@@ -2879,25 +2881,43 @@ app.get('/api/verify-email/:token', async (c) => {
   }
   
   try {
-    // Buscar usuário pelo token
+    // Buscar usuário pelo token (sem verificar expiração em SQL para evitar problemas de timezone)
     const user = await DB.prepare(
-      `SELECT id, email, email_verified, verification_token_expires 
+      `SELECT id, name, email, email_verified, verification_token_expires 
        FROM users 
-       WHERE verification_token = ? 
-       AND datetime('now') < verification_token_expires`
+       WHERE verification_token = ?`
     ).bind(token).first() as any
     
+    console.log('🔍 Usuário encontrado:', user ? `ID ${user.id}, email ${user.email}` : 'NENHUM')
+    
     if (!user) {
+      console.log('❌ Token não encontrado no banco')
       return c.json({ 
-        error: 'Token inválido ou expirado. Solicite um novo email de verificação.' 
+        error: 'Token inválido ou já utilizado. Solicite um novo email de verificação.' 
       }, 400)
+    }
+    
+    // Verificar expiração em JavaScript (mais confiável que datetime() do SQLite)
+    if (user.verification_token_expires) {
+      const now = new Date()
+      const expires = new Date(user.verification_token_expires)
+      console.log('⏰ Verificação de expiração - Agora:', now.toISOString(), '| Expira:', expires.toISOString())
+      
+      if (now > expires) {
+        console.log('❌ Token expirado')
+        return c.json({ 
+          error: 'Token expirado. Solicite um novo link de verificação.' 
+        }, 400)
+      }
     }
     
     // Se já está verificado
     if (user.email_verified) {
+      console.log('ℹ️ Email já verificado anteriormente')
       return c.json({ 
         message: 'Email já verificado. Você pode fazer login.',
-        alreadyVerified: true 
+        alreadyVerified: true,
+        success: true
       })
     }
     
@@ -2910,13 +2930,23 @@ app.get('/api/verify-email/:token', async (c) => {
        WHERE id = ?`
     ).bind(user.id).run()
     
+    console.log('✅ Email verificado com sucesso para:', user.email)
+    
+    // Enviar email de boas-vindas
+    try {
+      await sendWelcomeEmail(user.email, user.name || 'Usuário', c.env);
+    } catch (welcomeError) {
+      console.log('⚠️ Erro ao enviar email de boas-vindas (não crítico):', welcomeError)
+    }
+    
     return c.json({ 
       message: 'Email verificado com sucesso! Agora você pode fazer login.',
       email: user.email,
-      success: true
+      success: true,
+      verified: true
     })
   } catch (error) {
-    console.error('Erro ao verificar email:', error)
+    console.error('❌ Erro ao verificar email:', error)
     return c.json({ error: 'Erro ao verificar email' }, 500)
   }
 })
@@ -3137,47 +3167,8 @@ app.post('/api/resend-verification', async (c) => {
   }
 })
 
-// Verificar email com token
-app.get('/api/verify-email/:token', async (c) => {
-  const { DB } = c.env
-  const token = c.req.param('token')
-  
-  try {
-    const user = await DB.prepare(`
-      SELECT id, name, email, verification_token_expires 
-      FROM users 
-      WHERE verification_token = ? AND email_verified = 0
-    `).bind(token).first() as any
-    
-    if (!user) {
-      return c.json({ error: 'Token inválido ou já utilizado' }, 400)
-    }
-    
-    const now = new Date()
-    const expires = new Date(user.verification_token_expires)
-    if (now > expires) {
-      return c.json({ error: 'Token expirado. Solicite um novo link.' }, 400)
-    }
-    
-    await DB.prepare(`
-      UPDATE users 
-      SET email_verified = 1, verification_token = NULL, verification_token_expires = NULL 
-      WHERE id = ?
-    `).bind(user.id).run()
-    
-    // Enviar email de boas-vindas
-    await sendWelcomeEmail(user.email, user.name, c.env);
-    
-    return c.json({
-      message: 'Email verificado com sucesso!',
-      verified: true,
-      email: user.email
-    })
-  } catch (error) {
-    console.error('Erro ao verificar email:', error)
-    return c.json({ error: 'Erro ao verificar email' }, 500)
-  }
-})
+// [REMOVIDO - Definição duplicada de /api/verify-email/:token]
+// A definição principal está na linha ~2862
 
 app.get('/api/users/:id', async (c) => {
   const { DB } = c.env
@@ -14842,70 +14833,6 @@ function gerarQuestoesExemplo(quantidade: number, disciplinas: any[]): any[] {
   return questoes
 }
 
-// Rota catch-all para servir o SPA (Single Page Application)
-// Deve vir APÓS todas as rotas de API
-app.get('*', (c) => {
-  // Retornar o HTML principal para qualquer rota não capturada
-  return c.html(`<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IAprova - Preparação Inteligente para Concursos</title>
-    <meta name="description" content="Sistema inteligente de preparação para concursos públicos com IA">
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
-    
-    <!-- Axios -->
-    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-    
-    <!-- Custom Styles -->
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        }
-        #app {
-            min-height: 100vh;
-        }
-        /* Loading Spinner */
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #122D6A;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <!-- App Container -->
-    <div id="app">
-        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F]">
-            <div class="text-center">
-                <div class="spinner mx-auto mb-4"></div>
-                <p class="text-white text-lg">Carregando IAprova...</p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Main App Script -->
-    <script src="/static/app.js?v=${Date.now()}"></script>
-</body>
-</html>`)
-})
-
-
 // Endpoint para listar bancas disponíveis
 app.get('/api/bancas', async (c) => {
   const { DB } = c.env
@@ -15010,6 +14937,71 @@ self.addEventListener('fetch', (event) => {
   return new Response(swContent, {
     headers: { 'Content-Type': 'application/javascript' }
   })
+})
+
+// ============== ROTA CATCH-ALL (SPA) ==============
+// IMPORTANTE: Esta rota deve vir por ÚLTIMO, após todas as outras rotas de API e arquivos estáticos
+// Ela captura qualquer URL não definida anteriormente e retorna o HTML do SPA
+// Isso permite que rotas como /verificar-email, /resetar-senha, etc. funcionem no frontend
+app.get('*', (c) => {
+  // Retornar o HTML principal para qualquer rota não capturada
+  return c.html(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IAprova - Preparação Inteligente para Concursos</title>
+    <meta name="description" content="Sistema inteligente de preparação para concursos públicos com IA">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    
+    <!-- Axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        #app {
+            min-height: 100vh;
+        }
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #122D6A;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- App Container -->
+    <div id="app">
+        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F]">
+            <div class="text-center">
+                <div class="spinner mx-auto mb-4"></div>
+                <p class="text-white text-lg">Carregando IAprova...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main App Script -->
+    <script src="/static/app.js?v=${Date.now()}"></script>
+</body>
+</html>`)
 })
 
 export default app
