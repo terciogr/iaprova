@@ -9973,6 +9973,88 @@ app.put('/api/metas/editar/:meta_id', async (c) => {
   }
 })
 
+// 5b. Editar meta completa (incluindo disciplina e tópico)
+app.put('/api/metas/editar-completo/:meta_id', async (c) => {
+  const { DB } = c.env
+  const meta_id = parseInt(c.req.param('meta_id'))
+  const { 
+    disciplina_id, 
+    disciplina_nome, 
+    topico_id, 
+    topico_nome, 
+    tempo_minutos, 
+    tipo, 
+    observacoes 
+  } = await c.req.json()
+
+  console.log('✏️ Editando meta completa:', { meta_id, disciplina_id, disciplina_nome, topico_id, topico_nome })
+
+  try {
+    // Buscar meta atual
+    const metaAtual = await DB.prepare('SELECT * FROM metas_semana WHERE id = ?').bind(meta_id).first() as any
+    
+    if (!metaAtual) {
+      return c.json({ error: 'Meta não encontrada' }, 404)
+    }
+
+    // Preparar topicos_sugeridos
+    let topicos_sugeridos = metaAtual.topicos_sugeridos
+    if (topico_id && topico_nome) {
+      topicos_sugeridos = JSON.stringify([{ id: topico_id, nome: topico_nome }])
+    } else if (topico_id === null) {
+      topicos_sugeridos = null
+    }
+
+    // Atualizar meta com todos os campos
+    await DB.prepare(`
+      UPDATE metas_semana 
+      SET 
+        disciplina_id = COALESCE(?, disciplina_id),
+        disciplina_nome = COALESCE(?, disciplina_nome),
+        topico_id = ?,
+        topico_nome = ?,
+        topicos_sugeridos = ?,
+        tempo_minutos = COALESCE(?, tempo_minutos),
+        tipo = COALESCE(?, tipo),
+        observacoes = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(
+      disciplina_id,
+      disciplina_nome,
+      topico_id,
+      topico_nome,
+      topicos_sugeridos,
+      tempo_minutos,
+      tipo,
+      observacoes || null,
+      meta_id
+    ).run()
+
+    // Atualizar tempo total da semana se tempo mudou
+    if (tempo_minutos && tempo_minutos !== metaAtual.tempo_minutos) {
+      const diferenca = tempo_minutos - metaAtual.tempo_minutos
+      await DB.prepare(`
+        UPDATE semanas_estudo 
+        SET tempo_total_minutos = tempo_total_minutos + ?
+        WHERE id = ?
+      `).bind(diferenca, metaAtual.semana_id).run()
+    }
+
+    console.log('✅ Meta atualizada com sucesso:', { 
+      id: meta_id, 
+      nova_disciplina: disciplina_nome, 
+      novo_topico: topico_nome 
+    })
+
+    return c.json({ success: true, message: 'Meta atualizada com sucesso' })
+
+  } catch (error) {
+    console.error('❌ Erro ao editar meta completa:', error)
+    return c.json({ error: 'Erro ao editar meta' }, 500)
+  }
+})
+
 // 6. Excluir meta
 app.delete('/api/metas/excluir/:meta_id', async (c) => {
   const { DB } = c.env

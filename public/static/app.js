@@ -7024,17 +7024,23 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
               </div>
               
               <!-- Lista de Tópicos (expandível) -->
-              <div id="topicos-${disc.disciplina_id}" class="hidden border-t ${themes[currentTheme].border}">
+              <div id="topicos-${disc.disciplina_id}" class="hidden border-t ${themes[currentTheme].border} bg-gray-50 dark:bg-slate-800/50">
                 <div class="p-4">
                   <!-- Botões de ação -->
-                  <div class="flex justify-between items-center mb-4">
+                  <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
                     <h4 class="font-semibold ${themes[currentTheme].text}">
                       <i class="fas fa-list mr-2"></i>Tópicos da Disciplina
                     </h4>
-                    <button onclick="event.stopPropagation(); adicionarTopicoNaDisciplina(${disc.disciplina_id}, '${disc.nome.replace(/'/g, "\\'")}')"
-                            class="bg-[#122D6A] hover:bg-[#0D1F4D] text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1">
-                      <i class="fas fa-plus"></i> Novo Tópico
-                    </button>
+                    <div class="flex gap-2">
+                      <button onclick="event.stopPropagation(); importarTopicosEmLote(${disc.disciplina_id}, '${disc.nome.replace(/'/g, "\\'")}')" 
+                              class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1" title="Importar vários tópicos de uma vez">
+                        <i class="fas fa-file-import"></i> <span class="hidden sm:inline">Importar em Lote</span>
+                      </button>
+                      <button onclick="event.stopPropagation(); adicionarTopicoNaDisciplina(${disc.disciplina_id}, '${disc.nome.replace(/'/g, "\\'")}')"
+                              class="bg-[#122D6A] hover:bg-[#0D1F4D] text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1">
+                        <i class="fas fa-plus"></i> <span class="hidden sm:inline">Novo</span> Tópico
+                      </button>
+                    </div>
                   </div>
                   
                   ${disc.topicos.length === 0 ? `
@@ -8006,6 +8012,292 @@ window.adicionarTopicoNaDisciplina = async function(disciplinaId, disciplinaNome
     console.error('Erro ao adicionar tópico:', error);
     showToast('Erro ao adicionar tópico: ' + (error.response?.data?.error || error.message), 'error');
   }
+}
+
+// ✅ NOVA FUNÇÃO: Importar tópicos em lote
+window.importarTopicosEmLote = function(disciplinaId, disciplinaNome) {
+  const modal = document.getElementById('modal-container');
+  if (!modal) return;
+
+  modal.innerHTML = `
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onclick="fecharModal()">
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden" onclick="event.stopPropagation()">
+        
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 md:p-6">
+          <h3 class="text-lg md:text-xl font-bold flex items-center gap-2">
+            <i class="fas fa-file-import"></i>
+            Importar Tópicos em Lote
+          </h3>
+          <p class="text-sm opacity-90 mt-1">${disciplinaNome}</p>
+        </div>
+        
+        <!-- Body -->
+        <div class="p-4 md:p-6 max-h-[60vh] overflow-y-auto">
+          <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 rounded">
+            <p class="text-sm ${themes[currentTheme].text}">
+              <i class="fas fa-info-circle text-blue-500 mr-2"></i>
+              <strong>Dica:</strong> Cole os tópicos do edital. O sistema separa automaticamente por:
+            </p>
+            <ul class="text-xs ${themes[currentTheme].textSecondary} mt-2 ml-6 list-disc">
+              <li><strong>Quebra de linha</strong> (Enter) - cada linha = 1 tópico</li>
+              <li><strong>Ponto e vírgula (;)</strong> - separa múltiplos tópicos na mesma linha</li>
+              <li><strong>Numeração</strong> - Remove automaticamente "1.", "1)", "a)", etc.</li>
+            </ul>
+          </div>
+          
+          <div class="mb-4">
+            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">
+              <i class="fas fa-clipboard-list mr-1"></i>
+              Cole os tópicos aqui:
+            </label>
+            <textarea 
+              id="importar-topicos-texto"
+              rows="10"
+              class="w-full px-4 py-3 ${themes[currentTheme].input} rounded-lg border-2 ${themes[currentTheme].border} focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+              placeholder="Exemplo:
+1. Língua Portuguesa
+2. Interpretação de texto; Gramática; Redação oficial
+3. Raciocínio Lógico
+Proposições e conectivos; Tabelas-verdade
+
+Ou cole direto do edital..."></textarea>
+          </div>
+          
+          <div class="mb-4">
+            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">
+              <i class="fas fa-balance-scale mr-1"></i>
+              Peso padrão para todos os tópicos:
+            </label>
+            <input 
+              type="number" 
+              id="importar-peso-padrao" 
+              value="1" 
+              min="1" 
+              max="10"
+              class="w-24 px-3 py-2 ${themes[currentTheme].input} rounded-lg border ${themes[currentTheme].border} focus:ring-2 focus:ring-emerald-500">
+          </div>
+          
+          <!-- Preview -->
+          <div id="preview-topicos" class="hidden">
+            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">
+              <i class="fas fa-eye mr-1"></i>
+              Preview (<span id="preview-count">0</span> tópicos detectados):
+            </label>
+            <div id="preview-lista" class="max-h-40 overflow-y-auto p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
+            </div>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="p-4 md:p-6 border-t ${themes[currentTheme].border} flex flex-col sm:flex-row gap-2">
+          <button 
+            onclick="previewTopicosImportacao()"
+            class="flex-1 py-2.5 px-4 bg-gray-200 dark:bg-gray-700 ${themes[currentTheme].text} rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition flex items-center justify-center gap-2">
+            <i class="fas fa-search"></i>
+            Visualizar Preview
+          </button>
+          <button 
+            onclick="confirmarImportacaoTopicos(${disciplinaId})"
+            class="flex-1 py-2.5 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition flex items-center justify-center gap-2">
+            <i class="fas fa-check"></i>
+            Importar Tópicos
+          </button>
+          <button 
+            onclick="fecharModal()"
+            class="flex-1 sm:flex-none py-2.5 px-4 border ${themes[currentTheme].border} rounded-lg ${themes[currentTheme].text} hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  modal.classList.remove('hidden');
+  
+  // Auto-preview quando o usuário cola/digita
+  const textarea = document.getElementById('importar-topicos-texto');
+  if (textarea) {
+    textarea.addEventListener('input', () => {
+      previewTopicosImportacao();
+    });
+  }
+}
+
+// Função para fazer preview dos tópicos que serão importados
+window.previewTopicosImportacao = function() {
+  const texto = document.getElementById('importar-topicos-texto')?.value || '';
+  const previewContainer = document.getElementById('preview-topicos');
+  const previewLista = document.getElementById('preview-lista');
+  const previewCount = document.getElementById('preview-count');
+  
+  if (!texto.trim()) {
+    if (previewContainer) previewContainer.classList.add('hidden');
+    return;
+  }
+  
+  // Processar o texto para extrair tópicos
+  const topicos = processarTextoTopicos(texto);
+  
+  if (previewContainer && previewLista && previewCount) {
+    previewContainer.classList.remove('hidden');
+    previewCount.textContent = topicos.length;
+    
+    previewLista.innerHTML = topicos.map((t, i) => `
+      <div class="flex items-center gap-2 py-1 border-b border-gray-200 dark:border-gray-700 last:border-0">
+        <span class="w-6 h-6 flex items-center justify-center bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-bold">${i + 1}</span>
+        <span class="${themes[currentTheme].text} truncate">${t}</span>
+      </div>
+    `).join('');
+  }
+  
+  return topicos;
+}
+
+// Função para processar texto e extrair tópicos
+function processarTextoTopicos(texto) {
+  if (!texto || !texto.trim()) return [];
+  
+  // Primeiro, dividir por quebras de linha
+  let linhas = texto.split(/\\n|\\r\\n|\\r/);
+  
+  let topicos = [];
+  
+  for (const linha of linhas) {
+    // Se a linha contém ";", dividir por ele também
+    const partes = linha.split(';');
+    
+    for (let parte of partes) {
+      // Limpar a parte
+      parte = parte.trim();
+      
+      if (!parte) continue;
+      
+      // Remover numeração comum: "1.", "1)", "a)", "a.", "-", "•", "*"
+      parte = parte.replace(/^[\\d]+[.)\\s]+/, ''); // Remove "1.", "1)", "1 "
+      parte = parte.replace(/^[a-zA-Z][.)\\s]+/, ''); // Remove "a.", "a)", "a "
+      parte = parte.replace(/^[-•*]\\s*/, ''); // Remove "-", "•", "*"
+      parte = parte.trim();
+      
+      // Verificar se ainda tem conteúdo válido (pelo menos 3 caracteres)
+      if (parte && parte.length >= 3) {
+        topicos.push(parte);
+      }
+    }
+  }
+  
+  // Remover duplicatas (case-insensitive)
+  const vistos = new Set();
+  topicos = topicos.filter(t => {
+    const lower = t.toLowerCase();
+    if (vistos.has(lower)) return false;
+    vistos.add(lower);
+    return true;
+  });
+  
+  return topicos;
+}
+
+// Função para confirmar e executar a importação
+window.confirmarImportacaoTopicos = async function(disciplinaId) {
+  const texto = document.getElementById('importar-topicos-texto')?.value || '';
+  const peso = parseInt(document.getElementById('importar-peso-padrao')?.value) || 1;
+  
+  const topicos = processarTextoTopicos(texto);
+  
+  if (topicos.length === 0) {
+    showToast('⚠️ Nenhum tópico detectado. Verifique o texto inserido.', 'warning');
+    return;
+  }
+  
+  // Confirmar importação
+  const confirmar = await showConfirmacao(
+    `Importar ${topicos.length} tópicos?`,
+    `Os seguintes tópicos serão adicionados:\\n\\n• ${topicos.slice(0, 5).join('\\n• ')}${topicos.length > 5 ? '\\n• ... e mais ' + (topicos.length - 5) + ' tópicos' : ''}\\n\\nTodos com peso ${peso}.`
+  );
+  
+  if (!confirmar) return;
+  
+  // Mostrar loading
+  showToast('⏳ Importando tópicos...', 'info');
+  
+  let sucesso = 0;
+  let erros = 0;
+  
+  for (const nomeTopico of topicos) {
+    try {
+      await axios.post('/api/topicos/manual', {
+        disciplina_id: disciplinaId,
+        nome: nomeTopico,
+        peso: Math.min(10, Math.max(1, peso)),
+        categoria: 'Edital',
+        user_id: currentUser.id
+      });
+      sucesso++;
+    } catch (error) {
+      console.error('Erro ao importar tópico:', nomeTopico, error);
+      erros++;
+    }
+  }
+  
+  fecharModal();
+  
+  if (erros === 0) {
+    showToast(`✅ \${sucesso} tópicos importados com sucesso!`, 'success');
+  } else {
+    showToast(`⚠️ \${sucesso} importados, \${erros} com erro`, 'warning');
+  }
+  
+  // Recarregar disciplinas
+  await renderPortfolioDisciplinas();
+  
+  // Reabrir a disciplina
+  setTimeout(() => {
+    const container = document.getElementById(`topicos-\${disciplinaId}`);
+    const chevron = document.getElementById(`chevron-\${disciplinaId}`);
+    if (container) {
+      container.classList.remove('hidden');
+      if (chevron) chevron.classList.add('rotate-180');
+    }
+  }, 100);
+}
+
+// Função auxiliar de confirmação
+window.showConfirmacao = function(titulo, mensagem) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('modal-container');
+    if (!modal) {
+      resolve(confirm(mensagem));
+      return;
+    }
+    
+    modal.innerHTML = `
+      <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onclick="event.stopPropagation()">
+        <div class="\${themes[currentTheme].card} rounded-xl shadow-2xl max-w-md w-full p-6">
+          <h3 class="text-lg font-bold \${themes[currentTheme].text} mb-2">
+            <i class="fas fa-question-circle text-blue-500 mr-2"></i>
+            \${titulo}
+          </h3>
+          <p class="\${themes[currentTheme].textSecondary} text-sm whitespace-pre-line mb-4">\${mensagem}</p>
+          <div class="flex gap-2">
+            <button 
+              onclick="document.getElementById('modal-container').classList.add('hidden'); window._confirmResult(false)"
+              class="flex-1 py-2 px-4 bg-gray-200 dark:bg-gray-700 \${themes[currentTheme].text} rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+              Cancelar
+            </button>
+            <button 
+              onclick="document.getElementById('modal-container').classList.add('hidden'); window._confirmResult(true)"
+              class="flex-1 py-2 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
+              Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    modal.classList.remove('hidden');
+    window._confirmResult = resolve;
+  });
 }
 
 async function verDetalhesDisciplina(disciplinaId, disciplinaNome) {
@@ -16072,96 +16364,219 @@ async function salvarNovaMeta(event, semanaId, diaSemana, data) {
   }
 }
 
-// Modal de Editar Meta
-function abrirModalEditar(metaId) {
+// Modal de Editar Meta - COM OPÇÃO DE TROCAR DISCIPLINA E TÓPICO
+async function abrirModalEditar(metaId) {
   const meta = semanaAtual.metas.find(m => m.id === metaId)
   if (!meta) return
 
   const modal = document.getElementById('modal-container')
   if (!modal) return
 
+  // Carregar disciplinas do usuário para o dropdown
+  let disciplinas = [];
+  try {
+    const res = await axios.get(`/api/user-disciplinas/${currentUser.id}`);
+    disciplinas = res.data || [];
+  } catch (error) {
+    console.error('Erro ao carregar disciplinas:', error);
+  }
+
+  // Carregar tópicos da disciplina atual
+  let topicosAtuais = [];
+  try {
+    const res = await axios.get(`/api/user-topicos/${currentUser.id}/${meta.disciplina_id}`);
+    topicosAtuais = res.data || [];
+  } catch (error) {
+    console.error('Erro ao carregar tópicos:', error);
+  }
+
+  // Extrair tópico atual da meta
+  const topicoAtual = meta.topicos_sugeridos ? 
+    (typeof meta.topicos_sugeridos === 'string' ? JSON.parse(meta.topicos_sugeridos)[0] : meta.topicos_sugeridos[0]) 
+    : null;
+
   modal.innerHTML = `
-    <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="fecharModal()">
-      <div class="${themes[currentTheme].card} rounded-lg shadow-2xl max-w-md w-full p-6" onclick="event.stopPropagation()">
-        <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-4">
-          ✏️ Editar Meta
-        </h3>
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onclick="fecharModal()">
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden" onclick="event.stopPropagation()">
+        
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-4 md:p-6">
+          <h3 class="text-lg md:text-xl font-bold flex items-center gap-2">
+            <i class="fas fa-edit"></i>
+            Editar Meta
+          </h3>
+          <p class="text-sm opacity-90 mt-1">Ajuste disciplina, tópico e configurações</p>
+        </div>
+        
+        <!-- Body -->
+        <div class="p-4 md:p-6 max-h-[60vh] overflow-y-auto">
+          <form id="form-editar-meta" onsubmit="salvarEdicaoMetaCompleta(event, ${metaId})">
+            
+            <!-- Disciplina (EDITÁVEL) -->
+            <div class="mb-4">
+              <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">
+                <i class="fas fa-book text-[#122D6A] mr-1"></i>
+                Disciplina
+              </label>
+              <select id="editar-disciplina" required
+                      onchange="carregarTopicosParaEdicao(this.value)"
+                      class="w-full px-3 py-2.5 ${themes[currentTheme].input} rounded-lg border-2 ${themes[currentTheme].border} focus:ring-2 focus:ring-[#1A3A7F] focus:border-[#1A3A7F]">
+                ${disciplinas.map(d => `
+                  <option value="${d.disciplina_id}" 
+                          data-nome="${d.nome}"
+                          ${d.disciplina_id === meta.disciplina_id ? 'selected' : ''}>
+                    ${d.nome}
+                  </option>
+                `).join('')}
+              </select>
+              <p class="text-xs ${themes[currentTheme].textSecondary} mt-1">
+                <i class="fas fa-info-circle mr-1"></i>
+                Trocar a disciplina irá atualizar a contagem de progresso
+              </p>
+            </div>
 
-        <form onsubmit="salvarEdicaoMeta(event, ${metaId})">
-          <!-- Disciplina (readonly) -->
-          <div class="mb-4">
-            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">Disciplina</label>
-            <input type="text" value="${meta.disciplina_nome}" readonly
-                   class="w-full px-3 py-2 ${themes[currentTheme].input} rounded-lg bg-gray-100 dark:bg-gray-800 cursor-not-allowed">
-          </div>
+            <!-- Tópico (EDITÁVEL) -->
+            <div class="mb-4">
+              <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">
+                <i class="fas fa-list-ul text-[#2A4A9F] mr-1"></i>
+                Tópico
+              </label>
+              <select id="editar-topico"
+                      class="w-full px-3 py-2.5 ${themes[currentTheme].input} rounded-lg border-2 ${themes[currentTheme].border} focus:ring-2 focus:ring-[#1A3A7F] focus:border-[#1A3A7F]">
+                <option value="">-- Selecione um tópico (opcional) --</option>
+                ${topicosAtuais.map(t => `
+                  <option value="${t.id}" 
+                          data-nome="${(t.nome || '').replace(/"/g, '&quot;')}"
+                          ${topicoAtual && topicoAtual.id === t.id ? 'selected' : ''}>
+                    ${t.nome} ${t.vezes_estudado > 0 ? '✓' : ''}
+                  </option>
+                `).join('')}
+              </select>
+            </div>
 
-          <!-- Tipo -->
-          <div class="mb-4">
-            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">Tipo</label>
-            <select id="editar-tipo" required
-                    class="w-full px-3 py-2 ${themes[currentTheme].input} rounded-lg focus:ring-2 focus:ring-[#1A3A7F]">
-              <option value="teoria" ${meta.tipo === 'teoria' ? 'selected' : ''}>📖 Teoria</option>
-              <option value="exercicios" ${meta.tipo === 'exercicios' ? 'selected' : ''}>✏️ Exercícios</option>
-              <option value="revisao" ${meta.tipo === 'revisao' ? 'selected' : ''}>🔄 Revisão</option>
-            </select>
-          </div>
+            <!-- Tipo -->
+            <div class="mb-4">
+              <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">
+                <i class="fas fa-tag text-amber-500 mr-1"></i>
+                Tipo de Estudo
+              </label>
+              <select id="editar-tipo" required
+                      class="w-full px-3 py-2.5 ${themes[currentTheme].input} rounded-lg border-2 ${themes[currentTheme].border} focus:ring-2 focus:ring-[#1A3A7F]">
+                <option value="teoria" ${meta.tipo === 'teoria' ? 'selected' : ''}>📖 Teoria</option>
+                <option value="exercicios" ${meta.tipo === 'exercicios' ? 'selected' : ''}>✏️ Exercícios</option>
+                <option value="revisao" ${meta.tipo === 'revisao' ? 'selected' : ''}>🔄 Revisão</option>
+              </select>
+            </div>
 
-          <!-- Tempo -->
-          <div class="mb-4">
-            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">Tempo (minutos)</label>
-            <input type="number" id="editar-tempo" value="${meta.tempo_minutos}" min="15" max="240" required
-                   class="w-full px-3 py-2 ${themes[currentTheme].input} rounded-lg focus:ring-2 focus:ring-[#1A3A7F]">
-          </div>
+            <!-- Tempo -->
+            <div class="mb-4">
+              <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">
+                <i class="fas fa-clock text-green-500 mr-1"></i>
+                Tempo (minutos)
+              </label>
+              <input type="number" id="editar-tempo" value="${meta.tempo_minutos}" min="15" max="240" required
+                     class="w-full px-3 py-2.5 ${themes[currentTheme].input} rounded-lg border-2 ${themes[currentTheme].border} focus:ring-2 focus:ring-[#1A3A7F]">
+            </div>
 
-          <!-- Observações -->
-          <div class="mb-4">
-            <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">Observações (opcional)</label>
-            <textarea id="editar-obs" rows="2"
-                      class="w-full px-3 py-2 ${themes[currentTheme].input} rounded-lg focus:ring-2 focus:ring-[#1A3A7F]"
-                      placeholder="Adicione notas ou lembretes...">${meta.observacoes || ''}</textarea>
-          </div>
+            <!-- Observações -->
+            <div class="mb-4">
+              <label class="block ${themes[currentTheme].text} text-sm font-semibold mb-2">
+                <i class="fas fa-sticky-note text-purple-500 mr-1"></i>
+                Observações (opcional)
+              </label>
+              <textarea id="editar-obs" rows="2"
+                        class="w-full px-3 py-2.5 ${themes[currentTheme].input} rounded-lg border-2 ${themes[currentTheme].border} focus:ring-2 focus:ring-[#1A3A7F]"
+                        placeholder="Adicione notas ou lembretes...">${meta.observacoes || ''}</textarea>
+            </div>
+          </form>
+        </div>
 
-          <!-- Botões -->
-          <div class="flex gap-2 mt-6">
-            <button type="button" onclick="fecharModal()" 
-                    class="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-700 ${themes[currentTheme].text} rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600 transition">
-              Cancelar
-            </button>
-            <button type="submit" 
-                    class="flex-1 px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition">
-              <i class="fas fa-save mr-2"></i>Salvar
-            </button>
-          </div>
-        </form>
+        <!-- Footer -->
+        <div class="p-4 md:p-6 border-t ${themes[currentTheme].border} flex gap-2">
+          <button type="button" onclick="fecharModal()" 
+                  class="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-gray-700 ${themes[currentTheme].text} rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+            Cancelar
+          </button>
+          <button type="submit" form="form-editar-meta"
+                  class="flex-1 px-4 py-2.5 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex items-center justify-center gap-2">
+            <i class="fas fa-save"></i>
+            Salvar Alterações
+          </button>
+        </div>
       </div>
     </div>
   `
   modal.classList.remove('hidden')
 }
 
-async function salvarEdicaoMeta(event, metaId) {
+// Função para carregar tópicos quando mudar disciplina na edição
+window.carregarTopicosParaEdicao = async function(disciplinaId) {
+  const selectTopico = document.getElementById('editar-topico');
+  if (!selectTopico) return;
+  
+  selectTopico.innerHTML = '<option value="">Carregando...</option>';
+  
+  try {
+    const res = await axios.get(`/api/user-topicos/${currentUser.id}/${disciplinaId}`);
+    const topicos = res.data || [];
+    
+    selectTopico.innerHTML = `
+      <option value="">-- Selecione um tópico (opcional) --</option>
+      ${topicos.map(t => `
+        <option value="${t.id}" data-nome="${(t.nome || '').replace(/"/g, '&quot;')}">
+          ${t.nome} ${t.vezes_estudado > 0 ? '✓' : ''}
+        </option>
+      `).join('')}
+    `;
+  } catch (error) {
+    console.error('Erro ao carregar tópicos:', error);
+    selectTopico.innerHTML = '<option value="">Erro ao carregar</option>';
+  }
+}
+
+// Função para salvar edição completa da meta (com disciplina e tópico)
+async function salvarEdicaoMetaCompleta(event, metaId) {
   event.preventDefault()
 
+  const disciplinaSelect = document.getElementById('editar-disciplina');
+  const topicoSelect = document.getElementById('editar-topico');
   const tipo = document.getElementById('editar-tipo').value
   const tempoMinutos = document.getElementById('editar-tempo').value
   const observacoes = document.getElementById('editar-obs').value
 
+  // Obter dados da disciplina e tópico selecionados
+  const disciplinaId = parseInt(disciplinaSelect.value);
+  const disciplinaNome = disciplinaSelect.options[disciplinaSelect.selectedIndex]?.dataset?.nome || '';
+  
+  let topicoId = null;
+  let topicoNome = null;
+  if (topicoSelect.value) {
+    topicoId = parseInt(topicoSelect.value);
+    topicoNome = topicoSelect.options[topicoSelect.selectedIndex]?.dataset?.nome || '';
+  }
+
   try {
-    await axios.put(`/api/metas/editar/${metaId}`, {
+    await axios.put(`/api/metas/editar-completo/${metaId}`, {
+      disciplina_id: disciplinaId,
+      disciplina_nome: disciplinaNome,
+      topico_id: topicoId,
+      topico_nome: topicoNome,
       tipo: tipo,
       tempo_minutos: parseInt(tempoMinutos),
       observacoes: observacoes
     })
 
-    showSuccess('Meta atualizada com sucesso!')
+    showSuccess('✅ Meta atualizada com sucesso!')
     fecharModal()
     await carregarSemanaAtiva()
 
   } catch (error) {
     console.error('Erro ao editar meta:', error)
-    showError('Erro ao editar meta')
+    showError('Erro ao editar meta: ' + (error.response?.data?.error || error.message))
   }
 }
+
+// Função legada removida - substituída por salvarEdicaoMetaCompleta
 
 // ============== FUNÇÕES AUXILIARES ==============
 
