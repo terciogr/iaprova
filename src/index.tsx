@@ -11130,7 +11130,7 @@ app.post('/api/backup/google-drive/save', async (c) => {
     // Primeiro, verificar se já existe um backup anterior
     const searchResponse = await fetch(
       `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name contains 'iaprova_backup'`,
-      { headers: { 'Authorization': `Bearer ${user.google_access_token}` } }
+      { headers: { 'Authorization': `Bearer ${accessToken}` } }
     )
     const searchResult = await searchResponse.json() as any
     
@@ -11161,7 +11161,7 @@ app.post('/api/backup/google-drive/save', async (c) => {
     const uploadResponse = await fetch(uploadUrl, {
       method: fileId ? 'PATCH' : 'POST',
       headers: {
-        'Authorization': `Bearer ${user.google_access_token}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': `multipart/related; boundary=${boundary}`
       },
       body: multipartBody
@@ -11198,7 +11198,7 @@ app.post('/api/backup/google-drive/load', async (c) => {
   
   try {
     const user = await DB.prepare(`
-      SELECT google_access_token, google_token_expires 
+      SELECT google_access_token, google_refresh_token, google_token_expires 
       FROM users WHERE id = ?
     `).bind(user_id).first() as any
     
@@ -11206,14 +11206,47 @@ app.post('/api/backup/google-drive/load', async (c) => {
       return c.json({ error: 'Conecte sua conta Google primeiro' }, 400)
     }
     
+    let accessToken = user.google_access_token
+    
+    // Verificar se token expirou e tentar refresh
     if (new Date(user.google_token_expires) < new Date()) {
-      return c.json({ error: 'Token expirado', needsReauth: true }, 401)
+      console.log('🔄 Token expirado, tentando refresh...')
+      
+      if (!user.google_refresh_token) {
+        return c.json({ error: 'Token expirado, reconecte sua conta Google', needsReauth: true }, 401)
+      }
+      
+      const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = c.env as any
+      const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          refresh_token: user.google_refresh_token,
+          grant_type: 'refresh_token'
+        })
+      })
+      
+      const refreshResult = await refreshResponse.json() as any
+      
+      if (refreshResult.error) {
+        console.error('Erro no refresh:', refreshResult)
+        return c.json({ error: 'Token expirado, reconecte sua conta Google', needsReauth: true }, 401)
+      }
+      
+      accessToken = refreshResult.access_token
+      const newExpires = new Date(Date.now() + refreshResult.expires_in * 1000).toISOString()
+      await DB.prepare('UPDATE users SET google_access_token = ?, google_token_expires = ? WHERE id = ?')
+        .bind(accessToken, newExpires, user_id).run()
+      
+      console.log('✅ Token renovado com sucesso')
     }
     
     // Buscar arquivo de backup
     const searchResponse = await fetch(
       `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name contains 'iaprova_backup'&orderBy=modifiedTime desc`,
-      { headers: { 'Authorization': `Bearer ${user.google_access_token}` } }
+      { headers: { 'Authorization': `Bearer ${accessToken}` } }
     )
     const searchResult = await searchResponse.json() as any
     
@@ -11226,7 +11259,7 @@ app.post('/api/backup/google-drive/load', async (c) => {
     // Download do arquivo
     const downloadResponse = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-      { headers: { 'Authorization': `Bearer ${user.google_access_token}` } }
+      { headers: { 'Authorization': `Bearer ${accessToken}` } }
     )
     
     const backup = await downloadResponse.json()

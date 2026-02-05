@@ -8252,9 +8252,9 @@ window.confirmarImportacaoTopicos = async function(disciplinaId) {
   fecharModal();
   
   if (erros === 0) {
-    showToast(`✅ \${sucesso} tópicos importados com sucesso!`, 'success');
+    showToast('✅ ' + sucesso + ' tópicos importados com sucesso!', 'success');
   } else {
-    showToast(`⚠️ \${sucesso} importados, \${erros} com erro`, 'warning');
+    showToast('⚠️ ' + sucesso + ' importados, ' + erros + ' com erro', 'warning');
   }
   
   // Recarregar disciplinas
@@ -8262,8 +8262,8 @@ window.confirmarImportacaoTopicos = async function(disciplinaId) {
   
   // Reabrir a disciplina
   setTimeout(() => {
-    const container = document.getElementById(`topicos-\${disciplinaId}`);
-    const chevron = document.getElementById(`chevron-\${disciplinaId}`);
+    const container = document.getElementById('topicos-' + disciplinaId);
+    const chevron = document.getElementById('chevron-' + disciplinaId);
     if (container) {
       container.classList.remove('hidden');
       if (chevron) chevron.classList.add('rotate-180');
@@ -8280,23 +8280,27 @@ window.showConfirmacao = function(titulo, mensagem) {
       return;
     }
     
+    // Escapar HTML para prevenir XSS
+    const tituloSafe = titulo.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const mensagemSafe = mensagem.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\\n/g, '<br>');
+    
     modal.innerHTML = `
       <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onclick="event.stopPropagation()">
-        <div class="\${themes[currentTheme].card} rounded-xl shadow-2xl max-w-md w-full p-6">
-          <h3 class="text-lg font-bold \${themes[currentTheme].text} mb-2">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+          <h3 class="text-lg font-bold text-gray-900 mb-2">
             <i class="fas fa-question-circle text-blue-500 mr-2"></i>
-            \${titulo}
+            ${tituloSafe}
           </h3>
-          <p class="\${themes[currentTheme].textSecondary} text-sm whitespace-pre-line mb-4">\${mensagem}</p>
+          <p class="text-gray-600 text-sm mb-4">${mensagemSafe}</p>
           <div class="flex gap-2">
             <button 
               onclick="document.getElementById('modal-container').classList.add('hidden'); window._confirmResult(false)"
-              class="flex-1 py-2 px-4 bg-gray-200 dark:bg-gray-700 \${themes[currentTheme].text} rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+              class="flex-1 py-2 px-4 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition">
               Cancelar
             </button>
             <button 
               onclick="document.getElementById('modal-container').classList.add('hidden'); window._confirmResult(true)"
-              class="flex-1 py-2 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
+              class="flex-1 py-2 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
               Confirmar
             </button>
           </div>
