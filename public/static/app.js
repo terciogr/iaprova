@@ -11513,23 +11513,40 @@ window.iniciarPagamento = async function(plano) {
   document.body.appendChild(loadingModal);
   
   try {
+    console.log('💳 Iniciando pagamento...', { user_id: currentUser?.id, plano });
+    
+    if (!currentUser?.id) {
+      throw new Error('Usuário não está logado');
+    }
+    
     // Criar preferência de pagamento
     const response = await axios.post('/api/mercadopago/create-preference', {
       user_id: currentUser.id,
       plan: plano
     });
     
+    console.log('📦 Resposta do backend:', response.data);
+    
     if (response.data.init_point) {
       // Redirecionar para o Mercado Pago
-      console.log('Redirecionando para Mercado Pago:', response.data.init_point);
-      window.location.href = response.data.init_point;
+      console.log('🔗 Redirecionando para Mercado Pago:', response.data.init_point);
+      
+      // Remover loading antes de redirecionar
+      document.getElementById('modal-payment-loading')?.remove();
+      
+      // Usar window.location.assign para melhor compatibilidade
+      window.location.assign(response.data.init_point);
     } else {
+      console.error('❌ Resposta sem init_point:', response.data);
       throw new Error('URL de pagamento não recebida');
     }
   } catch (error) {
-    console.error('Erro ao criar pagamento:', error);
+    console.error('❌ Erro ao criar pagamento:', error);
+    console.error('Detalhes:', error.response?.data);
     document.getElementById('modal-payment-loading')?.remove();
-    showToast(error.response?.data?.error || 'Erro ao iniciar pagamento. Tente novamente.', 'error');
+    
+    const errorMsg = error.response?.data?.error || error.message || 'Erro ao iniciar pagamento';
+    showToast(errorMsg + '. Tente novamente.', 'error');
   }
 };
 

@@ -1778,6 +1778,9 @@ app.post('/api/mercadopago/create-preference', async (c) => {
       expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24h
     }
     
+    console.log(`🔄 Criando preferência MP para usuário ${user_id}, plano ${plan}...`)
+    console.log(`🔑 Token (primeiros 20 chars): ${MP_ACCESS_TOKEN?.substring(0, 20)}...`)
+    
     const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
       headers: {
@@ -1789,12 +1792,23 @@ app.post('/api/mercadopago/create-preference', async (c) => {
     
     const result = await response.json() as any
     
-    if (result.error) {
-      console.error('Erro ao criar preferência:', result)
-      return c.json({ error: 'Erro ao criar pagamento' }, 500)
+    console.log(`📦 Resposta MP (status ${response.status}):`, JSON.stringify(result).substring(0, 500))
+    
+    if (!response.ok || result.error) {
+      console.error('❌ Erro ao criar preferência:', result)
+      return c.json({ 
+        error: result.message || result.error || 'Erro ao criar pagamento',
+        details: result
+      }, 500)
+    }
+    
+    if (!result.init_point) {
+      console.error('❌ Resposta sem init_point:', result)
+      return c.json({ error: 'Resposta inválida do Mercado Pago - sem URL de pagamento' }, 500)
     }
     
     console.log(`✅ Preferência criada: ${result.id} para usuário ${user_id}`)
+    console.log(`🔗 URL de pagamento: ${result.init_point}`)
     
     return c.json({
       success: true,
@@ -7308,28 +7322,106 @@ app.post('/api/interviews', async (c) => {
         console.log(`✅ Plano antigo ${planoExistenteAuto.id} removido`)
       }
       
-      // Buscar APENAS as disciplinas desta entrevista (não todas do usuário)
-      const disciplinaIds = data.disciplinas.map(d => d.disciplina_id).filter(id => id) // Remover nulls/undefined
+      // ✅ CORREÇÃO v21: Garantir que disciplinas do edital existam no sistema
+      // O frontend envia disc.id que pode ser o ID de edital_disciplinas, não de disciplinas
+      console.log(`📋 Disciplinas recebidas do frontend:`, data.disciplinas.map(d => `ID ${d.disciplina_id}`).join(', '))
       
-      if (disciplinaIds.length === 0) {
+      // Processar cada disciplina individualmente para garantir que exista
+      const disciplinasProcessadas = []
+      
+      for (const discData of data.disciplinas) {
+        if (!discData.disciplina_id) continue
+        
+        // Tentar buscar a disciplina pelo ID direto primeiro
+        let disciplina = await DB.prepare(
+          'SELECT id, nome, area FROM disciplinas WHERE id = ?'
+        ).bind(discData.disciplina_id).first() as any
+        
+        // Se não encontrou, pode ser um ID de edital_disciplinas
+        // Buscar na tabela edital_disciplinas e criar a disciplina se necessário
+        if (!disciplina) {
+          console.log(`🔍 ID ${discData.disciplina_id} não é de disciplinas. Verificando edital_disciplinas...`)
+          
+          const editalDisc = await DB.prepare(
+            'SELECT id, nome, disciplina_id as real_id FROM edital_disciplinas WHERE id = ?'
+          ).bind(discData.disciplina_id).first() as any
+          
+          if (editalDisc) {
+            // Se já tem disciplina_id real, usar
+            if (editalDisc.real_id) {
+              disciplina = await DB.prepare(
+                'SELECT id, nome, area FROM disciplinas WHERE id = ?'
+              ).bind(editalDisc.real_id).first() as any
+            }
+            
+            // Se ainda não tem disciplina, criar uma nova
+            if (!disciplina) {
+              console.log(`✨ Criando nova disciplina: ${editalDisc.nome}`)
+              
+              // Criar na tabela disciplinas
+              const result = await DB.prepare(
+                'INSERT INTO disciplinas (nome, area) VALUES (?, ?) RETURNING id'
+              ).bind(editalDisc.nome, 'edital').first() as any
+              
+              disciplina = { id: result.id, nome: editalDisc.nome, area: 'edital' }
+              
+              // Atualizar edital_disciplinas com o ID real
+              await DB.prepare(
+                'UPDATE edital_disciplinas SET disciplina_id = ? WHERE id = ?'
+              ).bind(disciplina.id, editalDisc.id).run()
+              
+              console.log(`✅ Disciplina ${editalDisc.nome} criada com ID ${disciplina.id}`)
+            }
+          }
+        }
+        
+        if (!disciplina) {
+          console.warn(`⚠️ Disciplina ID ${discData.disciplina_id} não encontrada. Pulando...`)
+          continue
+        }
+        
+        // Garantir registro em user_disciplinas
+        const userDisc = await DB.prepare(
+          'SELECT id, disciplina_id FROM user_disciplinas WHERE user_id = ? AND disciplina_id = ?'
+        ).bind(data.user_id, disciplina.id).first() as any
+        
+        if (!userDisc) {
+          console.log(`📝 Criando user_disciplinas para ${disciplina.nome}`)
+          await DB.prepare(`
+            INSERT INTO user_disciplinas (user_id, disciplina_id, ja_estudou, nivel_atual, dificuldade)
+            VALUES (?, ?, ?, ?, ?)
+          `).bind(
+            data.user_id, 
+            disciplina.id, 
+            discData.ja_estudou ? 1 : 0,
+            discData.nivel_atual || 0,
+            discData.dificuldade ? 1 : 0
+          ).run()
+        }
+        
+        disciplinasProcessadas.push({
+          disciplina_id: disciplina.id,
+          nome: disciplina.nome,
+          area: disciplina.area,
+          ja_estudou: discData.ja_estudou || false,
+          nivel_atual: discData.nivel_atual || 0,
+          dificuldade: discData.dificuldade || false,
+          nivel_dominio: discData.nivel_dominio || 0,
+          peso: discData.peso || null
+        })
+      }
+      
+      if (disciplinasProcessadas.length === 0) {
         throw new Error('Nenhuma disciplina válida foi selecionada')
       }
       
-      console.log(`📋 IDs de disciplinas selecionadas (${disciplinaIds.length}):`, disciplinaIds.join(', '))
+      console.log(`📊 Disciplinas processadas (${disciplinasProcessadas.length}):`, disciplinasProcessadas.map(d => `${d.nome} (ID: ${d.disciplina_id})`).join(', '))
       
-      const placeholders = disciplinaIds.map(() => '?').join(',')
+      // Usar disciplinasProcessadas diretamente (já tem todos os dados necessários)
+      const userDisciplinas = disciplinasProcessadas
       
-      const { results: userDisciplinas } = await DB.prepare(`
-        SELECT ud.*, d.nome, d.area 
-        FROM user_disciplinas ud
-        JOIN disciplinas d ON ud.disciplina_id = d.id
-        WHERE ud.user_id = ? AND ud.disciplina_id IN (${placeholders})
-      `).bind(data.user_id, ...disciplinaIds).all()
-      
-      console.log(`📊 Disciplinas encontradas no banco (${userDisciplinas.length}):`, userDisciplinas.map(d => `${d.nome} (ID: ${d.disciplina_id})`).join(', '))
-      
-      // ✅ VALIDAÇÃO EXTRA: Garantir que userDisciplinas só tem as disciplinas selecionadas
-      const disciplinasValidadas = userDisciplinas.filter(d => disciplinaIds.includes(d.disciplina_id))
+      // As disciplinas já foram validadas durante o processamento
+      const disciplinasValidadas = userDisciplinas
       console.log(`✅ Disciplinas validadas para o plano (${disciplinasValidadas.length}):`, disciplinasValidadas.map(d => d.nome).join(', '))
       
       // Buscar entrevista completa
