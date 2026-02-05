@@ -2080,6 +2080,46 @@ app.get('/api/admin/dashboard', async (c) => {
       console.log('⚠️ Tabela user_subscriptions não existe ainda')
     }
     
+    // Estatísticas de feedback de conteúdo (se tabela existir)
+    let feedbackStats = { total: 0, positivo: 0, negativo: 0, taxa_satisfacao: 0 }
+    try {
+      const totalFeedback = await DB.prepare('SELECT COUNT(*) as count FROM conteudo_feedback').first() as any
+      const positiveFeedback = await DB.prepare("SELECT COUNT(*) as count FROM conteudo_feedback WHERE tipo = 'bom'").first() as any
+      const negativeFeedback = await DB.prepare("SELECT COUNT(*) as count FROM conteudo_feedback WHERE tipo = 'ruim'").first() as any
+      
+      const total = totalFeedback?.count || 0
+      const positivo = positiveFeedback?.count || 0
+      
+      feedbackStats = {
+        total: total,
+        positivo: positivo,
+        negativo: negativeFeedback?.count || 0,
+        taxa_satisfacao: total > 0 ? Math.round((positivo / total) * 100) : 0
+      }
+    } catch (e) {
+      console.log('⚠️ Tabela conteudo_feedback não existe ainda')
+    }
+    
+    // Estatísticas de conteúdo gerado
+    let conteudoStats = { total: 0, teoria: 0, exercicios: 0, resumo: 0, flashcards: 0 }
+    try {
+      const totalConteudo = await DB.prepare('SELECT COUNT(*) as count FROM conteudo_estudo').first() as any
+      const teoriaConteudo = await DB.prepare("SELECT COUNT(*) as count FROM conteudo_estudo WHERE tipo = 'teoria'").first() as any
+      const exerciciosConteudo = await DB.prepare("SELECT COUNT(*) as count FROM conteudo_estudo WHERE tipo = 'exercicios'").first() as any
+      const resumoConteudo = await DB.prepare("SELECT COUNT(*) as count FROM conteudo_estudo WHERE tipo = 'resumo'").first() as any
+      const flashcardsConteudo = await DB.prepare("SELECT COUNT(*) as count FROM conteudo_estudo WHERE tipo = 'flashcards'").first() as any
+      
+      conteudoStats = {
+        total: totalConteudo?.count || 0,
+        teoria: teoriaConteudo?.count || 0,
+        exercicios: exerciciosConteudo?.count || 0,
+        resumo: resumoConteudo?.count || 0,
+        flashcards: flashcardsConteudo?.count || 0
+      }
+    } catch (e) {
+      console.log('⚠️ Tabela conteudo_estudo não existe')
+    }
+    
     return c.json({
       users: {
         total: totalUsers?.count || 0,
@@ -2099,7 +2139,9 @@ app.get('/api/admin/dashboard', async (c) => {
         completion_rate: totalMetas?.count > 0 ? Math.round((completedMetas?.count / totalMetas?.count) * 100) : 0
       },
       emails: emailStats,
-      subscriptions: subscriptionStats
+      subscriptions: subscriptionStats,
+      feedback: feedbackStats,
+      conteudo: conteudoStats
     })
   } catch (error) {
     console.error('Erro ao buscar dashboard admin:', error)
@@ -13840,6 +13882,84 @@ REGRAS OBRIGATÓRIAS:
       error: 'Erro no servidor ao gerar conteúdo',
       details: error instanceof Error ? error.message : 'Erro interno no servidor'
     }, 500)
+  }
+})
+
+// ============== FEEDBACK DE CONTEÚDO ==============
+app.post('/api/conteudo/feedback', async (c) => {
+  const { DB } = c.env
+  const { user_id, tipo, conteudo_tipo, disciplina_nome, topico_nome, critica } = await c.req.json()
+  
+  try {
+    // Criar tabela se não existir
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS conteudo_feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        tipo TEXT NOT NULL CHECK(tipo IN ('bom', 'ruim')),
+        conteudo_tipo TEXT,
+        disciplina_nome TEXT,
+        topico_nome TEXT,
+        critica TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `).run()
+    
+    // Inserir feedback
+    await DB.prepare(`
+      INSERT INTO conteudo_feedback (user_id, tipo, conteudo_tipo, disciplina_nome, topico_nome, critica)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(user_id, tipo, conteudo_tipo || null, disciplina_nome || null, topico_nome || null, critica || null).run()
+    
+    console.log(`📊 Feedback registrado: ${tipo} - ${conteudo_tipo} - ${disciplina_nome}`)
+    
+    return c.json({ success: true, message: 'Feedback registrado com sucesso' })
+  } catch (error) {
+    console.error('❌ Erro ao salvar feedback:', error)
+    return c.json({ error: 'Erro ao salvar feedback' }, 500)
+  }
+})
+
+// Listar feedbacks (admin)
+app.get('/api/admin/feedbacks', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const page = parseInt(c.req.query('page') || '1')
+    const limit = parseInt(c.req.query('limit') || '20')
+    const tipo = c.req.query('tipo') || ''
+    const offset = (page - 1) * limit
+    
+    let query = 'SELECT f.*, u.name as user_name, u.email as user_email FROM conteudo_feedback f LEFT JOIN users u ON f.user_id = u.id'
+    let countQuery = 'SELECT COUNT(*) as count FROM conteudo_feedback f'
+    
+    if (tipo) {
+      query += ` WHERE f.tipo = '${tipo}'`
+      countQuery += ` WHERE f.tipo = '${tipo}'`
+    }
+    
+    query += ' ORDER BY f.created_at DESC LIMIT ? OFFSET ?'
+    
+    const { results: feedbacks } = await DB.prepare(query).bind(limit, offset).all()
+    const total = await DB.prepare(countQuery).first() as any
+    
+    return c.json({
+      feedbacks,
+      pagination: {
+        page,
+        limit,
+        total: total?.count || 0,
+        pages: Math.ceil((total?.count || 0) / limit)
+      }
+    })
+  } catch (error) {
+    console.error('Erro ao buscar feedbacks:', error)
+    return c.json({ error: 'Erro ao buscar feedbacks', feedbacks: [], pagination: { page: 1, limit: 20, total: 0, pages: 0 } })
   }
 })
 

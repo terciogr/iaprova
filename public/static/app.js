@@ -7997,8 +7997,24 @@ window.exibirConteudoGerado = function(data) {
 }
 
 // Funções de feedback do conteúdo
-window.darFeedbackConteudo = function(tipo) {
+window.darFeedbackConteudo = async function(tipo) {
   const feedbackArea = document.getElementById('feedback-buttons');
+  
+  // Salvar feedback no banco
+  try {
+    const dados = window.conteudoAtualDados || {};
+    await axios.post('/api/conteudo/feedback', {
+      user_id: currentUser?.id,
+      tipo: tipo,
+      conteudo_tipo: dados.tipo,
+      disciplina_nome: dados.disciplina_nome,
+      topico_nome: dados.topico_nome
+    });
+    console.log('✅ Feedback salvo com sucesso');
+  } catch (error) {
+    console.error('Erro ao salvar feedback:', error);
+  }
+  
   if (feedbackArea) {
     if (tipo === 'bom') {
       feedbackArea.innerHTML = `
@@ -8010,7 +8026,6 @@ window.darFeedbackConteudo = function(tipo) {
     }
   }
   
-  // Enviar feedback para analytics (opcional futuro)
   console.log('📊 Feedback registrado:', tipo);
 }
 
@@ -8046,6 +8061,8 @@ window.regenerarConteudoComFeedback = async function() {
   showToast('⏳ Regenerando conteúdo com suas melhorias...', 'info');
   
   try {
+    console.log('🔄 Regenerando com feedback:', { topico_nome, disciplina_nome, tipo, critica });
+    
     // Chamar API para gerar novo conteúdo incluindo a crítica
     const response = await axios.post('/api/topicos/gerar-conteudo', {
       user_id: currentUser.id,
@@ -8054,19 +8071,37 @@ window.regenerarConteudoComFeedback = async function() {
       disciplina_nome: disciplina_nome,
       disciplina_id: disciplina_id,
       tipo: tipo,
-      feedback_usuario: critica, // Nova propriedade com a crítica
+      feedback_usuario: critica,
       regenerar: true
+    }, {
+      headers: {
+        'X-User-ID': currentUser.id
+      },
+      timeout: 120000 // 2 minutos para geração de conteúdo
     });
     
-    if (response.data) {
+    console.log('✅ Resposta da regeneração:', response.data);
+    
+    if (response.data && (response.data.conteudo || response.data.texto)) {
       showToast('✅ Conteúdo regenerado com sucesso!', 'success');
-      exibirConteudoGerado(response.data);
+      
+      // Garantir que os dados estão no formato correto
+      const dadosExibicao = {
+        ...response.data,
+        topico_nome: topico_nome,
+        disciplina_nome: disciplina_nome,
+        tipo: tipo
+      };
+      
+      exibirConteudoGerado(dadosExibicao);
     } else {
-      showToast('❌ Erro ao regenerar conteúdo', 'error');
+      console.error('Resposta inválida:', response.data);
+      showToast('❌ Erro ao regenerar conteúdo - resposta inválida', 'error');
     }
   } catch (error) {
     console.error('Erro ao regenerar:', error);
-    showToast('❌ Erro ao regenerar: ' + (error.response?.data?.error || error.message), 'error');
+    const errorMsg = error.response?.data?.error || error.message || 'Erro desconhecido';
+    showToast('❌ Erro ao regenerar: ' + errorMsg, 'error');
   }
 }
 
@@ -11263,6 +11298,69 @@ window.abrirPainelAdmin = async function() {
             </div>
           </div>
           
+          <!-- Conteúdo IA e Feedback -->
+          <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-robot text-purple-500"></i>
+                Conteúdo Gerado pela IA
+              </h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Total gerado</span>
+                  <span class="font-bold ${themes[currentTheme].text} text-lg">${stats.conteudo?.total || 0}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-book mr-1"></i>Teoria</span>
+                  <span class="font-bold text-blue-600">${stats.conteudo?.teoria || 0}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-tasks mr-1"></i>Exercícios</span>
+                  <span class="font-bold text-green-600">${stats.conteudo?.exercicios || 0}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-sticky-note mr-1"></i>Resumos</span>
+                  <span class="font-bold text-yellow-600">${stats.conteudo?.resumo || 0}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-clone mr-1"></i>Flashcards</span>
+                  <span class="font-bold text-purple-600">${stats.conteudo?.flashcards || 0}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-star text-amber-500"></i>
+                Feedback de Conteúdo
+              </h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Total de avaliações</span>
+                  <span class="font-bold ${themes[currentTheme].text} text-lg">${stats.feedback?.total || 0}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-thumbs-up mr-1 text-emerald-500"></i>Avaliações positivas</span>
+                  <span class="font-bold text-emerald-600">${stats.feedback?.positivo || 0}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-thumbs-down mr-1 text-red-500"></i>Precisa melhorar</span>
+                  <span class="font-bold text-red-600">${stats.feedback?.negativo || 0}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Taxa de satisfação</span>
+                  <span class="font-bold ${(stats.feedback?.taxa_satisfacao || 0) >= 70 ? 'text-emerald-600' : (stats.feedback?.taxa_satisfacao || 0) >= 50 ? 'text-yellow-600' : 'text-red-600'}">${stats.feedback?.taxa_satisfacao || 0}%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                  <div class="h-2 rounded-full ${(stats.feedback?.taxa_satisfacao || 0) >= 70 ? 'bg-emerald-500' : (stats.feedback?.taxa_satisfacao || 0) >= 50 ? 'bg-yellow-500' : 'bg-red-500'}" style="width: ${stats.feedback?.taxa_satisfacao || 0}%"></div>
+                </div>
+              </div>
+              <button onclick="verFeedbacksAdmin()" class="mt-4 w-full py-2 px-4 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition text-sm font-medium">
+                <i class="fas fa-list mr-1"></i>Ver Todos os Feedbacks
+              </button>
+            </div>
+          </div>
+          
           <!-- Ações Rápidas -->
           <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
             <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
@@ -11667,6 +11765,83 @@ window.verHistoricoEmails = async function() {
   }
 };
 
+// Ver feedbacks de conteúdo (admin)
+window.verFeedbacksAdmin = async function() {
+  try {
+    const response = await axios.get('/api/admin/feedbacks?limit=50', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    const { feedbacks, pagination } = response.data;
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-admin-feedbacks';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    modal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
+          <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
+            <i class="fas fa-star text-amber-500"></i>
+            Feedbacks de Conteúdo (${pagination?.total || 0})
+          </h3>
+          <button onclick="document.getElementById('modal-admin-feedbacks')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        <div class="overflow-y-auto flex-1 p-4">
+          ${!feedbacks || feedbacks.length === 0 ? `
+            <div class="text-center py-8 ${themes[currentTheme].textSecondary}">
+              <i class="fas fa-comments text-4xl mb-3 opacity-50"></i>
+              <p>Nenhum feedback registrado ainda</p>
+              <p class="text-xs mt-2">Os feedbacks aparecem quando usuários avaliam conteúdos gerados</p>
+            </div>
+          ` : `
+            <table class="w-full text-sm">
+              <thead class="bg-gray-100 dark:bg-gray-800">
+                <tr>
+                  <th class="p-2 text-left ${themes[currentTheme].text}">Usuário</th>
+                  <th class="p-2 text-center ${themes[currentTheme].text}">Avaliação</th>
+                  <th class="p-2 text-left ${themes[currentTheme].text}">Conteúdo</th>
+                  <th class="p-2 text-left ${themes[currentTheme].text}">Crítica</th>
+                  <th class="p-2 text-left ${themes[currentTheme].text}">Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${feedbacks.map(f => `
+                  <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td class="p-2 ${themes[currentTheme].textSecondary} text-xs">
+                      <div>${f.user_name || 'N/A'}</div>
+                      <div class="text-[10px] opacity-70">${f.user_email || ''}</div>
+                    </td>
+                    <td class="p-2 text-center">
+                      ${f.tipo === 'bom' 
+                        ? '<span class="px-2 py-1 rounded text-xs bg-emerald-100 text-emerald-700"><i class="fas fa-thumbs-up mr-1"></i>Bom</span>' 
+                        : '<span class="px-2 py-1 rounded text-xs bg-red-100 text-red-700"><i class="fas fa-thumbs-down mr-1"></i>Ruim</span>'
+                      }
+                    </td>
+                    <td class="p-2 ${themes[currentTheme].text}">
+                      <div class="text-xs font-medium">${f.conteudo_tipo || 'N/A'}</div>
+                      <div class="text-[10px] ${themes[currentTheme].textSecondary}">${f.disciplina_nome || ''}</div>
+                      <div class="text-[10px] ${themes[currentTheme].textMuted}">${f.topico_nome || ''}</div>
+                    </td>
+                    <td class="p-2 ${themes[currentTheme].textSecondary} text-xs max-w-[200px]">
+                      ${f.critica ? `<span class="line-clamp-2" title="${f.critica}">${f.critica}</span>` : '<span class="opacity-50">-</span>'}
+                    </td>
+                    <td class="p-2 ${themes[currentTheme].textMuted} text-xs">${f.created_at ? new Date(f.created_at).toLocaleString('pt-BR') : '-'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  } catch (error) {
+    console.error('Erro ao carregar feedbacks:', error);
+    showToast('❌ Erro ao carregar feedbacks', 'error');
+  }
+};
+
 // Ver planos disponíveis
 window.verPlanosDisponiveis = async function() {
   try {
@@ -11854,43 +12029,57 @@ window.importarDados = function() {
 // Salvar no Google Drive
 window.salvarNoDrive = async function() {
   try {
-    showToast('Salvando no Google Drive...', 'info');
+    showToast('⏳ Salvando no Google Drive...', 'info');
     
     const response = await axios.post('/api/backup/google-drive/save', {
       user_id: currentUser.id
     });
     
     if (response.data.needsReauth) {
-      showToast('Reconecte sua conta Google', 'warning');
+      showToast('🔑 Reconecte sua conta Google', 'warning');
       loginComGoogle();
       return;
     }
     
-    showToast('Backup salvo no Google Drive!', 'success');
+    showToast('✅ Backup salvo no Google Drive!', 'success');
     abrirAdministracao(); // Recarregar modal
   } catch (error) {
     console.error('Erro ao salvar no Drive:', error);
-    showToast(error.response?.data?.error || 'Erro ao salvar no Drive', 'error');
+    
+    const errorData = error.response?.data;
+    const status = error.response?.status;
+    
+    // Mensagens específicas por tipo de erro
+    if (status === 503 || errorData?.details?.includes('API')) {
+      showToast('⚠️ Google Drive temporariamente indisponível. Tente novamente mais tarde.', 'warning', 8000);
+    } else if (status === 401 || errorData?.needsReauth) {
+      showToast('🔑 Sessão expirada. Reconecte sua conta Google.', 'warning');
+      loginComGoogle();
+    } else if (status === 400) {
+      showToast('⚠️ Conecte sua conta Google primeiro.', 'warning');
+    } else {
+      showToast('❌ Erro ao salvar no Drive. Tente novamente.', 'error');
+    }
   }
 };
 
 // Carregar do Google Drive
 window.carregarDoDrive = async function() {
   try {
-    showToast('Buscando backup no Google Drive...', 'info');
+    showToast('⏳ Buscando backup no Google Drive...', 'info');
     
     const response = await axios.post('/api/backup/google-drive/load', {
       user_id: currentUser.id
     });
     
     if (response.data.needsReauth) {
-      showToast('Reconecte sua conta Google', 'warning');
+      showToast('🔑 Reconecte sua conta Google', 'warning');
       loginComGoogle();
       return;
     }
     
     if (!response.data.backup) {
-      showToast('Nenhum backup encontrado no Drive', 'warning');
+      showToast('📭 Nenhum backup encontrado no Drive', 'warning');
       return;
     }
     
@@ -11909,19 +12098,33 @@ window.carregarDoDrive = async function() {
     
     if (!confirmar) return;
     
-    showToast('Restaurando dados...', 'info');
+    showToast('⏳ Restaurando dados...', 'info');
     
     const importResponse = await axios.post(`/api/backup/import/${currentUser.id}`, {
       backup,
       mode: 'merge'
     });
     
-    showToast('Backup restaurado do Google Drive!', 'success');
+    showToast('✅ Backup restaurado do Google Drive!', 'success');
     fecharModalAdmin();
     renderDashboard();
   } catch (error) {
     console.error('Erro ao carregar do Drive:', error);
-    showToast(error.response?.data?.error || 'Erro ao carregar do Drive', 'error');
+    
+    const errorData = error.response?.data;
+    const status = error.response?.status;
+    
+    // Mensagens específicas por tipo de erro
+    if (status === 503 || errorData?.details?.includes('API')) {
+      showToast('⚠️ Google Drive temporariamente indisponível. Tente novamente mais tarde.', 'warning', 8000);
+    } else if (status === 401 || errorData?.needsReauth) {
+      showToast('🔑 Sessão expirada. Reconecte sua conta Google.', 'warning');
+      loginComGoogle();
+    } else if (status === 400) {
+      showToast('⚠️ Conecte sua conta Google primeiro.', 'warning');
+    } else {
+      showToast('❌ Erro ao carregar do Drive. Tente novamente.', 'error');
+    }
   }
 };
 
