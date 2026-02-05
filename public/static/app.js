@@ -7930,6 +7930,41 @@ window.exibirConteudoGerado = function(data) {
           </div>
         </div>
         
+        <!-- Área de Feedback -->
+        <div id="feedback-area" class="p-4 border-t ${themes[currentTheme].border} bg-gray-50">
+          <div id="feedback-buttons" class="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <span class="text-sm text-gray-600 mr-2">Este conteúdo foi útil?</span>
+            <div class="flex gap-2">
+              <button onclick="darFeedbackConteudo('bom')" 
+                      class="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition">
+                <i class="fas fa-thumbs-up"></i> Bom
+              </button>
+              <button onclick="abrirFeedbackNegativo()" 
+                      class="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
+                <i class="fas fa-thumbs-down"></i> Pode melhorar
+              </button>
+            </div>
+          </div>
+          
+          <!-- Formulário de feedback negativo (inicialmente oculto) -->
+          <div id="feedback-negativo-form" class="hidden mt-4">
+            <p class="text-sm text-gray-700 mb-2"><i class="fas fa-comment-alt mr-2"></i>O que pode ser melhorado?</p>
+            <textarea id="feedback-critica" rows="3" 
+                      class="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#122D6A] focus:border-[#122D6A]"
+                      placeholder="Ex: Faltou explicar melhor o conceito X, precisa de mais exemplos práticos, está muito resumido..."></textarea>
+            <div class="flex gap-2 mt-3 justify-end">
+              <button onclick="cancelarFeedbackNegativo()" 
+                      class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm">
+                Cancelar
+              </button>
+              <button onclick="regenerarConteudoComFeedback()" 
+                      class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex items-center gap-2 text-sm">
+                <i class="fas fa-sync-alt"></i> Regenerar com Melhorias
+              </button>
+            </div>
+          </div>
+        </div>
+        
         <!-- Footer fixo -->
         <div class="p-4 border-t ${themes[currentTheme].border} flex-shrink-0 flex gap-3 justify-end">
           <button onclick="copiarConteudoGerado()"
@@ -7945,12 +7980,94 @@ window.exibirConteudoGerado = function(data) {
     </div>
   `;
   
-  // Guardar conteúdo original para copiar
+  // Guardar conteúdo original para copiar e dados para regenerar
   window.conteudoGeradoOriginal = conteudoTexto;
+  window.conteudoAtualDados = {
+    topico_nome,
+    disciplina_nome,
+    disciplina_id,
+    topico_id,
+    tipo,
+    material_id
+  };
   
   const modalDiv = document.createElement('div');
   modalDiv.innerHTML = modalHtml;
   document.body.appendChild(modalDiv.firstElementChild);
+}
+
+// Funções de feedback do conteúdo
+window.darFeedbackConteudo = function(tipo) {
+  const feedbackArea = document.getElementById('feedback-buttons');
+  if (feedbackArea) {
+    if (tipo === 'bom') {
+      feedbackArea.innerHTML = `
+        <div class="flex items-center gap-2 text-emerald-600">
+          <i class="fas fa-check-circle text-xl"></i>
+          <span class="font-medium">Obrigado pelo feedback! Bons estudos! 📚</span>
+        </div>
+      `;
+    }
+  }
+  
+  // Enviar feedback para analytics (opcional futuro)
+  console.log('📊 Feedback registrado:', tipo);
+}
+
+window.abrirFeedbackNegativo = function() {
+  document.getElementById('feedback-buttons')?.classList.add('hidden');
+  document.getElementById('feedback-negativo-form')?.classList.remove('hidden');
+}
+
+window.cancelarFeedbackNegativo = function() {
+  document.getElementById('feedback-buttons')?.classList.remove('hidden');
+  document.getElementById('feedback-negativo-form')?.classList.add('hidden');
+  document.getElementById('feedback-critica').value = '';
+}
+
+window.regenerarConteudoComFeedback = async function() {
+  const critica = document.getElementById('feedback-critica')?.value?.trim();
+  
+  if (!critica) {
+    showToast('⚠️ Por favor, descreva o que pode ser melhorado', 'warning');
+    return;
+  }
+  
+  if (!window.conteudoAtualDados) {
+    showToast('❌ Erro ao identificar o conteúdo', 'error');
+    return;
+  }
+  
+  const { topico_nome, disciplina_nome, disciplina_id, topico_id, tipo } = window.conteudoAtualDados;
+  
+  // Fechar modal atual
+  document.getElementById('modal-conteudo-gerado')?.remove();
+  
+  showToast('⏳ Regenerando conteúdo com suas melhorias...', 'info');
+  
+  try {
+    // Chamar API para gerar novo conteúdo incluindo a crítica
+    const response = await axios.post('/api/topicos/gerar-conteudo', {
+      user_id: currentUser.id,
+      topico_id: topico_id,
+      topico_nome: topico_nome,
+      disciplina_nome: disciplina_nome,
+      disciplina_id: disciplina_id,
+      tipo: tipo,
+      feedback_usuario: critica, // Nova propriedade com a crítica
+      regenerar: true
+    });
+    
+    if (response.data) {
+      showToast('✅ Conteúdo regenerado com sucesso!', 'success');
+      exibirConteudoGerado(response.data);
+    } else {
+      showToast('❌ Erro ao regenerar conteúdo', 'error');
+    }
+  } catch (error) {
+    console.error('Erro ao regenerar:', error);
+    showToast('❌ Erro ao regenerar: ' + (error.response?.data?.error || error.message), 'error');
+  }
 }
 
 // Função para fechar modal de conteúdo gerado e voltar ao dashboard
@@ -15182,6 +15299,12 @@ function renderCalendarioSemanal() {
           </div>
         </div>
         <div class="flex items-center gap-2">
+          <button onclick="toggleTodosDias(false)" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Recolher todos">
+            <i class="fas fa-compress-alt text-gray-600 text-sm"></i>
+          </button>
+          <button onclick="toggleTodosDias(true)" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Expandir todos">
+            <i class="fas fa-expand-alt text-gray-600 text-sm"></i>
+          </button>
           <button onclick="abrirSemanasAnteriores()" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Semanas anteriores">
             <i class="fas fa-history text-gray-600 text-sm"></i>
           </button>
@@ -15193,7 +15316,7 @@ function renderCalendarioSemanal() {
       </div>
     </div>
 
-    <!-- Calendário Semanal Minimalista -->
+    <!-- Calendário Semanal com Acordeão -->
     <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} shadow-sm overflow-hidden">
       ${[1, 2, 3, 4, 5, 6, 7].map(diaSemana => {
         const metasDoDia = metas.filter(m => m.dia_semana === diaSemana)
@@ -15204,12 +15327,16 @@ function renderCalendarioSemanal() {
         const diaSemanaAtual = hoje.getDay() === 0 ? 7 : hoje.getDay()
         const isHoje = diaSemana === diaSemanaAtual
         
+        // Por padrão, só o dia de hoje fica aberto
+        const isAberto = isHoje
+        
         const progressColor = percentualDia === 100 ? 'bg-emerald-500' : percentualDia >= 50 ? 'bg-[#122D6A]' : percentualDia > 0 ? 'bg-amber-400' : 'bg-gray-200'
         
         return `
-          <div class="${isHoje ? 'bg-blue-50/50 border-l-3 border-l-[#122D6A]' : ''} ${diaSemana < 7 ? 'border-b ' + themes[currentTheme].border : ''} p-2.5 hover:bg-gray-50/50 transition-colors">
-            <!-- Header Compacto -->
-            <div class="flex items-center justify-between mb-2">
+          <div class="${isHoje ? 'bg-blue-50/50 border-l-4 border-l-[#122D6A]' : ''} ${diaSemana < 7 ? 'border-b ' + themes[currentTheme].border : ''}" data-dia-semana="${diaSemana}">
+            <!-- Header Clicável do Acordeão -->
+            <div class="flex items-center justify-between p-2.5 cursor-pointer hover:bg-gray-50/50 transition-colors select-none" 
+                 onclick="toggleDiaSemana(${diaSemana})">
               <div class="flex items-center gap-2">
                 <span class="w-8 h-8 rounded-lg ${isHoje ? 'bg-[#122D6A] text-white' : 'bg-gray-100 text-gray-600'} flex items-center justify-center text-xs font-bold">
                   ${diasSemanaAbrev[diaSemana - 1]}
@@ -15221,10 +15348,12 @@ function renderCalendarioSemanal() {
                   <div class="${progressColor} h-1.5 rounded-full" style="width: ${percentualDia}%"></div>
                 </div>
                 <span class="text-xs font-medium ${themes[currentTheme].textSecondary}">${metasConcluidasDia}/${metasDoDia.length}</span>
+                <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform duration-200 ${isAberto ? 'rotate-180' : ''}" id="chevron-dia-${diaSemana}"></i>
               </div>
             </div>
             
-            <!-- Cards das Metas - Layout Compacto -->
+            <!-- Conteúdo Colapsável das Metas -->
+            <div id="metas-dia-${diaSemana}" class="${isAberto ? '' : 'hidden'} px-2.5 pb-2.5">
             ${metasDoDia.length > 0 ? `
               <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                 ${metasDoDia.map(meta => {
@@ -15297,12 +15426,43 @@ function renderCalendarioSemanal() {
                 <span class="text-[10px]">—</span>
               </div>
             `}
+            </div>
           </div>
         `
       }).join('')}
     </div>
   `
 }
+
+// Função para abrir/fechar acordeão do dia da semana
+window.toggleDiaSemana = function(diaSemana) {
+  const container = document.getElementById('metas-dia-' + diaSemana);
+  const chevron = document.getElementById('chevron-dia-' + diaSemana);
+  
+  if (container && chevron) {
+    container.classList.toggle('hidden');
+    chevron.classList.toggle('rotate-180');
+  }
+}
+
+// Função para expandir/colapsar todos os dias
+window.toggleTodosDias = function(expandir) {
+  for (let dia = 1; dia <= 7; dia++) {
+    const container = document.getElementById('metas-dia-' + dia);
+    const chevron = document.getElementById('chevron-dia-' + dia);
+    
+    if (container && chevron) {
+      if (expandir) {
+        container.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
+      } else {
+        container.classList.add('hidden');
+        chevron.classList.remove('rotate-180');
+      }
+    }
+  }
+}
+
 function renderGraficosProgresso() {
   if (!semanaAtual || !semanaAtual.semana || !semanaAtual.metas) return
 

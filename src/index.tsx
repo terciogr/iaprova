@@ -13281,12 +13281,17 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
 // ============== GERAR CONTEÚDO DO TÓPICO COM IA ==============
 app.post('/api/topicos/gerar-conteudo', async (c) => {
   const { DB } = c.env
-  const { topico_id, topico_nome, disciplina_nome, tipo, quantidade, meta_id, config_ia } = await c.req.json()
+  const { topico_id, topico_nome, disciplina_nome, tipo, quantidade, meta_id, config_ia, feedback_usuario, regenerar, user_id } = await c.req.json()
   
   // tipo: 'teoria' | 'exercicios' | 'resumo' | 'flashcards'
   const tipoConteudo = tipo || 'teoria'
   const qtdExercicios = quantidade || 10
   const qtdFlashcards = quantidade || 15
+  
+  // Log se é regeneração com feedback
+  if (regenerar && feedback_usuario) {
+    console.log(`🔄 Regenerando conteúdo com feedback do usuário: "${feedback_usuario}"`)
+  }
   
   // Configurações de personalização (usar padrão se não enviado)
   const iaConfig = config_ia || {
@@ -13403,7 +13408,7 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
     }
     
     // Instruções de personalização comuns (SEM criatividade - sempre objetivo)
-    const personalizacao = `
+    let personalizacao = `
 === CONFIGURAÇÕES DE PERSONALIZAÇÃO OBRIGATÓRIAS ===
 1. TOM: ${tomInstrucoes[iaConfig.tom] || tomInstrucoes['didatico']}
 2. ESTILO: Seja OBJETIVO, DIRETO e PRECISO. Sem rodeios ou enrolação.
@@ -13414,6 +13419,20 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
 ⚠️ REGRA CRÍTICA: O conteúdo DEVE ter NO MÍNIMO ${limiteCaracteres} caracteres. Gere conteúdo COMPLETO e DETALHADO.
 ==================================================
 `
+
+    // Se há feedback do usuário para regeneração, adicionar ao prompt
+    if (regenerar && feedback_usuario) {
+      personalizacao += `
+
+🔴 ATENÇÃO - FEEDBACK DO USUÁRIO PARA MELHORAR O CONTEÚDO:
+"${feedback_usuario}"
+
+IMPORTANTE: O conteúdo anterior não atendeu às expectativas do usuário. 
+Considere ESPECIALMENTE este feedback ao gerar o novo conteúdo.
+Corrija os pontos mencionados e melhore a qualidade geral.
+==================================================
+`
+    }
     
     switch(tipoConteudo) {
       case 'teoria':
