@@ -7364,27 +7364,63 @@ app.post('/api/interviews', async (c) => {
       console.log('ℹ️ Usuário possui plano ativo - disciplinas serão atualizadas via upsert')
     }
     
-    // Inserir as NOVAS disciplinas do usuário (padrão + personalizadas)
+    // ✅ CORREÇÃO v22: Inserir disciplinas COM CRIAÇÃO AUTOMÁTICA se vierem do edital
+    // O frontend pode enviar IDs de edital_disciplinas, não de disciplinas
     if (data.disciplinas && data.disciplinas.length > 0) {
       console.log(`📚 Processando ${data.disciplinas.length} disciplinas (insert ou update)...`)
       console.log(`📋 Disciplinas recebidas:`, data.disciplinas.map(d => d.disciplina_id || d.nome).join(', '))
+      
       for (const disc of data.disciplinas) {
-        // ✅ VALIDAÇÃO: Verificar se disciplina_id existe
+        // Validação básica
         if (!disc.disciplina_id) {
           console.error(`❌ ERRO: disciplina sem ID:`, disc)
-          continue // Pular esta disciplina
+          continue
         }
 
-        // ✅ VALIDAÇÃO: Verificar se disciplina existe no banco
-        const discExists = await DB.prepare('SELECT id FROM disciplinas WHERE id = ?')
-          .bind(disc.disciplina_id)
-          .first()
+        let disciplinaIdReal = disc.disciplina_id
         
+        // Verificar se disciplina existe na tabela disciplinas
+        let discExists = await DB.prepare('SELECT id, nome FROM disciplinas WHERE id = ?')
+          .bind(disc.disciplina_id)
+          .first() as any
+        
+        // Se NÃO existe, pode ser ID de edital_disciplinas - criar a disciplina
         if (!discExists) {
-          console.error(`❌ ERRO: disciplina_id ${disc.disciplina_id} não existe na tabela disciplinas`)
-          continue // Pular esta disciplina
+          console.log(`🔍 ID ${disc.disciplina_id} não existe em disciplinas. Verificando edital_disciplinas...`)
+          
+          const editalDisc = await DB.prepare(
+            'SELECT id, nome, disciplina_id FROM edital_disciplinas WHERE id = ?'
+          ).bind(disc.disciplina_id).first() as any
+          
+          if (editalDisc) {
+            // Se edital_disciplinas já tem uma disciplina_id vinculada, usar
+            if (editalDisc.disciplina_id) {
+              disciplinaIdReal = editalDisc.disciplina_id
+              console.log(`  → Usando disciplina existente ID ${disciplinaIdReal}`)
+            } else {
+              // Criar nova disciplina baseada no edital
+              console.log(`  → Criando nova disciplina: ${editalDisc.nome}`)
+              
+              const result = await DB.prepare(
+                'INSERT INTO disciplinas (nome, area) VALUES (?, ?) RETURNING id'
+              ).bind(editalDisc.nome, 'edital').first() as any
+              
+              disciplinaIdReal = result.id
+              
+              // Vincular edital_disciplinas à nova disciplina
+              await DB.prepare(
+                'UPDATE edital_disciplinas SET disciplina_id = ? WHERE id = ?'
+              ).bind(disciplinaIdReal, editalDisc.id).run()
+              
+              console.log(`  ✅ Disciplina ${editalDisc.nome} criada com ID ${disciplinaIdReal}`)
+            }
+          } else {
+            console.error(`❌ ID ${disc.disciplina_id} não encontrado em nenhuma tabela. Pulando...`)
+            continue
+          }
         }
 
+        // Agora inserir em user_disciplinas com o ID correto
         await DB.prepare(`
           INSERT INTO user_disciplinas (
             user_id, disciplina_id, ja_estudou, nivel_atual, dificuldade, peso, nivel_dominio, updated_at
@@ -7398,18 +7434,21 @@ app.post('/api/interviews', async (c) => {
             updated_at = CURRENT_TIMESTAMP
         `).bind(
           data.user_id,
-          disc.disciplina_id,
+          disciplinaIdReal,  // Usar o ID real (criado ou existente)
           disc.ja_estudou ? 1 : 0,
           disc.nivel_atual || 0,
           disc.dificuldade ? 1 : 0,
           disc.peso || null,
-          disc.nivel_dominio || 0  // ✅ NOVO: Nível de domínio 0-10
+          disc.nivel_dominio || 0
         ).run()
         
+        // Atualizar o ID na lista original para uso posterior
+        disc.disciplina_id = disciplinaIdReal
+        
         // Popular tópicos do edital para essa disciplina
-        await popularTopicosEdital(DB, disc.disciplina_id)
+        await popularTopicosEdital(DB, disciplinaIdReal)
       }
-      console.log(`✅ ${data.disciplinas.length} disciplinas inseridas com sucesso`)
+      console.log(`✅ Disciplinas processadas com sucesso`)
     }
 
     // Gerar diagnóstico
