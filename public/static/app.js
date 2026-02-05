@@ -6320,44 +6320,6 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
           </button>
         </div>
 
-        <!-- Metas do Dia - Acesso Rápido (Largura Total) -->
-        <div class="${themes[currentTheme].card} rounded-2xl shadow-lg border ${themes[currentTheme].border} p-4 mb-4">
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2 text-sm">
-                <i class="fas fa-tasks text-[#122D6A]"></i>
-                Hoje - ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
-              </h3>
-              <span class="text-xs ${themes[currentTheme].textSecondary}">
-                ${metas.filter(m => m.concluida).length}/${metas.length} concluídas
-              </span>
-            </div>
-            
-            <!-- Lista de Metas do Dia -->
-            <div class="space-y-2 max-h-[250px] overflow-y-auto scrollbar-hide">
-              ${metas.length > 0 ? metas.slice(0, 6).map(meta => `
-                <div class="flex items-center gap-3 p-2 rounded-lg ${meta.concluida ? 'bg-green-50 dark:bg-green-900/20' : themes[currentTheme].bgAlt} hover:shadow-sm transition group cursor-pointer" onclick="abrirConteudo(${meta.id})">
-                  <div class="w-8 h-8 rounded-lg ${meta.concluida ? 'bg-green-500' : 'bg-[#122D6A]'} flex items-center justify-center flex-shrink-0">
-                    <i class="fas ${meta.concluida ? 'fa-check' : meta.tipo === 'teoria' ? 'fa-book' : meta.tipo === 'exercicios' ? 'fa-pencil-alt' : 'fa-sync'} text-white text-xs"></i>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium ${themes[currentTheme].text} truncate ${meta.concluida ? 'line-through opacity-60' : ''}">${meta.disciplina_nome || meta.disciplina || 'Disciplina'}</p>
-                    <p class="text-[10px] ${themes[currentTheme].textSecondary} truncate">${(meta.topicos_sugeridos && meta.topicos_sugeridos[0]?.nome) || meta.topico_nome || meta.topico || meta.tipo || ''}</p>
-                  </div>
-                  <span class="text-xs ${themes[currentTheme].textSecondary} flex-shrink-0">${meta.tempo_minutos || 30}min</span>
-                  <i class="fas fa-chevron-right text-[10px] ${themes[currentTheme].textSecondary} opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                </div>
-              `).join('') : `
-                <div class="text-center py-6">
-                  <i class="fas fa-clipboard-list text-3xl ${themes[currentTheme].textSecondary} mb-2"></i>
-                  <p class="${themes[currentTheme].textSecondary} text-sm">Nenhuma meta para hoje</p>
-                  <button onclick="gerarMetasSemana()" class="mt-2 text-xs text-[#122D6A] hover:underline">Gerar metas da semana</button>
-                </div>
-              `}
-            </div>
-            
-            ${metas.length > 6 ? `<p class="text-center text-xs ${themes[currentTheme].textSecondary} mt-2">+${metas.length - 6} mais metas</p>` : ''}
-        </div>
-
         <!-- Calendário Semanal com Botão Gerar Metas Integrado -->
         <div id="calendario-semanal" class="mb-4"></div>
 
