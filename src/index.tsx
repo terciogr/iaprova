@@ -2437,7 +2437,7 @@ app.put('/api/admin/users/:id', async (c) => {
   }
 })
 
-// Deletar usuário (admin) - CUIDADO!
+// Deletar usuário (admin) - CUIDADO! Exclusão completa em cascata
 app.delete('/api/admin/users/:id', async (c) => {
   const { DB } = c.env
   
@@ -2447,33 +2447,108 @@ app.delete('/api/admin/users/:id', async (c) => {
   
   try {
     const userId = c.req.param('id')
+    console.log(`🗑️ Iniciando exclusão do usuário ${userId}...`)
     
     // Verificar se não é o próprio admin
     const user = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first() as any
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404)
+    }
     if (user?.email === ADMIN_EMAIL) {
       return c.json({ error: 'Não é possível deletar o administrador' }, 400)
     }
     
-    // Deletar dados relacionados primeiro
-    await DB.prepare('DELETE FROM metas_diarias WHERE user_id = ?').bind(userId).run()
-    await DB.prepare('DELETE FROM semanas_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)').bind(userId).run()
-    await DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)').bind(userId).run()
-    await DB.prepare('DELETE FROM planos_estudo WHERE user_id = ?').bind(userId).run()
-    await DB.prepare('DELETE FROM user_disciplinas WHERE user_id = ?').bind(userId).run()
-    await DB.prepare('DELETE FROM interviews WHERE user_id = ?').bind(userId).run()
+    // ═══════════════════════════════════════════════════════════════
+    // ✅ EXCLUSÃO EM CASCATA - ORDEM CRÍTICA (tabelas dependentes primeiro)
+    // ═══════════════════════════════════════════════════════════════
     
-    // Deletar assinaturas se existir a tabela
-    try {
-      await DB.prepare('DELETE FROM user_subscriptions WHERE user_id = ?').bind(userId).run()
-    } catch (e) {}
+    const tabelasExcluir = [
+      // 1. Tabelas de metas e progresso
+      { nome: 'metas_diarias', query: 'DELETE FROM metas_diarias WHERE user_id = ?' },
+      { nome: 'metas_semana', query: 'DELETE FROM metas_semana WHERE user_id = ?' },
+      { nome: 'user_topicos_progresso', query: 'DELETE FROM user_topicos_progresso WHERE user_id = ?' },
+      
+      // 2. Tabelas de estudo/conteúdo
+      { nome: 'conteudo_estudo', query: 'DELETE FROM conteudo_estudo WHERE user_id = ?' },
+      { nome: 'conteudo_topicos', query: 'DELETE FROM conteudo_topicos WHERE user_id = ?' },
+      { nome: 'historico_estudos', query: 'DELETE FROM historico_estudos WHERE user_id = ?' },
+      { nome: 'exercicios_resultados', query: 'DELETE FROM exercicios_resultados WHERE user_id = ?' },
+      { nome: 'simulados_historico', query: 'DELETE FROM simulados_historico WHERE user_id = ?' },
+      { nome: 'flashcards', query: 'DELETE FROM flashcards WHERE user_id = ?' },
+      { nome: 'revisoes', query: 'DELETE FROM revisoes WHERE user_id = ?' },
+      
+      // 3. Tabelas de materiais
+      { nome: 'materiais_salvos', query: 'DELETE FROM materiais_salvos WHERE user_id = ?' },
+      { nome: 'progresso_materiais', query: 'DELETE FROM progresso_materiais WHERE user_id = ?' },
+      { nome: 'disciplina_documentos', query: 'DELETE FROM disciplina_documentos WHERE user_id = ?' },
+      
+      // 4. Tabelas dependentes de planos (ordem importa!)
+      { nome: 'semanas_estudo', query: 'DELETE FROM semanas_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)' },
+      { nome: 'ciclos_estudo', query: 'DELETE FROM ciclos_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)' },
+      { nome: 'planos_estudo', query: 'DELETE FROM planos_estudo WHERE user_id = ?' },
+      
+      // 5. Tabelas de editais e tópicos do usuário
+      { nome: 'topicos_edital', query: 'DELETE FROM topicos_edital WHERE user_id = ?' },
+      { nome: 'edital_topicos (por edital)', query: 'DELETE FROM edital_topicos WHERE edital_disciplina_id IN (SELECT id FROM edital_disciplinas WHERE edital_id IN (SELECT id FROM editais WHERE user_id = ?))' },
+      { nome: 'edital_disciplinas (por edital)', query: 'DELETE FROM edital_disciplinas WHERE edital_id IN (SELECT id FROM editais WHERE user_id = ?)' },
+      { nome: 'editais', query: 'DELETE FROM editais WHERE user_id = ?' },
+      
+      // 6. Tabelas de disciplinas e entrevistas
+      { nome: 'user_disciplinas', query: 'DELETE FROM user_disciplinas WHERE user_id = ?' },
+      { nome: 'interviews', query: 'DELETE FROM interviews WHERE user_id = ?' },
+      { nome: 'desempenho', query: 'DELETE FROM desempenho WHERE user_id = ?' },
+      
+      // 7. Tabelas de assinatura/pagamento
+      { nome: 'user_subscriptions', query: 'DELETE FROM user_subscriptions WHERE user_id = ?' },
+    ]
     
-    // Deletar usuário
-    await DB.prepare('DELETE FROM users WHERE id = ?').bind(userId).run()
+    let tabelasLimpas = 0
+    let erros: string[] = []
     
-    return c.json({ success: true, message: 'Usuário deletado com sucesso' })
-  } catch (error) {
-    console.error('Erro ao deletar usuário:', error)
-    return c.json({ error: 'Erro ao deletar usuário' }, 500)
+    for (const tabela of tabelasExcluir) {
+      try {
+        const result = await DB.prepare(tabela.query).bind(userId).run()
+        const deletados = result.meta?.changes || 0
+        if (deletados > 0) {
+          console.log(`  ✅ ${tabela.nome}: ${deletados} registro(s) deletado(s)`)
+        }
+        tabelasLimpas++
+      } catch (e: any) {
+        // Ignorar erro de tabela não existente
+        if (!e.message?.includes('no such table')) {
+          console.warn(`  ⚠️ ${tabela.nome}: ${e.message}`)
+          erros.push(`${tabela.nome}: ${e.message}`)
+        }
+      }
+    }
+    
+    // 8. Finalmente, deletar o usuário
+    const userResult = await DB.prepare('DELETE FROM users WHERE id = ?').bind(userId).run()
+    
+    if (userResult.meta?.changes === 0) {
+      return c.json({ error: 'Usuário não encontrado ou já foi deletado' }, 404)
+    }
+    
+    console.log(`✅ Usuário ${userId} (${user.email}) deletado com sucesso!`)
+    console.log(`📊 Tabelas limpas: ${tabelasLimpas}`)
+    if (erros.length > 0) {
+      console.log(`⚠️ Erros ignorados: ${erros.length}`)
+    }
+    
+    return c.json({ 
+      success: true, 
+      message: 'Usuário deletado com sucesso',
+      details: {
+        tabelasLimpas,
+        errosIgnorados: erros.length
+      }
+    })
+  } catch (error: any) {
+    console.error('❌ Erro ao deletar usuário:', error)
+    return c.json({ 
+      error: 'Erro ao deletar usuário', 
+      details: error.message 
+    }, 500)
   }
 })
 
@@ -3120,6 +3195,7 @@ app.get('/api/users/:id', async (c) => {
 })
 
 // Atualizar usuário
+// ⚠️ SEGURANÇA: Email NÃO pode ser alterado pelo usuário (apenas admin)
 app.put('/api/users/:id', async (c) => {
   const { DB } = c.env
   const id = c.req.param('id')
@@ -3128,25 +3204,23 @@ app.put('/api/users/:id', async (c) => {
   try {
     // Verificar se usuário existe
     const user = await DB.prepare(
-      'SELECT id FROM users WHERE id = ?'
-    ).bind(id).first()
+      'SELECT id, email FROM users WHERE id = ?'
+    ).bind(id).first() as any
 
     if (!user) {
       return c.json({ error: 'Usuário não encontrado' }, 404)
     }
 
-    // Verificar se email já está em uso por outro usuário
-    if (email) {
-      const existingUser = await DB.prepare(
-        'SELECT id FROM users WHERE email = ? AND id != ?'
-      ).bind(email, id).first()
-
-      if (existingUser) {
-        return c.json({ error: 'Email já está em uso' }, 400)
-      }
+    // ⚠️ SEGURANÇA: Bloquear alteração de email
+    // Email só pode ser alterado pelo administrador via painel admin
+    if (email && email !== user.email) {
+      console.warn(`⚠️ Tentativa de alterar email bloqueada - user_id: ${id}, email atual: ${user.email}, tentativa: ${email}`)
+      return c.json({ 
+        error: 'Alteração de email não permitida por segurança. Entre em contato com o suporte se necessário.' 
+      }, 403)
     }
 
-    // Construir query de atualização
+    // Construir query de atualização (apenas name e password permitidos)
     const updates = []
     const params = []
 
@@ -3154,10 +3228,7 @@ app.put('/api/users/:id', async (c) => {
       updates.push('name = ?')
       params.push(name)
     }
-    if (email) {
-      updates.push('email = ?')
-      params.push(email)
-    }
+    // Email removido das atualizações permitidas por segurança
     if (password) {
       updates.push('password = ?')
       params.push(password)
@@ -3890,22 +3961,57 @@ INSTRUÇÕES:
     const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
     const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
     
-    // ✅ PROMPT SIMPLIFICADO E DIRETO
-    const prompt = `TAREFA: Extrair disciplinas e tópicos do edital para o cargo "${cargoDesejado || 'não especificado'}".
+    // ✅ PROMPT SIMPLIFICADO E DIRETO - VERSÃO MELHORADA
+    // Detectar área do cargo para filtrar disciplinas corretamente
+    const cargoLower = cargoDesejado?.toLowerCase() || ''
+    const areaDetectada = 
+      (cargoLower.includes('enfermeiro') || cargoLower.includes('enfermagem') || cargoLower.includes('saúde') || cargoLower.includes('saude')) ? 'SAÚDE/ENFERMAGEM' :
+      (cargoLower.includes('direito') || cargoLower.includes('advogado') || cargoLower.includes('jurídico')) ? 'DIREITO/JURÍDICO' :
+      (cargoLower.includes('contador') || cargoLower.includes('contábil')) ? 'CONTABILIDADE' :
+      (cargoLower.includes('admin') || cargoLower.includes('gestão')) ? 'ADMINISTRAÇÃO' :
+      (cargoLower.includes('professor') || cargoLower.includes('educação')) ? 'EDUCAÇÃO' :
+      (cargoLower.includes('técnico') || cargoLower.includes('assistente')) ? 'NÍVEL TÉCNICO/MÉDIO' :
+      'GERAL'
+    
+    console.log(`🎯 Área detectada do cargo: ${areaDetectada}`)
+    
+    const prompt = `TAREFA CRÍTICA: Extrair APENAS as disciplinas do edital que são REALMENTE cobradas para o cargo "${cargoDesejado || 'não especificado'}" na área de ${areaDetectada}.
 
 ${instrucaoCargo}
 
-REGRAS CRÍTICAS:
-1. Extraia APENAS 3-6 DISCIPLINAS (matérias principais da prova)
-2. NÃO transforme tópicos em disciplinas separadas
-3. "Conhecimentos Específicos" deve ser UMA disciplina com muitos tópicos
-4. Use os pesos: Conhecimentos Gerais = ${pesoCG}, Conhecimentos Específicos = ${pesoCE}
+⚠️ REGRAS ABSOLUTAS - SIGA RIGOROSAMENTE:
 
-EXEMPLOS DE DISCIPLINAS CORRETAS:
+1. ÁREA DO CARGO: ${areaDetectada}
+   - Se o cargo é de ${areaDetectada}, NÃO inclua disciplinas de outras áreas
+   - Exemplo: Se é ENFERMAGEM, NÃO inclua "Direito Administrativo", "Direito Constitucional", etc.
+   
+2. APENAS DISCIPLINAS DA PROVA:
+   - Extraia somente matérias que REALMENTE caem na prova deste cargo
+   - Procure seções como "NÍVEL SUPERIOR", "${cargoDesejado?.toUpperCase()}" ou "${areaDetectada}"
+   
+3. ESTRUTURA CORRETA:
+   - 3-6 disciplinas no máximo
+   - "Conhecimentos Específicos de ${cargoDesejado || areaDetectada}" = UMA disciplina com tópicos técnicos
+   - NÃO transforme subtópicos em disciplinas separadas
+   
+4. PESOS:
+   - Conhecimentos Gerais (Português, Raciocínio) = peso ${pesoCG}
+   - Conhecimentos Específicos = peso ${pesoCE}
+
+EXEMPLOS PARA ÁREA DE ${areaDetectada}:
+${areaDetectada === 'SAÚDE/ENFERMAGEM' ? `
+- "Língua Portuguesa" (peso ${pesoCG})
+- "Raciocínio Lógico" (peso ${pesoCG}) 
+- "Legislação SUS" (peso ${pesoCE})
+- "Conhecimentos Específicos de Enfermagem" (peso ${pesoCE}) - com tópicos de enfermagem, saúde pública, etc.` : 
+areaDetectada === 'DIREITO/JURÍDICO' ? `
+- "Língua Portuguesa" (peso ${pesoCG})
+- "Direito Constitucional" (peso ${pesoCE})
+- "Direito Administrativo" (peso ${pesoCE})
+- "Direito Civil" (peso ${pesoCE})` : `
 - "Língua Portuguesa" (peso ${pesoCG})
 - "Raciocínio Lógico" (peso ${pesoCG})
-- "Conhecimentos Específicos de ${cargoDesejado || 'Área'}" (peso ${pesoCE}) - com TODOS os itens técnicos como tópicos
-- "Legislação SUS" (peso ${pesoCE}) - se for seção separada no edital
+- "Conhecimentos Específicos" (peso ${pesoCE})`}
 
 TEXTO DO EDITAL:
 ${textoParaIA}
@@ -4099,22 +4205,53 @@ RETORNE APENAS JSON (sem markdown, sem explicações):
         }
       }
       
-      // Padrão 2: Buscar listas de disciplinas por texto
+      // Padrão 2: Buscar listas de disciplinas por texto - FILTRADO POR ÁREA DO CARGO
       if (disciplinasExtraidas.length === 0) {
-        const padroesTexto = [
+        // Detectar área do cargo para filtrar regex
+        const cargoLower2 = cargoDesejado?.toLowerCase() || ''
+        const ehSaude = cargoLower2.includes('enfermeiro') || cargoLower2.includes('enfermagem') || 
+                        cargoLower2.includes('saúde') || cargoLower2.includes('saude') ||
+                        cargoLower2.includes('médico') || cargoLower2.includes('medico')
+        const ehDireito = cargoLower2.includes('direito') || cargoLower2.includes('advogado') || 
+                          cargoLower2.includes('jurídico') || cargoLower2.includes('juridico')
+        
+        // Padrões COMUNS a todos os cargos
+        const padroesComunsTexto = [
           /(?:língua\s*)?portugu[eê]s/gi,
           /racioc[íi]nio\s*l[óo]gico/gi,
           /matem[áa]tica/gi,
           /inform[áa]tica/gi,
-          /conhecimentos?\s*(?:regionais?|gerais?|espec[íi]ficos?)/gi,
+          /conhecimentos?\s*(?:regionais?|gerais?)/gi,
+        ]
+        
+        // Padrões de SAÚDE - só usar se cargo for da área
+        const padroesSaudeTexto = [
           /(?:sistema\s*)?[úu]nico\s*de\s*sa[úu]de|sus/gi,
           /enfermagem/gi,
           /sa[úu]de\s*(?:p[úu]blica|coletiva|da\s*mulher|da\s*crian[çc]a)/gi,
-          /legisla[çc][ãa]o/gi,
-          /[ée]tica/gi,
-          /administra[çc][ãa]o\s*p[úu]blica/gi,
-          /direito\s*(?:administrativo|constitucional|penal)/gi,
+          /legisla[çc][ãa]o\s*(?:de\s*)?(?:sa[úu]de|sus)/gi,
+          /[ée]tica\s*(?:em\s*)?(?:sa[úu]de|enfermagem)/gi,
         ]
+        
+        // Padrões de DIREITO - só usar se cargo for da área jurídica
+        const padroesDireitoTexto = [
+          /direito\s*(?:administrativo|constitucional|penal|civil|processual)/gi,
+          /legisla[çc][ãa]o\s*(?:trabalhista|previdenci[áa]ria)/gi,
+        ]
+        
+        // Montar lista de padrões baseada no cargo
+        let padroesTexto = [...padroesComunsTexto]
+        if (ehSaude) {
+          padroesTexto.push(...padroesSaudeTexto)
+          console.log('🏥 Usando padrões de SAÚDE para regex')
+        } else if (ehDireito) {
+          padroesTexto.push(...padroesDireitoTexto)
+          console.log('⚖️ Usando padrões de DIREITO para regex')
+        } else {
+          // Cargo genérico: adicionar tudo mas sem prioridade
+          padroesTexto.push(/conhecimentos?\s*espec[íi]ficos/gi)
+          console.log('📋 Usando padrões GENÉRICOS para regex')
+        }
         
         for (const padrao of padroesTexto) {
           const matches = textoResposta.match(padrao)

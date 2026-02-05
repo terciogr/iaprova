@@ -14244,15 +14244,21 @@ function abrirModalEditarPerfil() {
         <div>
           <label class="block text-sm font-medium ${themes[currentTheme].text} mb-2">
             <i class="fas fa-envelope mr-2"></i>Email
+            <span class="text-xs text-gray-400 ml-2">(não editável por segurança)</span>
           </label>
           <input 
             type="email" 
             id="editEmail" 
             value="${currentUser.email}" 
-            class="w-full px-4 py-2 border ${themes[currentTheme].border} rounded-lg focus:ring-2 focus:ring-[#1A3A7F] ${themes[currentTheme].card} ${themes[currentTheme].text}"
+            class="w-full px-4 py-2 border ${themes[currentTheme].border} rounded-lg ${themes[currentTheme].card} ${themes[currentTheme].textSecondary} bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
             placeholder="seu@email.com"
-            required
+            disabled
+            readonly
+            title="Por segurança, o email não pode ser alterado. Entre em contato com o suporte se necessário."
           />
+          <p class="text-xs text-gray-400 mt-1">
+            <i class="fas fa-lock mr-1"></i>Email protegido. Contate o suporte para alterações.
+          </p>
         </div>
         
         <div>
@@ -14304,27 +14310,27 @@ function fecharModalEditarPerfil() {
 }
 
 // Salvar Perfil Editado
+// ⚠️ SEGURANÇA: Email NÃO é enviado - campo desabilitado no frontend e bloqueado no backend
 async function salvarPerfilEditado() {
   const nome = document.getElementById('editNome').value.trim();
-  const email = document.getElementById('editEmail').value.trim();
   const senha = document.getElementById('editSenha').value;
   
-  if (!nome || !email) {
-    showModal(' Nome e email são obrigatórios!');
+  if (!nome) {
+    showModal(' Nome é obrigatório!');
     return;
   }
   
   try {
-    const payload = { name: nome, email: email };
+    // ⚠️ Email REMOVIDO do payload por segurança
+    const payload = { name: nome };
     if (senha) {
       payload.password = senha;
     }
     
     const response = await axios.put(`/api/users/${currentUser.id}`, payload);
     
-    // Atualizar currentUser
+    // Atualizar apenas o nome (email não muda)
     currentUser.name = nome;
-    currentUser.email = email;
     
     // Salvar no localStorage
     localStorage.setItem('currentUser', JSON.stringify(currentUser));
