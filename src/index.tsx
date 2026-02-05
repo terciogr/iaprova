@@ -13570,19 +13570,21 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
     
     // Determinar limite real de caracteres
     let limiteCaracteres = 2000;
-    if (iaConfig.extensao === 'curto') limiteCaracteres = 500;
-    else if (iaConfig.extensao === 'medio') limiteCaracteres = 2000;
+    if (iaConfig.extensao === 'curto') limiteCaracteres = 800;
+    else if (iaConfig.extensao === 'medio') limiteCaracteres = 2500;
     else if (iaConfig.extensao === 'longo') limiteCaracteres = 5000;
+    else if (iaConfig.extensao === 'completo') limiteCaracteres = 10000;
     else if (iaConfig.extensao === 'personalizado' && iaConfig.extensaoCustom) {
       limiteCaracteres = parseInt(iaConfig.extensaoCustom);
     }
     
-    console.log(`🎆 Limite de caracteres configurado: ${limiteCaracteres}`);
+    console.log(`🎆 Limite de caracteres configurado: ${limiteCaracteres} (extensão: ${iaConfig.extensao})`);
     
     const extensaoLimites = {
-      curto: 'EXATAMENTE 500 caracteres',
-      medio: 'EXATAMENTE 2000 caracteres', 
-      longo: 'EXATAMENTE 5000 caracteres',
+      curto: 'NO MÍNIMO 800 caracteres',
+      medio: 'NO MÍNIMO 2500 caracteres', 
+      longo: 'NO MÍNIMO 5000 caracteres',
+      completo: 'NO MÍNIMO 10000 caracteres - conteúdo EXTENSO e COMPLETO',
       personalizado: `EXATAMENTE ${iaConfig.extensaoCustom} caracteres`
     }
     
@@ -13601,14 +13603,32 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
 
     // Se há feedback do usuário para regeneração, adicionar ao prompt
     if (regenerar && feedback_usuario) {
+      const extensaoSolicitada = {
+        curto: 'CURTO (mínimo 800 caracteres)',
+        medio: 'MÉDIO (mínimo 2500 caracteres)',
+        longo: 'LONGO (mínimo 5000 caracteres)',
+        completo: 'COMPLETO e EXTENSO (mínimo 10000 caracteres - o mais detalhado possível)'
+      }[iaConfig.extensao] || 'MÉDIO (mínimo 2500 caracteres)'
+      
       personalizacao += `
 
-🔴 ATENÇÃO - FEEDBACK DO USUÁRIO PARA MELHORAR O CONTEÚDO:
+🔴🔴🔴 ATENÇÃO MÁXIMA - REGENERAÇÃO COM FEEDBACK DO USUÁRIO 🔴🔴🔴
+
+📝 CRÍTICA DO USUÁRIO:
 "${feedback_usuario}"
 
-IMPORTANTE: O conteúdo anterior não atendeu às expectativas do usuário. 
-Considere ESPECIALMENTE este feedback ao gerar o novo conteúdo.
-Corrija os pontos mencionados e melhore a qualidade geral.
+📏 TAMANHO SOLICITADO: ${extensaoSolicitada}
+   O usuário ESCOLHEU EXPLICITAMENTE este tamanho. RESPEITE!
+
+⚠️ REGRAS OBRIGATÓRIAS PARA REGENERAÇÃO:
+1. O conteúdo anterior era MUITO CURTO ou não atendeu
+2. Você DEVE gerar conteúdo com NO MÍNIMO ${limiteCaracteres} caracteres
+3. Não resuma nem encurte - EXPANDA e DETALHE ao máximo
+4. Inclua MAIS exemplos, MAIS explicações, MAIS detalhes
+5. Se o usuário pediu "completo", gere o conteúdo MAIS EXTENSO possível
+
+🚨 FALHA ANTERIOR: O conteúdo gerado anteriormente foi rejeitado por ser curto demais.
+   ESTA É SUA CHANCE DE CORRIGIR. Gere conteúdo MUITO MAIS EXTENSO.
 ==================================================
 `
     }
@@ -13634,12 +13654,13 @@ ESTRUTURA OBRIGATÓRIA:
 6. **Resumo Final** - Pontos-chave em bullets
 
 REGRAS OBRIGATÓRIAS:
-- 🔴 EXTENSÃO: O conteúdo COMPLETO deve ter EXATAMENTE ${limiteCaracteres} caracteres
+- 🔴🔴 EXTENSÃO MÍNIMA OBRIGATÓRIA: ${limiteCaracteres} caracteres (NUNCA menos que isso!)
+- Se o limite é 10000+, gere conteúdo MUITO EXTENSO e DETALHADO
 - Use linguagem clara e didática
-- Inclua exemplos práticos e casos reais
+- Inclua MUITOS exemplos práticos e casos reais
 - Destaque palavras-chave em negrito
 - Cite legislação e jurisprudência quando aplicável
-- Máximo 2000 palavras
+- NÃO encurte o conteúdo - quanto mais detalhado, melhor
 - Formate em Markdown`
         break
         
@@ -13766,7 +13787,8 @@ ESTRUTURA OBRIGATÓRIA:
 REGRAS:
 - Seja OBJETIVO e DIRETO
 - Use bullets e tabelas
-- Máximo 500 palavras
+- 🔴 EXTENSÃO MÍNIMA: ${limiteCaracteres} caracteres
+- Se o usuário pediu conteúdo LONGO ou COMPLETO, expanda MUITO mais
 - Formate em Markdown`
         break
         
@@ -13841,11 +13863,15 @@ REGRAS OBRIGATÓRIAS:
       maxTokens = Math.max(qtdExercicios * 400, 6000)
     } else {
       // Para teoria/resumo: garantir tokens suficientes para a extensão desejada
-      // limiteCaracteres / 3 (tokens) * 2 (margem de segurança)
-      maxTokens = Math.max(Math.ceil(limiteCaracteres / 1.5), 4000)
+      // Para 'completo' (10000 chars), precisamos de pelo menos 8000 tokens
+      if (iaConfig.extensao === 'completo') {
+        maxTokens = 12000 // Garantir espaço suficiente para conteúdo completo
+      } else {
+        maxTokens = Math.max(Math.ceil(limiteCaracteres / 1.5), 4000)
+      }
     }
     
-    console.log(`🎯 Configuração: temperatura=${temperaturaFixa}, maxTokens=${maxTokens}, extensão=${limiteCaracteres} chars`)
+    console.log(`🎯 Configuração: temperatura=${temperaturaFixa}, maxTokens=${maxTokens}, extensão=${iaConfig.extensao} (${limiteCaracteres} chars)`)
     
     const requestBody = {
       contents: [{
