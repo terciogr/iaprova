@@ -8140,6 +8140,23 @@ window.regenerarConteudoComFeedback = async function() {
   const extensao = getExtensaoFromSlider();
   console.log('📏 Tamanho selecionado:', extensao);
   
+  // ✅ SALVAR FEEDBACK NEGATIVO NO BANCO (com a crítica)
+  try {
+    await axios.post('/api/conteudo/feedback', {
+      user_id: currentUser?.id,
+      tipo: 'ruim',
+      conteudo_tipo: tipo,
+      disciplina_nome: disciplina_nome,
+      topico_nome: topico_nome,
+      critica: critica,
+      extensao_solicitada: extensao,
+      regeneracao: true
+    });
+    console.log('✅ Feedback negativo salvo com sucesso');
+  } catch (error) {
+    console.error('Erro ao salvar feedback negativo:', error);
+  }
+  
   // Fechar modal atual de forma robusta
   const modalAtual = document.getElementById('modal-conteudo-gerado');
   if (modalAtual) {
@@ -11546,6 +11563,22 @@ window.abrirPainelAdmin = async function() {
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
                   <div class="h-2 rounded-full ${(stats.feedback?.taxa_satisfacao || 0) >= 70 ? 'bg-emerald-500' : (stats.feedback?.taxa_satisfacao || 0) >= 50 ? 'bg-yellow-500' : 'bg-red-500'}" style="width: ${stats.feedback?.taxa_satisfacao || 0}%"></div>
+                </div>
+                
+                <!-- Métricas de Regeneração -->
+                <div class="mt-4 pt-4 border-t ${themes[currentTheme].border}">
+                  <div class="flex justify-between items-center mb-2">
+                    <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-sync-alt mr-1 text-purple-500"></i>Regenerações</span>
+                    <span class="font-bold text-purple-600">${stats.feedback?.regeneracoes || 0}</span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="${themes[currentTheme].textSecondary}">Taxa de regeneração</span>
+                    <span class="font-bold ${(stats.feedback?.taxa_regeneracao || 0) <= 30 ? 'text-emerald-600' : (stats.feedback?.taxa_regeneracao || 0) <= 50 ? 'text-yellow-600' : 'text-red-600'}">${stats.feedback?.taxa_regeneracao || 0}%</span>
+                  </div>
+                  <p class="text-xs ${themes[currentTheme].textMuted} mt-2 italic">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    ${(stats.feedback?.taxa_regeneracao || 0) <= 30 ? '✅ IA gerando conteúdo de qualidade!' : (stats.feedback?.taxa_regeneracao || 0) <= 50 ? '⚠️ Alguns conteúdos precisam de ajustes' : '🔴 Muitas regenerações - revisar qualidade da IA'}
+                  </p>
                 </div>
               </div>
               <button onclick="verFeedbacksAdmin()" class="mt-4 w-full py-2 px-4 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition text-sm font-medium">

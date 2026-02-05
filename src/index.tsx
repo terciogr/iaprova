@@ -2081,20 +2081,37 @@ app.get('/api/admin/dashboard', async (c) => {
     }
     
     // Estatísticas de feedback de conteúdo (se tabela existir)
-    let feedbackStats = { total: 0, positivo: 0, negativo: 0, taxa_satisfacao: 0 }
+    let feedbackStats = { 
+      total: 0, 
+      positivo: 0, 
+      negativo: 0, 
+      taxa_satisfacao: 0,
+      regeneracoes: 0,
+      taxa_regeneracao: 0
+    }
     try {
       const totalFeedback = await DB.prepare('SELECT COUNT(*) as count FROM conteudo_feedback').first() as any
       const positiveFeedback = await DB.prepare("SELECT COUNT(*) as count FROM conteudo_feedback WHERE tipo = 'bom'").first() as any
       const negativeFeedback = await DB.prepare("SELECT COUNT(*) as count FROM conteudo_feedback WHERE tipo = 'ruim'").first() as any
       
+      // Contar regenerações (feedbacks negativos com regeneracao = 1)
+      let regeneracoes = 0
+      try {
+        const regeneracoesResult = await DB.prepare("SELECT COUNT(*) as count FROM conteudo_feedback WHERE regeneracao = 1").first() as any
+        regeneracoes = regeneracoesResult?.count || 0
+      } catch (e) { /* coluna pode não existir ainda */ }
+      
       const total = totalFeedback?.count || 0
       const positivo = positiveFeedback?.count || 0
+      const negativo = negativeFeedback?.count || 0
       
       feedbackStats = {
         total: total,
         positivo: positivo,
-        negativo: negativeFeedback?.count || 0,
-        taxa_satisfacao: total > 0 ? Math.round((positivo / total) * 100) : 0
+        negativo: negativo,
+        taxa_satisfacao: total > 0 ? Math.round((positivo / total) * 100) : 0,
+        regeneracoes: regeneracoes,
+        taxa_regeneracao: negativo > 0 ? Math.round((regeneracoes / negativo) * 100) : 0
       }
     } catch (e) {
       console.log('⚠️ Tabela conteudo_feedback não existe ainda')
@@ -14053,8 +14070,11 @@ app.post('/api/conteudo/feedback', async (c) => {
   const { DB } = c.env
   const { user_id, tipo, conteudo_tipo, disciplina_nome, topico_nome, critica } = await c.req.json()
   
+  // Extrair campos adicionais
+  const { extensao_solicitada, regeneracao } = await c.req.json().catch(() => ({}))
+  
   try {
-    // Criar tabela se não existir
+    // Criar tabela se não existir (com campos adicionais)
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS conteudo_feedback (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -14064,18 +14084,37 @@ app.post('/api/conteudo/feedback', async (c) => {
         disciplina_nome TEXT,
         topico_nome TEXT,
         critica TEXT,
+        extensao_solicitada TEXT,
+        regeneracao INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
       )
     `).run()
     
+    // Tentar adicionar colunas novas (se não existirem)
+    try {
+      await DB.prepare('ALTER TABLE conteudo_feedback ADD COLUMN extensao_solicitada TEXT').run()
+    } catch (e) { /* coluna já existe */ }
+    try {
+      await DB.prepare('ALTER TABLE conteudo_feedback ADD COLUMN regeneracao INTEGER DEFAULT 0').run()
+    } catch (e) { /* coluna já existe */ }
+    
     // Inserir feedback
     await DB.prepare(`
-      INSERT INTO conteudo_feedback (user_id, tipo, conteudo_tipo, disciplina_nome, topico_nome, critica)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(user_id, tipo, conteudo_tipo || null, disciplina_nome || null, topico_nome || null, critica || null).run()
+      INSERT INTO conteudo_feedback (user_id, tipo, conteudo_tipo, disciplina_nome, topico_nome, critica, extensao_solicitada, regeneracao)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      user_id, 
+      tipo, 
+      conteudo_tipo || null, 
+      disciplina_nome || null, 
+      topico_nome || null, 
+      critica || null,
+      extensao_solicitada || null,
+      regeneracao ? 1 : 0
+    ).run()
     
-    console.log(`📊 Feedback registrado: ${tipo} - ${conteudo_tipo} - ${disciplina_nome}`)
+    console.log(`📊 Feedback registrado: ${tipo} - ${conteudo_tipo} - ${disciplina_nome} - regeneração: ${regeneracao ? 'sim' : 'não'}`)
     
     return c.json({ success: true, message: 'Feedback registrado com sucesso' })
   } catch (error) {
