@@ -6173,8 +6173,8 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
       </header>
 
       <div class="max-w-7xl mx-auto px-4 py-4">
-        <!-- CARDS DE AÇÕES: Data, Disciplinas, Progresso, Simulados, Desempenho -->
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3 mb-4">
+        <!-- CARDS DE AÇÕES: Data, Disciplinas, Progresso, Simulados, Desempenho, Calendário -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3 mb-4">
           
           <!-- Card Contagem Regressiva / Data da Prova -->
           ${contagemRegressiva ? `
@@ -6306,27 +6306,22 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               </div>
             </div>
           </button>
-        </div>
-
-        <!-- Grid: Calendário + Metas do Dia -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-          <!-- Mini Calendário do Mês -->
-          <div class="calendario-mes ${themes[currentTheme].card} rounded-2xl shadow-lg border ${themes[currentTheme].border} p-4 lg:col-span-1">
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2 text-sm">
-                <i class="fas fa-calendar text-[#122D6A]"></i>
-                ${new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '')}
-              </h3>
-              <div class="flex items-center gap-1 text-[9px]">
-                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span>Ok</span>
-                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-400"></span>Parcial</span>
+          
+          <!-- Botão Calendário -->
+          <button onclick="renderCalendario()" class="group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#122D6A] hover:shadow-xl transition-all">
+            <div class="flex items-center gap-2 md:gap-4">
+              <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-[#122D6A] to-[#3A5AB0] flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
+                <i class="fas fa-calendar-alt text-white text-sm md:text-xl"></i>
+              </div>
+              <div class="text-left flex-1 min-w-0">
+                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">Calendário</p>
               </div>
             </div>
-            ${gerarCalendarioCompacto(historico)}
-          </div>
-          
-          <!-- Metas do Dia - Acesso Rápido -->
-          <div class="${themes[currentTheme].card} rounded-2xl shadow-lg border ${themes[currentTheme].border} p-4 lg:col-span-2">
+          </button>
+        </div>
+
+        <!-- Metas do Dia - Acesso Rápido (Largura Total) -->
+        <div class="${themes[currentTheme].card} rounded-2xl shadow-lg border ${themes[currentTheme].border} p-4 mb-4">
             <div class="flex items-center justify-between mb-3">
               <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2 text-sm">
                 <i class="fas fa-tasks text-[#122D6A]"></i>
@@ -6361,7 +6356,6 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
             </div>
             
             ${metas.length > 6 ? `<p class="text-center text-xs ${themes[currentTheme].textSecondary} mt-2">+${metas.length - 6} mais metas</p>` : ''}
-          </div>
         </div>
 
         <!-- Calendário Semanal com Botão Gerar Metas Integrado -->
