@@ -7869,10 +7869,14 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
 
 // Função para exibir o conteúdo gerado
 window.exibirConteudoGerado = function(data) {
-  const { topico_nome, disciplina_nome, disciplina_id, topico_id, tipo, conteudo, caracteres, gerado_em, material_id } = data;
+  const { topico_nome, disciplina_nome, disciplina_id, topico_id, tipo, conteudo, caracteres, gerado_em, material_id, regenerado } = data;
+  
+  // Remover qualquer modal de conteúdo existente antes de exibir o novo
+  document.getElementById('modal-conteudo-gerado')?.remove();
+  document.getElementById('modal-loading-regeneracao')?.remove();
   
   // Material já foi salvo automaticamente no backend (material_id)
-  console.log('✅ Exibindo conteúdo:', { tipo, topico_nome, disciplina_nome, material_id });
+  console.log('✅ Exibindo conteúdo:', { tipo, topico_nome, disciplina_nome, material_id, regenerado });
   
   // Garantir que conteudo é string
   const conteudoTexto = typeof conteudo === 'string' ? conteudo : (conteudo?.texto || JSON.stringify(conteudo) || '');
@@ -7902,6 +7906,13 @@ window.exibirConteudoGerado = function(data) {
   const numCaracteres = caracteres || conteudoTexto.length || 0;
   const dataGeracao = gerado_em ? new Date(gerado_em).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
   
+  // Badge de regenerado se aplicável
+  const badgeRegenerado = regenerado ? `
+    <div class="bg-amber-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+      <i class="fas fa-magic"></i> Melhorado
+    </div>
+  ` : '';
+  
   const modalHtml = `
     <div id="modal-conteudo-gerado" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
@@ -7912,6 +7923,7 @@ window.exibirConteudoGerado = function(data) {
               <h2 class="text-xl font-bold flex items-center gap-3">
                 <i class="fas ${tipoLabel.icon}"></i>
                 ${tipoLabel.label}
+                ${badgeRegenerado}
               </h2>
               <p class="mt-1 text-sm opacity-90">${topico_nome || 'Conteúdo'}</p>
               <p class="text-xs opacity-75">${disciplina_nome || 'Material de Estudo'}</p>
@@ -7922,6 +7934,17 @@ window.exibirConteudoGerado = function(data) {
             </div>
           </div>
         </div>
+        
+        ${regenerado ? `
+        <!-- Banner de conteúdo melhorado -->
+        <div class="bg-gradient-to-r from-amber-50 to-amber-100 border-b border-amber-200 px-6 py-3">
+          <p class="text-sm text-amber-800 flex items-center gap-2">
+            <i class="fas fa-check-circle text-amber-600"></i>
+            <strong>Conteúdo regenerado com suas sugestões!</strong> 
+            <span class="text-amber-600">Compare com a versão anterior se necessário.</span>
+          </p>
+        </div>
+        ` : ''}
         
         <!-- Conteúdo scrollável -->
         <div class="flex-1 overflow-y-auto p-6">
@@ -8058,7 +8081,8 @@ window.regenerarConteudoComFeedback = async function() {
   // Fechar modal atual
   document.getElementById('modal-conteudo-gerado')?.remove();
   
-  showToast('⏳ Regenerando conteúdo com suas melhorias...', 'info');
+  // Mostrar modal de loading com progresso
+  mostrarLoadingRegeneracao(topico_nome, tipo, critica);
   
   try {
     console.log('🔄 Regenerando com feedback:', { topico_nome, disciplina_nome, tipo, critica });
@@ -8080,6 +8104,9 @@ window.regenerarConteudoComFeedback = async function() {
       timeout: 120000 // 2 minutos para geração de conteúdo
     });
     
+    // Fechar loading
+    document.getElementById('modal-loading-regeneracao')?.remove();
+    
     console.log('✅ Resposta da regeneração:', response.data);
     
     if (response.data && (response.data.conteudo || response.data.texto)) {
@@ -8090,19 +8117,101 @@ window.regenerarConteudoComFeedback = async function() {
         ...response.data,
         topico_nome: topico_nome,
         disciplina_nome: disciplina_nome,
-        tipo: tipo
+        disciplina_id: disciplina_id,
+        topico_id: topico_id,
+        tipo: tipo,
+        regenerado: true // Marcar como regenerado
       };
       
+      // Exibir o novo conteúdo
       exibirConteudoGerado(dadosExibicao);
     } else {
       console.error('Resposta inválida:', response.data);
       showToast('❌ Erro ao regenerar conteúdo - resposta inválida', 'error');
     }
   } catch (error) {
+    // Fechar loading em caso de erro
+    document.getElementById('modal-loading-regeneracao')?.remove();
+    
     console.error('Erro ao regenerar:', error);
     const errorMsg = error.response?.data?.error || error.message || 'Erro desconhecido';
     showToast('❌ Erro ao regenerar: ' + errorMsg, 'error');
   }
+}
+
+// Modal de loading para regeneração de conteúdo
+function mostrarLoadingRegeneracao(topico, tipo, feedback) {
+  const tipoLabel = {
+    'teoria': 'Teoria',
+    'exercicios': 'Exercícios',
+    'resumo': 'Resumo',
+    'flashcards': 'Flashcards'
+  }[tipo] || tipo;
+  
+  const modalHtml = `
+    <div id="modal-loading-regeneracao" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
+        <!-- Animação de loading -->
+        <div class="relative w-24 h-24 mx-auto mb-6">
+          <div class="absolute inset-0 border-4 border-emerald-200 rounded-full"></div>
+          <div class="absolute inset-0 border-4 border-emerald-600 rounded-full border-t-transparent animate-spin"></div>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <i class="fas fa-magic text-2xl text-emerald-600 animate-pulse"></i>
+          </div>
+        </div>
+        
+        <!-- Título -->
+        <h3 class="text-xl font-bold text-gray-800 mb-2">
+          Regenerando ${tipoLabel}
+        </h3>
+        
+        <!-- Tópico -->
+        <p class="text-gray-600 mb-4">
+          <i class="fas fa-book-open mr-2"></i>
+          ${topico}
+        </p>
+        
+        <!-- Feedback sendo aplicado -->
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+          <p class="text-sm text-amber-800">
+            <i class="fas fa-lightbulb mr-2"></i>
+            <strong>Aplicando sua sugestão:</strong>
+          </p>
+          <p class="text-xs text-amber-700 mt-1 italic">"${feedback.substring(0, 100)}${feedback.length > 100 ? '...' : ''}"</p>
+        </div>
+        
+        <!-- Mensagens de progresso -->
+        <div id="loading-progress-messages" class="space-y-2 text-sm text-gray-500">
+          <p class="animate-pulse"><i class="fas fa-cog fa-spin mr-2"></i>Analisando feedback...</p>
+        </div>
+        
+        <!-- Tempo estimado -->
+        <p class="text-xs text-gray-400 mt-4">
+          <i class="fas fa-clock mr-1"></i>
+          Isso pode levar até 30 segundos
+        </p>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  // Simular progresso com mensagens
+  const mensagens = [
+    { tempo: 3000, texto: '<i class="fas fa-brain fa-spin mr-2"></i>Entendendo suas melhorias...' },
+    { tempo: 6000, texto: '<i class="fas fa-pen-fancy fa-spin mr-2"></i>Reescrevendo conteúdo...' },
+    { tempo: 10000, texto: '<i class="fas fa-check-double fa-spin mr-2"></i>Aplicando melhorias...' },
+    { tempo: 15000, texto: '<i class="fas fa-sparkles fa-spin mr-2"></i>Finalizando...' }
+  ];
+  
+  mensagens.forEach(({ tempo, texto }) => {
+    setTimeout(() => {
+      const container = document.getElementById('loading-progress-messages');
+      if (container) {
+        container.innerHTML = `<p class="animate-pulse">${texto}</p>`;
+      }
+    }, tempo);
+  });
 }
 
 // Função para fechar modal de conteúdo gerado e voltar ao dashboard
