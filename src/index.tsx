@@ -13705,66 +13705,89 @@ ESTILO: Questões de múltipla escolha no padrão da banca
           }
         }
         
-        systemPrompt = `Você é um professor especialista em concursos públicos brasileiros.
+        systemPrompt = `Você é um elaborador EXPERT de provas de concursos públicos brasileiros.
 ${personalizacao}
 6. FORMATO: ${formatoExercicios}
 
 ${instrucoesBanca}
 
+🔴🔴🔴 ATENÇÃO MÁXIMA - REGRAS CRÍTICAS 🔴🔴🔴
+
 ════════════════════════════════════════════════════════════════
-🎯 TÓPICO ESPECÍFICO: "${topico_nome}"
+🎯 TÓPICO ESPECÍFICO E ÚNICO: "${topico_nome}"
 📚 DISCIPLINA: "${disciplina_nome}"
 ════════════════════════════════════════════════════════════════
 
-⚠️ REGRA CRÍTICA: TODAS as ${qtdExercicios} questões devem ser EXCLUSIVAMENTE sobre o tópico "${topico_nome}".
-- NÃO misture com outros tópicos da disciplina
-- NÃO generalize para assuntos não relacionados ao tópico
-- Cada questão deve abordar um aspecto diferente DESTE MESMO TÓPICO
+⚠️ REGRA INVIOLÁVEL: TODAS as ${qtdExercicios} questões devem ser 100% sobre "${topico_nome}".
 
-CRIE EXATAMENTE ${qtdExercicios} QUESTÕES DE CONCURSO focadas 100% no tópico "${topico_nome}".
+🚫 PROIBIDO:
+- NÃO misture com outros tópicos da disciplina "${disciplina_nome}"
+- NÃO generalize para assuntos diferentes
+- NÃO crie questões genéricas ou que caibam em qualquer tópico
+- NÃO repita conceitos ou perguntas similares entre questões
+- NÃO use a mesma estrutura de pergunta em questões diferentes
 
-IMPORTANTE: Você DEVE criar EXATAMENTE ${qtdExercicios} questões, numeradas de 1 a ${qtdExercicios}.
+✅ OBRIGATÓRIO:
+- CADA questão deve abordar um ASPECTO ÚNICO E DIFERENTE do tópico "${topico_nome}"
+- VARIE os ângulos de abordagem: conceitos, aplicação, casos práticos, exceções, jurisprudência
+- Mencione ESPECIFICAMENTE elementos do tópico "${topico_nome}" no enunciado
+- Os comentários devem explicar conceitos ESPECÍFICOS de "${topico_nome}"
+
+EXEMPLOS DE VARIAÇÃO PARA O MESMO TÓPICO:
+Q1 - Conceito básico/definição do tópico
+Q2 - Aplicação prática em situação real
+Q3 - Exceções e casos especiais
+Q4 - Distinção com conceitos similares
+Q5 - Jurisprudência ou legislação específica (se aplicável)
+Q6 - Pegadinha comum em provas sobre este tópico
+Q7+ - Outros aspectos únicos do tópico
+
+CRIE EXATAMENTE ${qtdExercicios} QUESTÕES ÚNICAS E DIFERENTES sobre "${topico_nome}".
 
 ${caracteristicasBanca?.estilo?.tipo === 'certo_errado' ? `
-ESTRUTURA OBRIGATÓRIA PARA CADA QUESTÃO (FORMATO CERTO/ERRADO):
+ESTRUTURA OBRIGATÓRIA (CERTO/ERRADO):
 
-**Questão 1**
-[Afirmação para ser julgada como CERTA ou ERRADA]
+**Questão 1** [Aspecto: conceito básico]
+[Afirmação ESPECÍFICA sobre "${topico_nome}" para julgar]
 
 **Gabarito:** CERTO / ERRADO
-**Comentário:** Explicação detalhada.
+**Comentário:** Explicação detalhada de POR QUE está certo/errado, citando "${topico_nome}".
 
 ---
+
+**Questão 2** [Aspecto: aplicação prática]
+...
 ` : `
-ESTRUTURA OBRIGATÓRIA PARA CADA QUESTÃO:
+ESTRUTURA OBRIGATÓRIA:
 
-**Questão 1** (Nível: Fácil)
-[Enunciado claro e objetivo da questão]
+**Questão 1** [Aspecto: conceito básico] (Nível: Fácil)
+[Enunciado ESPECÍFICO sobre "${topico_nome}"]
 
-a) Primeira alternativa
-b) Segunda alternativa
-c) Terceira alternativa
-d) Quarta alternativa
-e) Quinta alternativa
+a) Alternativa relacionada ao tópico
+b) Alternativa relacionada ao tópico
+c) Alternativa relacionada ao tópico
+d) Alternativa relacionada ao tópico
+e) Alternativa relacionada ao tópico
 
 **Gabarito:** Letra X
-**Comentário:** Explicação detalhada.
+**Comentário:** Explicação citando especificamente "${topico_nome}".
 
 ---
+
+**Questão 2** [Aspecto: aplicação prática] (Nível: Médio)
+...
 `}
 
-**Questão 2** (Nível: Médio)
-[Continue até a Questão ${qtdExercicios}...]
-
 REGRAS OBRIGATÓRIAS:
-- CRIE EXATAMENTE ${qtdExercicios} questões (nem mais, nem menos)
+- CRIE EXATAMENTE ${qtdExercicios} questões DIFERENTES entre si
 - Numere de 1 a ${qtdExercicios} sequencialmente
+- Indique [Aspecto: X] para garantir variedade
 ${caracteristicasBanca?.estilo?.tipo === 'certo_errado' ? 
-  '- Cada questão é uma AFIRMAÇÃO para julgar como CERTA ou ERRADA\n- Inclua pegadinhas de interpretação e detalhes' :
-  '- Cada questão DEVE ter exatamente 5 alternativas (a, b, c, d, e)\n- Varie os níveis: Fácil, Médio e Difícil'}
-- Cada questão DEVE ter Gabarito e Comentário separados
+  '- Cada questão é uma AFIRMAÇÃO sobre "${topico_nome}" para julgar\n- Inclua pegadinhas de interpretação específicas do tópico' :
+  '- Cada questão DEVE ter exatamente 5 alternativas (a, b, c, d, e)\n- Varie os níveis: Fácil (30%), Médio (50%), Difícil (20%)'}
+- Cada questão DEVE ter Gabarito e Comentário
 - Use o separador --- entre questões
-- Inclua pegadinhas comuns de prova`
+- VERIFIQUE: cada questão aborda um aspecto ÚNICO de "${topico_nome}"?`
         break
         
       case 'resumo':
@@ -14178,75 +14201,95 @@ app.post('/api/simulado/gerar', async (c) => {
   try {
     console.log(`📝 Gerando simulado: ${quantidade} questões para ${disciplinas.length} disciplinas`)
     
-    // Buscar nomes das disciplinas
-    const disciplinasInfo: any[] = []
+    // Buscar nomes das disciplinas E seus tópicos cadastrados
+    const disciplinasComTopicos: any[] = []
     for (const discId of disciplinas) {
-      const disc = await DB.prepare('SELECT id, nome FROM disciplinas WHERE id = ?').bind(discId).first()
+      const disc = await DB.prepare('SELECT id, nome FROM disciplinas WHERE id = ?').bind(discId).first() as any
       if (disc) {
-        disciplinasInfo.push(disc)
+        // Buscar tópicos desta disciplina
+        const { results: topicosDisc } = await DB.prepare(`
+          SELECT id, nome FROM topicos_edital WHERE disciplina_id = ? ORDER BY nome
+        `).bind(discId).all()
+        
+        disciplinasComTopicos.push({
+          ...disc,
+          topicos: topicosDisc || []
+        })
       }
     }
     
-    // Buscar tópicos se especificados
-    let topicosInfo: any[] = []
+    // Buscar tópicos específicos se selecionados
+    let topicosEspecificos: any[] = []
     if (topicos && topicos.length > 0) {
       for (const topId of topicos) {
         const top = await DB.prepare('SELECT id, nome, disciplina_id FROM topicos_edital WHERE id = ?').bind(topId).first()
         if (top) {
-          topicosInfo.push(top)
+          topicosEspecificos.push(top)
         }
       }
     }
     
     // Calcular distribuição de questões por disciplina
-    const questoesPorDisciplina = Math.ceil(quantidade / disciplinasInfo.length)
+    const questoesPorDisciplina = Math.ceil(quantidade / disciplinasComTopicos.length)
     
-    // Construir prompt
-    const disciplinasTexto = disciplinasInfo.map(d => d.nome).join(', ')
-    const topicosTexto = topicosInfo.length > 0 
-      ? `Foque especialmente nos seguintes tópicos: ${topicosInfo.map(t => t.nome).join(', ')}.`
+    // Construir detalhamento por disciplina com tópicos
+    const detalhamentoDisciplinas = disciplinasComTopicos.map(d => {
+      const topicosTexto = d.topicos.length > 0 
+        ? d.topicos.map((t: any) => `"${t.nome}"`).join(', ')
+        : 'conteúdo geral da disciplina'
+      return `
+📚 DISCIPLINA: ${d.nome}
+   TÓPICOS OBRIGATÓRIOS: ${topicosTexto}
+   QUESTÕES: ${questoesPorDisciplina} questões
+   ⚠️ TODAS as questões desta disciplina DEVEM abordar ESPECIFICAMENTE estes tópicos!`
+    }).join('\n')
+    
+    // Se há tópicos específicos selecionados, priorizar eles
+    const topicosEspecificosTexto = topicosEspecificos.length > 0
+      ? `\n🎯 TÓPICOS PRIORITÁRIOS (o usuário escolheu especificamente estes):\n${topicosEspecificos.map(t => `   - "${t.nome}"`).join('\n')}\n   ⚠️ PRIORIZE questões sobre estes tópicos!`
       : ''
     
-    const systemPrompt = `Você é um elaborador de provas de concursos públicos brasileiros.
-CRIE EXATAMENTE ${quantidade} QUESTÕES para um simulado abrangendo as seguintes disciplinas: ${disciplinasTexto}.
+    const systemPrompt = `Você é um elaborador EXPERT de provas de concursos públicos brasileiros.
 
-${topicosTexto}
+🔴🔴🔴 ATENÇÃO MÁXIMA - REGRA CRÍTICA 🔴🔴🔴
+As questões DEVEM ser EXCLUSIVAMENTE sobre os tópicos listados abaixo de cada disciplina.
+NÃO invente tópicos. NÃO generalize. Cada questão deve ser sobre um tópico ESPECÍFICO listado.
 
-IMPORTANTE: 
-- Você DEVE criar EXATAMENTE ${quantidade} questões, numeradas de 1 a ${quantidade}
-- Distribua as questões equilibradamente entre as disciplinas
-- Cada questão deve indicar a qual disciplina pertence
+═══════════════════════════════════════════════════════
+DISTRIBUIÇÃO OBRIGATÓRIA:
+${detalhamentoDisciplinas}
+${topicosEspecificosTexto}
+═══════════════════════════════════════════════════════
 
-ESTRUTURA OBRIGATÓRIA PARA CADA QUESTÃO:
+CRIE EXATAMENTE ${quantidade} QUESTÕES.
 
-**Questão 1** [Disciplina: Nome da Disciplina] (Nível: Fácil/Médio/Difícil)
-[Enunciado claro e objetivo da questão]
+📌 REGRAS OBRIGATÓRIAS:
+1. CADA questão deve indicar: [Disciplina: X] [Tópico: Y]
+2. O tópico Y DEVE ser um dos listados acima - NÃO INVENTE!
+3. Distribua equilibradamente entre os tópicos de cada disciplina
+4. Varie os níveis: Fácil (30%), Médio (50%), Difícil (20%)
+5. Use estilo de bancas reais (CESPE, FCC, FGV, VUNESP)
+6. Inclua pegadinhas típicas de provas
 
-a) Primeira alternativa
-b) Segunda alternativa
-c) Terceira alternativa
-d) Quarta alternativa
-e) Quinta alternativa
+ESTRUTURA OBRIGATÓRIA:
+
+**Questão 1** [Disciplina: Nome] [Tópico: Nome do Tópico] (Nível: Fácil/Médio/Difícil)
+[Enunciado claro sobre o tópico específico]
+
+a) Alternativa 1
+b) Alternativa 2
+c) Alternativa 3
+d) Alternativa 4
+e) Alternativa 5
 
 **Gabarito:** Letra X
-**Comentário:** Explicação detalhada.
+**Comentário:** Explicação detalhada relacionada ao tópico.
 
 ---
 
-**Questão 2** [Disciplina: Nome da Disciplina] (Nível: Médio)
-[Continue até a Questão ${quantidade}...]
+[Continue até Questão ${quantidade}]
 
-REGRAS OBRIGATÓRIAS:
-- CRIE EXATAMENTE ${quantidade} questões (nem mais, nem menos)
-- Numere de 1 a ${quantidade} sequencialmente
-- Indique a disciplina de cada questão entre colchetes
-- Cada questão DEVE ter exatamente 5 alternativas (a, b, c, d, e)
-- Cada questão DEVE ter Gabarito e Comentário separados
-- Use o separador --- entre questões
-- Varie os níveis: Fácil (30%), Médio (50%), Difícil (20%)
-- Use estilo de bancas como CESPE, FCC, FGV, VUNESP
-- Inclua pegadinhas comuns de prova
-- Questões devem ser realistas e baseadas em conteúdo de concursos`
+⚠️ VERIFICAÇÃO FINAL: Antes de entregar, confirme que CADA questão aborda um tópico LISTADO acima!`
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
     

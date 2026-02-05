@@ -9146,37 +9146,237 @@ window.excluirTopicoGestao = async (topicoId) => {
 
 // ✅ FUNÇÕES DE GESTÃO DE DISCIPLINAS (CRUD COMPLETO)
 window.adicionarDisciplinaCustomGestao = async () => {
-  const nome = await showPrompt('Digite o nome da nova disciplina:');
-  if (!nome || !nome.trim()) return;
+  // Abrir modal completo para criar disciplina com tópicos obrigatórios
+  abrirModalNovaDisciplina();
+};
+
+// Modal para criar nova disciplina com tópicos obrigatórios
+function abrirModalNovaDisciplina() {
+  const modalHtml = `
+    <div id="modal-nova-disciplina" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-5">
+          <h3 class="text-xl font-bold flex items-center gap-2">
+            <i class="fas fa-plus-circle"></i>
+            Nova Disciplina
+          </h3>
+          <p class="text-sm opacity-90 mt-1">Adicione uma disciplina com pelo menos um tópico</p>
+        </div>
+        
+        <!-- Body -->
+        <div class="p-5 max-h-[60vh] overflow-y-auto">
+          <!-- Nome da disciplina -->
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-semibold mb-2">
+              <i class="fas fa-book mr-1"></i>
+              Nome da Disciplina *
+            </label>
+            <input 
+              type="text" 
+              id="nova-disciplina-nome"
+              class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#122D6A] focus:border-[#122D6A] text-gray-900"
+              placeholder="Ex: Direito Constitucional"
+              maxlength="100"
+            >
+          </div>
+          
+          <!-- Nível de conhecimento -->
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-semibold mb-2">
+              <i class="fas fa-chart-bar mr-1"></i>
+              Nível de Conhecimento (0-10)
+            </label>
+            <input 
+              type="range" 
+              id="nova-disciplina-nivel"
+              min="0" max="10" value="5"
+              class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
+              oninput="document.getElementById('nivel-valor').textContent = this.value"
+            >
+            <div class="flex justify-between text-xs text-gray-500 mt-1">
+              <span>Iniciante</span>
+              <span id="nivel-valor" class="font-bold text-[#122D6A]">5</span>
+              <span>Expert</span>
+            </div>
+          </div>
+          
+          <!-- Tópicos obrigatórios -->
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-semibold mb-2">
+              <i class="fas fa-list-ul mr-1"></i>
+              Tópicos * <span class="text-red-500 text-xs">(mínimo 1 obrigatório)</span>
+            </label>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+              <p class="text-xs text-blue-700">
+                <i class="fas fa-info-circle mr-1"></i>
+                Digite os tópicos que você vai estudar nesta disciplina. Separe por Enter ou adicione um por vez.
+              </p>
+            </div>
+            
+            <div class="flex gap-2 mb-3">
+              <input 
+                type="text" 
+                id="novo-topico-input"
+                class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#122D6A] focus:border-[#122D6A] text-gray-900"
+                placeholder="Digite um tópico e pressione Enter"
+                onkeypress="if(event.key==='Enter'){event.preventDefault();adicionarTopicoNovaDisciplina();}"
+              >
+              <button 
+                type="button"
+                onclick="adicionarTopicoNovaDisciplina()"
+                class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+            
+            <div id="lista-topicos-nova-disciplina" class="space-y-2 max-h-40 overflow-y-auto">
+              <!-- Tópicos serão adicionados aqui -->
+            </div>
+            <p id="contador-topicos" class="text-xs text-gray-500 mt-2">0 tópico(s) adicionado(s)</p>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="p-5 border-t border-gray-200 bg-gray-50 flex gap-3">
+          <button 
+            onclick="document.getElementById('modal-nova-disciplina')?.remove()"
+            class="flex-1 py-2.5 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+            Cancelar
+          </button>
+          <button 
+            onclick="salvarNovaDisciplinaComTopicos()"
+            class="flex-1 py-2.5 px-4 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex items-center justify-center gap-2">
+            <i class="fas fa-check"></i>
+            Salvar Disciplina
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
   
-  const nivelAtual = await showPrompt('Nível de conhecimento (0-10):', '5');
-  const nivelNum = parseInt(nivelAtual) || 5;
+  // Resetar lista de tópicos temporários
+  window.topicosNovaDisciplina = [];
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  document.getElementById('nova-disciplina-nome')?.focus();
+}
+
+// Adicionar tópico à lista temporária
+window.adicionarTopicoNovaDisciplina = function() {
+  const input = document.getElementById('novo-topico-input');
+  const nome = input?.value?.trim();
+  
+  if (!nome) {
+    showToast('Digite o nome do tópico', 'warning');
+    return;
+  }
+  
+  // Verificar duplicado
+  if (window.topicosNovaDisciplina.some(t => t.toLowerCase() === nome.toLowerCase())) {
+    showToast('Tópico já adicionado', 'warning');
+    return;
+  }
+  
+  window.topicosNovaDisciplina.push(nome);
+  input.value = '';
+  input.focus();
+  
+  atualizarListaTopicosNovaDisciplina();
+};
+
+// Remover tópico da lista
+window.removerTopicoNovaDisciplina = function(index) {
+  window.topicosNovaDisciplina.splice(index, 1);
+  atualizarListaTopicosNovaDisciplina();
+};
+
+// Atualizar UI da lista de tópicos
+function atualizarListaTopicosNovaDisciplina() {
+  const lista = document.getElementById('lista-topicos-nova-disciplina');
+  const contador = document.getElementById('contador-topicos');
+  
+  if (!lista) return;
+  
+  if (window.topicosNovaDisciplina.length === 0) {
+    lista.innerHTML = '<p class="text-gray-400 text-sm text-center py-2">Nenhum tópico adicionado</p>';
+  } else {
+    lista.innerHTML = window.topicosNovaDisciplina.map((t, i) => `
+      <div class="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
+        <span class="text-gray-800 text-sm">${t}</span>
+        <button onclick="removerTopicoNovaDisciplina(${i})" class="text-red-500 hover:text-red-700">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    `).join('');
+  }
+  
+  if (contador) {
+    contador.textContent = `${window.topicosNovaDisciplina.length} tópico(s) adicionado(s)`;
+    contador.className = window.topicosNovaDisciplina.length === 0 
+      ? 'text-xs text-red-500 mt-2' 
+      : 'text-xs text-green-600 mt-2';
+  }
+}
+
+// Salvar disciplina com tópicos
+window.salvarNovaDisciplinaComTopicos = async function() {
+  const nome = document.getElementById('nova-disciplina-nome')?.value?.trim();
+  const nivel = parseInt(document.getElementById('nova-disciplina-nivel')?.value) || 5;
+  
+  if (!nome) {
+    showToast('⚠️ Digite o nome da disciplina', 'warning');
+    document.getElementById('nova-disciplina-nome')?.focus();
+    return;
+  }
+  
+  if (!window.topicosNovaDisciplina || window.topicosNovaDisciplina.length === 0) {
+    showToast('⚠️ Adicione pelo menos um tópico!', 'warning');
+    document.getElementById('novo-topico-input')?.focus();
+    return;
+  }
   
   try {
-    // Criar disciplina padrão primeiro
+    showToast('⏳ Criando disciplina...', 'info');
+    
+    // 1. Criar disciplina
     const discResponse = await axios.post('/api/disciplinas', {
-      nome: nome.trim(),
+      nome: nome,
       area: 'custom'
     });
     
     const disciplina_id = discResponse.data.id;
     
-    // Associar ao usuário
+    // 2. Associar ao usuário
     await axios.post('/api/user-disciplinas', {
       user_id: currentUser.id,
       disciplina_id: disciplina_id,
-      nivel_atual: nivelNum,
+      nivel_atual: nivel,
       ja_estudou: false,
       dificuldade: false
     });
     
-    showToast('Disciplina adicionada com sucesso!', 'success');
+    // 3. Criar os tópicos
+    for (const topicoNome of window.topicosNovaDisciplina) {
+      await axios.post('/api/topicos/manual', {
+        disciplina_id: disciplina_id,
+        nome: topicoNome,
+        peso: 1,
+        categoria: 'Custom',
+        user_id: currentUser.id
+      });
+    }
+    
+    // Fechar modal
+    document.getElementById('modal-nova-disciplina')?.remove();
+    
+    showToast(`✅ Disciplina "${nome}" criada com ${window.topicosNovaDisciplina.length} tópico(s)!`, 'success');
     
     // Recarregar página
     renderPortfolioDisciplinas();
   } catch (error) {
-    console.error('Erro ao adicionar disciplina:', error);
-    showModal('Erro ao adicionar disciplina: ' + (error.response?.data?.error || error.message), 'error');
+    console.error('Erro ao criar disciplina:', error);
+    showToast('❌ Erro ao criar disciplina: ' + (error.response?.data?.error || error.message), 'error');
   }
 };
 
