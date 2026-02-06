@@ -7887,6 +7887,20 @@ window.confirmarGeracaoConteudo = function(topicoId, topicoNome, disciplinaNome,
   executarGeracaoConteudo(topicoId, topicoNome, disciplinaNome, tipoConteudoSelecionado, quantidade, metaId);
 }
 
+// ✅ Função para confirmar geração rápida (chamada do modal de quantidade)
+window.confirmarGeracaoRapida = function(tipo, metaId, topicoId, topicoNome, disciplinaNome) {
+  const slider = document.getElementById('quantidade-rapida-slider');
+  const quantidade = slider ? parseInt(slider.value) : (tipo === 'exercicios' ? 10 : 15);
+  
+  console.log('🚀 Geração rápida confirmada:', { tipo, quantidade, metaId, topicoNome });
+  
+  // Fechar modal de quantidade
+  document.getElementById('modal-quantidade-rapida')?.remove();
+  
+  // Executar geração
+  window.executarGeracaoConteudo(topicoId || null, topicoNome, disciplinaNome, tipo, quantidade, metaId);
+}
+
 // Função para executar a geração de conteúdo
 window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplinaNome, tipo, quantidade = null, metaId = null) {
   // Remover modal de seleção
@@ -9278,27 +9292,10 @@ window.editarTopicoGestao = async (topicoId, nomeAtual, pesoAtual) => {
   const novoPesoNum = parseInt(novoPeso) || pesoAtual || 1;
   
   try {
-    // ✅ WORKAROUND: Usar endpoint de geração para simular update
-    // Buscar todos os tópicos atuais
-    const topicosAtuais = window.currentDisciplinaTopicos || [];
-    
-    // Atualizar o tópico específico
-    const topicosAtualizados = topicosAtuais.map(t => {
-      if (t.id === topicoId) {
-        return { ...t, nome: novoNome.trim(), peso: novoPesoNum };
-      }
-      return t;
-    });
-    
-    // Regenerar todos os tópicos (workaround até endpoints estarem disponíveis)
-    await axios.post(`/api/topicos/gerar/${window.currentDisciplinaId}`, {
-      topicos: topicosAtualizados.map((t, idx) => ({
-        nome: t.nome,
-        categoria: t.categoria || 'Outros',
-        ordem: idx + 1,
-        peso: t.peso || 1
-      })),
-      user_id: currentUser.id // ✅ Incluir user_id para isolamento
+    // ✅ Usar endpoint direto de atualização de tópico
+    await axios.put(`/api/topicos/${topicoId}`, {
+      nome: novoNome.trim(),
+      peso: Math.max(1, Math.min(10, novoPesoNum)) // Garantir que peso está entre 1 e 10
     });
     
     showToast('Tópico atualizado com sucesso!', 'success');
@@ -9325,23 +9322,8 @@ window.excluirTopicoGestao = async (topicoId) => {
   if (!confirmed) return;
   
   try {
-    // ✅ WORKAROUND: Usar endpoint de geração para simular delete
-    // Buscar todos os tópicos atuais
-    const topicosAtuais = window.currentDisciplinaTopicos || [];
-    
-    // Remover o tópico específico
-    const topicosAtualizados = topicosAtuais.filter(t => t.id !== topicoId);
-    
-    // Regenerar todos os tópicos (workaround até endpoints estarem disponíveis)
-    await axios.post(`/api/topicos/gerar/${window.currentDisciplinaId}`, {
-      topicos: topicosAtualizados.map((t, idx) => ({
-        nome: t.nome,
-        categoria: t.categoria || 'Outros',
-        ordem: idx + 1,
-        peso: t.peso || 1
-      })),
-      user_id: currentUser.id // ✅ Incluir user_id para isolamento
-    });
+    // ✅ Usar endpoint direto de exclusão de tópico
+    await axios.delete(`/api/topicos/${topicoId}`);
     
     showToast('Tópico excluído com sucesso!', 'info');
     
@@ -13472,22 +13454,24 @@ async function renderCalendario() {
   const ano = hoje.getFullYear();
 
   try {
-    const [calendarioRes, estatisticasRes] = await Promise.all([
+    const [calendarioRes, estatisticasRes, semanaRes] = await Promise.all([
       axios.get(`/api/calendario/${currentUser.id}?mes=${mes}&ano=${ano}`),
-      axios.get(`/api/estatisticas/${currentUser.id}`)
+      axios.get(`/api/estatisticas/${currentUser.id}`),
+      axios.get(`/api/metas/semana-ativa/${currentUser.id}`)
     ]);
 
     const historico = calendarioRes.data;
     const stats = estatisticasRes.data;
+    const semanaData = semanaRes.data;
 
-    renderCalendarioUI(historico, stats, mes, ano);
+    renderCalendarioUI(historico, stats, mes, ano, semanaData);
   } catch (error) {
     console.error('Erro ao carregar calendário:', error);
     showModal('Erro ao carregar calendário');
   }
 }
 
-function renderCalendarioUI(historico, stats, mes, ano) {
+function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
   const mesesNomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
                       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   
@@ -13529,7 +13513,7 @@ function renderCalendarioUI(historico, stats, mes, ano) {
         titulo = `${hist.percentual_conclusao}% - ${Math.round(hist.tempo_estudado_minutos / 60 * 10) / 10}h`;
       } else {
         corClasse = 'bg-red-100 border-red-300';
-        icone = '<i class="fas fa-times text-[#2A4A9F]"></i>';
+        icone = '<i class="fas fa-times text-red-500"></i>';
         titulo = 'Não estudou';
       }
     }
@@ -13634,21 +13618,29 @@ function renderCalendarioUI(historico, stats, mes, ano) {
           <h2 class="text-xl font-bold mb-6 text-center">${mesesNomes[mes - 1]} ${ano}</h2>
 
           <!-- Legenda -->
-          <div class="flex justify-center space-x-6 mb-6 text-sm">
-            <div class="flex items-center">
-              <div class="w-4 h-4 bg-[#2A4A9F]/10 border-2 border-green-400 rounded mr-2"></div>
+          <div class="flex flex-wrap justify-center gap-4 mb-6 text-sm">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 bg-[#2A4A9F]/10 border-2 border-green-400 rounded flex items-center justify-center">
+                <i class="fas fa-check text-[#2A4A9F] text-xs"></i>
+              </div>
               <span>Completo</span>
             </div>
-            <div class="flex items-center">
-              <div class="w-4 h-4 bg-[#4A90E2]/10 border-2 border-yellow-400 rounded mr-2"></div>
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 bg-[#4A90E2]/10 border-2 border-yellow-400 rounded flex items-center justify-center">
+                <i class="fas fa-clock text-[#1A3A7F] text-xs"></i>
+              </div>
               <span>Parcial</span>
             </div>
-            <div class="flex items-center">
-              <div class="w-4 h-4 bg-red-100 border-2 border-red-300 rounded mr-2"></div>
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 bg-red-100 border-2 border-red-300 rounded flex items-center justify-center">
+                <i class="fas fa-times text-red-500 text-xs"></i>
+              </div>
               <span>Não estudou</span>
             </div>
-            <div class="flex items-center">
-              <div class="w-4 h-4 bg-gray-100 border-2 ${themes[currentTheme].border} rounded mr-2"></div>
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 bg-gray-100 border-2 ${themes[currentTheme].border} rounded flex items-center justify-center">
+                <span class="text-gray-400 text-xs">—</span>
+              </div>
               <span>Sem dados</span>
             </div>
           </div>
@@ -13668,6 +13660,117 @@ function renderCalendarioUI(historico, stats, mes, ano) {
             ${diasHTML}
           </div>
         </div>
+        
+        <!-- Calendário Semanal por Disciplina -->
+        ${semanaData && semanaData.metas && semanaData.metas.length > 0 ? `
+        <div class="${themes[currentTheme].card} rounded-lg shadow-lg p-6 mt-6">
+          <h2 class="text-xl font-bold mb-4 ${themes[currentTheme].text}">
+            <i class="fas fa-th mr-2 text-[#4A90D9]"></i>
+            Visão Semanal por Disciplina
+          </h2>
+          <p class="${themes[currentTheme].textSecondary} text-sm mb-4">
+            Acompanhe o status de cada disciplina ao longo da semana
+          </p>
+          
+          <!-- Tabela Semanal -->
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th class="text-left p-3 ${themes[currentTheme].text} font-semibold border-b ${themes[currentTheme].border}">Disciplina</th>
+                  <th class="text-center p-2 ${themes[currentTheme].text} font-medium border-b ${themes[currentTheme].border} w-12">Seg</th>
+                  <th class="text-center p-2 ${themes[currentTheme].text} font-medium border-b ${themes[currentTheme].border} w-12">Ter</th>
+                  <th class="text-center p-2 ${themes[currentTheme].text} font-medium border-b ${themes[currentTheme].border} w-12">Qua</th>
+                  <th class="text-center p-2 ${themes[currentTheme].text} font-medium border-b ${themes[currentTheme].border} w-12">Qui</th>
+                  <th class="text-center p-2 ${themes[currentTheme].text} font-medium border-b ${themes[currentTheme].border} w-12">Sex</th>
+                  <th class="text-center p-2 ${themes[currentTheme].text} font-medium border-b ${themes[currentTheme].border} w-12">Sáb</th>
+                  <th class="text-center p-2 ${themes[currentTheme].text} font-medium border-b ${themes[currentTheme].border} w-12">Dom</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(() => {
+                  // Agrupar metas por disciplina
+                  const metasPorDisciplina = {};
+                  semanaData.metas.forEach(meta => {
+                    const disc = meta.disciplina_nome || 'Sem disciplina';
+                    if (!metasPorDisciplina[disc]) {
+                      metasPorDisciplina[disc] = {};
+                    }
+                    // dia_semana: 1=Seg, 2=Ter, ..., 7=Dom
+                    const dia = meta.dia_semana;
+                    if (!metasPorDisciplina[disc][dia]) {
+                      metasPorDisciplina[disc][dia] = [];
+                    }
+                    metasPorDisciplina[disc][dia].push(meta);
+                  });
+                  
+                  // Gerar linhas da tabela
+                  return Object.entries(metasPorDisciplina).map(([disciplina, dias]) => {
+                    let celulas = '';
+                    for (let d = 1; d <= 7; d++) {
+                      const metasDoDia = dias[d] || [];
+                      if (metasDoDia.length === 0) {
+                        // Sem dados
+                        celulas += '<td class="text-center p-2 border-b ' + themes[currentTheme].border + '"><div class="w-8 h-8 mx-auto bg-gray-100 rounded flex items-center justify-center"><span class="text-gray-400 text-xs">—</span></div></td>';
+                      } else {
+                        const concluidas = metasDoDia.filter(m => m.concluida).length;
+                        const total = metasDoDia.length;
+                        let statusClass, icone;
+                        
+                        if (concluidas === total) {
+                          // Completo
+                          statusClass = 'bg-[#2A4A9F]/10 border-green-400';
+                          icone = '<i class="fas fa-check text-[#2A4A9F] text-xs"></i>';
+                        } else if (concluidas > 0) {
+                          // Parcial
+                          statusClass = 'bg-[#4A90E2]/10 border-yellow-400';
+                          icone = '<i class="fas fa-clock text-[#1A3A7F] text-xs"></i>';
+                        } else {
+                          // Não estudou
+                          statusClass = 'bg-red-100 border-red-300';
+                          icone = '<i class="fas fa-times text-red-500 text-xs"></i>';
+                        }
+                        
+                        celulas += '<td class="text-center p-2 border-b ' + themes[currentTheme].border + '"><div class="w-8 h-8 mx-auto ' + statusClass + ' border-2 rounded flex items-center justify-center" title="' + concluidas + '/' + total + ' concluídas">' + icone + '</div></td>';
+                      }
+                    }
+                    
+                    return '<tr><td class="p-3 border-b ' + themes[currentTheme].border + ' ' + themes[currentTheme].text + ' font-medium text-sm max-w-[200px] truncate" title="' + disciplina + '">' + disciplina + '</td>' + celulas + '</tr>';
+                  }).join('');
+                })()}
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Legenda da tabela -->
+          <div class="flex flex-wrap justify-center gap-4 mt-4 text-xs ${themes[currentTheme].textSecondary}">
+            <div class="flex items-center gap-1">
+              <div class="w-4 h-4 bg-[#2A4A9F]/10 border border-green-400 rounded flex items-center justify-center">
+                <i class="fas fa-check text-[#2A4A9F]" style="font-size: 6px;"></i>
+              </div>
+              <span>Completo</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <div class="w-4 h-4 bg-[#4A90E2]/10 border border-yellow-400 rounded flex items-center justify-center">
+                <i class="fas fa-clock text-[#1A3A7F]" style="font-size: 6px;"></i>
+              </div>
+              <span>Parcial</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <div class="w-4 h-4 bg-red-100 border border-red-300 rounded flex items-center justify-center">
+                <i class="fas fa-times text-red-500" style="font-size: 6px;"></i>
+              </div>
+              <span>Não estudou</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <div class="w-4 h-4 bg-gray-100 border border-gray-300 rounded flex items-center justify-center">
+                <span class="text-gray-400" style="font-size: 6px;">—</span>
+              </div>
+              <span>Sem meta</span>
+            </div>
+          </div>
+        </div>
+        ` : ''}
       </div>
     </div>
   `;
@@ -14342,24 +14445,67 @@ window.verConteudoGerado = async function(metaId, tipo) {
     const conteudoId = data.tipos_gerados?.[tipo];
     
     if (!conteudoId) {
-      // Se não tem conteúdo, gerar automaticamente
-      console.log(`🆕 Conteúdo ${tipo} não existe, gerando automaticamente...`);
+      // Se não tem conteúdo, SEMPRE abrir modal para selecionar quantidade
+      console.log(`🆕 Conteúdo ${tipo} não existe, abrindo modal para gerar...`);
       
       // Buscar informações da meta
       const meta = window.metaAtual || { topico_nome: 'Tópico', disciplina_nome: 'Disciplina' };
       
-      // Determinar quantidade padrão baseada no tipo
-      let quantidade = null;
-      if (tipo === 'exercicios') quantidade = 10;
-      if (tipo === 'flashcards') quantidade = 15;
+      // Para exercicios e flashcards, abrir modal de quantidade
+      if (tipo === 'exercicios' || tipo === 'flashcards') {
+        // Criar modal rápido de quantidade
+        const modalHtml = `
+          <div id="modal-quantidade-rapida" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-sm w-full p-5">
+              <div class="text-center mb-4">
+                <div class="w-14 h-14 mx-auto rounded-full bg-gradient-to-br ${tipo === 'exercicios' ? 'from-green-500 to-emerald-600' : 'from-blue-500 to-indigo-600'} flex items-center justify-center mb-3">
+                  <i class="fas ${tipo === 'exercicios' ? 'fa-tasks' : 'fa-clone'} text-white text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold ${themes[currentTheme].text}">
+                  Gerar ${tipo === 'exercicios' ? 'Exercícios' : 'Flashcards'}
+                </h3>
+                <p class="text-sm ${themes[currentTheme].textSecondary} mt-1">${meta.topico_nome || 'Tópico'}</p>
+              </div>
+              
+              <div class="mb-4">
+                <label class="block text-sm font-medium ${themes[currentTheme].text} mb-2 text-center">
+                  Quantos ${tipo === 'exercicios' ? 'exercícios' : 'flashcards'} deseja gerar?
+                </label>
+                <div class="flex items-center gap-3">
+                  <input type="range" id="quantidade-rapida-slider" min="5" max="20" value="${tipo === 'exercicios' ? '10' : '15'}" 
+                         class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
+                         oninput="document.getElementById('quantidade-rapida-valor').textContent = this.value">
+                  <span id="quantidade-rapida-valor" class="text-2xl font-bold text-[#122D6A] w-10 text-center">${tipo === 'exercicios' ? '10' : '15'}</span>
+                </div>
+                <p class="text-xs ${themes[currentTheme].textSecondary} mt-2 text-center">
+                  Entre 5 e 20 ${tipo === 'exercicios' ? 'questões' : 'cards'}
+                </p>
+              </div>
+              
+              <div class="flex gap-2">
+                <button onclick="document.getElementById('modal-quantidade-rapida').remove()"
+                        class="flex-1 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition font-medium">
+                  Cancelar
+                </button>
+                <button onclick="confirmarGeracaoRapida('${tipo}', ${metaId || 'null'}, '${(meta.topico_id || '').toString().replace(/'/g, "\\'")}', '${(meta.topico_nome || '').replace(/'/g, "\\'")}', '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}')"
+                        class="flex-1 py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition font-semibold flex items-center justify-center gap-2">
+                  <i class="fas fa-magic"></i> Gerar
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        return;
+      }
       
-      // Gerar conteúdo
+      // Para teoria e resumo, gerar diretamente
       await window.executarGeracaoConteudo(
         meta.topico_id || null, 
         meta.topico_nome, 
         meta.disciplina_nome, 
         tipo, 
-        quantidade, 
+        null, 
         metaId
       );
       return;
@@ -15267,12 +15413,12 @@ async function carregarPlanos() {
                 <span>${plano.total_disciplinas} disciplinas</span>
               </div>
               <div>
-                <i class="fas fa-bullseye mr-1"></i>
-                <span>${plano.total_metas} metas</span>
+                <i class="fas fa-list-check mr-1"></i>
+                <span>${plano.total_topicos || 0} tópicos</span>
               </div>
               <div>
                 <i class="fas fa-check-circle mr-1 text-[#2A4A9F]"></i>
-                <span>${plano.metas_concluidas} concluídas</span>
+                <span>${plano.topicos_estudados || 0} estudados</span>
               </div>
               <div>
                 <i class="fas fa-calendar mr-1"></i>

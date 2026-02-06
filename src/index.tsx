@@ -8396,22 +8396,40 @@ app.get('/api/planos/list/:user_id', async (c) => {
       i.area_geral,
       i.tempo_disponivel_dia,
       COUNT(DISTINCT ce.disciplina_id) as total_disciplinas,
-      COUNT(DISTINCT md.id) as total_metas,
-      SUM(CASE WHEN md.concluida = 1 THEN 1 ELSE 0 END) as metas_concluidas
+      COUNT(DISTINCT ms.id) as total_metas,
+      SUM(CASE WHEN ms.concluida = 1 THEN 1 ELSE 0 END) as metas_concluidas
     FROM planos_estudo p
     LEFT JOIN interviews i ON p.interview_id = i.id
     LEFT JOIN ciclos_estudo ce ON p.id = ce.plano_id
-    LEFT JOIN metas_diarias md ON p.id = md.plano_id
+    LEFT JOIN semanas_estudo se ON p.id = se.plano_id
+    LEFT JOIN metas_semana ms ON se.id = ms.semana_id
     WHERE p.user_id = ?
     GROUP BY p.id
     ORDER BY p.created_at DESC
   `).bind(user_id).all()
 
-  return c.json(planos.map(p => ({
-    ...p,
-    diagnostico: p.diagnostico ? JSON.parse(p.diagnostico) : null,
-    mapa_prioridades: p.mapa_prioridades ? JSON.parse(p.mapa_prioridades) : null
-  })))
+  // Para cada plano, contar tópicos do edital associado
+  const planosComTopicos = await Promise.all(planos.map(async (p: any) => {
+    // Buscar total de tópicos do usuário (todos os tópicos do edital)
+    const topicosResult = await DB.prepare(`
+      SELECT COUNT(*) as total FROM topicos_edital WHERE user_id = ?
+    `).bind(user_id).first() as any
+
+    // Buscar tópicos estudados (com vezes_estudado > 0)
+    const topicosEstudadosResult = await DB.prepare(`
+      SELECT COUNT(*) as total FROM topicos_edital WHERE user_id = ? AND vezes_estudado > 0
+    `).bind(user_id).first() as any
+
+    return {
+      ...p,
+      diagnostico: p.diagnostico ? JSON.parse(p.diagnostico) : null,
+      mapa_prioridades: p.mapa_prioridades ? JSON.parse(p.mapa_prioridades) : null,
+      total_topicos: topicosResult?.total || 0,
+      topicos_estudados: topicosEstudadosResult?.total || 0
+    }
+  }))
+
+  return c.json(planosComTopicos)
 })
 
 // Ativar um plano específico (desativa os outros)
@@ -10431,10 +10449,16 @@ app.get('/api/metas/semana-ativa/:user_id', async (c) => {
 
     return c.json({
       semana,
-      metas: metas.map(m => ({
-        ...m,
-        topicos_sugeridos: m.topicos_sugeridos ? JSON.parse(m.topicos_sugeridos) : []
-      }))
+      metas: metas.map(m => {
+        const topicos = m.topicos_sugeridos ? JSON.parse(m.topicos_sugeridos) : []
+        return {
+          ...m,
+          plano_id: semana.plano_id, // ✅ Adicionar plano_id para o botão de editar disciplina
+          topicos_sugeridos: topicos,
+          topico_nome: topicos[0]?.nome || '', // ✅ Extrair nome do primeiro tópico para uso direto
+          topico_id: topicos[0]?.id || null // ✅ Extrair ID do primeiro tópico
+        }
+      })
     })
 
   } catch (error) {
@@ -10801,20 +10825,16 @@ app.put('/api/metas/:meta_id/trocar-disciplina', async (c) => {
     }])
     
     // 4. Atualizar a meta com nova disciplina e tópico
+    // NOTA: metas_semana não tem disciplina_nome e topico_nome como colunas
+    // Apenas atualiza disciplina_id e topicos_sugeridos (que contém o nome do tópico)
     await DB.prepare(`
       UPDATE metas_semana 
       SET disciplina_id = ?,
-          disciplina_nome = ?,
-          topico_id = ?,
-          topico_nome = ?,
           topicos_sugeridos = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(
       nova_disciplina_id,
-      nova_disciplina_nome,
-      novo_topico_id,
-      novo_topico_nome,
       novoTopicosSugeridos,
       meta_id
     ).run()
@@ -14202,6 +14222,7 @@ e) Alternativa relacionada ao tópico
 
 REGRAS OBRIGATÓRIAS:
 - CRIE EXATAMENTE ${qtdExercicios} questões DIFERENTES entre si
+- ⚠️ IMPORTANTE: O usuário solicitou EXATAMENTE ${qtdExercicios} questões. NÃO gere menos nem mais.
 - Numere de 1 a ${qtdExercicios} sequencialmente
 - Indique [Aspecto: X] para garantir variedade
 ${caracteristicasBanca?.estilo?.tipo === 'certo_errado' ? 
@@ -14209,6 +14230,7 @@ ${caracteristicasBanca?.estilo?.tipo === 'certo_errado' ?
   '- Cada questão DEVE ter exatamente 5 alternativas (a, b, c, d, e)\n- Varie os níveis: Fácil (30%), Médio (50%), Difícil (20%)'}
 - Cada questão DEVE ter Gabarito e Comentário
 - Use o separador --- entre questões
+- VERIFIQUE: total de questões = ${qtdExercicios}? Se não, continue gerando até atingir ${qtdExercicios}.
 - VERIFIQUE: cada questão aborda um aspecto ÚNICO de "${topico_nome}"?`
         break
         
@@ -14320,9 +14342,9 @@ REGRAS OBRIGATÓRIAS:
     // 1 token ≈ 4 caracteres, então multiplicamos por fator de segurança
     let maxTokens = 8192 // padrão alto
     if (tipoConteudo === 'flashcards') {
-      maxTokens = Math.max(qtdFlashcards * 200, 4000)
+      maxTokens = Math.max(qtdFlashcards * 300, 6000) // Aumentado para garantir todos os flashcards
     } else if (tipoConteudo === 'exercicios') {
-      maxTokens = Math.max(qtdExercicios * 400, 6000)
+      maxTokens = Math.max(qtdExercicios * 600, 8000) // Aumentado para garantir todas as questões
     } else {
       // Para teoria/resumo: garantir tokens suficientes para a extensão desejada
       // Para 'completo' (10000 chars), precisamos de pelo menos 8000 tokens
