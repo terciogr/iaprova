@@ -6593,6 +6593,200 @@ async function confirmarConclusaoMeta(metaId) {
   }
 }
 
+// ✅ Função para abrir modal de trocar disciplina/tópico da meta
+window.abrirModalTrocarDisciplina = async function(metaId, planoId, disciplinaAtual, topicoAtual, diaSemana) {
+  console.log('🔄 Abrindo modal trocar disciplina:', { metaId, planoId, disciplinaAtual, topicoAtual, diaSemana });
+  
+  // Buscar disciplinas do plano
+  let disciplinas = [];
+  try {
+    const res = await axios.get(`/api/planos/${planoId}/disciplinas`);
+    disciplinas = res.data || [];
+    console.log('📚 Disciplinas carregadas:', disciplinas.length);
+  } catch (error) {
+    console.error('Erro ao carregar disciplinas:', error);
+    showToast('Erro ao carregar disciplinas', 'error');
+    return;
+  }
+  
+  if (disciplinas.length === 0) {
+    showToast('Nenhuma disciplina encontrada no plano', 'warning');
+    return;
+  }
+  
+  const modal = document.createElement('div');
+  modal.id = 'modal-trocar-disciplina';
+  modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div class="p-4 border-b border-gray-200">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-[#E8EDF5] rounded-full flex items-center justify-center">
+            <i class="fas fa-exchange-alt text-[#122D6A]"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-gray-800">Trocar Disciplina</h3>
+            <p class="text-xs text-gray-500">Selecione a nova disciplina e tópico</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="p-4 overflow-y-auto flex-1">
+        <!-- Atual -->
+        <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <p class="text-[10px] uppercase font-semibold text-gray-400 mb-1">Atual</p>
+          <p class="text-sm font-medium text-gray-800">${disciplinaAtual}</p>
+          <p class="text-xs text-gray-500">${topicoAtual || 'Sem tópico definido'}</p>
+        </div>
+        
+        <!-- Nova disciplina -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            <i class="fas fa-book mr-1"></i> Nova Disciplina
+          </label>
+          <select id="select-nova-disciplina" 
+                  class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 transition text-sm"
+                  onchange="carregarTopicosParaTroca(this.value, ${planoId})">
+            <option value="">Selecione uma disciplina...</option>
+            ${disciplinas.map(d => `
+              <option value="${d.id}" data-nome="${d.nome.replace(/"/g, '&quot;')}">${d.nome}</option>
+            `).join('')}
+          </select>
+        </div>
+        
+        <!-- Novo tópico -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            <i class="fas fa-list mr-1"></i> Novo Tópico
+          </label>
+          <select id="select-novo-topico" 
+                  class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 transition text-sm"
+                  disabled>
+            <option value="">Primeiro selecione a disciplina...</option>
+          </select>
+          <p id="loading-topicos" class="hidden text-xs text-gray-400 mt-1">
+            <i class="fas fa-spinner fa-spin mr-1"></i> Carregando tópicos...
+          </p>
+        </div>
+      </div>
+      
+      <div class="p-4 border-t border-gray-200 flex gap-2">
+        <button onclick="fecharModalTrocarDisciplina()" 
+                class="flex-1 px-4 py-3 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition">
+          Cancelar
+        </button>
+        <button onclick="confirmarTrocaDisciplina(${metaId}, ${planoId}, ${diaSemana})" 
+                class="flex-1 px-4 py-3 text-sm font-medium text-white bg-[#122D6A] hover:bg-[#0D1F4D] rounded-xl transition flex items-center justify-center gap-2">
+          <i class="fas fa-check"></i> Confirmar
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  // Fechar ao clicar fora
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) fecharModalTrocarDisciplina();
+  });
+}
+
+// Função para carregar tópicos da disciplina selecionada
+window.carregarTopicosParaTroca = async function(disciplinaId, planoId) {
+  const selectTopico = document.getElementById('select-novo-topico');
+  const loadingTopicos = document.getElementById('loading-topicos');
+  
+  if (!disciplinaId) {
+    selectTopico.innerHTML = '<option value="">Primeiro selecione a disciplina...</option>';
+    selectTopico.disabled = true;
+    return;
+  }
+  
+  // Mostrar loading
+  selectTopico.disabled = true;
+  loadingTopicos.classList.remove('hidden');
+  
+  try {
+    const res = await axios.get(`/api/planos/${planoId}/disciplinas/${disciplinaId}/topicos`);
+    const topicos = res.data || [];
+    
+    console.log('📋 Tópicos carregados:', topicos.length);
+    
+    if (topicos.length === 0) {
+      selectTopico.innerHTML = '<option value="">Nenhum tópico cadastrado</option>';
+    } else {
+      selectTopico.innerHTML = `
+        <option value="">Selecione um tópico...</option>
+        ${topicos.map(t => `
+          <option value="${t.id}" data-nome="${(t.nome || t.topico).replace(/"/g, '&quot;')}">${t.nome || t.topico}</option>
+        `).join('')}
+      `;
+      selectTopico.disabled = false;
+    }
+  } catch (error) {
+    console.error('Erro ao carregar tópicos:', error);
+    selectTopico.innerHTML = '<option value="">Erro ao carregar tópicos</option>';
+  } finally {
+    loadingTopicos.classList.add('hidden');
+  }
+}
+
+// Fechar modal
+window.fecharModalTrocarDisciplina = function() {
+  const modal = document.getElementById('modal-trocar-disciplina');
+  if (modal) modal.remove();
+}
+
+// Confirmar troca de disciplina/tópico
+window.confirmarTrocaDisciplina = async function(metaId, planoId, diaSemana) {
+  const selectDisciplina = document.getElementById('select-nova-disciplina');
+  const selectTopico = document.getElementById('select-novo-topico');
+  
+  const novaDisciplinaId = selectDisciplina.value;
+  const novoTopicoId = selectTopico.value;
+  
+  if (!novaDisciplinaId) {
+    showToast('Selecione uma disciplina', 'warning');
+    return;
+  }
+  
+  if (!novoTopicoId) {
+    showToast('Selecione um tópico', 'warning');
+    return;
+  }
+  
+  // Obter nomes
+  const novaDisciplinaNome = selectDisciplina.options[selectDisciplina.selectedIndex].dataset.nome;
+  const novoTopicoNome = selectTopico.options[selectTopico.selectedIndex].dataset.nome;
+  
+  console.log('✅ Confirmando troca:', { metaId, novaDisciplinaId, novaDisciplinaNome, novoTopicoId, novoTopicoNome });
+  
+  try {
+    // Atualizar no backend
+    const res = await axios.put(`/api/metas/${metaId}/trocar-disciplina`, {
+      nova_disciplina_id: parseInt(novaDisciplinaId),
+      nova_disciplina_nome: novaDisciplinaNome,
+      novo_topico_id: parseInt(novoTopicoId),
+      novo_topico_nome: novoTopicoNome,
+      plano_id: planoId
+    });
+    
+    console.log('✅ Meta atualizada:', res.data);
+    
+    // Fechar modal
+    fecharModalTrocarDisciplina();
+    
+    // Recarregar calendário semanal
+    await carregarSemanaAtiva();
+    
+    // Feedback
+    showToast(`Trocado para: ${novaDisciplinaNome}`, 'success');
+    
+  } catch (error) {
+    console.error('Erro ao trocar disciplina:', error);
+    showToast('Erro ao trocar disciplina. Tente novamente.', 'error');
+  }
+}
+
 // ✅ NOVO: Função para atualizar apenas os KPIs do header sem re-renderizar tudo
 async function atualizarEstatisticasHeader() {
   if (!currentUser) return;
@@ -7643,12 +7837,12 @@ window.selecionarTipoConteudo = function(tipo) {
     // Ajustar limites baseado no tipo
     if (tipo === 'exercicios') {
       slider.min = 5;
-      slider.max = 30;
+      slider.max = 20;
       slider.value = 10;
       valorSpan.textContent = '10';
     } else {
       slider.min = 5;
-      slider.max = 30;
+      slider.max = 20;
       slider.value = 15;
       valorSpan.textContent = '15';
     }
@@ -7977,6 +8171,10 @@ window.exibirConteudoGerado = function(data) {
         
         <!-- Footer fixo -->
         <div class="p-4 border-t ${themes[currentTheme].border} flex-shrink-0 flex gap-3 justify-end">
+          <button onclick="salvarConteudoGerado()"
+                  class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition flex items-center gap-2">
+            <i class="fas fa-save"></i>Salvar
+          </button>
           <button onclick="copiarConteudoGerado()"
                   class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex items-center gap-2">
             <i class="fas fa-copy"></i>Copiar
@@ -8303,6 +8501,63 @@ window.copiarConteudoGerado = function() {
     }).catch(() => {
       showToast('Erro ao copiar conteúdo', 'error');
     });
+  }
+}
+
+// Função para salvar conteúdo gerado na biblioteca de materiais
+window.salvarConteudoGerado = async function() {
+  const dados = window.conteudoAtualDados;
+  const conteudo = window.conteudoGeradoOriginal;
+  
+  if (!dados || !conteudo) {
+    showToast('Erro: dados do conteúdo não encontrados', 'error');
+    return;
+  }
+  
+  if (!currentUser?.id) {
+    showToast('Erro: usuário não autenticado', 'error');
+    return;
+  }
+  
+  // Criar título baseado no tipo e tópico
+  const tipoLabels = {
+    'teoria': 'Teoria',
+    'exercicios': 'Exercícios',
+    'resumo': 'Resumo',
+    'flashcards': 'Flashcards'
+  };
+  const tipoLabel = tipoLabels[dados.tipo] || 'Conteúdo';
+  const titulo = `${tipoLabel} - ${dados.topico_nome || dados.disciplina_nome || 'Material'}`;
+  
+  try {
+    // Salvar na biblioteca de materiais
+    const response = await axios.post('/api/materiais', {
+      user_id: currentUser.id,
+      disciplina_id: dados.disciplina_id || null,
+      topico_id: dados.topico_id || null,
+      tipo: dados.tipo,
+      titulo: titulo,
+      conteudo: conteudo,
+      tags: `${dados.disciplina_nome || ''},${dados.topico_nome || ''},${dados.tipo},gerado`
+    });
+    
+    if (response.data.success) {
+      showToast('✅ Conteúdo salvo na sua biblioteca de materiais!', 'success');
+      
+      // Atualizar botão para mostrar que foi salvo
+      const btnSalvar = document.querySelector('#modal-conteudo-gerado button[onclick="salvarConteudoGerado()"]');
+      if (btnSalvar) {
+        btnSalvar.innerHTML = '<i class="fas fa-check"></i> Salvo';
+        btnSalvar.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+        btnSalvar.classList.add('bg-gray-400', 'cursor-not-allowed');
+        btnSalvar.onclick = null;
+      }
+    } else {
+      showToast('Erro ao salvar conteúdo', 'error');
+    }
+  } catch (error) {
+    console.error('Erro ao salvar conteúdo:', error);
+    showToast('Erro ao salvar conteúdo. Tente novamente.', 'error');
   }
 }
 
@@ -8702,7 +8957,7 @@ async function renderDetalheDisciplina(disciplinaId, disciplinaNome, conteudos, 
               </span>
               <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
                 class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
-                <i class="fas \${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
+                <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
               </button>
             </div>
           </div>
@@ -9622,7 +9877,7 @@ async function renderMateriais(activeTab = 'todos') {
                 </span>
                 <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
                   class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
-                  <i class="fas \${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
+                  <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
                 </button>
               </div>
             </div>
@@ -10036,7 +10291,7 @@ window.renderDashboardDesempenho = async function() {
                 </div>
                 <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
                   class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
-                  <i class="fas \${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
+                  <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
                 </button>
               </div>
             </div>
@@ -10390,7 +10645,7 @@ window.renderDashboardSimulados = async function() {
                 </div>
                 <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
                   class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
-                  <i class="fas \${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
+                  <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
                 </button>
               </div>
             </div>
@@ -13304,7 +13559,7 @@ function renderCalendarioUI(historico, stats, mes, ano) {
               </span>
               <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
                 class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
-                <i class="fas \${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
+                <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
               </button>
             </div>
           </div>
@@ -16303,8 +16558,16 @@ function renderCalendarioSemanal() {
                           : `<span class="text-[9px] text-gray-400">${meta.tempo_minutos || 60}m</span>`}
                       </div>
                       
-                      <!-- Disciplina -->
-                      <p class="text-xs font-medium text-gray-800 line-clamp-2 mb-1.5 ${meta.concluida ? 'line-through opacity-60' : ''}">${meta.disciplina_nome}</p>
+                      <!-- Disciplina com botão editar -->
+                      <div class="flex items-start gap-1 mb-1.5">
+                        <p class="text-xs font-medium text-gray-800 line-clamp-2 flex-1 ${meta.concluida ? 'line-through opacity-60' : ''}">${meta.disciplina_nome}</p>
+                        ${!meta.concluida ? `
+                          <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', '${(meta.topico_nome || '').replace(/'/g, "\\'")}', ${meta.dia_semana})" 
+                                  class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 transition" 
+                                  title="Trocar disciplina/tópico">
+                            <i class="fas fa-pencil-alt text-[9px] text-gray-400 hover:text-[#122D6A]"></i>
+                          </button>
+                        ` : ''}</div>
                       
                       <!-- Ações - Botões maiores com labels -->
                       <div class="flex flex-col gap-2 mt-auto">

@@ -5708,6 +5708,88 @@ app.get('/api/user-disciplinas/:user_id', async (c) => {
   }
 })
 
+// ✅ Buscar disciplinas de um PLANO específico (para modal de trocar disciplina)
+app.get('/api/planos/:plano_id/disciplinas', async (c) => {
+  const { DB } = c.env
+  const plano_id = c.req.param('plano_id')
+
+  try {
+    // Buscar disciplinas dos ciclos do plano
+    const { results } = await DB.prepare(`
+      SELECT DISTINCT
+        d.id,
+        d.nome,
+        d.area,
+        c.disciplina_id
+      FROM ciclos_estudo c
+      JOIN disciplinas d ON c.disciplina_id = d.id
+      WHERE c.plano_id = ?
+      ORDER BY d.nome
+    `).bind(plano_id).all()
+
+    console.log(`📋 Disciplinas do plano ${plano_id}: ${results?.length || 0} disciplinas`)
+    return c.json(results || [])
+  } catch (error) {
+    console.error('Erro ao buscar disciplinas do plano:', error)
+    return c.json([])
+  }
+})
+
+// ✅ Buscar tópicos de uma disciplina (para modal de trocar disciplina)
+app.get('/api/planos/:plano_id/disciplinas/:disciplina_id/topicos', async (c) => {
+  const { DB } = c.env
+  const plano_id = c.req.param('plano_id')
+  const disciplina_id = c.req.param('disciplina_id')
+
+  try {
+    // Buscar plano para obter user_id
+    const plano = await DB.prepare('SELECT user_id FROM planos_estudo WHERE id = ?').bind(plano_id).first() as any
+    
+    if (!plano) {
+      return c.json({ error: 'Plano não encontrado' }, 404)
+    }
+
+    // Primeiro, tentar buscar tópicos de topicos_edital (filtrado por user_id e disciplina)
+    let { results } = await DB.prepare(`
+      SELECT 
+        t.id,
+        t.nome,
+        t.categoria,
+        t.ordem
+      FROM topicos_edital t
+      WHERE t.disciplina_id = ? AND t.user_id = ?
+      ORDER BY t.ordem, t.nome
+    `).bind(disciplina_id, plano.user_id).all()
+
+    // Se não encontrar, tentar buscar de edital_topicos via edital_disciplinas
+    if (!results || results.length === 0) {
+      const disciplina = await DB.prepare('SELECT nome FROM disciplinas WHERE id = ?').bind(disciplina_id).first() as any
+      
+      if (disciplina) {
+        const editalTopicos = await DB.prepare(`
+          SELECT 
+            et.id,
+            et.nome,
+            et.ordem
+          FROM edital_topicos et
+          JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id
+          JOIN editais e ON ed.edital_id = e.id
+          WHERE LOWER(TRIM(ed.nome)) = LOWER(TRIM(?)) AND e.user_id = ?
+          ORDER BY et.ordem, et.nome
+        `).bind(disciplina.nome, plano.user_id).all()
+        
+        results = editalTopicos.results || []
+      }
+    }
+
+    console.log(`📋 Tópicos da disciplina ${disciplina_id} no plano ${plano_id}: ${results?.length || 0} tópicos`)
+    return c.json(results || [])
+  } catch (error) {
+    console.error('Erro ao buscar tópicos:', error)
+    return c.json([])
+  }
+})
+
 // Buscar tópicos do edital de uma disciplina (com filtro por usuário)
 app.get('/api/topicos/:disciplina_id', async (c) => {
   const { DB } = c.env
@@ -10676,6 +10758,79 @@ app.put('/api/metas/atualizar-topico/:meta_id', async (c) => {
   } catch (error) {
     console.error('❌ Erro ao atualizar tópico da meta:', error)
     return c.json({ error: 'Erro ao atualizar tópico' }, 500)
+  }
+})
+
+// 8.6. Trocar disciplina e tópico da meta completamente
+app.put('/api/metas/:meta_id/trocar-disciplina', async (c) => {
+  const { DB } = c.env
+  const meta_id = parseInt(c.req.param('meta_id'))
+  const { nova_disciplina_id, nova_disciplina_nome, novo_topico_id, novo_topico_nome, plano_id } = await c.req.json()
+
+  console.log('🔄 Trocando disciplina da meta:', meta_id, '→', nova_disciplina_nome, '/', novo_topico_nome)
+
+  try {
+    // 1. Verificar se a meta existe e não está concluída
+    const meta = await DB.prepare(`
+      SELECT id, concluida, disciplina_id, topico_id 
+      FROM metas_semana 
+      WHERE id = ?
+    `).bind(meta_id).first()
+    
+    if (!meta) {
+      return c.json({ error: 'Meta não encontrada' }, 404)
+    }
+    
+    if (meta.concluida) {
+      return c.json({ error: 'Não é possível alterar uma meta já concluída' }, 400)
+    }
+
+    // 2. Buscar o topico_id real do plano (para garantir referência correta)
+    const topico = await DB.prepare(`
+      SELECT id, nome FROM plano_topicos WHERE id = ? AND plano_id = ?
+    `).bind(novo_topico_id, plano_id).first()
+    
+    if (!topico) {
+      console.log('⚠️ Tópico não encontrado no plano, usando ID fornecido')
+    }
+
+    // 3. Preparar tópicos sugeridos no formato esperado
+    const novoTopicosSugeridos = JSON.stringify([{ 
+      id: novo_topico_id, 
+      nome: novo_topico_nome 
+    }])
+    
+    // 4. Atualizar a meta com nova disciplina e tópico
+    await DB.prepare(`
+      UPDATE metas_semana 
+      SET disciplina_id = ?,
+          disciplina_nome = ?,
+          topico_id = ?,
+          topico_nome = ?,
+          topicos_sugeridos = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(
+      nova_disciplina_id,
+      nova_disciplina_nome,
+      novo_topico_id,
+      novo_topico_nome,
+      novoTopicosSugeridos,
+      meta_id
+    ).run()
+
+    console.log('✅ Meta atualizada com nova disciplina:', nova_disciplina_nome)
+    
+    return c.json({ 
+      success: true, 
+      message: 'Disciplina e tópico atualizados',
+      nova_disciplina: nova_disciplina_nome,
+      novo_topico: novo_topico_nome
+    })
+
+  } catch (error) {
+    console.error('❌ Erro ao trocar disciplina da meta:', error)
+    return c.json({ error: 'Erro ao trocar disciplina' }, 500)
   }
 })
 
