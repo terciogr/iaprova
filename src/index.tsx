@@ -8409,24 +8409,48 @@ app.get('/api/planos/list/:user_id', async (c) => {
       ORDER BY p.created_at DESC
     `).bind(user_id).all()
 
-    // Para cada plano, contar tópicos do edital associado
+    // Para cada plano, contar tópicos das disciplinas do plano
     const planosComTopicos = await Promise.all(planos.map(async (p: any) => {
-      // Buscar total de tópicos do usuário (todos os tópicos do edital)
-      const topicosResult = await DB.prepare(`
-        SELECT COUNT(*) as total FROM topicos_edital WHERE user_id = ?
-      `).bind(user_id).first() as any
-
-      // Buscar tópicos estudados usando user_topicos_progresso
-      const topicosEstudadosResult = await DB.prepare(`
-        SELECT COUNT(*) as total FROM user_topicos_progresso WHERE user_id = ? AND vezes_estudado > 0
-      `).bind(user_id).first() as any
+      // Buscar IDs das disciplinas do plano via ciclos_estudo
+      const { results: disciplinasPlano } = await DB.prepare(`
+        SELECT DISTINCT disciplina_id FROM ciclos_estudo WHERE plano_id = ?
+      `).bind(p.id).all() as any
+      
+      const disciplinaIds = disciplinasPlano.map((d: any) => d.disciplina_id)
+      
+      let totalTopicos = 0
+      let topicosEstudados = 0
+      
+      if (disciplinaIds.length > 0) {
+        // Contar tópicos das disciplinas do plano
+        const placeholders = disciplinaIds.map(() => '?').join(',')
+        
+        const topicosResult = await DB.prepare(`
+          SELECT COUNT(*) as total FROM topicos_edital 
+          WHERE user_id = ? AND disciplina_id IN (${placeholders})
+        `).bind(user_id, ...disciplinaIds).first() as any
+        
+        totalTopicos = topicosResult?.total || 0
+        
+        // Contar tópicos concluídos usando user_topicos_progresso
+        const topicosEstudadosResult = await DB.prepare(`
+          SELECT COUNT(*) as total FROM user_topicos_progresso 
+          WHERE user_id = ? AND disciplina_id IN (${placeholders}) AND concluido = 1
+        `).bind(user_id, ...disciplinaIds).first() as any
+        
+        topicosEstudados = topicosEstudadosResult?.total || 0
+      }
+      
+      // Calcular progresso percentual do edital
+      const progressoEdital = totalTopicos > 0 ? Math.round((topicosEstudados / totalTopicos) * 100) : 0
 
       return {
         ...p,
         diagnostico: p.diagnostico ? JSON.parse(p.diagnostico) : null,
         mapa_prioridades: p.mapa_prioridades ? JSON.parse(p.mapa_prioridades) : null,
-        total_topicos: topicosResult?.total || 0,
-        topicos_estudados: topicosEstudadosResult?.total || 0
+        total_topicos: totalTopicos,
+        topicos_estudados: topicosEstudados,
+        progresso_edital: progressoEdital
       }
     }))
 

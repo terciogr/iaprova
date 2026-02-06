@@ -15611,13 +15611,34 @@ async function carregarPlanos() {
               </div>
               <div>
                 <i class="fas fa-check-circle mr-1 text-[#2A4A9F]"></i>
-                <span>${plano.topicos_estudados || 0} estudados</span>
+                <span>${plano.topicos_estudados || 0} concluídos</span>
               </div>
               <div>
                 <i class="fas fa-calendar mr-1"></i>
                 <span>${new Date(plano.created_at).toLocaleDateString('pt-BR')}</span>
               </div>
             </div>
+            
+            <!-- Barra de Progresso do Edital -->
+            <div class="mt-3">
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="${themes[currentTheme].textSecondary}">
+                  <i class="fas fa-chart-line mr-1"></i>Progresso do Edital
+                </span>
+                <span class="font-semibold ${plano.progresso_edital >= 70 ? 'text-green-600' : plano.progresso_edital >= 30 ? 'text-[#2A4A9F]' : 'text-gray-500'}">
+                  ${plano.progresso_edital || 0}%
+                </span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500 ${plano.progresso_edital >= 70 ? 'bg-green-500' : plano.progresso_edital >= 30 ? 'bg-[#2A4A9F]' : 'bg-gray-400'}" 
+                     style="width: ${plano.progresso_edital || 0}%"></div>
+              </div>
+              <p class="text-xs ${themes[currentTheme].textSecondary} mt-1 italic">
+                <i class="fas fa-info-circle mr-1"></i>
+                Avança ao marcar tópicos como concluídos em "Disciplinas"
+              </p>
+            </div>
+            
             <p class="${themes[currentTheme].textSecondary} text-sm mt-2">
               ${plano.concurso_nome || 'Concurso não especificado'}
             </p>
@@ -20918,12 +20939,16 @@ const tutorialSteps = [
     id: 'disciplines',
     title: '📚 Suas Disciplinas',
     content: `
-      <p class="mb-2">Acesse todas as disciplinas do seu edital.</p>
+      <p class="mb-2">Acesse todas as disciplinas do seu edital aqui.</p>
       <ul class="text-sm text-gray-600 space-y-1">
         <li>• Veja o <b>progresso</b> de cada matéria</li>
         <li>• Ajuste o <b>nível de domínio</b> (0-10)</li>
-        <li>• Gerencie os <b>tópicos</b> de estudo</li>
+        <li>• <b class="text-green-600">Marque tópicos como concluídos</b></li>
       </ul>
+      <p class="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
+        <i class="fas fa-lightbulb mr-1"></i>
+        <b>IMPORTANTE:</b> O progresso do edital só avança quando você marca tópicos como concluídos dentro de cada disciplina!
+      </p>
     `,
     target: '[onclick="renderPortfolioDisciplinas()"]',
     position: 'bottom',
@@ -20932,10 +20957,23 @@ const tutorialSteps = [
   },
   {
     id: 'progress',
-    title: '📊 Progresso Geral',
+    title: '📊 Progresso Geral do Edital',
     content: `
-      <p class="mb-2">Seu avanço geral no edital.</p>
-      <p class="text-sm text-gray-600">A barra considera o <b>peso</b> de cada disciplina para calcular o progresso real.</p>
+      <p class="mb-2">Seu avanço geral no edital é mostrado aqui.</p>
+      <div class="text-sm text-gray-600 space-y-2">
+        <p>A barra considera o <b>peso</b> de cada disciplina para calcular o progresso real.</p>
+        <div class="p-2 bg-amber-50 rounded">
+          <p class="text-amber-700 font-semibold">
+            <i class="fas fa-info-circle mr-1"></i>
+            Como avançar o progresso:
+          </p>
+          <ol class="text-amber-600 text-xs mt-1 space-y-1 list-decimal list-inside">
+            <li>Clique em <b>"Disciplinas"</b></li>
+            <li>Escolha uma disciplina</li>
+            <li>Clique em <b>"✓ Concluído"</b> nos tópicos estudados</li>
+          </ol>
+        </div>
+      </div>
     `,
     target: '.progresso-geral-card',
     position: 'bottom',
@@ -20964,6 +21002,10 @@ const tutorialSteps = [
     content: `
       <p class="mb-2">O sistema gera metas automáticas distribuídas na semana.</p>
       <p class="text-sm text-gray-600">Respeita seu <b>tempo disponível</b> e <b>dias de estudo</b> configurados.</p>
+      <p class="mt-2 text-xs text-blue-600">
+        <i class="fas fa-info-circle mr-1"></i>
+        As metas semanais ajudam a organizar seu estudo, mas <b>não afetam</b> o progresso do edital diretamente.
+      </p>
     `,
     target: '.semana-resumo-card',
     position: 'top',
@@ -21000,6 +21042,28 @@ const tutorialSteps = [
     fallbackTarget: '.calendario-semanal'
   },
   {
+    id: 'edital-progress-tip',
+    title: '💡 Progresso do Edital - Passo a Passo',
+    content: `
+      <div class="space-y-3">
+        <p class="font-semibold text-[#122D6A]">Para avançar o progresso do seu edital:</p>
+        <div class="bg-gradient-to-r from-blue-50 to-green-50 p-3 rounded-lg">
+          <ol class="text-sm space-y-2 list-decimal list-inside">
+            <li><b>Vá em "Disciplinas"</b> no menu ou no card de disciplinas</li>
+            <li><b>Clique em uma disciplina</b> para ver os tópicos</li>
+            <li><b>Marque os tópicos como "Concluído"</b> após estudá-los</li>
+          </ol>
+        </div>
+        <p class="text-xs text-gray-500 italic">
+          <i class="fas fa-info-circle mr-1"></i>
+          As metas semanais são para organização. O progresso real é medido pelos tópicos concluídos em Disciplinas.
+        </p>
+      </div>
+    `,
+    target: null,
+    position: 'center'
+  },
+  {
     id: 'calendar',
     title: '📆 Calendário Mensal',
     content: `
@@ -21022,9 +21086,9 @@ const tutorialSteps = [
       <p class="mb-3">Este botão flutuante dá acesso rápido a funcionalidades importantes:</p>
       <ul class="text-sm space-y-2">
         <li>🤖 <b class="text-blue-600">Assistente Lilu:</b> Tire dúvidas sobre qualquer assunto</li>
-        <li>🧠 <b class="text-[#2A4A9F]">Personalizar IA:</b> Configure como o conteúdo é gerado (tom, extensão, profundidade)</li>
-        <li>⚙️ <b class="text-teal-600">Administração:</b> Backup, planos e configurações</li>
-        <li>🚪 <b class="text-red-600">Sair:</b> Desconectar da conta</li>
+        <li>📚 <b class="text-[#122D6A]">Disciplinas:</b> Gerencie tópicos e marque como concluídos</li>
+        <li>✍️ <b class="text-cyan-600">Simulados:</b> Faça testes práticos</li>
+        <li>📅 <b class="text-teal-600">Calendário:</b> Veja seu histórico</li>
       </ul>
     `,
     target: '#fab-main',
@@ -21074,7 +21138,7 @@ const tutorialSteps = [
         <li>🎯 <b>Siga as metas:</b> O sistema otimiza seu tempo</li>
         <li>📊 <b>Faça simulados:</b> Identifique pontos fracos</li>
         <li>🔄 <b>Revise sempre:</b> Consolida o aprendizado</li>
-        <li>🤖 <b>Use a IA:</b> Gere teoria, exercícios e flashcards</li>
+        <li>✅ <b>Marque tópicos concluídos:</b> Acompanhe seu progresso real</li>
       </ul>
       <p class="mt-3 text-center text-sm text-blue-600 font-semibold">🏆 Bons estudos e boa aprovação!</p>
     `,
