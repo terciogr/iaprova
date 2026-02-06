@@ -7057,7 +7057,7 @@ async function toggleMeta(metaId) {
 }
 
 // ============== PORTFÓLIO DE DISCIPLINAS ==============
-async function renderPortfolioDisciplinas() {
+window.renderPortfolioDisciplinas = async function() {
   try {
     // Mostrar loading
     document.getElementById('app').innerHTML = `
@@ -13641,7 +13641,7 @@ async function gerarMetasDia() {
 }
 
 // ============== CALENDÁRIO DE ESTUDOS ==============
-async function renderCalendario() {
+window.renderCalendario = async function() {
   const hoje = new Date();
   const mes = hoje.getMonth() + 1;
   const ano = hoje.getFullYear();
@@ -19987,151 +19987,7 @@ window.salvarAnotacao = async function() {
   }
 }
 
-// ============== SIMULADOS ==============
-window.renderDashboardSimulados = async function() {
-  try {
-    // Buscar histórico de simulados do usuário
-    const response = await axios.get(`/api/simulados/historico/${currentUser.id}`);
-    const simulados = response.data?.simulados || [];
-    
-    // Calcular estatísticas
-    const totalSimulados = simulados.length;
-    const simuladosCompletos = simulados.filter(s => s.status === 'concluido').length;
-    const acertoMedio = simulados.length > 0 
-      ? Math.round(simulados.reduce((sum, s) => sum + (s.percentual_acerto || 0), 0) / simulados.length) 
-      : 0;
-    
-    document.getElementById('app').innerHTML = `
-      <div class="min-h-screen ${themes[currentTheme].bg}">
-        <!-- Header Azul Padrão -->
-        <header class="bg-gradient-to-r from-[#122D6A] via-[#1E3A7D] to-[#2A4A9F] text-white shadow-lg">
-          <div class="max-w-7xl mx-auto px-4 py-4">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-4">
-                <button onclick="renderDashboard()" class="p-2 hover:bg-white/10 rounded-lg transition">
-                  <i class="fas fa-arrow-left text-white"></i>
-                </button>
-                <div>
-                  <h1 class="text-xl font-bold text-white flex items-center gap-2">
-                    <i class="fas fa-edit"></i>
-                    Simulados
-                  </h1>
-                </div>
-              </div>
-              <!-- KPIs no Header -->
-              <div class="flex items-center gap-4">
-                <div class="text-center">
-                  <p class="text-2xl font-bold text-white">${totalSimulados}</p>
-                  <p class="text-[10px] text-white/70 uppercase">Total</p>
-                </div>
-                <div class="text-center">
-                  <p class="text-2xl font-bold text-white">${simuladosCompletos}</p>
-                  <p class="text-[10px] text-white/70 uppercase">Completos</p>
-                </div>
-                <div class="text-center">
-                  <p class="text-2xl font-bold text-white">${acertoMedio}%</p>
-                  <p class="text-[10px] text-white/70 uppercase">Média</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
-        
-        <div class="max-w-7xl mx-auto p-4">
-          <!-- Ações - Novo Simulado -->
-          <div class="${themes[currentTheme].card} p-4 rounded-xl shadow-sm border ${themes[currentTheme].border} mb-4">
-            <h2 class="text-sm font-semibold ${themes[currentTheme].text} mb-3">Novo Simulado</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button onclick="iniciarSimulado('rapido')" 
-                class="p-4 border-2 border-cyan-200 rounded-xl hover:bg-[#6BB6FF]/5 hover:border-cyan-400 transition-all group">
-                <i class="fas fa-bolt text-[#4A6AC0] text-2xl mb-2 group-hover:scale-110 transition-transform"></i>
-                <h3 class="font-semibold ${themes[currentTheme].text}">Simulado Rápido</h3>
-                <p class="${themes[currentTheme].textSecondary} text-sm mt-1">10 questões • 15 minutos</p>
-              </button>
-              
-              <button onclick="iniciarSimulado('padrao')" 
-                class="p-4 border-2 border-[#122D6A]/30 rounded-xl hover:bg-[#E8EDF5] hover:border-[#122D6A] transition-all group">
-                <i class="fas fa-clock text-[#122D6A] text-2xl mb-2 group-hover:scale-110 transition-transform"></i>
-                <h3 class="font-semibold ${themes[currentTheme].text}">Simulado Padrão</h3>
-                <p class="${themes[currentTheme].textSecondary} text-sm mt-1">30 questões • 45 minutos</p>
-              </button>
-              
-              <button onclick="iniciarSimulado('completo')" 
-                class="p-4 border-2 border-amber-200 rounded-xl hover:bg-amber-50 hover:border-amber-400 transition-all group">
-                <i class="fas fa-trophy text-amber-500 text-2xl mb-2 group-hover:scale-110 transition-transform"></i>
-                <h3 class="font-semibold ${themes[currentTheme].text}">Simulado Completo</h3>
-                <p class="${themes[currentTheme].textSecondary} text-sm mt-1">50 questões • 90 minutos</p>
-              </button>
-            </div>
-          </div>
-          
-          <!-- Histórico de Simulados -->
-          <div class="${themes[currentTheme].card} p-4 rounded-xl shadow-sm border ${themes[currentTheme].border}">
-            <h2 class="text-sm font-semibold ${themes[currentTheme].text} mb-3">Histórico</h2>
-            <div class="overflow-x-auto">
-              ${simulados.length > 0 ? `
-                <table class="w-full">
-                  <thead>
-                    <tr class="border-b ${themes[currentTheme].border}">
-                      <th class="text-left py-2 px-4 ${themes[currentTheme].text}">Data</th>
-                      <th class="text-left py-2 px-4 ${themes[currentTheme].text}">Tipo</th>
-                      <th class="text-left py-2 px-4 ${themes[currentTheme].text}">Questões</th>
-                      <th class="text-left py-2 px-4 ${themes[currentTheme].text}">Acertos</th>
-                      <th class="text-left py-2 px-4 ${themes[currentTheme].text}">Tempo</th>
-                      <th class="text-left py-2 px-4 ${themes[currentTheme].text}">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${simulados.slice(0, 10).map(simulado => `
-                      <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50">
-                        <td class="py-2 px-4 ${themes[currentTheme].textSecondary}">
-                          ${new Date(simulado.data_realizacao).toLocaleDateString('pt-BR')}
-                        </td>
-                        <td class="py-2 px-4">
-                          <span class="px-2 py-1 bg-[#6BB6FF]/10 text-[#0D1F4D] rounded-full text-xs">
-                            ${simulado.tipo || 'Padrão'}
-                          </span>
-                        </td>
-                        <td class="py-2 px-4 ${themes[currentTheme].text}">
-                          ${simulado.total_questoes || 0}
-                        </td>
-                        <td class="py-2 px-4">
-                          <span class="${simulado.percentual_acerto >= 70 ? 'text-[#2A4A9F]' : simulado.percentual_acerto >= 50 ? 'text-[#4A90E2]' : 'text-red-600'} font-semibold">
-                            ${simulado.percentual_acerto || 0}%
-                          </span>
-                        </td>
-                        <td class="py-2 px-4 ${themes[currentTheme].textSecondary}">
-                          ${simulado.tempo_gasto || '00:00'}
-                        </td>
-                        <td class="py-2 px-4">
-                          <button onclick="verDetalhesSimulado(${simulado.id})" 
-                            class="text-[#122D6A] hover:text-[#0A1838]">
-                            <i class="fas fa-eye"></i> Ver
-                          </button>
-                        </td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              ` : `
-                <div class="text-center py-8">
-                  <i class="fas fa-clipboard-list text-6xl text-gray-300 mb-4"></i>
-                  <p class="${themes[currentTheme].textSecondary}">Nenhum simulado realizado ainda</p>
-                  <p class="${themes[currentTheme].textSecondary} text-sm mt-2">
-                    Clique em um dos botões acima para começar seu primeiro simulado!
-                  </p>
-                </div>
-              `}
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  } catch (error) {
-    console.error('Erro ao carregar dashboard de simulados:', error);
-    showModal('❌ Erro ao carregar simulados. Por favor, tente novamente.');
-  }
-}
+// ============== SIMULADOS - Estado e funções ==============
 
 // Estado do simulado
 let simuladoAtual = {
