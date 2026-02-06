@@ -3583,7 +3583,7 @@ async function processarEditalAntesDeStep2() {
           }
           
           // ✅ Verificar se é erro de arquivo muito grande (413)
-          if (errorType === 'FILE_TOO_LARGE' || uploadError?.response?.status === 413) {
+          if (errorType === 'FILE_TOO_LARGE' || procError?.response?.status === 413) {
             const fileSizeMB = errorData?.fileSizeMB || '?';
             const maxSizeMB = errorData?.maxSizeMB || 15;
             
@@ -7398,39 +7398,42 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                     </div>
                   ` : `
                     <div class="space-y-2 max-h-96 overflow-y-auto">
-                      ${disc.topicos.map((topico, index) => `
-                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border ${topico.vezes_estudado > 0 ? 'bg-green-50 border-green-300 text-gray-800' : 'bg-gray-50 border-gray-200 text-gray-800'} hover:shadow-sm transition"
+                      ${disc.topicos.map((topico, index) => {
+                        const isConcluido = topico.nivel_dominio >= 10;
+                        const isRevisado = topico.vezes_estudado > 0 && topico.nivel_dominio < 10;
+                        const bgClass = isConcluido ? 'bg-green-100 border-green-400 text-gray-800' : isRevisado ? 'bg-yellow-50 border-yellow-300 text-gray-800' : 'bg-gray-50 border-gray-200 text-gray-800';
+                        const btnClass = isConcluido ? 'bg-green-600 border-green-600 text-white' : isRevisado ? 'bg-yellow-400 border-yellow-400 text-white' : 'border-gray-300 hover:border-green-500';
+                        const btnIcon = isConcluido ? '<i class="fas fa-check text-sm"></i>' : isRevisado ? '<i class="fas fa-clock text-xs"></i>' : '';
+                        const textClass = isConcluido ? 'text-green-800 line-through' : 'text-gray-900';
+                        const statusHtml = isConcluido 
+                          ? '<span class="text-xs text-green-600 font-bold"><i class="fas fa-trophy mr-1"></i>CONCLUÍDO</span>' 
+                          : isRevisado 
+                            ? '<span class="text-xs text-yellow-600 font-medium"><i class="fas fa-redo mr-1"></i>Em estudo (' + topico.vezes_estudado + 'x)</span>'
+                            : '<span class="text-xs text-gray-400"><i class="fas fa-clock mr-1"></i>Pendente</span>';
+                        const pesoHtml = topico.peso ? '<span class="text-xs text-gray-500">Peso: ' + topico.peso + '</span>' : '';
+                        const dataHtml = topico.ultima_vez ? '<span class="text-xs text-gray-500 hidden sm:inline">' + new Date(topico.ultima_vez).toLocaleDateString('pt-BR') + '</span>' : '';
+                        
+                        return `
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border ${bgClass} hover:shadow-sm transition"
                              data-topico-nome="${(topico.nome || '').replace(/"/g, '&quot;')}">
                           <!-- Linha principal: Checkbox + Nome -->
                           <div class="flex items-center gap-3 flex-1 min-w-0">
-                            <!-- Checkbox de revisão -->
-                            <button onclick="event.stopPropagation(); toggleRevisaoTopico(${topico.id}, ${topico.vezes_estudado > 0 ? 'false' : 'true'}, ${disc.disciplina_id})"
-                                    class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition flex-shrink-0
-                                           ${topico.vezes_estudado > 0 ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'}">
-                              ${topico.vezes_estudado > 0 ? '<i class="fas fa-check text-xs"></i>' : ''}
+                            <!-- Botão de Concluir (marca nivel_dominio = 10) -->
+                            <button onclick="event.stopPropagation(); marcarTopicoConcluido(${topico.id}, ${isConcluido ? 'false' : 'true'}, ${disc.disciplina_id})"
+                                    class="w-7 h-7 rounded-full border-2 flex items-center justify-center transition flex-shrink-0 ${btnClass}"
+                                    title="${isConcluido ? 'Desmarcar concluído' : 'Marcar como concluído'}">
+                              ${btnIcon}
                             </button>
                             
                             <!-- Info do tópico -->
                             <div class="flex-1 min-w-0">
-                              <p class="text-gray-900 truncate font-medium text-sm">
+                              <p class="${textClass} truncate font-medium text-sm">
                                 ${index + 1}. ${topico.nome}
                               </p>
                               <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                                ${topico.peso ? `<span class="text-xs text-gray-500">Peso: ${topico.peso}</span>` : ''}
-                                ${topico.vezes_estudado > 0 ? `
-                                  <span class="text-xs text-[#2A4A9F] font-medium">
-                                    <i class="fas fa-redo mr-1"></i>${topico.vezes_estudado}x
-                                  </span>
-                                ` : `
-                                  <span class="text-xs text-gray-400">
-                                    <i class="fas fa-clock mr-1"></i>Novo
-                                  </span>
-                                `}
-                                ${topico.ultima_vez ? `
-                                  <span class="text-xs text-gray-500 hidden sm:inline">
-                                    ${new Date(topico.ultima_vez).toLocaleDateString('pt-BR')}
-                                  </span>
-                                ` : ''}
+                                ${pesoHtml}
+                                ${statusHtml}
+                                ${dataHtml}
                             </div>
                           </div>
                           </div>
@@ -7455,7 +7458,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                             </button>
                           </div>
                         </div>
-                      `).join('')}
+                      `}).join('')}
                     </div>
                   `}
                 </div>
@@ -7580,6 +7583,71 @@ window.limparPesquisa = function() {
 }
 
 // ========== FIM FUNÇÕES DE PESQUISA ==========
+
+// ✅ FUNÇÃO PARA MARCAR TÓPICO COMO CONCLUÍDO (nivel_dominio = 10)
+window.marcarTopicoConcluido = async function(topicoId, concluido, disciplinaId) {
+  try {
+    // Atualizar no backend
+    await axios.post(`/api/user-topicos/progresso`, {
+      user_id: currentUser.id,
+      topico_id: topicoId,
+      vezes_estudado: concluido ? 1 : 0,
+      nivel_dominio: concluido ? 10 : 0  // 10 = concluído, 0 = não concluído
+    });
+    
+    showToast(concluido ? '✅ Tópico marcado como CONCLUÍDO!' : '↩️ Tópico desmarcado', 'success');
+    
+    // ✅ ATUALIZAR BARRA DE PROGRESSO DO PLANO NA TELA
+    await atualizarProgressoPlanoUI();
+    
+    // Recarregar a tela de disciplinas
+    await renderPortfolioDisciplinas();
+    
+    // Reabrir a disciplina que estava aberta
+    setTimeout(() => {
+      const container = document.getElementById(`topicos-${disciplinaId}`);
+      const chevron = document.getElementById(`chevron-${disciplinaId}`);
+      if (container) {
+        container.classList.remove('hidden');
+        if (chevron) chevron.classList.add('rotate-180');
+      }
+    }, 100);
+  } catch (error) {
+    console.error('Erro ao marcar tópico concluído:', error);
+    showToast('Erro ao atualizar tópico', 'error');
+  }
+}
+
+// ✅ FUNÇÃO PARA ATUALIZAR A BARRA DE PROGRESSO DO PLANO NA UI
+window.atualizarProgressoPlanoUI = async function() {
+  try {
+    // Buscar plano ativo do usuário
+    const response = await axios.get(`/api/planos/list/${currentUser.id}`);
+    const planos = response.data || [];
+    const planoAtivo = planos.find(p => p.ativo);
+    
+    if (!planoAtivo) return;
+    
+    // Atualizar o card de progresso no dashboard se existir
+    const progressoElement = document.getElementById('progresso-edital');
+    const progressoBarElement = document.getElementById('progresso-edital-bar');
+    const progressoTextElement = document.getElementById('progresso-edital-text');
+    
+    if (progressoElement) {
+      progressoElement.textContent = `${planoAtivo.progresso_edital || 0}%`;
+    }
+    if (progressoBarElement) {
+      progressoBarElement.style.width = `${planoAtivo.progresso_edital || 0}%`;
+    }
+    if (progressoTextElement) {
+      progressoTextElement.textContent = `${planoAtivo.topicos_estudados || 0}/${planoAtivo.total_topicos || 0} tópicos concluídos`;
+    }
+    
+    console.log(`📊 Progresso atualizado: ${planoAtivo.progresso_edital}% (${planoAtivo.topicos_estudados}/${planoAtivo.total_topicos})`);
+  } catch (error) {
+    console.error('Erro ao atualizar progresso:', error);
+  }
+}
 
 // Função para marcar/desmarcar tópico como revisado
 window.toggleRevisaoTopico = async function(topicoId, marcarRevisado, disciplinaId) {
