@@ -14420,7 +14420,17 @@ REGRAS OBRIGATÓRIAS:
 - Destaque palavras-chave em negrito
 - Cite legislação e jurisprudência quando aplicável
 - NÃO encurte o conteúdo - quanto mais detalhado, melhor
-- Formate em Markdown`
+- Formate em Markdown
+
+📊 REGRAS PARA TABELAS (IMPORTANTE):
+- EVITE usar tabelas sempre que possível
+- Se for absolutamente necessário usar tabela, formate em Markdown correto:
+  | Coluna 1 | Coluna 2 | Coluna 3 |
+  |----------|----------|----------|
+  | Dado 1   | Dado 2   | Dado 3   |
+- Prefira LISTAS com bullets ou números ao invés de tabelas
+- Se precisar comparar itens, use formato de lista com subtítulos
+- NUNCA use caracteres especiais ou ASCII art para fazer tabelas`
         break
         
       case 'exercicios':

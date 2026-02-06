@@ -8824,8 +8824,84 @@ window.exibirConteudoGerado = function(data) {
     'flashcards': { label: 'Flashcards', icon: 'fa-clone', color: 'blue' }
   }[tipo] || { label: 'Conteúdo', icon: 'fa-file', color: 'gray' };
   
+  // ✅ FUNÇÃO PARA CONVERTER TABELAS MARKDOWN EM HTML
+  function formatarTabelasMarkdown(texto) {
+    // Detectar tabelas Markdown: linhas com | que formam uma tabela
+    const linhas = texto.split('\n');
+    let resultado = [];
+    let emTabela = false;
+    let tabelaLinhas = [];
+    
+    for (let i = 0; i < linhas.length; i++) {
+      const linha = linhas[i].trim();
+      
+      // Detecta se é linha de tabela (tem múltiplos |)
+      if (linha.match(/^\|.*\|.*\|/) || linha.match(/^[^|]+\|[^|]+\|/)) {
+        // Linha de separador (---|---|---)
+        if (linha.match(/^[\|\s\-:]+$/)) {
+          continue; // Pular linha de separador
+        }
+        
+        if (!emTabela) {
+          emTabela = true;
+          tabelaLinhas = [];
+        }
+        tabelaLinhas.push(linha);
+      } else {
+        // Se estava em tabela, converter para HTML
+        if (emTabela && tabelaLinhas.length > 0) {
+          resultado.push(converterTabelaParaHtml(tabelaLinhas));
+          tabelaLinhas = [];
+          emTabela = false;
+        }
+        resultado.push(linha);
+      }
+    }
+    
+    // Se terminou em tabela
+    if (emTabela && tabelaLinhas.length > 0) {
+      resultado.push(converterTabelaParaHtml(tabelaLinhas));
+    }
+    
+    return resultado.join('\n');
+  }
+  
+  function converterTabelaParaHtml(linhas) {
+    if (linhas.length === 0) return '';
+    
+    let html = '<div class="overflow-x-auto my-4"><table class="min-w-full border-collapse border border-gray-300 text-sm">';
+    
+    linhas.forEach((linha, idx) => {
+      // Extrair células da linha
+      const celulas = linha.split('|').map(c => c.trim()).filter(c => c.length > 0);
+      
+      if (idx === 0) {
+        // Cabeçalho
+        html += '<thead class="bg-[#122D6A] text-white"><tr>';
+        celulas.forEach(celula => {
+          html += `<th class="border border-gray-300 px-3 py-2 text-left font-semibold">${celula}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+      } else {
+        // Linhas de dados
+        const bgClass = idx % 2 === 0 ? 'bg-gray-50' : 'bg-white';
+        html += `<tr class="${bgClass}">`;
+        celulas.forEach(celula => {
+          html += `<td class="border border-gray-300 px-3 py-2">${celula}</td>`;
+        });
+        html += '</tr>';
+      }
+    });
+    
+    html += '</tbody></table></div>';
+    return html;
+  }
+  
+  // ✅ Primeiro processar tabelas, depois markdown
+  let conteudoProcessado = formatarTabelasMarkdown(conteudoTexto);
+  
   // Converter markdown simples para HTML
-  const conteudoHtml = conteudoTexto
+  const conteudoHtml = conteudoProcessado
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/^### (.+)$/gm, '<h3 class="text-lg font-bold mt-4 mb-2">$1</h3>')
@@ -14628,7 +14704,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
         <p class="text-gray-600 text-sm mb-4">Escolha o tipo de conteúdo que deseja gerar:</p>
         
         <div class="grid grid-cols-2 gap-3">
-          <button onclick="gerarConteudoTipo('teoria')" 
+          <button onclick="abrirModalTamanhoPaginas()" 
             class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] hover:bg-[#E8EDF5] transition-all text-left group">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 bg-[#122D6A]/10 rounded-lg flex items-center justify-center group-hover:bg-[#122D6A] transition-colors">
@@ -14713,6 +14789,125 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
   };
 }
 window.abrirDisciplinaComTopico = abrirDisciplinaComTopico;
+
+// ✅ Modal para escolher número de páginas da teoria
+window.abrirModalTamanhoPaginas = function() {
+  // Fechar modal anterior
+  const modalAnterior = document.getElementById('modal-escolher-conteudo');
+  if (modalAnterior) modalAnterior.style.display = 'none';
+  
+  const modal = document.createElement('div');
+  modal.id = 'modal-tamanho-teoria';
+  modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+      <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] p-4">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fas fa-book"></i> Tamanho da Teoria
+        </h3>
+        <p class="text-white/80 text-sm mt-1">Quantas páginas você deseja?</p>
+      </div>
+      
+      <div class="p-5">
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <button onclick="selecionarTamanhoPaginas(1)" 
+            class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] hover:bg-[#E8EDF5] transition-all text-center group pagina-btn" data-paginas="1">
+            <div class="text-3xl font-bold text-[#122D6A] mb-1">1</div>
+            <p class="text-xs text-gray-500">Resumido</p>
+            <p class="text-xs text-gray-400">~2.500 caracteres</p>
+          </button>
+          
+          <button onclick="selecionarTamanhoPaginas(2)" 
+            class="p-4 border-2 border-[#122D6A] bg-[#E8EDF5] rounded-xl transition-all text-center group pagina-btn" data-paginas="2">
+            <div class="text-3xl font-bold text-[#122D6A] mb-1">2</div>
+            <p class="text-xs text-gray-600 font-medium">Recomendado</p>
+            <p class="text-xs text-gray-400">~5.000 caracteres</p>
+          </button>
+          
+          <button onclick="selecionarTamanhoPaginas(3)" 
+            class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] hover:bg-[#E8EDF5] transition-all text-center group pagina-btn" data-paginas="3">
+            <div class="text-3xl font-bold text-[#122D6A] mb-1">3</div>
+            <p class="text-xs text-gray-500">Completo</p>
+            <p class="text-xs text-gray-400">~7.500 caracteres</p>
+          </button>
+        </div>
+        
+        <p class="text-xs text-gray-500 text-center mb-4">
+          <i class="fas fa-info-circle mr-1"></i>
+          Cada página equivale a aproximadamente 2.500 caracteres
+        </p>
+        
+        <div class="flex gap-2">
+          <button onclick="voltarModalEscolherConteudo()" 
+            class="flex-1 py-3 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition flex items-center justify-center gap-2">
+            <i class="fas fa-arrow-left"></i> Voltar
+          </button>
+          <button onclick="confirmarTamanhoPaginas()" 
+            class="flex-1 py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition flex items-center justify-center gap-2">
+            <i class="fas fa-check"></i> Gerar Teoria
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  // Guardar seleção padrão (2 páginas)
+  window.paginasTeoriaSelecionadas = 2;
+}
+
+window.selecionarTamanhoPaginas = function(paginas) {
+  window.paginasTeoriaSelecionadas = paginas;
+  
+  // Atualizar visual dos botões
+  document.querySelectorAll('.pagina-btn').forEach(btn => {
+    const btnPaginas = parseInt(btn.dataset.paginas);
+    if (btnPaginas === paginas) {
+      btn.classList.remove('border-gray-200', 'hover:border-[#122D6A]', 'hover:bg-[#E8EDF5]');
+      btn.classList.add('border-[#122D6A]', 'bg-[#E8EDF5]');
+    } else {
+      btn.classList.remove('border-[#122D6A]', 'bg-[#E8EDF5]');
+      btn.classList.add('border-gray-200', 'hover:border-[#122D6A]', 'hover:bg-[#E8EDF5]');
+    }
+  });
+}
+
+window.voltarModalEscolherConteudo = function() {
+  const modal = document.getElementById('modal-tamanho-teoria');
+  if (modal) modal.remove();
+  
+  const modalAnterior = document.getElementById('modal-escolher-conteudo');
+  if (modalAnterior) modalAnterior.style.display = 'flex';
+}
+
+window.confirmarTamanhoPaginas = function() {
+  const paginas = window.paginasTeoriaSelecionadas || 2;
+  
+  // Fechar modal de tamanho
+  const modalTamanho = document.getElementById('modal-tamanho-teoria');
+  if (modalTamanho) modalTamanho.remove();
+  
+  // Fechar modal de escolha também
+  const modalEscolher = document.getElementById('modal-escolher-conteudo');
+  if (modalEscolher) modalEscolher.remove();
+  
+  // Atualizar configuração de IA para o tamanho escolhido
+  const iaConfigSaved = localStorage.getItem('iaConfig');
+  const iaConfig = iaConfigSaved ? JSON.parse(iaConfigSaved) : {};
+  
+  // Mapear páginas para caracteres
+  const caracteresMap = { 1: 2500, 2: 5000, 3: 7500 };
+  iaConfig.extensao = 'personalizado';
+  iaConfig.extensaoCustom = caracteresMap[paginas] || 5000;
+  iaConfig.paginasTeoria = paginas;
+  
+  localStorage.setItem('iaConfig', JSON.stringify(iaConfig));
+  
+  console.log(`📄 Teoria configurada para ${paginas} página(s) (~${caracteresMap[paginas]} caracteres)`);
+  
+  // Gerar teoria com o tamanho configurado
+  gerarConteudoTipo('teoria');
+}
 
 // Fechar modal de escolha de conteúdo
 window.fecharModalEscolherConteudo = function() {
@@ -16265,23 +16460,35 @@ async function editarNomePlano(planoId, nomeAtual) {
   }
 }
 
-async function ativarPlano(planoId) {
-  const confirmed = await showConfirm('Deseja ativar este plano?\n\nO plano ativo anterior será desativado.', {
-    title: 'Ativar Plano',
-    confirmText: 'Sim, ativar',
-    cancelText: 'Cancelar',
-    type: 'info'
-  });
-  if (!confirmed) return;
+// ✅ Ativar plano - deve estar no escopo global
+window.ativarPlano = async function(planoId) {
+  console.log('🔄 Iniciando ativação do plano:', planoId);
   
   try {
-    await axios.post(`/api/planos/${planoId}/ativar`);
-    showToast(' Plano ativado com sucesso!');
+    const confirmed = await showConfirm('Deseja ativar este plano?\n\nO plano ativo anterior será desativado.', {
+      title: 'Ativar Plano',
+      confirmText: 'Sim, ativar',
+      cancelText: 'Cancelar',
+      type: 'info'
+    });
+    
+    console.log('📋 Confirmação:', confirmed);
+    
+    if (!confirmed) {
+      console.log('❌ Usuário cancelou');
+      return;
+    }
+    
+    console.log('🚀 Enviando requisição para ativar plano...');
+    const response = await axios.post(`/api/planos/${planoId}/ativar`);
+    console.log('✅ Resposta:', response.data);
+    
+    showToast('✅ Plano ativado com sucesso!');
     await carregarPlanos();
     await renderDashboard(); // Recarregar dashboard com novo plano ativo
   } catch (error) {
-    console.error('Erro ao ativar plano:', error);
-    showModal(' Erro ao ativar plano: ' + (error.response?.data?.error || error.message));
+    console.error('❌ Erro ao ativar plano:', error);
+    showModal('❌ Erro ao ativar plano: ' + (error.response?.data?.error || error.message));
   }
 }
 
