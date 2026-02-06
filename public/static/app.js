@@ -3053,23 +3053,18 @@ function renderConcursoEspecifico() {
                 Anexar Edital <span class="text-gray-400 font-normal ml-1">(recomendado)</span>
               </label>
               
-              <!-- Tipos de arquivo - Compacto no mobile -->
+              <!-- Tipos de arquivo aceitos - Apenas TXT e XLSX -->
               <div class="bg-white rounded-lg p-2 md:p-3 mb-3 border border-[#C5D1E8]/50">
-                <div class="grid grid-cols-3 gap-2 text-center">
-                  <div class="p-2 rounded-lg hover:bg-gray-50 transition">
-                    <i class="fas fa-file-pdf text-red-500 text-lg md:text-xl mb-1"></i>
-                    <p class="text-[9px] md:text-xs text-gray-600 font-medium">PDF</p>
-                    <p class="text-[8px] md:text-[10px] text-gray-400 hidden md:block">Extração automática</p>
+                <div class="grid grid-cols-2 gap-2 text-center">
+                  <div class="p-2 rounded-lg hover:bg-gray-50 transition border border-gray-200">
+                    <i class="fas fa-file-alt text-blue-500 text-lg md:text-xl mb-1"></i>
+                    <p class="text-[9px] md:text-xs text-gray-700 font-medium">TXT</p>
+                    <p class="text-[8px] md:text-[10px] text-gray-500 hidden md:block">Processamento rápido</p>
                   </div>
-                  <div class="p-2 rounded-lg hover:bg-gray-50 transition">
-                    <i class="fas fa-file-alt text-gray-500 text-lg md:text-xl mb-1"></i>
-                    <p class="text-[9px] md:text-xs text-gray-600 font-medium">TXT</p>
-                    <p class="text-[8px] md:text-[10px] text-gray-400 hidden md:block">Mais rápido</p>
-                  </div>
-                  <div class="p-2 rounded-lg hover:bg-[#2A4A9F]/5 transition border border-green-200 bg-green-50/50">
-                    <i class="fas fa-file-excel text-[#2A4A9F] text-lg md:text-xl mb-1"></i>
+                  <div class="p-2 rounded-lg hover:bg-[#2A4A9F]/5 transition border-2 border-green-400 bg-green-50/50">
+                    <i class="fas fa-file-excel text-green-600 text-lg md:text-xl mb-1"></i>
                     <p class="text-[9px] md:text-xs text-green-700 font-medium">XLSX</p>
-                    <p class="text-[8px] md:text-[10px] text-[#2A4A9F] hidden md:block">✨ Recomendado!</p>
+                    <p class="text-[8px] md:text-[10px] text-green-600 hidden md:block">✨ Recomendado!</p>
                   </div>
                 </div>
               </div>
@@ -3099,16 +3094,23 @@ function renderConcursoEspecifico() {
             </div>
 
             <!-- Botões - Responsivos -->
-            <div class="flex gap-2 md:gap-4 pt-2">
-              <button type="button" onclick="renderEntrevistaStep1()" 
-                class="px-4 md:px-6 py-2.5 md:py-3 border-2 border-gray-200 rounded-lg md:rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all text-sm md:text-base text-gray-600 flex items-center gap-1 md:gap-2">
-                <i class="fas fa-arrow-left text-xs"></i>
-                <span class="hidden md:inline">Voltar</span>
-              </button>
-              <button type="submit" 
-                class="flex-1 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white py-2.5 md:py-3 rounded-lg md:rounded-xl hover:from-[#0D1F4D] hover:to-[#122D6A] transition-all font-semibold text-sm md:text-base flex items-center justify-center gap-2 shadow-lg shadow-[#122D6A]/20">
-                <span>Continuar</span>
-                <i class="fas fa-arrow-right text-xs"></i>
+            <div class="flex flex-col gap-2 pt-2">
+              <div class="flex gap-2 md:gap-4">
+                <button type="button" onclick="renderEntrevistaStep1()" 
+                  class="px-4 md:px-6 py-2.5 md:py-3 border-2 border-gray-200 rounded-lg md:rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all text-sm md:text-base text-gray-600 flex items-center gap-1 md:gap-2">
+                  <i class="fas fa-arrow-left text-xs"></i>
+                  <span class="hidden md:inline">Voltar</span>
+                </button>
+                <button type="submit" 
+                  class="flex-1 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white py-2.5 md:py-3 rounded-lg md:rounded-xl hover:from-[#0D1F4D] hover:to-[#122D6A] transition-all font-semibold text-sm md:text-base flex items-center justify-center gap-2 shadow-lg shadow-[#122D6A]/20">
+                  <span>Continuar</span>
+                  <i class="fas fa-arrow-right text-xs"></i>
+                </button>
+              </div>
+              <button type="button" onclick="continuarSemEdital()" 
+                class="w-full py-2 text-gray-500 hover:text-[#122D6A] transition-all text-xs md:text-sm flex items-center justify-center gap-1">
+                <i class="fas fa-forward"></i>
+                <span>Continuar sem edital (adicionar disciplinas manualmente)</span>
               </button>
             </div>
           </form>
@@ -3116,6 +3118,31 @@ function renderConcursoEspecifico() {
       </div>
     </div>
   `;
+
+  // Função para continuar sem edital
+  window.continuarSemEdital = function() {
+    console.log('📋 Continuando sem edital - usuário irá adicionar disciplinas manualmente');
+    interviewData.editais_arquivos = [];
+    interviewData.sem_edital = true;
+    renderEntrevistaStep2();
+  };
+
+  // Função para remover edital da lista
+  window.removerEdital = function(idx) {
+    const input = document.getElementById('editaisUpload');
+    const dt = new DataTransfer();
+    const files = Array.from(input.files);
+    
+    files.forEach((file, i) => {
+      if (i !== idx) dt.items.add(file);
+    });
+    
+    input.files = dt.files;
+    
+    // Disparar evento change para atualizar preview
+    input.dispatchEvent(new Event('change'));
+    console.log(`🗑️ Arquivo removido. Restantes: ${dt.files.length}`);
+  };
 
   // Preview de editais
   document.getElementById('editaisUpload').addEventListener('change', (e) => {
@@ -3128,13 +3155,13 @@ function renderConcursoEspecifico() {
     }
     
     preview.innerHTML = files.map((file, idx) => `
-      <div class="flex items-center justify-between bg-[#E8EDF5] px-3 py-2 rounded text-sm">
-        <div class="flex items-center gap-2">
-          <i class="fas fa-file-${file.name.endsWith('.xlsx') ? 'excel text-green-500' : 'alt text-[#2A4A9F]'}"></i>
-          <span class="text-gray-700">${file.name}</span>
-          <span class="text-gray-400">(${(file.size / 1024).toFixed(1)} KB)</span>
+      <div class="flex items-center justify-between bg-[#E8EDF5] px-3 py-2 rounded text-xs md:text-sm">
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <i class="fas fa-file-${file.name.endsWith('.xlsx') ? 'excel text-green-500' : 'alt text-[#2A4A9F]'} flex-shrink-0"></i>
+          <span class="text-gray-700 truncate">${file.name}</span>
+          <span class="text-gray-400 flex-shrink-0">(${(file.size / 1024).toFixed(1)} KB)</span>
         </div>
-        <button type="button" onclick="removerEdital(${idx})" class="text-red-500 hover:text-red-700">
+        <button type="button" onclick="window.removerEdital(${idx})" class="text-red-500 hover:text-red-700 p-1 ml-2 flex-shrink-0">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -4818,6 +4845,11 @@ async function renderEntrevistaStep3() {
               <span class="text-xs md:text-sm text-gray-500">de ${disciplinasFiltradas.length}</span>
             </div>
             <div class="flex gap-1.5 md:gap-2">
+              <button type="button" onclick="abrirImportacaoDisciplinasLote()" 
+                class="px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition-all">
+                <i class="fas fa-file-import mr-1"></i>
+                <span class="hidden md:inline">Importar em</span> Lote
+              </button>
               <button type="button" onclick="selecionarTodasDisciplinas()" 
                 class="px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs bg-[#E8EDF5] text-[#1A3A7F] rounded-lg hover:bg-[#D0D9EB] transition-all">
                 <i class="fas fa-check-double mr-1"></i>
@@ -5135,6 +5167,167 @@ async function renderEntrevistaStep3() {
       }
     });
     atualizarContador();
+  };
+  
+  // ✅ FUNÇÃO DE IMPORTAÇÃO EM LOTE DE DISCIPLINAS
+  window.abrirImportacaoDisciplinasLote = () => {
+    const modal = document.createElement('div');
+    modal.id = 'modal-importacao-disciplinas';
+    modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4';
+    modal.innerHTML = `
+      <div class="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-slide-up">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <i class="fas fa-file-import text-xl"></i>
+            <div>
+              <h3 class="font-bold text-base sm:text-lg">Importar Disciplinas em Lote</h3>
+              <p class="text-xs text-white/70">Cole a lista de disciplinas</p>
+            </div>
+          </div>
+          <button onclick="fecharModalImportacao()" class="p-2 hover:bg-white/10 rounded-lg transition">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <!-- Conteúdo -->
+        <div class="p-4 sm:p-6 overflow-y-auto max-h-[60vh]">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-list mr-1 text-[#1A3A7F]"></i>
+              Cole as disciplinas (uma por linha)
+            </label>
+            <textarea id="disciplinas-lote-input" 
+              class="w-full h-40 p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A3A7F] focus:border-[#1A3A7F] text-sm"
+              placeholder="Língua Portuguesa
+Matemática / Raciocínio Lógico
+Direito Constitucional
+Direito Administrativo
+Informática
+Conhecimentos Específicos"></textarea>
+          </div>
+          
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <h4 class="font-semibold text-blue-800 text-sm mb-2">
+              <i class="fas fa-info-circle mr-1"></i>
+              Dicas:
+            </h4>
+            <ul class="text-xs text-blue-700 space-y-1">
+              <li>• Uma disciplina por linha</li>
+              <li>• Copie direto do edital em PDF/TXT</li>
+              <li>• Disciplinas duplicadas serão ignoradas</li>
+            </ul>
+          </div>
+          
+          <div id="preview-disciplinas-lote" class="hidden">
+            <h4 class="font-medium text-gray-700 text-sm mb-2">
+              <i class="fas fa-eye mr-1"></i>
+              Preview (<span id="count-preview">0</span> disciplinas):
+            </h4>
+            <div id="lista-preview" class="max-h-32 overflow-y-auto bg-gray-50 rounded-lg p-2 text-xs space-y-1"></div>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="p-4 bg-gray-50 border-t flex flex-col sm:flex-row gap-2 sm:justify-end">
+          <button onclick="fecharModalImportacao()" 
+            class="w-full sm:w-auto px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition text-sm font-medium">
+            Cancelar
+          </button>
+          <button onclick="processarImportacaoDisciplinas()" 
+            class="w-full sm:w-auto px-4 py-2.5 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition text-sm font-medium flex items-center justify-center gap-2">
+            <i class="fas fa-plus-circle"></i>
+            Importar Disciplinas
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Adicionar listener para preview em tempo real
+    document.getElementById('disciplinas-lote-input').addEventListener('input', atualizarPreviewDisciplinas);
+  };
+  
+  window.fecharModalImportacao = () => {
+    const modal = document.getElementById('modal-importacao-disciplinas');
+    if (modal) modal.remove();
+  };
+  
+  window.atualizarPreviewDisciplinas = () => {
+    const input = document.getElementById('disciplinas-lote-input').value;
+    const preview = document.getElementById('preview-disciplinas-lote');
+    const lista = document.getElementById('lista-preview');
+    const count = document.getElementById('count-preview');
+    
+    const disciplinas = input.split('\n')
+      .map(d => d.trim())
+      .filter(d => d.length > 0 && d.length < 100)
+      .filter((d, i, arr) => arr.indexOf(d) === i); // Remove duplicatas
+    
+    if (disciplinas.length > 0) {
+      preview.classList.remove('hidden');
+      count.textContent = disciplinas.length;
+      lista.innerHTML = disciplinas.map(d => `
+        <div class="flex items-center gap-2 py-1 px-2 bg-white rounded border">
+          <i class="fas fa-check-circle text-green-500 text-xs"></i>
+          <span class="truncate">${d}</span>
+        </div>
+      `).join('');
+    } else {
+      preview.classList.add('hidden');
+    }
+  };
+  
+  window.processarImportacaoDisciplinas = async () => {
+    const input = document.getElementById('disciplinas-lote-input').value;
+    const disciplinas = input.split('\n')
+      .map(d => d.trim())
+      .filter(d => d.length > 0 && d.length < 100)
+      .filter((d, i, arr) => arr.indexOf(d) === i);
+    
+    if (disciplinas.length === 0) {
+      showToast('Digite pelo menos uma disciplina', 'error');
+      return;
+    }
+    
+    // Adicionar disciplinas à lista
+    let adicionadas = 0;
+    let jaExistentes = 0;
+    
+    for (const nomeDisciplina of disciplinas) {
+      // Verificar se já existe (por nome similar)
+      const jaExiste = disciplinasFiltradas.some(d => 
+        d.nome.toLowerCase().includes(nomeDisciplina.toLowerCase()) ||
+        nomeDisciplina.toLowerCase().includes(d.nome.toLowerCase())
+      );
+      
+      if (!jaExiste) {
+        // Criar nova disciplina com ID temporário negativo
+        const novoId = -(Date.now() + Math.random() * 1000);
+        disciplinasFiltradas.push({
+          id: novoId,
+          nome: nomeDisciplina,
+          descricao: 'Disciplina importada manualmente',
+          area: 'custom',
+          peso: null,
+          total_topicos: 0,
+          topicos: []
+        });
+        adicionadas++;
+      } else {
+        jaExistentes++;
+      }
+    }
+    
+    fecharModalImportacao();
+    
+    if (adicionadas > 0) {
+      showToast('✅ ' + adicionadas + ' disciplina(s) importada(s)!' + (jaExistentes > 0 ? ' (' + jaExistentes + ' já existiam)' : ''), 'success');
+      // Re-renderizar a tela
+      renderEntrevistaStep3();
+    } else {
+      showToast('Todas as ' + jaExistentes + ' disciplinas já existem na lista', 'info');
+    }
   };
   
   // ✅ FUNÇÕES DE MANIPULAÇÃO DE TÓPICOS
@@ -16985,39 +17178,42 @@ function renderCalendarioSemanal() {
   const percentualSemana = semana.metas_totais > 0 ? Math.round((semana.metas_concluidas / semana.metas_totais) * 100) : 0;
   
   container.innerHTML = `
-    <!-- Header Compacto da Semana -->
-    <div class="${themes[currentTheme].card} rounded-xl shadow-sm p-3 mb-3 border ${themes[currentTheme].border}">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center">
-            <i class="fas fa-calendar-week text-white text-sm"></i>
+    <!-- Header Responsivo da Semana -->
+    <div class="${themes[currentTheme].card} rounded-xl shadow-sm p-2 sm:p-3 mb-3 border ${themes[currentTheme].border}">
+      <!-- Layout Mobile: empilhado / Desktop: lado a lado -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+        <!-- Info da Semana -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-calendar-week text-white text-xs sm:text-sm"></i>
           </div>
-          <div class="flex items-center gap-4">
-            <div>
-              <span class="text-sm font-semibold ${themes[currentTheme].text}">Sem ${semana.numero_semana}</span>
-              <span class="text-xs ${themes[currentTheme].textSecondary} ml-2">${dataInicioFormatada} - ${dataFimFormatada}</span>
-            </div>
+          <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 min-w-0">
             <div class="flex items-center gap-2">
-              <div class="w-20 bg-gray-200 rounded-full h-1.5">
+              <span class="text-xs sm:text-sm font-semibold ${themes[currentTheme].text}">Sem ${semana.numero_semana}</span>
+              <span class="text-[10px] sm:text-xs ${themes[currentTheme].textSecondary}">${dataInicioFormatada} - ${dataFimFormatada}</span>
+            </div>
+            <div class="flex items-center gap-2 mt-1 sm:mt-0">
+              <div class="w-16 sm:w-20 bg-gray-200 rounded-full h-1.5">
                 <div class="bg-[#122D6A] h-1.5 rounded-full" style="width: ${percentualSemana}%"></div>
               </div>
-              <span class="text-xs font-medium ${themes[currentTheme].text}">${percentualSemana}%</span>
+              <span class="text-[10px] sm:text-xs font-medium ${themes[currentTheme].text}">${percentualSemana}%</span>
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button onclick="toggleTodosDias(false)" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Recolher todos">
-            <i class="fas fa-compress-alt text-gray-600 text-sm"></i>
+        <!-- Botões de Ação -->
+        <div class="flex items-center gap-1 sm:gap-2 justify-end">
+          <button onclick="toggleTodosDias(false)" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Recolher todos">
+            <i class="fas fa-compress-alt text-gray-600 text-xs sm:text-sm"></i>
           </button>
-          <button onclick="toggleTodosDias(true)" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Expandir todos">
-            <i class="fas fa-expand-alt text-gray-600 text-sm"></i>
+          <button onclick="toggleTodosDias(true)" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Expandir todos">
+            <i class="fas fa-expand-alt text-gray-600 text-xs sm:text-sm"></i>
           </button>
-          <button onclick="abrirSemanasAnteriores()" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Semanas anteriores">
-            <i class="fas fa-history text-gray-600 text-sm"></i>
+          <button onclick="abrirSemanasAnteriores()" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Semanas anteriores">
+            <i class="fas fa-history text-gray-600 text-xs sm:text-sm"></i>
           </button>
-          <button onclick="gerarMetasSemana()" class="flex items-center gap-1.5 px-3 py-2 bg-[#122D6A] text-white rounded-lg text-xs font-medium hover:bg-[#0D1F4D] transition">
+          <button onclick="gerarMetasSemana()" class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#122D6A] text-white rounded-lg text-[10px] sm:text-xs font-medium hover:bg-[#0D1F4D] transition">
             <i class="fas fa-magic"></i>
-            <span class="hidden sm:inline">Gerar</span>
+            <span class="hidden xs:inline">Gerar</span>
           </button>
         </div>
       </div>
