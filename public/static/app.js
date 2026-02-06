@@ -4304,6 +4304,16 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
     
     window.confirmarDisciplinasRevisao = async () => {
       try {
+        // Validar editalId
+        if (!editalId) {
+          console.error('❌ editalId não definido!');
+          showModal('Erro: ID do edital não encontrado. Por favor, recarregue a página.', { type: 'error' });
+          return;
+        }
+        
+        console.log('📝 Salvando disciplinas para edital:', editalId);
+        console.log('📋 Disciplinas:', JSON.stringify(disciplinasEditadas, null, 2));
+        
         // Mostrar loading
         const btnConfirmar = document.getElementById('btnConfirmarDisciplinas');
         if (btnConfirmar) {
@@ -4328,7 +4338,11 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
         resolve(true);
       } catch (error) {
         console.error('❌ Erro ao salvar disciplinas:', error);
-        showModal('Erro ao salvar disciplinas. Tente novamente.', { type: 'error' });
+        console.error('❌ Response:', error?.response?.data);
+        console.error('❌ Status:', error?.response?.status);
+        
+        const errorMsg = error?.response?.data?.error || error?.message || 'Erro desconhecido';
+        showModal(`Erro ao salvar disciplinas: ${errorMsg}`, { type: 'error' });
         
         // Restaurar botão
         const btnConfirmar = document.getElementById('btnConfirmarDisciplinas');
