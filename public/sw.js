@@ -58,6 +58,11 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   
+  // ✅ Ignorar requisições que não são GET (POST, PUT, DELETE não podem ser cacheadas)
+  if (request.method !== 'GET') {
+    return;
+  }
+  
   // Ignorar requisições de API (sempre buscar da rede)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(

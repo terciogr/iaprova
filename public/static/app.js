@@ -3510,11 +3510,13 @@ async function processarEditalAntesDeStep2() {
       atualizarFeedbackUI(2, `📋 Passo 3: Localizando seção de CONTEÚDO PROGRAMÁTICO...`);
       await new Promise(resolve => setTimeout(resolve, 500));
       atualizarFeedbackUI(2, `🤖 Passo 4: Enviando para análise com IA...`);
-      atualizarFeedbackUI(2, `⏳ Isso pode levar 30-60 segundos...`);
+      atualizarFeedbackUI(2, `⏳ Isso pode levar até 2 minutos...`);
+      atualizarFeedbackUI(2, `⚠️ NÃO feche esta página durante o processamento!`, 'warning');
       
       try {
         // ✅ MODO REVISÃO: Envia para IA e retorna disciplinas para revisão do usuário
-        const processRes = await axios.post(`/api/editais/processar/${edital.id}?modo=revisao`);
+        // Timeout de 3 minutos para PDFs grandes
+        const processRes = await axios.post(`/api/editais/processar/${edital.id}?modo=revisao`, {}, { timeout: 180000 });
         console.log(`✅ Edital processado:`, processRes.data);
         
         // Verificar se é modo revisão
@@ -3549,10 +3551,87 @@ async function processarEditalAntesDeStep2() {
         console.error(`❌ Erro ao processar edital ${edital.id}:`, procError);
         console.error(`❌ Resposta do servidor:`, procError?.response?.data);
         console.error(`❌ Status:`, procError?.response?.status);
+        console.error(`❌ Código:`, procError?.code);
         
         // Feedback visual de erro
         const errorMsg = procError?.response?.data?.error || procError?.message || 'Erro na comunicação com o servidor. Verifique sua conexão.';
         atualizarFeedbackUI(2, `❌ ERRO na Etapa 2: ${errorMsg}`, 'error');
+        
+        // ✅ NOVO: Verificar se é erro de TIMEOUT (ECONNABORTED) ou erro de rede
+        const isTimeout = procError?.code === 'ECONNABORTED' || 
+                          procError?.message?.toLowerCase().includes('timeout') ||
+                          procError?.message?.toLowerCase().includes('aborted') ||
+                          procError?.message?.toLowerCase().includes('network');
+        
+        if (isTimeout) {
+          console.warn(`⏰ Timeout no processamento do edital ${edital.id}`);
+          atualizarFeedbackUI(2, `⏰ Tempo de análise excedido`, 'error');
+          atualizarFeedbackUI(2, `💡 O PDF é muito complexo para processamento automático`, 'error');
+          
+          // ✅ LIBERAR FLAG para nova tentativa
+          isProcessingEdital = false;
+          console.log('🔓 Flag isProcessingEdital desativada (timeout)');
+          
+          // Mostrar tela de timeout com opções
+          document.getElementById('app').innerHTML = `
+            <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+              <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
+                  <i class="fas fa-clock text-orange-500 text-4xl"></i>
+                </div>
+                <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-3">
+                  Tempo de Análise Excedido
+                </h3>
+                <p class="text-gray-600 mb-4 text-sm">
+                  O PDF é muito complexo para processamento automático via IA.
+                  Isso pode acontecer com PDFs escaneados, protegidos ou muito longos.
+                </p>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                  <h4 class="font-semibold text-blue-800 mb-3">💡 Solução recomendada:</h4>
+                  <ol class="text-sm text-blue-700 space-y-3">
+                    <li class="flex items-start gap-2">
+                      <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">1</span>
+                      <span>Acesse o conversor online gratuito</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">2</span>
+                      <span>Faça upload do seu PDF e baixe o TXT</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">3</span>
+                      <span>Volte aqui e anexe o arquivo TXT</span>
+                    </li>
+                  </ol>
+                </div>
+                
+                <div class="flex flex-col gap-3">
+                  <a href="https://convertio.co/pt/pdf-txt/" target="_blank"
+                     class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-external-link-alt"></i>
+                    Converter PDF para TXT (convertio.co)
+                  </a>
+                  <a href="https://smallpdf.com/pdf-to-text" target="_blank"
+                     class="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-all flex items-center justify-center gap-2 border border-gray-200">
+                    <i class="fas fa-external-link-alt"></i>
+                    Converter PDF para TXT (smallpdf.com)
+                  </a>
+                  <button onclick="renderEntrevistaStep1()" 
+                          class="w-full py-3 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg font-semibold border ${themes[currentTheme].border} hover:opacity-80 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-redo"></i>
+                    Tentar com outro arquivo
+                  </button>
+                  <button onclick="renderEntrevistaStep2()" 
+                          class="w-full py-2 text-gray-500 hover:text-gray-700 transition-all text-sm">
+                    Continuar sem edital →
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          return; // Não continuar, aguardar ação do usuário
+        }
         
         // Se for erro 400 ou 404, pode ser que já foi processado
         if (procError?.response?.status === 404) {
