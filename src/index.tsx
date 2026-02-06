@@ -3779,8 +3779,7 @@ app.post('/api/editais/upload', async (c) => {
         textoCompleto = await file.text()
         console.log(`✅ TXT lido: ${textoCompleto.length} caracteres`)
       } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-        // ✅ PDF: Salvar arquivo e processar depois via /api/editais/processar
-        // NÃO extrair texto aqui - isso causa timeout
+        // ✅ PDF: Extrair texto diretamente via Gemini (para PDFs até 15MB)
         const arrayBuffer = await file.arrayBuffer()
         const fileSizeMB = arrayBuffer.byteLength / (1024 * 1024)
         
@@ -3799,9 +3798,78 @@ app.post('/api/editais/upload', async (c) => {
           }, 413)
         }
         
-        // PDFs até 15MB: salvar sem extrair texto agora (extração será no /api/editais/processar)
-        console.log(`📄 Salvando PDF sem pré-processamento...`)
-        textoCompleto = `[PDF PENDENTE DE PROCESSAMENTO]\n\nArquivo: ${file.name}\nTamanho: ${fileSizeMB.toFixed(2)}MB\n\nO texto será extraído na próxima etapa via IA.`
+        // ✅ NOVO: Extrair texto do PDF diretamente durante o upload
+        console.log(`🚀 Extraindo texto do PDF via Gemini API...`)
+        try {
+          // Converter PDF para base64
+          const bytes = new Uint8Array(arrayBuffer)
+          let binary = ''
+          const chunkSize = 8192
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
+            binary += String.fromCharCode.apply(null, Array.from(chunk))
+          }
+          const base64PDF = btoa(binary)
+          
+          console.log(`📄 PDF convertido para base64: ${base64PDF.length} caracteres`)
+          
+          // Chamar Gemini para extrair texto
+          const extractionResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: `EXTRAIA O TEXTO COMPLETO DESTE EDITAL DE CONCURSO PÚBLICO.
+
+FOCO: Extraia principalmente o CONTEÚDO PROGRAMÁTICO (geralmente no Anexo II ou III).
+
+INSTRUÇÕES:
+1. Transcreva LITERALMENTE todo o conteúdo programático
+2. Inclua TODAS as disciplinas e seus tópicos
+3. Mantenha a estrutura original (títulos, itens, subitens)
+4. NÃO resuma, NÃO comente - apenas transcreva
+
+FORMATO:
+Retorne o texto extraído do conteúdo programático completo.` },
+                    { inline_data: { mime_type: 'application/pdf', data: base64PDF } }
+                  ]
+                }],
+                generationConfig: {
+                  temperature: 0.1,
+                  maxOutputTokens: 65536
+                }
+              })
+            }
+          )
+          
+          if (extractionResponse.ok) {
+            const extractionData = await extractionResponse.json() as any
+            const textoExtraido = extractionData?.candidates?.[0]?.content?.parts?.[0]?.text
+            
+            if (textoExtraido && textoExtraido.length > 500) {
+              textoCompleto = textoExtraido
+              console.log(`✅ Texto extraído do PDF: ${textoCompleto.length} caracteres`)
+            } else {
+              console.warn(`⚠️ Texto extraído muito curto (${textoExtraido?.length || 0} chars), usando placeholder`)
+              textoCompleto = `[PDF COM EXTRAÇÃO PARCIAL]\n\nArquivo: ${file.name}\nTamanho: ${fileSizeMB.toFixed(2)}MB\nTexto extraído: ${textoExtraido?.substring(0, 500) || 'Nenhum'}\n\nPor favor, converta o PDF para TXT em https://smallpdf.com/pdf-to-text`
+            }
+          } else {
+            const errorStatus = extractionResponse.status
+            console.error(`❌ Erro na extração: HTTP ${errorStatus}`)
+            
+            if (errorStatus === 429) {
+              textoCompleto = `[RATE LIMIT]\n\nA API de IA está temporariamente sobrecarregada.\nPor favor, aguarde 2-3 minutos e tente novamente.\nOu converta o PDF para TXT em https://smallpdf.com/pdf-to-text`
+            } else {
+              textoCompleto = `[ERRO NA EXTRAÇÃO]\n\nArquivo: ${file.name}\nErro: HTTP ${errorStatus}\n\nPor favor, converta o PDF para TXT em https://smallpdf.com/pdf-to-text`
+            }
+          }
+        } catch (extractError) {
+          console.error(`❌ Erro ao extrair PDF:`, extractError)
+          textoCompleto = `[ERRO NA EXTRAÇÃO]\n\nArquivo: ${file.name}\nErro: ${extractError}\n\nPor favor, converta o PDF para TXT em https://smallpdf.com/pdf-to-text`
+        }
       } else {
         console.warn(`⚠️ Arquivo ${file.name} não é TXT, PDF nem XLSX. Será ignorado.`)
         textoCompleto = ''
@@ -8973,6 +9041,7 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
     }
 
     // Buscar disciplinas do plano com progresso de tópicos
+    // ✅ CORRIGIDO: Conta apenas nivel_dominio = 10 como concluído (alinhado com /api/planos/list)
     const { results: disciplinasProgresso } = await DB.prepare(`
       SELECT 
         ud.disciplina_id,
@@ -8981,7 +9050,7 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
         d.nome as disciplina_nome,
         d.area,
         COUNT(DISTINCT te.id) as total_topicos,
-        SUM(CASE WHEN COALESCE(utp.vezes_estudado, 0) > 0 THEN 1 ELSE 0 END) as topicos_estudados,
+        SUM(CASE WHEN COALESCE(utp.nivel_dominio, 0) = 10 THEN 1 ELSE 0 END) as topicos_estudados,
         COALESCE(AVG(utp.nivel_dominio), 0) as nivel_medio_topicos
       FROM user_disciplinas ud
       JOIN disciplinas d ON ud.disciplina_id = d.id
