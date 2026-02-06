@@ -16277,7 +16277,15 @@ function renderCalendarioSemanal() {
             <!-- Conteúdo Colapsável das Metas -->
             <div id="metas-dia-${diaSemana}" class="${isAberto ? '' : 'hidden'} px-2.5 pb-2.5">
             ${metasDoDia.length > 0 ? `
-              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+              <div class="grid gap-2 ${
+                metasDoDia.length === 1 ? 'grid-cols-1 max-w-xs' :
+                metasDoDia.length === 2 ? 'grid-cols-2' :
+                metasDoDia.length === 3 ? 'grid-cols-3' :
+                metasDoDia.length === 4 ? 'grid-cols-2 sm:grid-cols-4' :
+                metasDoDia.length === 5 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' :
+                metasDoDia.length === 6 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6' :
+                'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6'
+              }">
                 ${metasDoDia.map(meta => {
                   const tipoIcon = meta.tipo === 'teoria' ? 'fa-book' : meta.tipo === 'exercicios' ? 'fa-pencil-alt' : 'fa-sync'
                   const tipoBg = meta.tipo === 'teoria' ? 'text-[#122D6A]' : meta.tipo === 'exercicios' ? 'text-[#2A4A9F]' : 'text-amber-600'
