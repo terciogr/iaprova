@@ -8603,59 +8603,41 @@ app.get('/api/planos/list/:user_id', async (c) => {
       let totalTopicos = 0
       let topicosEstudados = 0
       
-      // ✅ CORREÇÃO: Buscar tópicos via edital vinculado ao plano (interview)
-      if (p.edital_id) {
-        // Contar tópicos do edital específico deste plano
+      // Buscar disciplinas do plano via ciclos_estudo
+      const { results: disciplinasPlano } = await DB.prepare(`
+        SELECT DISTINCT disciplina_id FROM ciclos_estudo WHERE plano_id = ?
+      `).bind(p.id).all() as any
+      
+      const disciplinaIds = disciplinasPlano.map((d: any) => d.disciplina_id)
+      
+      console.log(`📊 Plano ${p.id}: ${disciplinaIds.length} disciplinas`)
+      
+      if (disciplinaIds.length > 0) {
+        const placeholders = disciplinaIds.map(() => '?').join(',')
+        
+        // ✅ CORREÇÃO: SEMPRE buscar de topicos_edital (onde as metas buscam os tópicos)
+        // A tabela topicos_edital é usada pelas metas semanais, então é aí que o progresso é registrado
         const topicosResult = await DB.prepare(`
-          SELECT COUNT(*) as total 
-          FROM edital_topicos et
-          INNER JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id
-          WHERE ed.edital_id = ?
-        `).bind(p.edital_id).first() as any
+          SELECT COUNT(*) as total FROM topicos_edital 
+          WHERE user_id = ? AND disciplina_id IN (${placeholders})
+        `).bind(user_id, ...disciplinaIds).first() as any
         
         totalTopicos = topicosResult?.total || 0
         
-        // Contar tópicos estudados (nivel_dominio = 10 significa concluído)
-        // Buscar via edital_topicos -> user_topicos_progresso
+        // ✅ CORREÇÃO: Contar tópicos onde nivel_dominio >= 2 (estudado pelo menos 1x)
+        // nivel_dominio = 10 é "concluído", mas >= 2 já indica progresso
         const topicosEstudadosResult = await DB.prepare(`
-          SELECT COUNT(*) as total 
-          FROM user_topicos_progresso utp
-          INNER JOIN edital_topicos et ON utp.topico_id = et.id
-          INNER JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id
-          WHERE ed.edital_id = ? AND utp.user_id = ? AND utp.nivel_dominio = 10
-        `).bind(p.edital_id, user_id).first() as any
+          SELECT COUNT(*) as total FROM user_topicos_progresso utp
+          INNER JOIN topicos_edital te ON utp.topico_id = te.id
+          WHERE utp.user_id = ? AND te.disciplina_id IN (${placeholders}) AND utp.nivel_dominio >= 2
+        `).bind(user_id, ...disciplinaIds).first() as any
         
         topicosEstudados = topicosEstudadosResult?.total || 0
-      } else {
-        // Fallback: se não tem edital, usar ciclos_estudo para buscar disciplinas
-        const { results: disciplinasPlano } = await DB.prepare(`
-          SELECT DISTINCT disciplina_id FROM ciclos_estudo WHERE plano_id = ?
-        `).bind(p.id).all() as any
         
-        const disciplinaIds = disciplinasPlano.map((d: any) => d.disciplina_id)
-        
-        if (disciplinaIds.length > 0) {
-          const placeholders = disciplinaIds.map(() => '?').join(',')
-          
-          // Buscar de topicos_edital com user_id
-          const topicosResult = await DB.prepare(`
-            SELECT COUNT(*) as total FROM topicos_edital 
-            WHERE user_id = ? AND disciplina_id IN (${placeholders})
-          `).bind(user_id, ...disciplinaIds).first() as any
-          
-          totalTopicos = topicosResult?.total || 0
-          
-          const topicosEstudadosResult = await DB.prepare(`
-            SELECT COUNT(*) as total FROM user_topicos_progresso utp
-            INNER JOIN topicos_edital te ON utp.topico_id = te.id
-            WHERE utp.user_id = ? AND te.disciplina_id IN (${placeholders}) AND utp.nivel_dominio = 10
-          `).bind(user_id, ...disciplinaIds).first() as any
-          
-          topicosEstudados = topicosEstudadosResult?.total || 0
-        }
+        console.log(`   → ${totalTopicos} tópicos total, ${topicosEstudados} estudados`)
       }
       
-      // Calcular progresso percentual do edital
+      // Calcular progresso percentual
       const progressoEdital = totalTopicos > 0 ? Math.round((topicosEstudados / totalTopicos) * 100) : 0
 
       return {
@@ -9045,86 +9027,51 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
       return c.json({ error: 'Plano não encontrado' }, 404)
     }
 
-    console.log(`📊 Calculando progresso do plano ${plano_id}, edital_id: ${plano.edital_id || 'nenhum'}`)
+    console.log(`📊 Calculando progresso do plano ${plano_id}`)
 
     let totalTopicos = 0
     let topicosEstudados = 0
     const disciplinasDetalhes: any[] = []
 
-    // ✅ ESTRATÉGIA 1: Se tem edital vinculado, usar edital_topicos
-    if (plano.edital_id) {
-      // Buscar disciplinas e tópicos do edital específico deste plano
-      const { results: disciplinasEdital } = await DB.prepare(`
-        SELECT 
-          ed.id as edital_disciplina_id,
-          ed.disciplina_id,
-          d.nome as disciplina_nome,
-          d.area,
-          ed.peso,
-          COUNT(DISTINCT et.id) as total_topicos,
-          SUM(CASE WHEN COALESCE(utp.nivel_dominio, 0) = 10 THEN 1 ELSE 0 END) as topicos_estudados,
-          COALESCE(AVG(utp.nivel_dominio), 0) as nivel_medio_topicos
-        FROM edital_disciplinas ed
-        JOIN disciplinas d ON ed.disciplina_id = d.id
-        LEFT JOIN edital_topicos et ON et.edital_disciplina_id = ed.id
-        LEFT JOIN user_topicos_progresso utp ON et.id = utp.topico_id AND utp.user_id = ?
-        WHERE ed.edital_id = ?
-        GROUP BY ed.id, ed.disciplina_id, d.nome, d.area, ed.peso
-      `).bind(plano.user_id, plano.edital_id).all() as any[]
+    // ✅ CORREÇÃO: SEMPRE buscar via ciclos_estudo + topicos_edital (onde as metas registram progresso)
+    const { results: disciplinasPlano } = await DB.prepare(`
+      SELECT DISTINCT 
+        c.disciplina_id,
+        d.nome as disciplina_nome,
+        d.area,
+        COALESCE(ud.peso, 1) as peso,
+        ud.nivel_dominio,
+        (SELECT COUNT(*) FROM topicos_edital te WHERE te.disciplina_id = c.disciplina_id AND te.user_id = ?) as total_topicos_disc,
+        (SELECT COUNT(*) FROM user_topicos_progresso utp 
+         INNER JOIN topicos_edital te ON utp.topico_id = te.id 
+         WHERE te.disciplina_id = c.disciplina_id AND utp.user_id = ? AND utp.nivel_dominio >= 2) as topicos_estudados_disc
+      FROM ciclos_estudo c
+      JOIN disciplinas d ON c.disciplina_id = d.id
+      LEFT JOIN user_disciplinas ud ON ud.disciplina_id = c.disciplina_id AND ud.user_id = ?
+      WHERE c.plano_id = ?
+    `).bind(plano.user_id, plano.user_id, plano.user_id, plano_id).all() as any[]
 
-      console.log(`📚 Encontradas ${disciplinasEdital.length} disciplinas no edital ${plano.edital_id}`)
+    console.log(`📚 Encontradas ${disciplinasPlano.length} disciplinas no plano ${plano_id}`)
 
-      for (const disc of disciplinasEdital) {
-        const peso = disc.peso || 1
-        const topicos = disc.total_topicos || 0
-        const estudados = disc.topicos_estudados || 0
-        
-        totalTopicos += topicos
-        topicosEstudados += estudados
+    for (const disc of disciplinasPlano) {
+      const peso = disc.peso || 1
+      const topicos = disc.total_topicos_disc || 0
+      const estudados = disc.topicos_estudados_disc || 0
+      
+      totalTopicos += topicos
+      topicosEstudados += estudados
 
-        disciplinasDetalhes.push({
-          disciplina_id: disc.disciplina_id,
-          nome: disc.disciplina_nome,
-          area: disc.area,
-          peso,
-          total_topicos: topicos,
-          topicos_estudados: estudados,
-          progresso_percentual: topicos > 0 ? Math.round((estudados / topicos) * 100) : 0,
-          nivel_dominio: disc.nivel_dominio || 0,
-          nivel_medio_topicos: Math.round((disc.nivel_medio_topicos || 0) * 10) / 10
-        })
-      }
-    } else {
-      // ✅ ESTRATÉGIA 2: Sem edital - buscar via ciclos_estudo (disciplinas do plano)
-      const { results: disciplinasPlano } = await DB.prepare(`
-        SELECT DISTINCT 
-          c.disciplina_id,
-          d.nome as disciplina_nome,
-          d.area,
-          COALESCE(ud.peso, 1) as peso,
-          ud.nivel_dominio
-        FROM ciclos_estudo c
-        JOIN disciplinas d ON c.disciplina_id = d.id
-        LEFT JOIN user_disciplinas ud ON ud.disciplina_id = c.disciplina_id AND ud.user_id = ?
-        WHERE c.plano_id = ?
-      `).bind(plano.user_id, plano_id).all() as any[]
-
-      console.log(`📚 Encontradas ${disciplinasPlano.length} disciplinas no plano ${plano_id} (via ciclos_estudo)`)
-
-      for (const disc of disciplinasPlano) {
-        // Para planos sem edital, considerar apenas nível de domínio da disciplina
-        disciplinasDetalhes.push({
-          disciplina_id: disc.disciplina_id,
-          nome: disc.disciplina_nome,
-          area: disc.area,
-          peso: disc.peso || 1,
-          total_topicos: 0,
-          topicos_estudados: 0,
-          progresso_percentual: (disc.nivel_dominio || 0) * 10, // nível 0-10 -> porcentagem
-          nivel_dominio: disc.nivel_dominio || 0,
-          nivel_medio_topicos: 0
-        })
-      }
+      disciplinasDetalhes.push({
+        disciplina_id: disc.disciplina_id,
+        nome: disc.disciplina_nome,
+        area: disc.area,
+        peso,
+        total_topicos: topicos,
+        topicos_estudados: estudados,
+        progresso_percentual: topicos > 0 ? Math.round((estudados / topicos) * 100) : 0,
+        nivel_dominio: disc.nivel_dominio || 0,
+        nivel_medio_topicos: 0
+      })
     }
 
     if (disciplinasDetalhes.length === 0) {
@@ -9578,6 +9525,45 @@ app.post('/api/metas/concluir', async (c) => {
 
   console.log(`🎯 Concluindo meta ${meta_id}, tipo: ${tipo_meta}, tempo: ${tempo_real_minutos}min`)
 
+  // ✅ FUNÇÃO AUXILIAR: Atualizar progresso do tópico
+  async function atualizarProgressoTopico(DB: any, user_id: number, topico_id: number) {
+    if (!topico_id) return
+    
+    console.log(`📊 Atualizando progresso do tópico ${topico_id} para user ${user_id}`)
+    
+    try {
+      // Verificar se já existe registro de progresso
+      const progresso = await DB.prepare(`
+        SELECT id, nivel_dominio, vezes_estudado FROM user_topicos_progresso 
+        WHERE user_id = ? AND topico_id = ?
+      `).bind(user_id, topico_id).first()
+      
+      if (progresso) {
+        // Incrementar nível de domínio (máximo 10) e vezes estudado
+        const novoNivel = Math.min((progresso.nivel_dominio || 0) + 2, 10)
+        const novasVezes = (progresso.vezes_estudado || 0) + 1
+        
+        await DB.prepare(`
+          UPDATE user_topicos_progresso 
+          SET nivel_dominio = ?, vezes_estudado = ?, ultima_vez = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).bind(novoNivel, novasVezes, progresso.id).run()
+        
+        console.log(`✅ Progresso atualizado: nivel ${progresso.nivel_dominio} -> ${novoNivel}, vezes: ${novasVezes}`)
+      } else {
+        // Criar novo registro com nível inicial 2 (estudado 1x)
+        await DB.prepare(`
+          INSERT INTO user_topicos_progresso (user_id, topico_id, nivel_dominio, vezes_estudado, ultima_vez)
+          VALUES (?, ?, 2, 1, CURRENT_TIMESTAMP)
+        `).bind(user_id, topico_id).run()
+        
+        console.log(`✅ Novo progresso criado para tópico ${topico_id}`)
+      }
+    } catch (error) {
+      console.error(`❌ Erro ao atualizar progresso do tópico ${topico_id}:`, error)
+    }
+  }
+
   // Tentar atualizar em metas_semana primeiro (fonte principal)
   const resultSemana = await DB.prepare(`
     UPDATE metas_semana 
@@ -9588,13 +9574,27 @@ app.post('/api/metas/concluir', async (c) => {
   if (resultSemana.meta.changes > 0) {
     console.log('✅ Meta semanal concluída')
     
-    // Buscar dados para atualizar histórico
+    // Buscar dados da meta para atualizar histórico E progresso do tópico
     const metaSemana = await DB.prepare(`
-      SELECT user_id, data FROM metas_semana WHERE id = ?
-    `).bind(meta_id).first()
+      SELECT user_id, data, topicos_sugeridos FROM metas_semana WHERE id = ?
+    `).bind(meta_id).first() as any
     
     if (metaSemana) {
       await atualizarHistoricoDia(DB, metaSemana.user_id, metaSemana.data)
+      
+      // ✅ NOVO: Atualizar progresso do tópico
+      if (metaSemana.topicos_sugeridos) {
+        try {
+          const topicos = JSON.parse(metaSemana.topicos_sugeridos)
+          for (const topico of topicos) {
+            if (topico.id) {
+              await atualizarProgressoTopico(DB, metaSemana.user_id, topico.id)
+            }
+          }
+        } catch (e) {
+          console.error('❌ Erro ao parsear topicos_sugeridos:', e)
+        }
+      }
     }
     
     return c.json({ success: true, tipo: 'semana' })
@@ -9607,10 +9607,24 @@ app.post('/api/metas/concluir', async (c) => {
     WHERE id = ?
   `).bind(tempo_real_minutos, meta_id).run()
 
-  // Atualizar histórico do dia
-  const meta = await DB.prepare('SELECT user_id, data FROM metas_diarias WHERE id = ?').bind(meta_id).first()
+  // Atualizar histórico do dia E progresso do tópico
+  const meta = await DB.prepare('SELECT user_id, data, topicos_sugeridos FROM metas_diarias WHERE id = ?').bind(meta_id).first() as any
   if (meta) {
     await atualizarHistoricoDia(DB, meta.user_id, meta.data)
+    
+    // ✅ NOVO: Atualizar progresso do tópico
+    if (meta.topicos_sugeridos) {
+      try {
+        const topicos = JSON.parse(meta.topicos_sugeridos)
+        for (const topico of topicos) {
+          if (topico.id) {
+            await atualizarProgressoTopico(DB, meta.user_id, topico.id)
+          }
+        }
+      } catch (e) {
+        console.error('❌ Erro ao parsear topicos_sugeridos:', e)
+      }
+    }
   }
 
   return c.json({ success: true, tipo: 'diaria' })
@@ -10981,12 +10995,12 @@ app.put('/api/metas/concluir/:meta_id', async (c) => {
   console.log('✅ Concluindo meta:', { meta_id, tempo_real_minutos })
 
   try {
-    // 1. Buscar dados da meta
+    // 1. Buscar dados da meta COMPLETOS (incluindo tópicos)
     const meta = await DB.prepare(`
-      SELECT user_id, data, disciplina_id 
+      SELECT user_id, data, disciplina_id, topicos_sugeridos, semana_id
       FROM metas_semana 
       WHERE id = ?
-    `).bind(meta_id).first()
+    `).bind(meta_id).first() as any
     
     if (!meta) {
       return c.json({ error: 'Meta não encontrada' }, 404)
@@ -10999,7 +11013,49 @@ app.put('/api/metas/concluir/:meta_id', async (c) => {
       WHERE id = ?
     `).bind(tempo_real_minutos, meta_id).run()
 
-    // 3. Criar/atualizar registro no historico_estudos (para estatísticas)
+    // 3. ✅ CORREÇÃO CRÍTICA: Atualizar progresso dos tópicos da meta
+    if (meta.topicos_sugeridos) {
+      try {
+        const topicos = JSON.parse(meta.topicos_sugeridos)
+        console.log(`📊 Atualizando progresso de ${topicos.length} tópico(s)`)
+        
+        for (const topico of topicos) {
+          const topicoId = topico.id
+          if (!topicoId) continue
+          
+          // Verificar se já existe registro de progresso
+          const existingProgress = await DB.prepare(`
+            SELECT id, vezes_estudado, nivel_dominio 
+            FROM user_topicos_progresso 
+            WHERE user_id = ? AND topico_id = ?
+          `).bind(meta.user_id, topicoId).first() as any
+          
+          if (existingProgress) {
+            // Incrementar vezes_estudado e aumentar nivel_dominio
+            const novoNivel = Math.min(10, (existingProgress.nivel_dominio || 0) + 2)
+            await DB.prepare(`
+              UPDATE user_topicos_progresso 
+              SET vezes_estudado = vezes_estudado + 1, 
+                  nivel_dominio = ?, 
+                  ultima_vez = CURRENT_TIMESTAMP
+              WHERE user_id = ? AND topico_id = ?
+            `).bind(novoNivel, meta.user_id, topicoId).run()
+            console.log(`  ✅ Tópico ${topicoId}: vezes+1, nivel ${existingProgress.nivel_dominio} → ${novoNivel}`)
+          } else {
+            // Criar novo registro com nivel 2 (primeira vez estudado)
+            await DB.prepare(`
+              INSERT INTO user_topicos_progresso (user_id, topico_id, vezes_estudado, nivel_dominio, ultima_vez)
+              VALUES (?, ?, 1, 2, CURRENT_TIMESTAMP)
+            `).bind(meta.user_id, topicoId).run()
+            console.log(`  ✅ Tópico ${topicoId}: novo registro (nivel 2)`)
+          }
+        }
+      } catch (parseError) {
+        console.warn('⚠️ Não foi possível parsear topicos_sugeridos:', parseError)
+      }
+    }
+
+    // 4. Criar/atualizar registro no historico_estudos (para estatísticas)
     const dataFormatada = meta.data // Já está no formato YYYY-MM-DD
     
     // Verificar se já existe registro para esse dia
@@ -11026,7 +11082,7 @@ app.put('/api/metas/concluir/:meta_id', async (c) => {
       `).bind(meta.user_id, dataFormatada, tempo_real_minutos).run()
     }
 
-    console.log('✅ Meta concluída + Histórico atualizado')
+    console.log('✅ Meta concluída + Progresso tópicos + Histórico atualizado')
     return c.json({ success: true })
 
   } catch (error) {

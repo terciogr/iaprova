@@ -16419,12 +16419,12 @@ async function carregarPlanos() {
           </div>
           <div class="flex flex-col gap-2 ml-4">
             ${!plano.ativo ? `
-              <button onclick="ativarPlano(${plano.id})" 
+              <button onclick="window.ativarPlano(${plano.id})" 
                 class="bg-[#0D1F4D] text-white px-3 py-1 rounded text-sm hover:bg-[#0A1839] transition whitespace-nowrap">
                 <i class="fas fa-check mr-1"></i>Ativar
               </button>
             ` : ''}
-            <button onclick="excluirPlano(${plano.id}, '${(plano.nome || 'este plano').replace(/'/g, "\\'")}')" 
+            <button onclick="window.excluirPlano(${plano.id}, '${(plano.nome || 'este plano').replace(/'/g, "\\'")}')" 
               class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition whitespace-nowrap">
               <i class="fas fa-trash mr-1"></i>Excluir
             </button>
@@ -16484,7 +16484,7 @@ window.ativarPlano = async function(planoId) {
   }
 }
 
-async function excluirPlano(planoId, nomePlano) {
+window.excluirPlano = async function(planoId, nomePlano) {
   // Mostrar modal de confirmação
   mostrarModalConfirmarExclusao(planoId, nomePlano);
 }
