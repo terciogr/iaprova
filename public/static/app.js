@@ -1075,9 +1075,9 @@ function createUnifiedFAB() {
         </span>
         <button 
           onclick="toggleChat(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          class="w-12 h-12 bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Conversar com Lilu">
-          <i class="fas fa-robot text-lg"></i>
+          <i class="fas fa-headset text-lg"></i>
         </button>
       </div>
       
@@ -10918,8 +10918,8 @@ window.abrirConfiguracoes = function() {
         // Assistente Lilu
         '<button onclick="toggleChat()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
           '<div class="flex items-start gap-4">' +
-            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
-              '<i class="fas fa-robot text-white text-lg"></i>' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+              '<i class="fas fa-headset text-white text-lg"></i>' +
             '</div>' +
             '<div class="flex-1 min-w-0">' +
               '<h3 class="font-semibold ' + themes[currentTheme].text + ' mb-1">Assistente Lilu</h3>' +
@@ -15808,8 +15808,8 @@ function renderChatButton() {
       <!-- Header -->
       <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-4 flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg overflow-hidden">
-            <span class="text-2xl">👩‍🏫</span>
+          <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg">
+            <i class="fas fa-headset text-[#122D6A] text-xl"></i>
           </div>
           <div>
             <h3 class="font-bold text-lg">Lilu</h3>
