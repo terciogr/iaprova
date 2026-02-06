@@ -3779,97 +3779,21 @@ app.post('/api/editais/upload', async (c) => {
         textoCompleto = await file.text()
         console.log(`✅ TXT lido: ${textoCompleto.length} caracteres`)
       } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-        // ✅ PDF: Extrair texto diretamente via Gemini (para PDFs até 15MB)
+        // ❌ PDF NÃO É SUPORTADO - Direcionar para conversão
         const arrayBuffer = await file.arrayBuffer()
         const fileSizeMB = arrayBuffer.byteLength / (1024 * 1024)
         
-        console.log(`📄 PDF detectado: ${file.name} (${fileSizeMB.toFixed(2)} MB)`)
+        console.log(`📄 PDF detectado: ${file.name} (${fileSizeMB.toFixed(2)} MB) - Rejeitando e direcionando para conversão`)
         
-        // ⚠️ PDFs muito grandes (>15MB): Recomendar conversão para TXT
-        if (fileSizeMB > 15) {
-          console.warn(`⚠️ PDF muito grande (${fileSizeMB.toFixed(1)}MB). Recomendando conversão para TXT.`)
-          
-          return c.json({
-            error: `PDF muito grande (${fileSizeMB.toFixed(1)}MB). O limite para processamento automático é 15MB.`,
-            errorType: 'FILE_TOO_LARGE',
-            suggestion: `Opções:\n1. ✅ RECOMENDADO: Converta o PDF para TXT em https://smallpdf.com/pdf-to-text\n2. Use um arquivo XLSX com o cronograma\n3. Divida o PDF em partes menores`,
-            fileSizeMB: fileSizeMB.toFixed(2),
-            maxSizeMB: 15
-          }, 413)
-        }
-        
-        // ✅ NOVO: Extrair texto do PDF diretamente durante o upload
-        console.log(`🚀 Extraindo texto do PDF via Gemini API...`)
-        try {
-          // Converter PDF para base64
-          const bytes = new Uint8Array(arrayBuffer)
-          let binary = ''
-          const chunkSize = 8192
-          for (let i = 0; i < bytes.length; i += chunkSize) {
-            const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
-            binary += String.fromCharCode.apply(null, Array.from(chunk))
-          }
-          const base64PDF = btoa(binary)
-          
-          console.log(`📄 PDF convertido para base64: ${base64PDF.length} caracteres`)
-          
-          // Chamar Gemini para extrair texto
-          const extractionResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [
-                    { text: `EXTRAIA O TEXTO COMPLETO DESTE EDITAL DE CONCURSO PÚBLICO.
-
-FOCO: Extraia principalmente o CONTEÚDO PROGRAMÁTICO (geralmente no Anexo II ou III).
-
-INSTRUÇÕES:
-1. Transcreva LITERALMENTE todo o conteúdo programático
-2. Inclua TODAS as disciplinas e seus tópicos
-3. Mantenha a estrutura original (títulos, itens, subitens)
-4. NÃO resuma, NÃO comente - apenas transcreva
-
-FORMATO:
-Retorne o texto extraído do conteúdo programático completo.` },
-                    { inline_data: { mime_type: 'application/pdf', data: base64PDF } }
-                  ]
-                }],
-                generationConfig: {
-                  temperature: 0.1,
-                  maxOutputTokens: 65536
-                }
-              })
-            }
-          )
-          
-          if (extractionResponse.ok) {
-            const extractionData = await extractionResponse.json() as any
-            const textoExtraido = extractionData?.candidates?.[0]?.content?.parts?.[0]?.text
-            
-            if (textoExtraido && textoExtraido.length > 500) {
-              textoCompleto = textoExtraido
-              console.log(`✅ Texto extraído do PDF: ${textoCompleto.length} caracteres`)
-            } else {
-              console.warn(`⚠️ Texto extraído muito curto (${textoExtraido?.length || 0} chars), usando placeholder`)
-              textoCompleto = `[PDF COM EXTRAÇÃO PARCIAL]\n\nArquivo: ${file.name}\nTamanho: ${fileSizeMB.toFixed(2)}MB\nTexto extraído: ${textoExtraido?.substring(0, 500) || 'Nenhum'}\n\nPor favor, converta o PDF para TXT em https://smallpdf.com/pdf-to-text`
-            }
-          } else {
-            const errorStatus = extractionResponse.status
-            console.error(`❌ Erro na extração: HTTP ${errorStatus}`)
-            
-            if (errorStatus === 429) {
-              textoCompleto = `[RATE LIMIT]\n\nA API de IA está temporariamente sobrecarregada.\nPor favor, aguarde 2-3 minutos e tente novamente.\nOu converta o PDF para TXT em https://smallpdf.com/pdf-to-text`
-            } else {
-              textoCompleto = `[ERRO NA EXTRAÇÃO]\n\nArquivo: ${file.name}\nErro: HTTP ${errorStatus}\n\nPor favor, converta o PDF para TXT em https://smallpdf.com/pdf-to-text`
-            }
-          }
-        } catch (extractError) {
-          console.error(`❌ Erro ao extrair PDF:`, extractError)
-          textoCompleto = `[ERRO NA EXTRAÇÃO]\n\nArquivo: ${file.name}\nErro: ${extractError}\n\nPor favor, converta o PDF para TXT em https://smallpdf.com/pdf-to-text`
-        }
+        return c.json({
+          error: 'Arquivos PDF não são suportados diretamente.',
+          errorType: 'PDF_NOT_SUPPORTED',
+          suggestion: 'Por favor, converta seu PDF para TXT antes de anexar.',
+          converterUrl: 'https://convertio.co/pt/pdf-txt/',
+          converterUrl2: 'https://smallpdf.com/pdf-to-text',
+          fileName: file.name,
+          fileSizeMB: fileSizeMB.toFixed(2)
+        }, 415) // 415 = Unsupported Media Type
       } else {
         console.warn(`⚠️ Arquivo ${file.name} não é TXT, PDF nem XLSX. Será ignorado.`)
         textoCompleto = ''
