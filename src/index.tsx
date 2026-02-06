@@ -8575,6 +8575,7 @@ app.get('/api/planos/list/:user_id', async (c) => {
   const user_id = c.req.param('user_id')
 
   try {
+    // ✅ CORREÇÃO: Buscar edital_id via JOIN com editais (nome_concurso)
     const { results: planos } = await DB.prepare(`
       SELECT 
         p.*,
@@ -8582,11 +8583,13 @@ app.get('/api/planos/list/:user_id', async (c) => {
         i.concurso_nome,
         i.area_geral,
         i.tempo_disponivel_dia,
+        e.id as edital_id,
         COUNT(DISTINCT ce.disciplina_id) as total_disciplinas,
         COUNT(DISTINCT ms.id) as total_metas,
         SUM(CASE WHEN ms.concluida = 1 THEN 1 ELSE 0 END) as metas_concluidas
       FROM planos_estudo p
       LEFT JOIN interviews i ON p.interview_id = i.id
+      LEFT JOIN editais e ON e.user_id = p.user_id AND e.nome_concurso = i.concurso_nome
       LEFT JOIN ciclos_estudo ce ON p.id = ce.plano_id
       LEFT JOIN semanas_estudo se ON p.id = se.plano_id
       LEFT JOIN metas_semana ms ON se.id = ms.semana_id
@@ -8597,36 +8600,59 @@ app.get('/api/planos/list/:user_id', async (c) => {
 
     // Para cada plano, contar tópicos das disciplinas do plano
     const planosComTopicos = await Promise.all(planos.map(async (p: any) => {
-      // Buscar IDs das disciplinas do plano via ciclos_estudo
-      const { results: disciplinasPlano } = await DB.prepare(`
-        SELECT DISTINCT disciplina_id FROM ciclos_estudo WHERE plano_id = ?
-      `).bind(p.id).all() as any
-      
-      const disciplinaIds = disciplinasPlano.map((d: any) => d.disciplina_id)
-      
       let totalTopicos = 0
       let topicosEstudados = 0
       
-      if (disciplinaIds.length > 0) {
-        // Contar tópicos das disciplinas do plano
-        const placeholders = disciplinaIds.map(() => '?').join(',')
-        
+      // ✅ CORREÇÃO: Buscar tópicos via edital vinculado ao plano (interview)
+      if (p.edital_id) {
+        // Contar tópicos do edital específico deste plano
         const topicosResult = await DB.prepare(`
-          SELECT COUNT(*) as total FROM topicos_edital 
-          WHERE user_id = ? AND disciplina_id IN (${placeholders})
-        `).bind(user_id, ...disciplinaIds).first() as any
+          SELECT COUNT(*) as total 
+          FROM edital_topicos et
+          INNER JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id
+          WHERE ed.edital_id = ?
+        `).bind(p.edital_id).first() as any
         
         totalTopicos = topicosResult?.total || 0
         
         // Contar tópicos estudados (nivel_dominio = 10 significa concluído)
-        // user_topicos_progresso só tem topico_id, precisa JOIN com topicos_edital
+        // Buscar via edital_topicos -> user_topicos_progresso
         const topicosEstudadosResult = await DB.prepare(`
-          SELECT COUNT(*) as total FROM user_topicos_progresso utp
-          INNER JOIN topicos_edital te ON utp.topico_id = te.id
-          WHERE utp.user_id = ? AND te.disciplina_id IN (${placeholders}) AND utp.nivel_dominio = 10
-        `).bind(user_id, ...disciplinaIds).first() as any
+          SELECT COUNT(*) as total 
+          FROM user_topicos_progresso utp
+          INNER JOIN edital_topicos et ON utp.topico_id = et.id
+          INNER JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id
+          WHERE ed.edital_id = ? AND utp.user_id = ? AND utp.nivel_dominio = 10
+        `).bind(p.edital_id, user_id).first() as any
         
         topicosEstudados = topicosEstudadosResult?.total || 0
+      } else {
+        // Fallback: se não tem edital, usar ciclos_estudo para buscar disciplinas
+        const { results: disciplinasPlano } = await DB.prepare(`
+          SELECT DISTINCT disciplina_id FROM ciclos_estudo WHERE plano_id = ?
+        `).bind(p.id).all() as any
+        
+        const disciplinaIds = disciplinasPlano.map((d: any) => d.disciplina_id)
+        
+        if (disciplinaIds.length > 0) {
+          const placeholders = disciplinaIds.map(() => '?').join(',')
+          
+          // Buscar de topicos_edital com user_id
+          const topicosResult = await DB.prepare(`
+            SELECT COUNT(*) as total FROM topicos_edital 
+            WHERE user_id = ? AND disciplina_id IN (${placeholders})
+          `).bind(user_id, ...disciplinaIds).first() as any
+          
+          totalTopicos = topicosResult?.total || 0
+          
+          const topicosEstudadosResult = await DB.prepare(`
+            SELECT COUNT(*) as total FROM user_topicos_progresso utp
+            INNER JOIN topicos_edital te ON utp.topico_id = te.id
+            WHERE utp.user_id = ? AND te.disciplina_id IN (${placeholders}) AND utp.nivel_dominio = 10
+          `).bind(user_id, ...disciplinaIds).first() as any
+          
+          topicosEstudados = topicosEstudadosResult?.total || 0
+        }
       }
       
       // Calcular progresso percentual do edital
@@ -8998,16 +9024,20 @@ app.get('/api/planos/:plano_id/analise-viabilidade', async (c) => {
 
 // ============== PROGRESSO GERAL DO EDITAL/PLANO ==============
 // Calcula o progresso geral considerando tópicos estudados e pesos das disciplinas
+// ✅ CORRIGIDO: Agora busca disciplinas específicas do plano, não todas do usuário
 app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
   const { DB } = c.env
   const plano_id = c.req.param('plano_id')
 
   try {
-    // Buscar plano e tipo (concurso específico ou área geral)
+    // Buscar plano com informações do edital vinculado
+    // ✅ CORREÇÃO: Vincular editais via nome_concurso (não interview_id que não existe)
     const plano = await DB.prepare(`
-      SELECT p.*, i.objetivo_tipo, i.concurso_nome, i.area_geral
+      SELECT p.*, i.objetivo_tipo, i.concurso_nome, i.area_geral,
+             e.id as edital_id
       FROM planos_estudo p
       JOIN interviews i ON p.interview_id = i.id
+      LEFT JOIN editais e ON e.user_id = p.user_id AND e.nome_concurso = i.concurso_nome
       WHERE p.id = ?
     `).bind(plano_id).first() as any
 
@@ -9015,29 +9045,91 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
       return c.json({ error: 'Plano não encontrado' }, 404)
     }
 
-    // Buscar disciplinas do plano com progresso de tópicos
-    // ✅ CORRIGIDO: Conta apenas nivel_dominio = 10 como concluído (alinhado com /api/planos/list)
-    const { results: disciplinasProgresso } = await DB.prepare(`
-      SELECT 
-        ud.disciplina_id,
-        ud.nivel_dominio,
-        COALESCE(ud.peso, ed.peso, 1) as peso,
-        d.nome as disciplina_nome,
-        d.area,
-        COUNT(DISTINCT te.id) as total_topicos,
-        SUM(CASE WHEN COALESCE(utp.nivel_dominio, 0) = 10 THEN 1 ELSE 0 END) as topicos_estudados,
-        COALESCE(AVG(utp.nivel_dominio), 0) as nivel_medio_topicos
-      FROM user_disciplinas ud
-      JOIN disciplinas d ON ud.disciplina_id = d.id
-      LEFT JOIN edital_disciplinas ed ON ed.disciplina_id = ud.disciplina_id
-      LEFT JOIN topicos_edital te ON te.disciplina_id = ud.disciplina_id AND te.user_id = ud.user_id
-      LEFT JOIN user_topicos_progresso utp ON te.id = utp.topico_id AND utp.user_id = ud.user_id
-      WHERE ud.user_id = ?
-      GROUP BY ud.disciplina_id, ud.nivel_dominio, ud.peso, d.nome, d.area
-    `).bind(plano.user_id).all() as any[]
+    console.log(`📊 Calculando progresso do plano ${plano_id}, edital_id: ${plano.edital_id || 'nenhum'}`)
 
-    if (disciplinasProgresso.length === 0) {
+    let totalTopicos = 0
+    let topicosEstudados = 0
+    const disciplinasDetalhes: any[] = []
+
+    // ✅ ESTRATÉGIA 1: Se tem edital vinculado, usar edital_topicos
+    if (plano.edital_id) {
+      // Buscar disciplinas e tópicos do edital específico deste plano
+      const { results: disciplinasEdital } = await DB.prepare(`
+        SELECT 
+          ed.id as edital_disciplina_id,
+          ed.disciplina_id,
+          d.nome as disciplina_nome,
+          d.area,
+          ed.peso,
+          COUNT(DISTINCT et.id) as total_topicos,
+          SUM(CASE WHEN COALESCE(utp.nivel_dominio, 0) = 10 THEN 1 ELSE 0 END) as topicos_estudados,
+          COALESCE(AVG(utp.nivel_dominio), 0) as nivel_medio_topicos
+        FROM edital_disciplinas ed
+        JOIN disciplinas d ON ed.disciplina_id = d.id
+        LEFT JOIN edital_topicos et ON et.edital_disciplina_id = ed.id
+        LEFT JOIN user_topicos_progresso utp ON et.id = utp.topico_id AND utp.user_id = ?
+        WHERE ed.edital_id = ?
+        GROUP BY ed.id, ed.disciplina_id, d.nome, d.area, ed.peso
+      `).bind(plano.user_id, plano.edital_id).all() as any[]
+
+      console.log(`📚 Encontradas ${disciplinasEdital.length} disciplinas no edital ${plano.edital_id}`)
+
+      for (const disc of disciplinasEdital) {
+        const peso = disc.peso || 1
+        const topicos = disc.total_topicos || 0
+        const estudados = disc.topicos_estudados || 0
+        
+        totalTopicos += topicos
+        topicosEstudados += estudados
+
+        disciplinasDetalhes.push({
+          disciplina_id: disc.disciplina_id,
+          nome: disc.disciplina_nome,
+          area: disc.area,
+          peso,
+          total_topicos: topicos,
+          topicos_estudados: estudados,
+          progresso_percentual: topicos > 0 ? Math.round((estudados / topicos) * 100) : 0,
+          nivel_dominio: disc.nivel_dominio || 0,
+          nivel_medio_topicos: Math.round((disc.nivel_medio_topicos || 0) * 10) / 10
+        })
+      }
+    } else {
+      // ✅ ESTRATÉGIA 2: Sem edital - buscar via ciclos_estudo (disciplinas do plano)
+      const { results: disciplinasPlano } = await DB.prepare(`
+        SELECT DISTINCT 
+          c.disciplina_id,
+          d.nome as disciplina_nome,
+          d.area,
+          COALESCE(ud.peso, 1) as peso,
+          ud.nivel_dominio
+        FROM ciclos_estudo c
+        JOIN disciplinas d ON c.disciplina_id = d.id
+        LEFT JOIN user_disciplinas ud ON ud.disciplina_id = c.disciplina_id AND ud.user_id = ?
+        WHERE c.plano_id = ?
+      `).bind(plano.user_id, plano_id).all() as any[]
+
+      console.log(`📚 Encontradas ${disciplinasPlano.length} disciplinas no plano ${plano_id} (via ciclos_estudo)`)
+
+      for (const disc of disciplinasPlano) {
+        // Para planos sem edital, considerar apenas nível de domínio da disciplina
+        disciplinasDetalhes.push({
+          disciplina_id: disc.disciplina_id,
+          nome: disc.disciplina_nome,
+          area: disc.area,
+          peso: disc.peso || 1,
+          total_topicos: 0,
+          topicos_estudados: 0,
+          progresso_percentual: (disc.nivel_dominio || 0) * 10, // nível 0-10 -> porcentagem
+          nivel_dominio: disc.nivel_dominio || 0,
+          nivel_medio_topicos: 0
+        })
+      }
+    }
+
+    if (disciplinasDetalhes.length === 0) {
       return c.json({
+        plano_id: parseInt(plano_id),
         progresso_percentual: 0,
         tipo: plano.objetivo_tipo === 'concurso_especifico' ? 'edital' : 'geral',
         titulo: plano.objetivo_tipo === 'concurso_especifico' ? plano.concurso_nome : 'Progresso Geral',
@@ -9050,35 +9142,11 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
     // Calcular progresso ponderado por peso das disciplinas
     let progressoPonderado = 0
     let pesoTotal = 0
-    let totalTopicos = 0
-    let topicosEstudados = 0
-    const disciplinasDetalhes: any[] = []
 
-    for (const disc of disciplinasProgresso) {
+    for (const disc of disciplinasDetalhes) {
       const peso = disc.peso || 1
-      const topicos = disc.total_topicos || 0
-      const estudados = disc.topicos_estudados || 0
-      
-      // Progresso da disciplina (0-100%)
-      const progressoDisc = topicos > 0 ? (estudados / topicos) * 100 : 0
-      
-      // Ponderar pelo peso
-      progressoPonderado += progressoDisc * peso
+      progressoPonderado += disc.progresso_percentual * peso
       pesoTotal += peso
-      totalTopicos += topicos
-      topicosEstudados += estudados
-
-      disciplinasDetalhes.push({
-        disciplina_id: disc.disciplina_id,
-        nome: disc.disciplina_nome,
-        area: disc.area,
-        peso,
-        total_topicos: topicos,
-        topicos_estudados: estudados,
-        progresso_percentual: Math.round(progressoDisc),
-        nivel_dominio: disc.nivel_dominio || 0,
-        nivel_medio_topicos: Math.round((disc.nivel_medio_topicos || 0) * 10) / 10
-      })
     }
 
     // Calcular progresso final ponderado
