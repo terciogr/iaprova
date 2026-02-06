@@ -5544,21 +5544,14 @@ app.put('/api/editais/:id/disciplinas', async (c) => {
       
       // Inserir tópicos
       if (disc.topicos && disc.topicos.length > 0) {
-        // Limpar tópicos antigos do usuário para esta disciplina
-        await DB.prepare(`DELETE FROM topicos_edital WHERE disciplina_id = ? AND user_id = ?`).bind(disciplina_id_real, edital.user_id).run()
-        
         for (let j = 0; j < disc.topicos.length; j++) {
           const topicoNome = typeof disc.topicos[j] === 'string' ? disc.topicos[j] : disc.topicos[j].nome
           
+          // Inserir apenas em edital_topicos (tabela principal)
           await DB.prepare(`
             INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem)
             VALUES (?, ?, ?)
           `).bind(edital_disciplina_id, topicoNome, j + 1).run()
-          
-          await DB.prepare(`
-            INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `).bind(disciplina_id_real, topicoNome, 'Conteúdo Programático', j + 1, disc.peso || 1, edital.user_id).run()
         }
       }
       
@@ -5573,9 +5566,10 @@ app.put('/api/editais/:id/disciplinas', async (c) => {
       message: 'Disciplinas atualizadas com sucesso!',
       total_disciplinas: disciplinas.length
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao atualizar disciplinas:', error)
-    return c.json({ error: 'Erro ao atualizar disciplinas' }, 500)
+    console.error('Detalhes:', error?.message, error?.cause)
+    return c.json({ error: 'Erro ao atualizar disciplinas', details: error?.message }, 500)
   }
 })
 
