@@ -3299,7 +3299,7 @@ async function processarEditalAntesDeStep2() {
             <div class="flex items-center gap-3 p-3 rounded ${etapaAtual >= 1 ? 'bg-[#E8EDF5]' : ''}">
               ${iconeEtapa(1)}
               <span class="${corEtapa(1)}">
-                1. ${temPDF ? '📄 Extraindo texto do PDF' : '📤 Enviando arquivo'}
+                1. 📤 Enviando arquivo
               </span>
             </div>
             <div class="flex items-center gap-3 p-3 rounded ${etapaAtual >= 2 ? 'bg-[#E8EDF5]' : ''}">
@@ -4988,36 +4988,75 @@ async function renderEntrevistaStep3() {
               </div>
             `).join('')}
             
-            <!-- Seção de Disciplinas Personalizadas -->
-            <div class="${themes[currentTheme].alert} border-2 rounded-lg p-6 mt-8">
-              <h4 class="font-semibold text-blue-900 mb-2 flex items-center">
+            <!-- Seção de Disciplinas Personalizadas - Responsiva -->
+            <div class="${themes[currentTheme].alert} border-2 rounded-lg p-3 sm:p-6 mt-6 sm:mt-8">
+              <h4 class="font-semibold text-blue-900 mb-2 flex items-center text-sm sm:text-base">
                 <i class="fas fa-plus-circle mr-2"></i>
-                📚 Adicionar Disciplinas Personalizadas
+                📚 Adicionar Disciplinas
               </h4>
-              <p class="text-sm text-[#122D6A] mb-4">
-                Seu concurso/edital tem disciplinas específicas que não estão listadas acima? 
-                <br>Adicione-as aqui (ex: "Conhecimentos sobre o Piauí", "Legislação Municipal", "Estatuto do Servidor")
+              <p class="text-xs sm:text-sm text-[#122D6A] mb-3 sm:mb-4">
+                Adicione disciplinas que não estão listadas acima
               </p>
               
-              <div class="flex gap-2 mb-4">
+              <!-- Adicionar uma disciplina -->
+              <div class="flex flex-col sm:flex-row gap-2 mb-3">
                 <input 
                   type="text" 
                   id="nova-disciplina-input"
-                  placeholder="Nome da disciplina personalizada..."
-                  class="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#1A3A7F] focus:border-[#1A3A7F]"
+                  placeholder="Nome da disciplina..."
+                  class="flex-1 border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm focus:ring-2 focus:ring-[#1A3A7F] focus:border-[#1A3A7F]"
                   onkeypress="if(event.key==='Enter'){event.preventDefault();adicionarDisciplinaCustom();}"
                 >
                 <button 
                   type="button"
                   onclick="adicionarDisciplinaCustom()"
-                  class="bg-[#122D6A] text-white px-6 py-2 rounded-lg hover:bg-[#0D1F4D] font-medium flex items-center"
+                  class="bg-[#122D6A] text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-[#0D1F4D] font-medium flex items-center justify-center text-sm"
                 >
-                  <i class="fas fa-plus mr-2"></i> Adicionar
+                  <i class="fas fa-plus mr-1 sm:mr-2"></i> <span class="hidden sm:inline">Adicionar</span><span class="sm:hidden">+</span>
                 </button>
               </div>
               
+              <!-- Botão de importação em lote -->
+              <button 
+                type="button"
+                onclick="abrirImportacaoDisciplinasLote()"
+                class="w-full sm:w-auto mb-4 px-4 py-2 bg-gradient-to-r from-[#2A4A9F] to-[#1A3A7F] text-white rounded-lg hover:from-[#1A3A7F] hover:to-[#122D6A] font-medium flex items-center justify-center gap-2 text-xs sm:text-sm"
+              >
+                <i class="fas fa-file-import"></i>
+                Importar Disciplinas em Lote
+              </button>
+              
               <!-- Lista de disciplinas personalizadas -->
-              <div id="disciplinas-custom-list" class="space-y-2"></div>
+              <div id="disciplinas-custom-list" class="space-y-2">
+                <p class="text-xs text-gray-400 italic">Nenhuma disciplina personalizada adicionada ainda.</p>
+              </div>
+            </div>
+            
+            <!-- Seção de Importar Tópicos em Lote -->
+            <div class="bg-amber-50 border-2 border-amber-200 rounded-lg p-3 sm:p-6 mt-4">
+              <h4 class="font-semibold text-amber-900 mb-2 flex items-center text-sm sm:text-base">
+                <i class="fas fa-list-ul mr-2"></i>
+                📝 Importar Tópicos em Lote
+              </h4>
+              <p class="text-xs sm:text-sm text-amber-800 mb-3">
+                Selecione uma disciplina acima e importe todos os tópicos de uma vez
+              </p>
+              
+              <div class="flex flex-col sm:flex-row gap-2">
+                <select id="disciplina-para-topicos" class="flex-1 border-2 border-amber-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-amber-500">
+                  <option value="">-- Selecione uma disciplina --</option>
+                  ${disciplinasFiltradas.map(d => `<option value="${d.id}">${d.nome}</option>`).join('')}
+                </select>
+                <button 
+                  type="button"
+                  onclick="abrirImportacaoTopicosLote()"
+                  class="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 font-medium flex items-center justify-center gap-2 text-sm"
+                >
+                  <i class="fas fa-file-import"></i>
+                  <span class="hidden sm:inline">Importar Tópicos</span>
+                  <span class="sm:hidden">Importar</span>
+                </button>
+              </div>
             </div>
 
             <!-- Botões - Responsivos -->
@@ -5327,6 +5366,183 @@ Conhecimentos Específicos"></textarea>
       renderEntrevistaStep3();
     } else {
       showToast('Todas as ' + jaExistentes + ' disciplinas já existem na lista', 'info');
+    }
+  };
+  
+  // ✅ FUNÇÃO DE IMPORTAÇÃO EM LOTE DE TÓPICOS
+  window.abrirImportacaoTopicosLote = () => {
+    const selectDisciplina = document.getElementById('disciplina-para-topicos');
+    const disciplinaId = selectDisciplina ? parseInt(selectDisciplina.value) : null;
+    
+    if (!disciplinaId) {
+      showToast('Selecione uma disciplina primeiro', 'error');
+      return;
+    }
+    
+    const disciplina = disciplinasFiltradas.find(d => d.id === disciplinaId);
+    if (!disciplina) {
+      showToast('Disciplina não encontrada', 'error');
+      return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-importacao-topicos';
+    modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4';
+    modal.innerHTML = `
+      <div class="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-slide-up">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <i class="fas fa-list-ul text-xl"></i>
+            <div>
+              <h3 class="font-bold text-base sm:text-lg">Importar Tópicos em Lote</h3>
+              <p class="text-xs text-white/80">Para: ${disciplina.nome}</p>
+            </div>
+          </div>
+          <button onclick="fecharModalImportacaoTopicos()" class="p-2 hover:bg-white/10 rounded-lg transition">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <!-- Conteúdo -->
+        <div class="p-4 sm:p-6 overflow-y-auto max-h-[60vh]">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-list mr-1 text-amber-600"></i>
+              Cole os tópicos (um por linha)
+            </label>
+            <textarea id="topicos-lote-input" 
+              class="w-full h-48 p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+              placeholder="Interpretação de texto
+Coesão e coerência
+Ortografia oficial
+Acentuação gráfica
+Pontuação
+Classes de palavras
+Sintaxe da oração e do período"></textarea>
+          </div>
+          
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            <h4 class="font-semibold text-amber-800 text-sm mb-2">
+              <i class="fas fa-info-circle mr-1"></i>
+              Dicas:
+            </h4>
+            <ul class="text-xs text-amber-700 space-y-1">
+              <li>• Um tópico por linha</li>
+              <li>• Copie direto do edital</li>
+              <li>• Tópicos duplicados serão ignorados</li>
+              <li>• Tópicos existentes serão mantidos</li>
+            </ul>
+          </div>
+          
+          <div id="preview-topicos-lote" class="hidden">
+            <h4 class="font-medium text-gray-700 text-sm mb-2">
+              <i class="fas fa-eye mr-1"></i>
+              Preview (<span id="count-topicos-preview">0</span> tópicos):
+            </h4>
+            <div id="lista-topicos-preview" class="max-h-32 overflow-y-auto bg-gray-50 rounded-lg p-2 text-xs space-y-1"></div>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="p-4 bg-gray-50 border-t flex flex-col sm:flex-row gap-2 sm:justify-end">
+          <button onclick="fecharModalImportacaoTopicos()" 
+            class="w-full sm:w-auto px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition text-sm font-medium">
+            Cancelar
+          </button>
+          <button onclick="processarImportacaoTopicos(${disciplinaId})" 
+            class="w-full sm:w-auto px-4 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium flex items-center justify-center gap-2">
+            <i class="fas fa-plus-circle"></i>
+            Importar Tópicos
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Adicionar listener para preview em tempo real
+    document.getElementById('topicos-lote-input').addEventListener('input', atualizarPreviewTopicos);
+  };
+  
+  window.fecharModalImportacaoTopicos = () => {
+    const modal = document.getElementById('modal-importacao-topicos');
+    if (modal) modal.remove();
+  };
+  
+  window.atualizarPreviewTopicos = () => {
+    const input = document.getElementById('topicos-lote-input').value;
+    const preview = document.getElementById('preview-topicos-lote');
+    const lista = document.getElementById('lista-topicos-preview');
+    const count = document.getElementById('count-topicos-preview');
+    
+    const topicos = input.split('\n')
+      .map(t => t.trim())
+      .filter(t => t.length > 0 && t.length < 200)
+      .filter((t, i, arr) => arr.indexOf(t) === i);
+    
+    if (topicos.length > 0) {
+      preview.classList.remove('hidden');
+      count.textContent = topicos.length;
+      lista.innerHTML = topicos.map(t => `
+        <div class="flex items-center gap-2 py-1 px-2 bg-white rounded border">
+          <i class="fas fa-check-circle text-amber-500 text-xs"></i>
+          <span class="truncate">${t}</span>
+        </div>
+      `).join('');
+    } else {
+      preview.classList.add('hidden');
+    }
+  };
+  
+  window.processarImportacaoTopicos = (disciplinaId) => {
+    const input = document.getElementById('topicos-lote-input').value;
+    const topicos = input.split('\n')
+      .map(t => t.trim())
+      .filter(t => t.length > 0 && t.length < 200)
+      .filter((t, i, arr) => arr.indexOf(t) === i);
+    
+    if (topicos.length === 0) {
+      showToast('Digite pelo menos um tópico', 'error');
+      return;
+    }
+    
+    const disciplina = disciplinasFiltradas.find(d => d.id === disciplinaId);
+    if (!disciplina) {
+      showToast('Disciplina não encontrada', 'error');
+      return;
+    }
+    
+    // Inicializar array de tópicos se não existir
+    if (!disciplina.topicos) disciplina.topicos = [];
+    
+    let adicionados = 0;
+    let jaExistentes = 0;
+    
+    for (const topicoNome of topicos) {
+      // Verificar se já existe
+      const jaExiste = disciplina.topicos.some(t => 
+        (t.nome || t).toLowerCase() === topicoNome.toLowerCase()
+      );
+      
+      if (!jaExiste) {
+        disciplina.topicos.push({ nome: topicoNome, peso: 1 });
+        adicionados++;
+      } else {
+        jaExistentes++;
+      }
+    }
+    
+    // Atualizar contador de tópicos
+    disciplina.total_topicos = disciplina.topicos.length;
+    
+    fecharModalImportacaoTopicos();
+    
+    if (adicionados > 0) {
+      showToast('✅ ' + adicionados + ' tópico(s) importado(s) para ' + disciplina.nome + '!' + (jaExistentes > 0 ? ' (' + jaExistentes + ' já existiam)' : ''), 'success');
+      // Re-renderizar a tela
+      renderEntrevistaStep3();
+    } else {
+      showToast('Todos os ' + jaExistentes + ' tópicos já existem', 'info');
     }
   };
   
