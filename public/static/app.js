@@ -1100,7 +1100,7 @@ function createUnifiedFAB() {
           Simulados
         </span>
         <button 
-          onclick="abrirModalSimulado(); toggleFabMenu(); event.stopPropagation();"
+          onclick="window.renderDashboardSimulados(); toggleFabMenu(); event.stopPropagation();"
           class="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Simulados">
           <i class="fas fa-clipboard-list text-lg"></i>
@@ -3952,10 +3952,22 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
     let disciplinasEditadas = JSON.parse(JSON.stringify(disciplinas));
     
     const renderDisciplinaItem = (disc, index) => {
-      const topicosLista = (disc.topicos || []).slice(0, 5).map(t => 
-        typeof t === 'string' ? t : t.nome
-      ).join(', ');
-      const maisTopicos = disc.topicos?.length > 5 ? ` (+${disc.topicos.length - 5} mais)` : '';
+      const topicosHtml = (disc.topicos || []).map((t, tIndex) => {
+        const topicoNome = typeof t === 'string' ? t : t.nome;
+        return `
+          <div class="flex items-center gap-2 mb-1 group" data-topico-index="${tIndex}">
+            <input type="text" 
+                   value="${topicoNome.replace(/"/g, '&quot;')}" 
+                   onchange="atualizarTopicoRevisao(${index}, ${tIndex}, this.value)"
+                   class="flex-1 text-xs ${themes[currentTheme].text} ${themes[currentTheme].bg} border ${themes[currentTheme].border} rounded px-2 py-1"
+            />
+            <button onclick="removerTopicoRevisao(${index}, ${tIndex})" 
+                    class="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-1">
+              <i class="fas fa-times text-xs"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
       
       return `
         <div class="border ${themes[currentTheme].border} rounded-lg p-4 mb-3 ${themes[currentTheme].bgAlt}" data-index="${index}">
@@ -3968,12 +3980,12 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
               />
             </div>
             <button onclick="removerDisciplinaRevisao(${index})" 
-                    class="ml-2 text-red-500 hover:text-red-700 p-1">
+                    class="ml-2 text-red-500 hover:text-red-700 p-1" title="Remover disciplina">
               <i class="fas fa-trash"></i>
             </button>
           </div>
           
-          <div class="flex items-center gap-4 mb-2">
+          <div class="flex items-center gap-4 mb-3">
             <div class="flex items-center gap-2">
               <label class="text-sm ${themes[currentTheme].textSecondary}">Peso:</label>
               <select onchange="atualizarPesoDisciplinaRevisao(${index}, this.value)"
@@ -3987,11 +3999,29 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
               <span class="text-sm ${themes[currentTheme].textSecondary}">
                 <i class="fas fa-list-ul mr-1"></i> ${disc.topicos?.length || 0} tópicos
               </span>
+              <button onclick="toggleTopicosRevisao(${index})" 
+                      class="text-xs text-[#2A4A9F] hover:underline" id="toggleTopicos${index}">
+                <i class="fas fa-eye"></i> Ver/Editar
+              </button>
             </div>
           </div>
           
-          <div class="text-xs ${themes[currentTheme].textSecondary} truncate" title="${(disc.topicos || []).map(t => typeof t === 'string' ? t : t.nome).join(', ')}">
-            <strong>Tópicos:</strong> ${topicosLista}${maisTopicos}
+          <!-- Lista de tópicos (colapsável) -->
+          <div id="topicosContainer${index}" class="hidden">
+            <div class="border-t ${themes[currentTheme].border} pt-3 mt-2">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold ${themes[currentTheme].text}">
+                  <i class="fas fa-list-ol mr-1"></i> Tópicos da disciplina:
+                </span>
+                <button onclick="adicionarTopicoRevisao(${index})" 
+                        class="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition">
+                  <i class="fas fa-plus mr-1"></i> Novo Tópico
+                </button>
+              </div>
+              <div class="max-h-48 overflow-y-auto pr-2" id="listaTopicos${index}">
+                ${topicosHtml || '<p class="text-xs text-gray-400 italic">Nenhum tópico cadastrado</p>'}
+              </div>
+            </div>
           </div>
         </div>
       `;
@@ -4094,6 +4124,93 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
       
       // Scroll para o final
       const lista = document.getElementById('listaDisciplinasRevisao');
+      lista.scrollTop = lista.scrollHeight;
+    };
+    
+    // ✅ NOVO: Toggle para mostrar/esconder tópicos
+    window.toggleTopicosRevisao = (index) => {
+      const container = document.getElementById(`topicosContainer${index}`);
+      const btn = document.getElementById(`toggleTopicos${index}`);
+      if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        btn.innerHTML = '<i class="fas fa-eye-slash"></i> Ocultar';
+      } else {
+        container.classList.add('hidden');
+        btn.innerHTML = '<i class="fas fa-eye"></i> Ver/Editar';
+      }
+    };
+    
+    // ✅ NOVO: Atualizar nome do tópico
+    window.atualizarTopicoRevisao = (discIndex, topicoIndex, novoNome) => {
+      if (!disciplinasEditadas[discIndex].topicos) {
+        disciplinasEditadas[discIndex].topicos = [];
+      }
+      // Manter formato string ou objeto
+      if (typeof disciplinasEditadas[discIndex].topicos[topicoIndex] === 'string') {
+        disciplinasEditadas[discIndex].topicos[topicoIndex] = novoNome;
+      } else {
+        disciplinasEditadas[discIndex].topicos[topicoIndex].nome = novoNome;
+      }
+    };
+    
+    // ✅ NOVO: Remover tópico
+    window.removerTopicoRevisao = (discIndex, topicoIndex) => {
+      disciplinasEditadas[discIndex].topicos.splice(topicoIndex, 1);
+      // Re-renderizar apenas a lista de tópicos desta disciplina
+      const topicosHtml = (disciplinasEditadas[discIndex].topicos || []).map((t, tIndex) => {
+        const topicoNome = typeof t === 'string' ? t : t.nome;
+        return `
+          <div class="flex items-center gap-2 mb-1 group" data-topico-index="${tIndex}">
+            <input type="text" 
+                   value="${topicoNome.replace(/"/g, '&quot;')}" 
+                   onchange="atualizarTopicoRevisao(${discIndex}, ${tIndex}, this.value)"
+                   class="flex-1 text-xs ${themes[currentTheme].text} ${themes[currentTheme].bg} border ${themes[currentTheme].border} rounded px-2 py-1"
+            />
+            <button onclick="removerTopicoRevisao(${discIndex}, ${tIndex})" 
+                    class="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-1">
+              <i class="fas fa-times text-xs"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+      document.getElementById(`listaTopicos${discIndex}`).innerHTML = 
+        topicosHtml || '<p class="text-xs text-gray-400 italic">Nenhum tópico cadastrado</p>';
+      // Atualizar contador
+      document.getElementById('listaDisciplinasRevisao').querySelectorAll(`[data-index="${discIndex}"] .fa-list-ul`)[0].parentElement.innerHTML = 
+        `<i class="fas fa-list-ul mr-1"></i> ${disciplinasEditadas[discIndex].topicos?.length || 0} tópicos`;
+    };
+    
+    // ✅ NOVO: Adicionar tópico
+    window.adicionarTopicoRevisao = (discIndex) => {
+      if (!disciplinasEditadas[discIndex].topicos) {
+        disciplinasEditadas[discIndex].topicos = [];
+      }
+      disciplinasEditadas[discIndex].topicos.push('Novo Tópico');
+      // Re-renderizar a lista de tópicos
+      const topicosHtml = disciplinasEditadas[discIndex].topicos.map((t, tIndex) => {
+        const topicoNome = typeof t === 'string' ? t : t.nome;
+        return `
+          <div class="flex items-center gap-2 mb-1 group" data-topico-index="${tIndex}">
+            <input type="text" 
+                   value="${topicoNome.replace(/"/g, '&quot;')}" 
+                   onchange="atualizarTopicoRevisao(${discIndex}, ${tIndex}, this.value)"
+                   class="flex-1 text-xs ${themes[currentTheme].text} ${themes[currentTheme].bg} border ${themes[currentTheme].border} rounded px-2 py-1"
+            />
+            <button onclick="removerTopicoRevisao(${discIndex}, ${tIndex})" 
+                    class="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-1">
+              <i class="fas fa-times text-xs"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+      document.getElementById(`listaTopicos${discIndex}`).innerHTML = topicosHtml;
+      // Atualizar contador
+      const contadorEl = document.querySelector(`[data-index="${discIndex}"] .fa-list-ul`)?.parentElement;
+      if (contadorEl) {
+        contadorEl.innerHTML = `<i class="fas fa-list-ul mr-1"></i> ${disciplinasEditadas[discIndex].topicos.length} tópicos`;
+      }
+      // Scroll para o final da lista de tópicos
+      const lista = document.getElementById(`listaTopicos${discIndex}`);
       lista.scrollTop = lista.scrollHeight;
     };
     
