@@ -10811,13 +10811,28 @@ app.put('/api/metas/:meta_id/trocar-disciplina', async (c) => {
       return c.json({ error: 'Não é possível alterar uma meta já concluída' }, 400)
     }
 
-    // 2. Preparar tópicos sugeridos no formato esperado
+    // 2. ✅ NOVO: Apagar conteúdos gerados da disciplina anterior
+    console.log('🗑️ Apagando conteúdos gerados da meta:', meta_id)
+    
+    // Apagar de conteudo_estudo
+    const deleteConteudo = await DB.prepare(`
+      DELETE FROM conteudo_estudo WHERE meta_id = ?
+    `).bind(meta_id).run()
+    console.log(`  ✅ Deletados ${deleteConteudo.meta?.changes || 0} registros de conteudo_estudo`)
+    
+    // Apagar de materiais_salvos
+    const deleteMateriais = await DB.prepare(`
+      DELETE FROM materiais_salvos WHERE meta_id = ?
+    `).bind(meta_id).run()
+    console.log(`  ✅ Deletados ${deleteMateriais.meta?.changes || 0} registros de materiais_salvos`)
+
+    // 3. Preparar tópicos sugeridos no formato esperado
     const novoTopicosSugeridos = JSON.stringify([{ 
       id: novo_topico_id, 
       nome: novo_topico_nome 
     }])
     
-    // 3. Atualizar a meta com nova disciplina e tópico
+    // 4. Atualizar a meta com nova disciplina e tópico
     await DB.prepare(`
       UPDATE metas_semana 
       SET disciplina_id = ?,
@@ -10834,9 +10849,10 @@ app.put('/api/metas/:meta_id/trocar-disciplina', async (c) => {
     
     return c.json({ 
       success: true, 
-      message: 'Disciplina e tópico atualizados',
+      message: 'Disciplina e tópico atualizados. Conteúdos anteriores foram removidos.',
       nova_disciplina: nova_disciplina_nome,
-      novo_topico: novo_topico_nome
+      novo_topico: novo_topico_nome,
+      conteudos_removidos: true
     })
 
   } catch (error) {

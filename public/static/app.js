@@ -1087,7 +1087,7 @@ function createUnifiedFAB() {
           Disciplinas
         </span>
         <button 
-          onclick="abrirGestaoDisciplinasTopicos(); toggleFabMenu(); event.stopPropagation();"
+          onclick="renderPortfolioDisciplinas(); toggleFabMenu(); event.stopPropagation();"
           class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-700 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Gerenciar Disciplinas">
           <i class="fas fa-book text-lg"></i>
@@ -1100,7 +1100,7 @@ function createUnifiedFAB() {
           Simulados
         </span>
         <button 
-          onclick="iniciarSimulado(); toggleFabMenu(); event.stopPropagation();"
+          onclick="abrirModalSimulado(); toggleFabMenu(); event.stopPropagation();"
           class="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Simulados">
           <i class="fas fa-clipboard-list text-lg"></i>
@@ -1113,7 +1113,7 @@ function createUnifiedFAB() {
           Calendário
         </span>
         <button 
-          onclick="verCalendario(); toggleFabMenu(); event.stopPropagation();"
+          onclick="renderCalendario(); toggleFabMenu(); event.stopPropagation();"
           class="w-12 h-12 bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Calendário de Estudos">
           <i class="fas fa-calendar-alt text-lg"></i>
@@ -6834,6 +6834,12 @@ window.confirmarTrocaDisciplina = async function(metaId, planoId, diaSemana) {
     
     console.log('✅ Meta atualizada:', res.data);
     
+    // ✅ NOVO: Limpar cache do conteúdo desta meta
+    if (window.conteudosMetaCache && window.conteudosMetaCache[metaId]) {
+      delete window.conteudosMetaCache[metaId];
+      console.log('🗑️ Cache da meta limpo:', metaId);
+    }
+    
     // Fechar modal
     fecharModalTrocarDisciplina();
     
@@ -6841,7 +6847,7 @@ window.confirmarTrocaDisciplina = async function(metaId, planoId, diaSemana) {
     await carregarSemanaAtiva();
     
     // Feedback
-    showToast(`Trocado para: ${novaDisciplinaNome}`, 'success');
+    showToast(`Trocado para: ${novaDisciplinaNome}. Conteúdos anteriores removidos.`, 'success');
     
   } catch (error) {
     console.error('Erro ao trocar disciplina:', error);
@@ -16160,8 +16166,8 @@ async function salvarPerfilEditado() {
     // Atualizar apenas o nome (email não muda)
     currentUser.name = nome;
     
-    // Salvar no localStorage
-    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    // Salvar no localStorage (mesmo padrão do login)
+    localStorage.setItem('userName', nome);
     
     showToast(' Perfil atualizado com sucesso!');
     fecharModalEditarPerfil();
