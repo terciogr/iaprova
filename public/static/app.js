@@ -16306,43 +16306,49 @@ function renderCalendarioSemanal() {
                       <!-- Disciplina -->
                       <p class="text-xs font-medium text-gray-800 line-clamp-2 mb-1.5 ${meta.concluida ? 'line-through opacity-60' : ''}">${meta.disciplina_nome}</p>
                       
-                      <!-- Ações Compactas - RESPONSIVAS -->
-                      <div class="flex flex-col gap-1.5 mt-auto">
+                      <!-- Ações - Botões maiores com labels -->
+                      <div class="flex flex-col gap-2 mt-auto">
                         <!-- Linha 1: Botão principal Estudar/Ver -->
-                        <button onclick="event.stopPropagation(); abrirConteudo(${meta.id})" class="w-full flex items-center justify-center py-1.5 text-[11px] font-medium ${meta.concluida ? 'text-emerald-600 bg-emerald-100' : 'text-white bg-[#122D6A]'} rounded transition">
+                        <button onclick="event.stopPropagation(); abrirConteudo(${meta.id})" class="w-full flex items-center justify-center py-2 text-xs font-medium ${meta.concluida ? 'text-emerald-600 bg-emerald-100' : 'text-white bg-[#122D6A]'} rounded-lg transition">
                           ${meta.concluida ? 'Ver' : 'Estudar'}
                         </button>
                         
-                        <!-- Linha 2: Botões de conteúdo (flex-wrap para mobile) -->
-                        <div class="flex flex-wrap items-center justify-center gap-1" id="conteudos-meta-${meta.id}">
+                        <!-- Linha 2: Botões de conteúdo com labels -->
+                        <div class="grid grid-cols-3 gap-1.5" id="conteudos-meta-${meta.id}">
                           <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'teoria')" 
-                            class="w-7 h-7 sm:w-6 sm:h-6 rounded flex items-center justify-center bg-gray-100 hover:bg-[#122D6A] hover:text-white active:bg-[#122D6A] active:text-white transition touch-manipulation" 
+                            class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#122D6A] hover:text-white active:bg-[#122D6A] active:text-white transition touch-manipulation group" 
                             title="Teoria" data-tipo="teoria" id="icon-teoria-${meta.id}">
-                            <i class="fas fa-book text-[10px] sm:text-[9px] text-[#122D6A]"></i>
+                            <i class="fas fa-book text-sm text-[#122D6A] group-hover:text-white"></i>
+                            <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Teoria</span>
                           </button>
                           <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'exercicios')" 
-                            class="w-7 h-7 sm:w-6 sm:h-6 rounded flex items-center justify-center bg-gray-100 hover:bg-[#2A4A9F] hover:text-white active:bg-[#2A4A9F] active:text-white transition touch-manipulation" 
+                            class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#2A4A9F] hover:text-white active:bg-[#2A4A9F] active:text-white transition touch-manipulation group" 
                             title="Exercícios" data-tipo="exercicios" id="icon-exercicios-${meta.id}">
-                            <i class="fas fa-tasks text-[10px] sm:text-[9px] text-[#2A4A9F]"></i>
+                            <i class="fas fa-tasks text-sm text-[#2A4A9F] group-hover:text-white"></i>
+                            <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Questões</span>
                           </button>
                           <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'resumo')" 
-                            class="w-7 h-7 sm:w-6 sm:h-6 rounded flex items-center justify-center bg-gray-100 hover:bg-[#3A5AB0] hover:text-white active:bg-[#3A5AB0] active:text-white transition touch-manipulation" 
+                            class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#3A5AB0] hover:text-white active:bg-[#3A5AB0] active:text-white transition touch-manipulation group" 
                             title="Resumo" data-tipo="resumo" id="icon-resumo-${meta.id}">
-                            <i class="fas fa-file-alt text-[10px] sm:text-[9px] text-[#3A5AB0]"></i>
+                            <i class="fas fa-file-alt text-sm text-[#3A5AB0] group-hover:text-white"></i>
+                            <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Resumo</span>
                           </button>
                           <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'flashcards')" 
-                            class="w-7 h-7 sm:w-6 sm:h-6 rounded flex items-center justify-center bg-gray-100 hover:bg-[#4A6AC0] hover:text-white active:bg-[#4A6AC0] active:text-white transition touch-manipulation" 
+                            class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#4A6AC0] hover:text-white active:bg-[#4A6AC0] active:text-white transition touch-manipulation group" 
                             title="Flashcards" data-tipo="flashcards" id="icon-flashcards-${meta.id}">
-                            <i class="fas fa-clone text-[10px] sm:text-[9px] text-[#4A6AC0]"></i>
+                            <i class="fas fa-clone text-sm text-[#4A6AC0] group-hover:text-white"></i>
+                            <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Flash</span>
                           </button>
                           <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; abrirModalResumoPersonalizado(${meta.id})" 
-                            class="w-7 h-7 sm:w-6 sm:h-6 rounded flex items-center justify-center bg-gray-100 hover:bg-[#8B5CF6] hover:text-white active:bg-[#8B5CF6] active:text-white transition touch-manipulation" 
+                            class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#8B5CF6] hover:text-white active:bg-[#8B5CF6] active:text-white transition touch-manipulation group" 
                             title="Upload" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">
-                            <i class="fas fa-file-upload text-[10px] sm:text-[9px] text-[#8B5CF6]"></i>
+                            <i class="fas fa-file-upload text-sm text-[#8B5CF6] group-hover:text-white"></i>
+                            <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Upload</span>
                           </button>
                           ${!meta.concluida ? `
-                            <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id})" class="w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center text-emerald-600 bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 rounded transition touch-manipulation" title="Concluir">
-                              <i class="fas fa-check text-[10px] sm:text-[9px]"></i>
+                            <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id})" class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 transition touch-manipulation group" title="Concluir">
+                              <i class="fas fa-check text-sm text-emerald-600"></i>
+                              <span class="text-[9px] mt-0.5 text-emerald-600">OK</span>
                             </button>
                           ` : ''}
                         </div>
