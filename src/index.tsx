@@ -3779,69 +3779,29 @@ app.post('/api/editais/upload', async (c) => {
         textoCompleto = await file.text()
         console.log(`✅ TXT lido: ${textoCompleto.length} caracteres`)
       } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-        // ✅ PDF: Verificar tamanho e processar
+        // ✅ PDF: Salvar arquivo e processar depois via /api/editais/processar
+        // NÃO extrair texto aqui - isso causa timeout
         const arrayBuffer = await file.arrayBuffer()
         const fileSizeMB = arrayBuffer.byteLength / (1024 * 1024)
         
         console.log(`📄 PDF detectado: ${file.name} (${fileSizeMB.toFixed(2)} MB)`)
         
-        // ⚠️ PDFs muito grandes (>15MB): Salvar sem extrair texto agora
-        // O usuário deve converter para TXT manualmente
+        // ⚠️ PDFs muito grandes (>15MB): Recomendar conversão para TXT
         if (fileSizeMB > 15) {
-          console.warn(`⚠️ PDF muito grande (${fileSizeMB.toFixed(1)}MB). Salvando para processamento manual.`)
-          
-          // Salvar arquivo no R2 se disponível
-          if (EDITAIS) {
-            await EDITAIS.put(key, arrayBuffer, {
-              httpMetadata: { contentType: file.type }
-            })
-          }
-          
-          // Salvar no banco com instrução para converter
-          const result = await DB.prepare(`
-            INSERT INTO editais (user_id, nome_concurso, arquivo_url, texto_completo, status)
-            VALUES (?, ?, ?, ?, 'erro')
-          `).bind(
-            userId, 
-            nomeConcurso, 
-            key, 
-            `[PDF MUITO GRANDE - ${fileSizeMB.toFixed(1)}MB]\n\nO arquivo excede o limite de processamento automático (15MB).\n\nPor favor:\n1. Converta o PDF para TXT em: https://smallpdf.com/pdf-to-text\n2. Ou use um arquivo XLSX com o cronograma de estudos\n3. Anexe o arquivo convertido novamente`,
-            ).run()
+          console.warn(`⚠️ PDF muito grande (${fileSizeMB.toFixed(1)}MB). Recomendando conversão para TXT.`)
           
           return c.json({
             error: `PDF muito grande (${fileSizeMB.toFixed(1)}MB). O limite para processamento automático é 15MB.`,
             errorType: 'FILE_TOO_LARGE',
             suggestion: `Opções:\n1. ✅ RECOMENDADO: Converta o PDF para TXT em https://smallpdf.com/pdf-to-text\n2. Use um arquivo XLSX com o cronograma\n3. Divida o PDF em partes menores`,
             fileSizeMB: fileSizeMB.toFixed(2),
-            maxSizeMB: 15,
-            editalId: result.meta.last_row_id
-          }, 413) // 413 = Payload Too Large
+            maxSizeMB: 15
+          }, 413)
         }
         
-        // PDFs até 15MB: processar normalmente
-        console.log(`📄 Processando PDF (${fileSizeMB.toFixed(2)}MB)...`)
-        
-        try {
-          textoCompleto = await extractTextFromPDF(arrayBuffer, geminiKey)
-          
-          console.log(`✅ Extração concluída: ${textoCompleto.length} caracteres`)
-          
-          if (textoCompleto.length < 50) {
-            console.warn(`⚠️ Pouco texto extraído (${textoCompleto.length} chars) - mas continuando`)
-          }
-          
-          if (!textoCompleto || textoCompleto.trim().length === 0) {
-            console.error(`❌ Nenhum texto extraído do PDF`)
-            throw new Error('PDF não contém texto extraível (pode ser escaneado)')
-          }
-        } catch (pdfError) {
-          console.error(`❌ Erro ao extrair texto do PDF:`, pdfError)
-          
-          // Salvar mesmo assim com placeholder
-          textoCompleto = `[ERRO NA EXTRAÇÃO]\n\nArquivo: ${file.name}\nErro: ${pdfError.message}\n\nSugestões:\n- Converta o PDF para TXT em https://smallpdf.com/pdf-to-text\n- Use planilha XLSX para processamento mais rápido\n- Verifique se o PDF não está protegido ou escaneado`
-          
-          console.log(`⚠️ PDF salvo com erro. Usuário pode converter para TXT.`)
-        }
+        // PDFs até 15MB: salvar sem extrair texto agora (extração será no /api/editais/processar)
+        console.log(`📄 Salvando PDF sem pré-processamento...`)
+        textoCompleto = `[PDF PENDENTE DE PROCESSAMENTO]\n\nArquivo: ${file.name}\nTamanho: ${fileSizeMB.toFixed(2)}MB\n\nO texto será extraído na próxima etapa via IA.`
       } else {
         console.warn(`⚠️ Arquivo ${file.name} não é TXT, PDF nem XLSX. Será ignorado.`)
         textoCompleto = ''
@@ -4219,7 +4179,7 @@ app.post('/api/editais/:id/reset', async (c) => {
 
 // Processar edital: extrair disciplinas e tópicos via IA (Gemini)
 app.post('/api/editais/processar/:id', async (c) => {
-  const { DB } = c.env
+  const { DB, EDITAIS } = c.env
   const editalId = c.req.param('id')
 
   try {
@@ -4247,7 +4207,190 @@ app.post('/api/editais/processar/:id', async (c) => {
     console.log(`👤 Cargo desejado pelo usuário: ${cargoDesejado || 'Não especificado'}`)
 
     // Validar texto do edital
-    const textoOriginal = edital.texto_completo
+    let textoOriginal = edital.texto_completo || ''
+    
+    // ✅ NOVO: Se o texto indica PDF pendente, tentar buscar e processar o PDF diretamente
+    const isPDFPendente = textoOriginal.includes('[PDF PENDENTE DE PROCESSAMENTO]')
+    const isPDF = edital.arquivo_url?.toLowerCase()?.endsWith('.pdf')
+    
+    if ((isPDFPendente || textoOriginal.trim().length < 500) && isPDF && EDITAIS) {
+      console.log('📄 PDF pendente detectado, buscando do R2 para processamento direto...')
+      
+      try {
+        const pdfObject = await EDITAIS.get(edital.arquivo_url)
+        if (pdfObject) {
+          const pdfBuffer = await pdfObject.arrayBuffer()
+          const fileSizeMB = pdfBuffer.byteLength / (1024 * 1024)
+          console.log(`📄 PDF recuperado do R2: ${fileSizeMB.toFixed(2)} MB`)
+          
+          // Verificar tamanho
+          if (fileSizeMB > 15) {
+            return c.json({
+              error: `PDF muito grande (${fileSizeMB.toFixed(1)}MB). Máximo: 15MB`,
+              errorType: 'FILE_TOO_LARGE',
+              suggestion: 'Converta o PDF para TXT em https://smallpdf.com/pdf-to-text',
+              step: 1,
+              stepName: 'Validação do arquivo'
+            }, 413)
+          }
+          
+          // ✅ ENVIAR PDF DIRETAMENTE PARA GEMINI (sem pré-processamento)
+          console.log('🚀 Enviando PDF diretamente para Gemini API...')
+          const geminiKey = c.env.GEMINI_API_KEY || 'SUA_CHAVE_GEMINI_AQUI'
+          
+          // Converter PDF para base64
+          const bytes = new Uint8Array(pdfBuffer)
+          let binary = ''
+          const chunkSize = 8192
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
+            binary += String.fromCharCode.apply(null, Array.from(chunk))
+          }
+          const base64PDF = btoa(binary)
+          
+          // Prompt otimizado para extração de disciplinas
+          const cargoLower = cargoDesejado?.toLowerCase() || ''
+          const areaDetectada = 
+            (cargoLower.includes('enfermeiro') || cargoLower.includes('enfermagem') || cargoLower.includes('saúde')) ? 'SAÚDE/ENFERMAGEM' :
+            (cargoLower.includes('direito') || cargoLower.includes('advogado')) ? 'DIREITO/JURÍDICO' :
+            (cargoLower.includes('contador')) ? 'CONTABILIDADE' :
+            (cargoLower.includes('admin') || cargoLower.includes('gestão')) ? 'ADMINISTRAÇÃO' :
+            'GERAL'
+          
+          const promptPDF = `EXTRAIA AS DISCIPLINAS E TÓPICOS DO CONTEÚDO PROGRAMÁTICO DESTE EDITAL DE CONCURSO.
+
+CARGO DO CANDIDATO: ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO'} (Área: ${areaDetectada})
+
+INSTRUÇÕES:
+1. Procure a seção "CONTEÚDO PROGRAMÁTICO" ou "ANEXO II/III"
+2. Extraia APENAS disciplinas relevantes para o cargo indicado (${areaDetectada})
+3. Liste 3-6 disciplinas no máximo
+4. Inclua TODOS os tópicos de cada disciplina
+
+RETORNE APENAS JSON (sem explicações):
+{"disciplinas":[{"nome":"Nome da Disciplina","peso":1,"topicos":["Tópico 1","Tópico 2"]}]}`
+
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: promptPDF },
+                    { inline_data: { mime_type: 'application/pdf', data: base64PDF } }
+                  ]
+                }],
+                generationConfig: {
+                  temperature: 0.1,
+                  maxOutputTokens: 32768
+                }
+              })
+            }
+          )
+          
+          if (!response.ok) {
+            const errorText = await response.text()
+            console.error(`❌ Erro Gemini: ${response.status}`)
+            
+            if (response.status === 429) {
+              return c.json({
+                error: 'API temporariamente indisponível (rate limit)',
+                errorType: 'RATE_LIMIT',
+                suggestion: 'Aguarde 30 segundos e tente novamente',
+                canRetry: true,
+                retryAfter: 30
+              }, 429)
+            }
+            throw new Error(`Gemini erro ${response.status}: ${errorText.substring(0, 200)}`)
+          }
+          
+          const data = await response.json() as any
+          const textoGemini = data?.candidates?.[0]?.content?.parts?.[0]?.text
+          
+          if (!textoGemini) {
+            throw new Error('Resposta vazia da Gemini')
+          }
+          
+          console.log(`✅ Gemini respondeu: ${textoGemini.length} caracteres`)
+          
+          // Parsear JSON da resposta
+          const jsonMatch = textoGemini.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            try {
+              const resultado = JSON.parse(jsonMatch[0].replace(/[\x00-\x1F\x7F]/g, ' ').replace(/,\s*([}\]])/g, '$1'))
+              
+              if (resultado?.disciplinas?.length > 0) {
+                console.log(`✅ ${resultado.disciplinas.length} disciplinas extraídas do PDF`)
+                
+                // ✅ MODO REVISÃO: Retornar disciplinas para o usuário revisar
+                const modo = c.req.query('modo')
+                if (modo === 'revisao') {
+                  return c.json({
+                    success: true,
+                    modo: 'revisao',
+                    disciplinas: resultado.disciplinas,
+                    fonte: 'pdf_direto',
+                    message: `${resultado.disciplinas.length} disciplinas identificadas para revisão`
+                  })
+                }
+                
+                // Salvar disciplinas no banco
+                for (const disc of resultado.disciplinas) {
+                  // Buscar ou criar disciplina
+                  let disciplinaBaseId: number
+                  const { results: existentes } = await DB.prepare(
+                    'SELECT id FROM disciplinas WHERE nome LIKE ?'
+                  ).bind(`%${disc.nome}%`).all() as any
+                  
+                  if (existentes?.length > 0) {
+                    disciplinaBaseId = existentes[0].id
+                  } else {
+                    const novaDisc = await DB.prepare(
+                      'INSERT INTO disciplinas (nome, area) VALUES (?, ?)'
+                    ).bind(disc.nome, 'geral').run()
+                    disciplinaBaseId = novaDisc.meta.last_row_id
+                  }
+                  
+                  // Salvar edital_disciplinas
+                  const editalDisc = await DB.prepare(
+                    'INSERT INTO edital_disciplinas (edital_id, disciplina_id, nome, peso) VALUES (?, ?, ?, ?)'
+                  ).bind(editalId, disciplinaBaseId, disc.nome, disc.peso || 1).run()
+                  
+                  // Salvar tópicos
+                  for (let i = 0; i < (disc.topicos || []).length; i++) {
+                    await DB.prepare(
+                      'INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem) VALUES (?, ?, ?)'
+                    ).bind(editalDisc.meta.last_row_id, disc.topicos[i], i).run()
+                  }
+                }
+                
+                // Atualizar status
+                await DB.prepare('UPDATE editais SET status = ? WHERE id = ?').bind('processado', editalId).run()
+                
+                return c.json({
+                  success: true,
+                  disciplinas: resultado.disciplinas,
+                  total: resultado.disciplinas.length,
+                  fonte: 'pdf_direto'
+                })
+              }
+            } catch (parseError) {
+              console.error('❌ Erro ao parsear JSON:', parseError)
+            }
+          }
+          
+          // Se não conseguiu extrair, salvar o texto bruto para análise posterior
+          textoOriginal = textoGemini
+          await DB.prepare('UPDATE editais SET texto_completo = ? WHERE id = ?').bind(textoGemini, editalId).run()
+          console.log('📝 Texto salvo no banco para processamento alternativo')
+        }
+      } catch (r2Error) {
+        console.error('⚠️ Erro ao buscar PDF do R2:', r2Error)
+        // Continuar com o fluxo normal se R2 falhar
+      }
+    }
 
     if (!textoOriginal || textoOriginal.trim() === '') {
       console.error('❌ ERRO: Texto do edital vazio')
@@ -8432,10 +8575,12 @@ app.get('/api/planos/list/:user_id', async (c) => {
         
         totalTopicos = topicosResult?.total || 0
         
-        // Contar tópicos concluídos usando user_topicos_progresso
+        // Contar tópicos estudados (nivel_dominio = 10 significa concluído)
+        // user_topicos_progresso só tem topico_id, precisa JOIN com topicos_edital
         const topicosEstudadosResult = await DB.prepare(`
-          SELECT COUNT(*) as total FROM user_topicos_progresso 
-          WHERE user_id = ? AND disciplina_id IN (${placeholders}) AND concluido = 1
+          SELECT COUNT(*) as total FROM user_topicos_progresso utp
+          INNER JOIN topicos_edital te ON utp.topico_id = te.id
+          WHERE utp.user_id = ? AND te.disciplina_id IN (${placeholders}) AND utp.nivel_dominio = 10
         `).bind(user_id, ...disciplinaIds).first() as any
         
         topicosEstudados = topicosEstudadosResult?.total || 0
