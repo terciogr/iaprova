@@ -8637,8 +8637,8 @@ app.get('/api/planos/list/:user_id', async (c) => {
         console.log(`   → ${totalTopicos} tópicos total, ${topicosEstudados} estudados`)
       }
       
-      // Calcular progresso percentual
-      const progressoEdital = totalTopicos > 0 ? Math.round((topicosEstudados / totalTopicos) * 100) : 0
+      // Calcular progresso percentual - NUNCA acima de 100%
+      const progressoEdital = totalTopicos > 0 ? Math.min(100, Math.round((topicosEstudados / totalTopicos) * 100)) : 0
 
       return {
         ...p,
@@ -8672,13 +8672,22 @@ app.post('/api/planos/:plano_id/ativar', async (c) => {
     // Desativar todos os planos do usuário
     await DB.prepare('UPDATE planos_estudo SET ativo = 0 WHERE user_id = ?').bind(plano.user_id).run()
     
-    // ✅ NOVO: Desativar todas as semanas de outros planos (não do novo plano ativo)
+    // ✅ CORREÇÃO: Apenas PAUSAR as semanas de outros planos (não deletar nem marcar como concluída)
+    // Usar status 'pausada' para que possam ser retomadas depois
     await DB.prepare(`
       UPDATE semanas_estudo 
-      SET status = 'concluida' 
+      SET status = 'pausada' 
       WHERE user_id = ? AND plano_id != ? AND status = 'ativa'
     `).bind(plano.user_id, plano_id).run()
-    console.log(`✅ Semanas de outros planos desativadas para user_id ${plano.user_id}`)
+    console.log(`⏸️ Semanas de outros planos PAUSADAS para user_id ${plano.user_id}`)
+    
+    // ✅ NOVO: Reativar semanas pausadas do plano que está sendo ativado
+    await DB.prepare(`
+      UPDATE semanas_estudo 
+      SET status = 'ativa' 
+      WHERE user_id = ? AND plano_id = ? AND status = 'pausada'
+    `).bind(plano.user_id, plano_id).run()
+    console.log(`▶️ Semanas do plano ${plano_id} REATIVADAS`)
     
     // Ativar o plano selecionado
     await DB.prepare('UPDATE planos_estudo SET ativo = 1 WHERE id = ?').bind(plano_id).run()
@@ -9067,8 +9076,8 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
         area: disc.area,
         peso,
         total_topicos: topicos,
-        topicos_estudados: estudados,
-        progresso_percentual: topicos > 0 ? Math.round((estudados / topicos) * 100) : 0,
+        topicos_estudados: Math.min(estudados, topicos), // Nunca mais que o total
+        progresso_percentual: topicos > 0 ? Math.min(100, Math.round((estudados / topicos) * 100)) : 0,
         nivel_dominio: disc.nivel_dominio || 0,
         nivel_medio_topicos: 0
       })
@@ -9096,8 +9105,8 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
       pesoTotal += peso
     }
 
-    // Calcular progresso final ponderado
-    const progressoFinal = pesoTotal > 0 ? Math.round(progressoPonderado / pesoTotal) : 0
+    // Calcular progresso final ponderado - NUNCA acima de 100%
+    const progressoFinal = pesoTotal > 0 ? Math.min(100, Math.round(progressoPonderado / pesoTotal)) : 0
 
     // Determinar cor e status baseado no progresso
     let cor = 'gray'
@@ -14270,6 +14279,15 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
   const { DB } = c.env
   const { topico_id, topico_nome, disciplina_nome, tipo, quantidade, meta_id, config_ia, feedback_usuario, regenerar, user_id } = await c.req.json()
   
+  // ✅ VALIDAÇÃO: Exigir tópico para gerar conteúdo
+  if (!topico_id && !topico_nome) {
+    console.error('❌ Tentativa de gerar conteúdo sem tópico')
+    return c.json({ 
+      error: 'É necessário selecionar um tópico para gerar conteúdo. Por favor, escolha um tópico específico antes de gerar o material.',
+      codigo: 'TOPICO_OBRIGATORIO'
+    }, 400)
+  }
+  
   // tipo: 'teoria' | 'exercicios' | 'resumo' | 'flashcards'
   const tipoConteudo = tipo || 'teoria'
   const qtdExercicios = quantidade || 10
@@ -14286,8 +14304,8 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
     temperatura: 0.5,
     intensidade: 'intermediaria',
     profundidade: 'aplicada',
-    extensao: 'medio',
-    extensaoCustom: 2000,
+    extensao: 'completo', // Padrão: máximo conteúdo
+    extensaoCustom: 20000,
     formatoResumo: 'detalhado',
     formatoTeoria: 'completa',
     formatoFlashcards: 'objetivos',
@@ -14377,21 +14395,30 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
     }
     
     // ✅ REGRA: Teoria SEMPRE gera o MÁXIMO possível
-    // Para resumo, usa configuração do usuário
-    let limiteCaracteres = 10000; // Padrão alto
-    let limiteResumo = 5000; // Padrão para resumo
+    // Para resumo, usa configuração do usuário (padrão 20000)
+    let limiteCaracteres = 20000; // Padrão ALTO para conteúdo completo
+    let limiteResumo = 20000; // Padrão ALTO para resumo
     
     // Configuração de extensão do resumo (escolhido pelo usuário)
     if (iaConfig.extensaoResumo === 'personalizado' && iaConfig.extensaoResumoCustom) {
       limiteResumo = parseInt(iaConfig.extensaoResumoCustom);
+    } else if (iaConfig.extensaoResumo) {
+      // Usar valores configurados pelo usuário
+      const extensaoMap: any = {
+        'curto': 5000,
+        'medio': 10000,
+        'longo': 15000,
+        'completo': 20000
+      };
+      limiteResumo = extensaoMap[iaConfig.extensaoResumo] || 20000;
     }
     
-    // Para outros tipos (não teoria), usar config antiga se definida
+    // Para outros tipos (não teoria), usar config do usuário se definida
     if (tipoConteudo !== 'teoria') {
-      if (iaConfig.extensao === 'curto') limiteCaracteres = 800;
-      else if (iaConfig.extensao === 'medio') limiteCaracteres = 2500;
-      else if (iaConfig.extensao === 'longo') limiteCaracteres = 5000;
-      else if (iaConfig.extensao === 'completo') limiteCaracteres = 10000;
+      if (iaConfig.extensao === 'curto') limiteCaracteres = 5000;
+      else if (iaConfig.extensao === 'medio') limiteCaracteres = 10000;
+      else if (iaConfig.extensao === 'longo') limiteCaracteres = 15000;
+      else if (iaConfig.extensao === 'completo') limiteCaracteres = 20000;
       else if (iaConfig.extensao === 'personalizado' && iaConfig.extensaoCustom) {
         limiteCaracteres = parseInt(iaConfig.extensaoCustom);
       }
@@ -14400,11 +14427,11 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
     console.log(`🎆 Tipo: ${tipoConteudo}, Limite teoria: MÁXIMO, Limite resumo: ${limiteResumo}`);
     
     const extensaoLimites = {
-      curto: 'NO MÍNIMO 800 caracteres',
-      medio: 'NO MÍNIMO 2500 caracteres', 
-      longo: 'NO MÍNIMO 5000 caracteres',
-      completo: 'NO MÍNIMO 10000 caracteres - conteúdo EXTENSO e COMPLETO',
-      personalizado: `EXATAMENTE ${iaConfig.extensaoCustom} caracteres`
+      curto: 'NO MÍNIMO 5000 caracteres',
+      medio: 'NO MÍNIMO 10000 caracteres', 
+      longo: 'NO MÍNIMO 15000 caracteres',
+      completo: 'NO MÍNIMO 20000 caracteres - conteúdo MÁXIMO e COMPLETO',
+      personalizado: `NO MÍNIMO ${iaConfig.extensaoCustom} caracteres`
     }
     
     // Instruções de personalização comuns (SEM criatividade - sempre objetivo)

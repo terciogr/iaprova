@@ -8667,6 +8667,13 @@ window.confirmarGeracaoRapida = function(tipo, metaId, topicoId, topicoNome, dis
 
 // Função para executar a geração de conteúdo
 window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplinaNome, tipo, quantidade = null, metaId = null) {
+  // ✅ VALIDAÇÃO: Exigir tópico para gerar conteúdo
+  if (!topicoId && !topicoNome) {
+    showToast('⚠️ É necessário selecionar um tópico para gerar conteúdo', 'error');
+    showModal('❌ Tópico obrigatório', 'Por favor, selecione um tópico antes de gerar o conteúdo. Não é possível gerar material de estudo sem um tema específico.');
+    return;
+  }
+  
   // Remover modal de seleção
   const modal = document.getElementById('modal-gerar-conteudo');
   if (modal) modal.remove();
@@ -8702,8 +8709,8 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       temperatura: 0.3, // Fixado em 0.3 para ser objetivo
       intensidade: 'intermediaria',
       profundidade: 'aplicada',
-      extensao: 'medio',
-      extensaoCustom: 2000,
+      extensao: 'completo', // Padrão: máximo conteúdo
+      extensaoCustom: 20000, // Padrão alto para conteúdo completo
       formatoResumo: 'detalhado',
       formatoTeoria: 'completa',
       formatoFlashcards: 'objetivos',
@@ -22834,8 +22841,8 @@ const defaultIAConfig = {
   temperatura: 0.3, // 0.1 a 1.0 - FIXADO em 0.3 para ser objetivo e não inventar
   intensidade: 'intermediaria', // superficial, intermediaria, aprofundada
   profundidade: 'aplicada', // conceitual, aplicada, analitica
-  extensao: 'personalizado', // curto, medio, longo, personalizado - PADRÃO: personalizado
-  extensaoCustom: 3000, // caracteres quando extensao = personalizado (padrão: 3000, max: 20000)
+  extensao: 'completo', // curto, medio, longo, completo - PADRÃO: completo (máximo)
+  extensaoCustom: 20000, // caracteres quando extensao = personalizado (padrão: 20000)
   formatoResumo: 'detalhado', // curto, detalhado
   formatoTeoria: 'completa', // basica, completa, avancada
   formatoFlashcards: 'objetivos', // objetivos, aprofundados
