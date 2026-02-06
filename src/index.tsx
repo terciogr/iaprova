@@ -14320,17 +14320,28 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
       analitica: 'Inclua análise crítica, comparações e diferentes perspectivas.'
     }
     
-    // Determinar limite real de caracteres
-    let limiteCaracteres = 2000;
-    if (iaConfig.extensao === 'curto') limiteCaracteres = 800;
-    else if (iaConfig.extensao === 'medio') limiteCaracteres = 2500;
-    else if (iaConfig.extensao === 'longo') limiteCaracteres = 5000;
-    else if (iaConfig.extensao === 'completo') limiteCaracteres = 10000;
-    else if (iaConfig.extensao === 'personalizado' && iaConfig.extensaoCustom) {
-      limiteCaracteres = parseInt(iaConfig.extensaoCustom);
+    // ✅ REGRA: Teoria SEMPRE gera o MÁXIMO possível
+    // Para resumo, usa configuração do usuário
+    let limiteCaracteres = 10000; // Padrão alto
+    let limiteResumo = 5000; // Padrão para resumo
+    
+    // Configuração de extensão do resumo (escolhido pelo usuário)
+    if (iaConfig.extensaoResumo === 'personalizado' && iaConfig.extensaoResumoCustom) {
+      limiteResumo = parseInt(iaConfig.extensaoResumoCustom);
     }
     
-    console.log(`🎆 Limite de caracteres configurado: ${limiteCaracteres} (extensão: ${iaConfig.extensao})`);
+    // Para outros tipos (não teoria), usar config antiga se definida
+    if (tipoConteudo !== 'teoria') {
+      if (iaConfig.extensao === 'curto') limiteCaracteres = 800;
+      else if (iaConfig.extensao === 'medio') limiteCaracteres = 2500;
+      else if (iaConfig.extensao === 'longo') limiteCaracteres = 5000;
+      else if (iaConfig.extensao === 'completo') limiteCaracteres = 10000;
+      else if (iaConfig.extensao === 'personalizado' && iaConfig.extensaoCustom) {
+        limiteCaracteres = parseInt(iaConfig.extensaoCustom);
+      }
+    }
+    
+    console.log(`🎆 Tipo: ${tipoConteudo}, Limite teoria: MÁXIMO, Limite resumo: ${limiteResumo}`);
     
     const extensaoLimites = {
       curto: 'NO MÍNIMO 800 caracteres',
@@ -14399,27 +14410,38 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
                              'Teoria COMPLETA cobrindo todos os aspectos.'
         
         systemPrompt = `Você é um professor especialista em concursos públicos brasileiros.
-${personalizacao}
-6. FORMATO: ${formatoTeoria}
 
-Crie um CONTEÚDO TEÓRICO sobre o tópico "${topico_nome}" da disciplina "${disciplina_nome}".
+🔴🔴🔴 REGRA MÁXIMA E INVIOLÁVEL 🔴🔴🔴
+VOCÊ DEVE GERAR O CONTEÚDO MAIS COMPLETO E EXTENSO POSSÍVEL.
+NÃO HÁ LIMITE DE CARACTERES - QUANTO MAIS CONTEÚDO, MELHOR!
+SE FALTAR ASSUNTO NO TÓPICO, PODE EXTRAPOLAR PARA SUBTÓPICOS RELACIONADOS.
+NUNCA DEIXE NENHUM ASPECTO DO TÓPICO SEM COBRIR.
+==================================================
 
-ESTRUTURA OBRIGATÓRIA:
-1. **Introdução** - Contexto e importância para concursos
-2. **Conceitos Fundamentais** - Definições claras e objetivas
-3. **Desenvolvimento** - Explicação detalhada com exemplos práticos
-4. **Pontos de Atenção** - O que mais cai em provas
-5. **Dicas de Memorização** - Macetes e técnicas para lembrar
-6. **Resumo Final** - Pontos-chave em bullets
+FORMATO: ${formatoTeoria}
+
+Crie um CONTEÚDO TEÓRICO MÁXIMO sobre o tópico "${topico_nome}" da disciplina "${disciplina_nome}".
+
+ESTRUTURA OBRIGATÓRIA (EXPANDA CADA SEÇÃO AO MÁXIMO):
+1. **Introdução Completa** - Contexto histórico, importância para concursos, fundamentos
+2. **Conceitos Fundamentais** - TODAS as definições, termos técnicos, classificações
+3. **Desenvolvimento Extenso** - Explicação detalhada de TODOS os aspectos com exemplos práticos
+4. **Legislação e Jurisprudência** - Cite TODAS as leis, artigos, súmulas relevantes
+5. **Casos Práticos** - Exemplos reais, estudos de caso, aplicações
+6. **Pontos de Atenção** - O que mais cai em provas, pegadinhas comuns
+7. **Dicas de Memorização** - Macetes, técnicas mnemônicas, associações
+8. **Questões Frequentes** - Como o tema é cobrado nas bancas
+9. **Resumo Final Completo** - Todos os pontos-chave em bullets detalhados
 
 REGRAS OBRIGATÓRIAS:
-- 🔴🔴 EXTENSÃO MÍNIMA OBRIGATÓRIA: ${limiteCaracteres} caracteres (NUNCA menos que isso!)
-- Se o limite é 10000+, gere conteúdo MUITO EXTENSO e DETALHADO
+- 🔴 GERE O MÁXIMO DE CONTEÚDO POSSÍVEL - NÃO HÁ LIMITE!
+- 🔴 CUBRA 100% DO TÓPICO - NÃO DEIXE NADA DE FORA
+- 🔴 Se o tópico for pequeno, EXPANDA para subtópicos relacionados
+- 🔴 NUNCA resuma ou encurte - SEMPRE expanda e detalhe
 - Use linguagem clara e didática
 - Inclua MUITOS exemplos práticos e casos reais
-- Destaque palavras-chave em negrito
-- Cite legislação e jurisprudência quando aplicável
-- NÃO encurte o conteúdo - quanto mais detalhado, melhor
+- Destaque palavras-chave em **negrito**
+- Cite legislação e jurisprudência SEMPRE que aplicável
 - Formate em Markdown
 
 📊 REGRAS PARA TABELAS (IMPORTANTE):
@@ -14429,8 +14451,12 @@ REGRAS OBRIGATÓRIAS:
   |----------|----------|----------|
   | Dado 1   | Dado 2   | Dado 3   |
 - Prefira LISTAS com bullets ou números ao invés de tabelas
-- Se precisar comparar itens, use formato de lista com subtítulos
-- NUNCA use caracteres especiais ou ASCII art para fazer tabelas`
+- NUNCA use caracteres especiais ou ASCII art para fazer tabelas
+
+🚫 PROIBIDO:
+- NÃO inicie com saudações
+- NÃO use frases genéricas
+- VÁ DIRETO AO CONTEÚDO`
         break
         
       case 'exercicios':
@@ -14549,41 +14575,51 @@ ${caracteristicasBanca?.estilo?.tipo === 'certo_errado' ?
                              'Resumo DETALHADO com explicações completas.';
         
         systemPrompt = `Você é um professor especialista em concursos públicos brasileiros.
-${personalizacao}
-6. FORMATO: ${formatoResumo}
+
+FORMATO: ${formatoResumo}
+
+🔴 EXTENSÃO OBRIGATÓRIA: ${limiteResumo} caracteres (o usuário escolheu este tamanho)
+Se o usuário escolheu 1 página (~2500 chars): seja mais conciso
+Se escolheu 2 páginas (~5000 chars): desenvolva mais
+Se escolheu 3 páginas (~7500 chars): seja bem detalhado
 
 Crie um RESUMO sobre o tópico "${topico_nome}" da disciplina "${disciplina_nome}".
 
 ESTRUTURA OBRIGATÓRIA:
 📌 **CONCEITO PRINCIPAL**
-[Definição em 1-2 linhas]
+[Definição clara e objetiva]
 
 📋 **PONTOS-CHAVE**
-• Ponto 1
-• Ponto 2
-• Ponto 3
-[...]
+• Ponto 1 - explicação
+• Ponto 2 - explicação
+• Ponto 3 - explicação
+[Adicione quantos pontos forem necessários]
 
 ⚠️ **ATENÇÃO - PEGADINHAS DE PROVA**
 • O que parece mas não é
 • Erros comuns dos candidatos
+• Palavras-chave que enganam
 
-📊 **COMPARATIVO** (se aplicável)
-| Aspecto | Opção A | Opção B |
-|---------|---------|---------|
-
-🎯 **MNEMÔNICOS**
-[Macetes para memorização]
+🎯 **MNEMÔNICOS E MACETES**
+[Técnicas para memorização]
 
 ✅ **PALAVRAS-CHAVE PARA PROVA**
 [Lista das palavras que indicam a resposta correta]
 
 REGRAS:
 - Seja OBJETIVO e DIRETO
-- Use bullets e tabelas
-- 🔴 EXTENSÃO MÍNIMA: ${limiteCaracteres} caracteres
-- Se o usuário pediu conteúdo LONGO ou COMPLETO, expanda MUITO mais
-- Formate em Markdown`
+- Use bullets para facilitar memorização
+- 🔴 GERE EXATAMENTE ~${limiteResumo} caracteres (o usuário escolheu este tamanho!)
+- NUNCA deixe nenhum aspecto importante do tópico sem cobrir
+- Formate em Markdown
+
+📊 REGRAS PARA TABELAS:
+- EVITE tabelas - prefira listas
+- Se usar tabela, formate corretamente em Markdown
+
+🚫 PROIBIDO:
+- NÃO inicie com saudações
+- VÁ DIRETO AO CONTEÚDO`
         break
         
       case 'flashcards':

@@ -14704,7 +14704,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
         <p class="text-gray-600 text-sm mb-4">Escolha o tipo de conteúdo que deseja gerar:</p>
         
         <div class="grid grid-cols-2 gap-3">
-          <button onclick="abrirModalTamanhoPaginas()" 
+          <button onclick="gerarConteudoTipo('teoria')" 
             class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] hover:bg-[#E8EDF5] transition-all text-left group">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 bg-[#122D6A]/10 rounded-lg flex items-center justify-center group-hover:bg-[#122D6A] transition-colors">
@@ -14712,7 +14712,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
               </div>
               <div>
                 <p class="font-semibold text-gray-800">Teoria</p>
-                <p class="text-xs text-gray-500">Conteúdo completo</p>
+                <p class="text-xs text-gray-500">Conteúdo MÁXIMO</p>
               </div>
             </div>
           </button>
@@ -14730,7 +14730,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
             </div>
           </button>
           
-          <button onclick="gerarConteudoTipo('resumo')" 
+          <button onclick="abrirModalTamanhoResumo()" 
             class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#4A6AC0] hover:bg-[#E8EDF5] transition-all text-left group">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 bg-[#C5D1E8] rounded-lg flex items-center justify-center group-hover:bg-[#3A5AB0] transition-colors">
@@ -14738,7 +14738,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
               </div>
               <div>
                 <p class="font-semibold text-gray-800">Resumo</p>
-                <p class="text-xs text-gray-500">Esquematizado</p>
+                <p class="text-xs text-gray-500">Escolha o tamanho</p>
               </div>
             </div>
           </button>
@@ -14790,45 +14790,45 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
 }
 window.abrirDisciplinaComTopico = abrirDisciplinaComTopico;
 
-// ✅ Modal para escolher número de páginas da teoria
-window.abrirModalTamanhoPaginas = function() {
+// ✅ Modal para escolher número de páginas do RESUMO
+window.abrirModalTamanhoResumo = function() {
   // Fechar modal anterior
   const modalAnterior = document.getElementById('modal-escolher-conteudo');
   if (modalAnterior) modalAnterior.style.display = 'none';
   
   const modal = document.createElement('div');
-  modal.id = 'modal-tamanho-teoria';
+  modal.id = 'modal-tamanho-resumo';
   modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4';
   modal.innerHTML = `
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-      <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] p-4">
+      <div class="bg-gradient-to-r from-[#2A4A9F] to-[#4A6AC0] p-4">
         <h3 class="text-lg font-bold text-white flex items-center gap-2">
-          <i class="fas fa-book"></i> Tamanho da Teoria
+          <i class="fas fa-file-alt"></i> Tamanho do Resumo
         </h3>
         <p class="text-white/80 text-sm mt-1">Quantas páginas você deseja?</p>
       </div>
       
       <div class="p-5">
         <div class="grid grid-cols-3 gap-3 mb-4">
-          <button onclick="selecionarTamanhoPaginas(1)" 
-            class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] hover:bg-[#E8EDF5] transition-all text-center group pagina-btn" data-paginas="1">
-            <div class="text-3xl font-bold text-[#122D6A] mb-1">1</div>
+          <button onclick="selecionarTamanhoResumo(1)" 
+            class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#2A4A9F] hover:bg-[#E8EDF5] transition-all text-center group resumo-btn" data-paginas="1">
+            <div class="text-3xl font-bold text-[#2A4A9F] mb-1">1</div>
             <p class="text-xs text-gray-500">Resumido</p>
-            <p class="text-xs text-gray-400">~2.500 caracteres</p>
+            <p class="text-xs text-gray-400">~2.500 chars</p>
           </button>
           
-          <button onclick="selecionarTamanhoPaginas(2)" 
-            class="p-4 border-2 border-[#122D6A] bg-[#E8EDF5] rounded-xl transition-all text-center group pagina-btn" data-paginas="2">
-            <div class="text-3xl font-bold text-[#122D6A] mb-1">2</div>
+          <button onclick="selecionarTamanhoResumo(2)" 
+            class="p-4 border-2 border-[#2A4A9F] bg-[#E8EDF5] rounded-xl transition-all text-center group resumo-btn" data-paginas="2">
+            <div class="text-3xl font-bold text-[#2A4A9F] mb-1">2</div>
             <p class="text-xs text-gray-600 font-medium">Recomendado</p>
-            <p class="text-xs text-gray-400">~5.000 caracteres</p>
+            <p class="text-xs text-gray-400">~5.000 chars</p>
           </button>
           
-          <button onclick="selecionarTamanhoPaginas(3)" 
-            class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] hover:bg-[#E8EDF5] transition-all text-center group pagina-btn" data-paginas="3">
-            <div class="text-3xl font-bold text-[#122D6A] mb-1">3</div>
+          <button onclick="selecionarTamanhoResumo(3)" 
+            class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#2A4A9F] hover:bg-[#E8EDF5] transition-all text-center group resumo-btn" data-paginas="3">
+            <div class="text-3xl font-bold text-[#2A4A9F] mb-1">3</div>
             <p class="text-xs text-gray-500">Completo</p>
-            <p class="text-xs text-gray-400">~7.500 caracteres</p>
+            <p class="text-xs text-gray-400">~7.500 chars</p>
           </button>
         </div>
         
@@ -14838,13 +14838,13 @@ window.abrirModalTamanhoPaginas = function() {
         </p>
         
         <div class="flex gap-2">
-          <button onclick="voltarModalEscolherConteudo()" 
+          <button onclick="voltarModalEscolherConteudoResumo()" 
             class="flex-1 py-3 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition flex items-center justify-center gap-2">
             <i class="fas fa-arrow-left"></i> Voltar
           </button>
-          <button onclick="confirmarTamanhoPaginas()" 
-            class="flex-1 py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition flex items-center justify-center gap-2">
-            <i class="fas fa-check"></i> Gerar Teoria
+          <button onclick="confirmarTamanhoResumo()" 
+            class="flex-1 py-3 bg-[#2A4A9F] text-white rounded-xl hover:bg-[#1A3A7F] transition flex items-center justify-center gap-2">
+            <i class="fas fa-check"></i> Gerar Resumo
           </button>
         </div>
       </div>
@@ -14853,38 +14853,38 @@ window.abrirModalTamanhoPaginas = function() {
   document.body.appendChild(modal);
   
   // Guardar seleção padrão (2 páginas)
-  window.paginasTeoriaSelecionadas = 2;
+  window.paginasResumoSelecionadas = 2;
 }
 
-window.selecionarTamanhoPaginas = function(paginas) {
-  window.paginasTeoriaSelecionadas = paginas;
+window.selecionarTamanhoResumo = function(paginas) {
+  window.paginasResumoSelecionadas = paginas;
   
   // Atualizar visual dos botões
-  document.querySelectorAll('.pagina-btn').forEach(btn => {
+  document.querySelectorAll('.resumo-btn').forEach(btn => {
     const btnPaginas = parseInt(btn.dataset.paginas);
     if (btnPaginas === paginas) {
-      btn.classList.remove('border-gray-200', 'hover:border-[#122D6A]', 'hover:bg-[#E8EDF5]');
-      btn.classList.add('border-[#122D6A]', 'bg-[#E8EDF5]');
+      btn.classList.remove('border-gray-200', 'hover:border-[#2A4A9F]', 'hover:bg-[#E8EDF5]');
+      btn.classList.add('border-[#2A4A9F]', 'bg-[#E8EDF5]');
     } else {
-      btn.classList.remove('border-[#122D6A]', 'bg-[#E8EDF5]');
-      btn.classList.add('border-gray-200', 'hover:border-[#122D6A]', 'hover:bg-[#E8EDF5]');
+      btn.classList.remove('border-[#2A4A9F]', 'bg-[#E8EDF5]');
+      btn.classList.add('border-gray-200', 'hover:border-[#2A4A9F]', 'hover:bg-[#E8EDF5]');
     }
   });
 }
 
-window.voltarModalEscolherConteudo = function() {
-  const modal = document.getElementById('modal-tamanho-teoria');
+window.voltarModalEscolherConteudoResumo = function() {
+  const modal = document.getElementById('modal-tamanho-resumo');
   if (modal) modal.remove();
   
   const modalAnterior = document.getElementById('modal-escolher-conteudo');
   if (modalAnterior) modalAnterior.style.display = 'flex';
 }
 
-window.confirmarTamanhoPaginas = function() {
-  const paginas = window.paginasTeoriaSelecionadas || 2;
+window.confirmarTamanhoResumo = function() {
+  const paginas = window.paginasResumoSelecionadas || 2;
   
   // Fechar modal de tamanho
-  const modalTamanho = document.getElementById('modal-tamanho-teoria');
+  const modalTamanho = document.getElementById('modal-tamanho-resumo');
   if (modalTamanho) modalTamanho.remove();
   
   // Fechar modal de escolha também
@@ -14897,16 +14897,16 @@ window.confirmarTamanhoPaginas = function() {
   
   // Mapear páginas para caracteres
   const caracteresMap = { 1: 2500, 2: 5000, 3: 7500 };
-  iaConfig.extensao = 'personalizado';
-  iaConfig.extensaoCustom = caracteresMap[paginas] || 5000;
-  iaConfig.paginasTeoria = paginas;
+  iaConfig.extensaoResumo = 'personalizado';
+  iaConfig.extensaoResumoCustom = caracteresMap[paginas] || 5000;
+  iaConfig.paginasResumo = paginas;
   
   localStorage.setItem('iaConfig', JSON.stringify(iaConfig));
   
-  console.log(`📄 Teoria configurada para ${paginas} página(s) (~${caracteresMap[paginas]} caracteres)`);
+  console.log(`📄 Resumo configurado para ${paginas} página(s) (~${caracteresMap[paginas]} caracteres)`);
   
-  // Gerar teoria com o tamanho configurado
-  gerarConteudoTipo('teoria');
+  // Gerar resumo com o tamanho configurado
+  gerarConteudoTipo('resumo');
 }
 
 // Fechar modal de escolha de conteúdo
@@ -16464,21 +16464,13 @@ async function editarNomePlano(planoId, nomeAtual) {
 window.ativarPlano = async function(planoId) {
   console.log('🔄 Iniciando ativação do plano:', planoId);
   
+  // Usar confirm nativo para garantir funcionamento
+  if (!confirm('Deseja ativar este plano?\n\nO plano ativo anterior será desativado.')) {
+    console.log('❌ Usuário cancelou');
+    return;
+  }
+  
   try {
-    const confirmed = await showConfirm('Deseja ativar este plano?\n\nO plano ativo anterior será desativado.', {
-      title: 'Ativar Plano',
-      confirmText: 'Sim, ativar',
-      cancelText: 'Cancelar',
-      type: 'info'
-    });
-    
-    console.log('📋 Confirmação:', confirmed);
-    
-    if (!confirmed) {
-      console.log('❌ Usuário cancelou');
-      return;
-    }
-    
     console.log('🚀 Enviando requisição para ativar plano...');
     const response = await axios.post(`/api/planos/${planoId}/ativar`);
     console.log('✅ Resposta:', response.data);
