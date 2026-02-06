@@ -10796,37 +10796,28 @@ app.put('/api/metas/:meta_id/trocar-disciplina', async (c) => {
   try {
     // 1. Verificar se a meta existe e não está concluída
     const meta = await DB.prepare(`
-      SELECT id, concluida, disciplina_id, topico_id 
+      SELECT id, concluida, disciplina_id 
       FROM metas_semana 
       WHERE id = ?
     `).bind(meta_id).first()
     
     if (!meta) {
+      console.log('❌ Meta não encontrada:', meta_id)
       return c.json({ error: 'Meta não encontrada' }, 404)
     }
     
     if (meta.concluida) {
+      console.log('❌ Meta já concluída:', meta_id)
       return c.json({ error: 'Não é possível alterar uma meta já concluída' }, 400)
     }
 
-    // 2. Buscar o topico_id real do plano (para garantir referência correta)
-    const topico = await DB.prepare(`
-      SELECT id, nome FROM plano_topicos WHERE id = ? AND plano_id = ?
-    `).bind(novo_topico_id, plano_id).first()
-    
-    if (!topico) {
-      console.log('⚠️ Tópico não encontrado no plano, usando ID fornecido')
-    }
-
-    // 3. Preparar tópicos sugeridos no formato esperado
+    // 2. Preparar tópicos sugeridos no formato esperado
     const novoTopicosSugeridos = JSON.stringify([{ 
       id: novo_topico_id, 
       nome: novo_topico_nome 
     }])
     
-    // 4. Atualizar a meta com nova disciplina e tópico
-    // NOTA: metas_semana não tem disciplina_nome e topico_nome como colunas
-    // Apenas atualiza disciplina_id e topicos_sugeridos (que contém o nome do tópico)
+    // 3. Atualizar a meta com nova disciplina e tópico
     await DB.prepare(`
       UPDATE metas_semana 
       SET disciplina_id = ?,
@@ -14057,6 +14048,13 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
 5. EXTENSÃO MÍNIMA: ${limiteCaracteres} caracteres (pode ultrapassar um pouco, mas NUNCA gere menos que isso)
 
 ⚠️ REGRA CRÍTICA: O conteúdo DEVE ter NO MÍNIMO ${limiteCaracteres} caracteres. Gere conteúdo COMPLETO e DETALHADO.
+
+🚫 PROIBIDO ABSOLUTAMENTE:
+- NÃO inicie com saudações como "Olá", "Olá futuro servidor", "Caro estudante", etc.
+- NÃO use frases genéricas de abertura
+- NÃO repita o nome do tópico ou disciplina no início de forma desnecessária
+- VÁ DIRETO AO CONTEÚDO sem preâmbulos
+- Comece IMEDIATAMENTE com o conteúdo substancial
 ==================================================
 `
 

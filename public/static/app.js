@@ -1081,6 +1081,45 @@ function createUnifiedFAB() {
         </button>
       </div>
       
+      <!-- Botão Disciplinas -->
+      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
+        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
+          Disciplinas
+        </span>
+        <button 
+          onclick="abrirGestaoDisciplinasTopicos(); toggleFabMenu(); event.stopPropagation();"
+          class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-700 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          title="Gerenciar Disciplinas">
+          <i class="fas fa-book text-lg"></i>
+        </button>
+      </div>
+      
+      <!-- Botão Simulados -->
+      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
+        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
+          Simulados
+        </span>
+        <button 
+          onclick="iniciarSimulado(); toggleFabMenu(); event.stopPropagation();"
+          class="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          title="Simulados">
+          <i class="fas fa-clipboard-list text-lg"></i>
+        </button>
+      </div>
+      
+      <!-- Botão Calendário -->
+      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
+        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
+          Calendário
+        </span>
+        <button 
+          onclick="verCalendario(); toggleFabMenu(); event.stopPropagation();"
+          class="w-12 h-12 bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          title="Calendário de Estudos">
+          <i class="fas fa-calendar-alt text-lg"></i>
+        </button>
+      </div>
+      
       <!-- Botão Instalar App -->
       <div id="fab-install-app" class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
         <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
@@ -1152,6 +1191,26 @@ function createUnifiedFAB() {
       
       #fab-menu.open .fab-item:nth-child(3) {
         transition-delay: 0.15s;
+      }
+      
+      #fab-menu.open .fab-item:nth-child(4) {
+        transition-delay: 0.2s;
+      }
+      
+      #fab-menu.open .fab-item:nth-child(5) {
+        transition-delay: 0.25s;
+      }
+      
+      #fab-menu.open .fab-item:nth-child(6) {
+        transition-delay: 0.3s;
+      }
+      
+      #fab-menu.open .fab-item:nth-child(7) {
+        transition-delay: 0.35s;
+      }
+      
+      #fab-menu.open .fab-item:nth-child(8) {
+        transition-delay: 0.4s;
       }
       
       #fab-main.open #fab-icon {
@@ -6754,9 +6813,12 @@ window.confirmarTrocaDisciplina = async function(metaId, planoId, diaSemana) {
     return;
   }
   
-  // Obter nomes
-  const novaDisciplinaNome = selectDisciplina.options[selectDisciplina.selectedIndex].dataset.nome;
-  const novoTopicoNome = selectTopico.options[selectTopico.selectedIndex].dataset.nome;
+  // Obter nomes (fallback para o texto se dataset estiver vazio)
+  const selectedDisciplinaOption = selectDisciplina.options[selectDisciplina.selectedIndex];
+  const selectedTopicoOption = selectTopico.options[selectTopico.selectedIndex];
+  
+  const novaDisciplinaNome = selectedDisciplinaOption.dataset.nome || selectedDisciplinaOption.textContent.trim();
+  const novoTopicoNome = selectedTopicoOption.dataset.nome || selectedTopicoOption.textContent.trim();
   
   console.log('✅ Confirmando troca:', { metaId, novaDisciplinaId, novaDisciplinaNome, novoTopicoId, novoTopicoNome });
   
@@ -12511,14 +12573,15 @@ window.editarUsuarioAdmin = async function(userId, nome, email, isPremium) {
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium ${themes[currentTheme].text} mb-1">Nome</label>
-          <input type="text" id="edit-user-name" value="${nome}" disabled
-            class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} bg-gray-100 ${themes[currentTheme].text}">
+          <input type="text" id="edit-user-name" value="${nome}"
+            class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} ${themes[currentTheme].card} ${themes[currentTheme].text}">
         </div>
         
         <div>
           <label class="block text-sm font-medium ${themes[currentTheme].text} mb-1">Email</label>
           <input type="text" value="${email}" disabled
             class="w-full px-3 py-2 rounded-lg border ${themes[currentTheme].border} bg-gray-100 ${themes[currentTheme].text}">
+          <p class="text-xs ${themes[currentTheme].textSecondary} mt-1">Email não pode ser alterado</p>
         </div>
         
         <!-- Seção de Assinatura -->
@@ -12609,11 +12672,18 @@ window.ativarAssinaturaAdmin = async function(userId) {
 
 // Salvar alterações do usuário (admin)
 window.salvarUsuarioAdmin = async function(userId) {
+  const nome = document.getElementById('edit-user-name')?.value?.trim();
   const isPremium = document.getElementById('edit-user-premium').value === '1';
   const days = parseInt(document.getElementById('edit-user-days')?.value) || 30;
-  const planId = document.getElementById('edit-user-plan').value;
+  const planId = document.getElementById('edit-user-plan')?.value;
   
   try {
+    // Atualizar nome se fornecido
+    if (nome) {
+      await axios.put(`/api/users/${userId}`, { name: nome });
+    }
+    
+    // Atualizar status premium
     await axios.put(`/api/admin/users/${userId}`, {
       is_premium: isPremium,
       premium_days: days,
