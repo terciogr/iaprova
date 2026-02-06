@@ -4049,24 +4049,24 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
       }).join('');
       
       return `
-        <div class="border ${themes[currentTheme].border} rounded-lg p-4 mb-3 ${themes[currentTheme].bgAlt}" data-index="${index}">
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex-1">
+        <div class="border ${themes[currentTheme].border} rounded-lg p-3 sm:p-4 mb-2 sm:mb-3 ${themes[currentTheme].bgAlt}" data-index="${index}">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="flex-1 min-w-0">
               <input type="text" 
                      value="${disc.nome}" 
                      onchange="atualizarNomeDisciplinaRevisao(${index}, this.value)"
-                     class="font-semibold ${themes[currentTheme].text} ${themes[currentTheme].bg} border ${themes[currentTheme].border} rounded px-2 py-1 w-full"
+                     class="font-semibold ${themes[currentTheme].text} ${themes[currentTheme].bg} border ${themes[currentTheme].border} rounded px-2 py-1.5 w-full text-sm sm:text-base"
               />
             </div>
             <button onclick="removerDisciplinaRevisao(${index})" 
-                    class="ml-2 text-red-500 hover:text-red-700 p-1" title="Remover disciplina">
+                    class="text-red-500 hover:text-red-700 p-2 flex-shrink-0" title="Remover disciplina">
               <i class="fas fa-trash"></i>
             </button>
           </div>
           
-          <div class="flex items-center gap-4 mb-3">
+          <div class="flex flex-wrap items-center gap-3 sm:gap-4">
             <div class="flex items-center gap-2">
-              <label class="text-sm ${themes[currentTheme].textSecondary}">Peso:</label>
+              <label class="text-xs sm:text-sm ${themes[currentTheme].textSecondary}">Peso:</label>
               <select onchange="atualizarPesoDisciplinaRevisao(${index}, this.value)"
                       class="${themes[currentTheme].bg} border ${themes[currentTheme].border} rounded px-2 py-1 text-sm ${themes[currentTheme].text}">
                 ${[1, 2, 3, 4, 5].map(p => 
@@ -4075,11 +4075,11 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
               </select>
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-sm ${themes[currentTheme].textSecondary}">
+              <span class="text-xs sm:text-sm ${themes[currentTheme].textSecondary}">
                 <i class="fas fa-list-ul mr-1"></i> ${disc.topicos?.length || 0} tópicos
               </span>
               <button onclick="toggleTopicosRevisao(${index})" 
-                      class="text-xs text-[#2A4A9F] hover:underline" id="toggleTopicos${index}">
+                      class="text-xs text-[#2A4A9F] hover:underline px-2 py-1" id="toggleTopicos${index}">
                 <i class="fas fa-eye"></i> Ver/Editar
               </button>
             </div>
@@ -4087,14 +4087,14 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
           
           <!-- Lista de tópicos (colapsável) -->
           <div id="topicosContainer${index}" class="hidden">
-            <div class="border-t ${themes[currentTheme].border} pt-3 mt-2">
+            <div class="border-t ${themes[currentTheme].border} pt-3 mt-3">
               <div class="flex items-center justify-between mb-2">
                 <span class="text-xs font-semibold ${themes[currentTheme].text}">
-                  <i class="fas fa-list-ol mr-1"></i> Tópicos da disciplina:
+                  <i class="fas fa-list-ol mr-1"></i> Tópicos:
                 </span>
                 <button onclick="adicionarTopicoRevisao(${index})" 
                         class="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition">
-                  <i class="fas fa-plus mr-1"></i> Novo Tópico
+                  <i class="fas fa-plus mr-1"></i> Novo
                 </button>
               </div>
               <div class="max-h-48 overflow-y-auto pr-2" id="listaTopicos${index}">
@@ -4110,33 +4110,32 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
       const modalContainer = getModalContainer();
       
       const modalHtml = `
-        <div id="modalRevisaoDisciplinas" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div class="${themes[currentTheme].card} rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div id="modalRevisaoDisciplinas" class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div class="${themes[currentTheme].card} rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
             <!-- Header -->
             <div class="p-4 border-b ${themes[currentTheme].border} bg-gradient-to-r from-[#122D6A] to-[#2A4A9F]">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                    <i class="fas fa-edit"></i> Revisar Disciplinas Extraídas
+              <div class="flex items-start justify-between">
+                <div class="flex-1 min-w-0">
+                  <h2 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-edit"></i> 
+                    <span class="truncate">Revisar Disciplinas</span>
                   </h2>
-                  <p class="text-blue-100 text-sm mt-1">
-                    Verifique os pesos e ajuste se necessário antes de confirmar
+                  <p class="text-blue-100 text-xs sm:text-sm mt-1">
+                    Verifique os pesos e ajuste antes de confirmar
                   </p>
                 </div>
-                <button onclick="fecharModalRevisao()" class="text-white hover:text-gray-200">
+                <button onclick="fecharModalRevisao()" class="text-white hover:text-gray-200 ml-2 p-1">
                   <i class="fas fa-times text-xl"></i>
                 </button>
               </div>
               
               ${quadroProvas?.encontrado ? `
-                <div class="mt-2 p-2 bg-white bg-opacity-20 rounded text-white text-sm">
+                <div class="mt-2 p-2 bg-white bg-opacity-20 rounded text-white text-xs sm:text-sm">
                   <i class="fas fa-info-circle mr-1"></i>
-                  Pesos detectados do quadro de provas: 
-                  CG=${quadroProvas.peso_conhecimentos_gerais}, 
-                  CE=${quadroProvas.peso_conhecimentos_especificos}
+                  Pesos: CG=${quadroProvas.peso_conhecimentos_gerais}, CE=${quadroProvas.peso_conhecimentos_especificos}
                 </div>
               ` : `
-                <div class="mt-2 p-2 bg-orange-500 bg-opacity-80 rounded text-white text-sm">
+                <div class="mt-2 p-2 bg-orange-500 bg-opacity-80 rounded text-white text-xs sm:text-sm">
                   <i class="fas fa-exclamation-triangle mr-1"></i>
                   Quadro de provas não encontrado. Verifique os pesos manualmente!
                 </div>
@@ -4144,26 +4143,30 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
             </div>
             
             <!-- Lista de disciplinas -->
-            <div class="p-4 overflow-y-auto flex-1" id="listaDisciplinasRevisao">
+            <div class="p-3 sm:p-4 overflow-y-auto flex-1" id="listaDisciplinasRevisao">
               ${disciplinasEditadas.map((d, i) => renderDisciplinaItem(d, i)).join('')}
             </div>
             
-            <!-- Footer com botões -->
-            <div class="p-4 border-t ${themes[currentTheme].border} flex justify-between items-center">
-              <button onclick="adicionarDisciplinaRevisao()" 
-                      class="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
-                <i class="fas fa-plus"></i> Adicionar Disciplina
-              </button>
-              
-              <div class="flex gap-3">
-                <button onclick="fecharModalRevisao()" 
-                        class="px-4 py-2 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg hover:opacity-80 transition-colors border ${themes[currentTheme].border}">
-                  Cancelar
+            <!-- Footer com botões - RESPONSIVO -->
+            <div class="p-3 sm:p-4 border-t ${themes[currentTheme].border} safe-area-inset-bottom">
+              <!-- Mobile: Stack vertical -->
+              <div class="flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-3">
+                <button onclick="adicionarDisciplinaRevisao()" 
+                        class="order-2 sm:order-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium">
+                  <i class="fas fa-plus"></i> Adicionar Disciplina
                 </button>
-                <button id="btnConfirmarDisciplinas" onclick="confirmarDisciplinasRevisao()" 
-                        class="px-6 py-2 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all font-semibold flex items-center gap-2">
-                  <i class="fas fa-check"></i> Confirmar e Salvar
-                </button>
+                
+                <div class="order-1 sm:order-2 flex gap-2 sm:gap-3">
+                  <button onclick="fecharModalRevisao()" 
+                          class="flex-1 sm:flex-none px-4 py-2.5 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg hover:opacity-80 transition-colors border ${themes[currentTheme].border} text-sm">
+                    Cancelar
+                  </button>
+                  <button id="btnConfirmarDisciplinas" onclick="confirmarDisciplinasRevisao()" 
+                          class="flex-1 sm:flex-none px-4 sm:px-6 py-2.5 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all font-semibold flex items-center justify-center gap-2 text-sm">
+                    <i class="fas fa-check"></i> 
+                    <span class="hidden sm:inline">Confirmar e</span> Salvar
+                  </button>
+                </div>
               </div>
             </div>
           </div>

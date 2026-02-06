@@ -4319,24 +4319,58 @@ app.post('/api/editais/processar/:id', async (c) => {
           // Prompt otimizado para extração de disciplinas
           const cargoLower = cargoDesejado?.toLowerCase() || ''
           const areaDetectada = 
-            (cargoLower.includes('enfermeiro') || cargoLower.includes('enfermagem') || cargoLower.includes('saúde')) ? 'SAÚDE/ENFERMAGEM' :
-            (cargoLower.includes('direito') || cargoLower.includes('advogado')) ? 'DIREITO/JURÍDICO' :
-            (cargoLower.includes('contador')) ? 'CONTABILIDADE' :
-            (cargoLower.includes('admin') || cargoLower.includes('gestão')) ? 'ADMINISTRAÇÃO' :
+            (cargoLower.includes('enfermeiro') || cargoLower.includes('enfermagem') || cargoLower.includes('saúde') || cargoLower.includes('sus')) ? 'SAÚDE/ENFERMAGEM' :
+            (cargoLower.includes('técnico em enfermagem')) ? 'SAÚDE - NÍVEL TÉCNICO' :
+            (cargoLower.includes('direito') || cargoLower.includes('advogado') || cargoLower.includes('jurídico')) ? 'DIREITO/JURÍDICO' :
+            (cargoLower.includes('contador') || cargoLower.includes('contábil')) ? 'CONTABILIDADE' :
+            (cargoLower.includes('admin') || cargoLower.includes('gestão') || cargoLower.includes('analista')) ? 'ADMINISTRAÇÃO' :
+            (cargoLower.includes('professor') || cargoLower.includes('educação') || cargoLower.includes('pedagog')) ? 'EDUCAÇÃO' :
+            (cargoLower.includes('técnico') && !cargoLower.includes('enfermagem')) ? 'NÍVEL TÉCNICO/MÉDIO' :
             'GERAL'
           
-          const promptPDF = `EXTRAIA AS DISCIPLINAS E TÓPICOS DO CONTEÚDO PROGRAMÁTICO DESTE EDITAL DE CONCURSO.
+          // ✅ PROMPT APRIMORADO para melhor extração de disciplinas
+          const promptPDF = `VOCÊ É UM ESPECIALISTA EM ANÁLISE DE EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
 
-CARGO DO CANDIDATO: ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO'} (Área: ${areaDetectada})
+TAREFA: Extrair TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO para o cargo especificado.
 
-INSTRUÇÕES:
-1. Procure a seção "CONTEÚDO PROGRAMÁTICO" ou "ANEXO II/III"
-2. Extraia APENAS disciplinas relevantes para o cargo indicado (${areaDetectada})
-3. Liste 3-6 disciplinas no máximo
-4. Inclua TODOS os tópicos de cada disciplina
+CARGO DO CANDIDATO: ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO'}
+ÁREA: ${areaDetectada}
 
-RETORNE APENAS JSON (sem explicações):
-{"disciplinas":[{"nome":"Nome da Disciplina","peso":1,"topicos":["Tópico 1","Tópico 2"]}]}`
+INSTRUÇÕES DETALHADAS:
+1. LOCALIZE a seção "CONTEÚDO PROGRAMÁTICO" (geralmente no ANEXO II ou ANEXO III)
+2. IDENTIFIQUE se há divisão entre "CONHECIMENTOS GERAIS" e "CONHECIMENTOS ESPECÍFICOS"
+3. EXTRAIA as disciplinas EXATAS listadas no edital para este cargo/nível
+4. Para cada disciplina, extraia TODOS os tópicos/subitens listados
+5. O PESO deve ser: 1 para Conhecimentos Gerais, 2 para Conhecimentos Específicos (padrão)
+
+DISCIPLINAS TÍPICAS POR ÁREA:
+${areaDetectada === 'SAÚDE/ENFERMAGEM' || areaDetectada === 'SAÚDE - NÍVEL TÉCNICO' ? `
+- CONHECIMENTOS GERAIS: Língua Portuguesa, Raciocínio Lógico, Informática, Conhecimentos Regionais, Atualidades
+- CONHECIMENTOS ESPECÍFICOS: SUS (Legislação), Enfermagem/Saúde Pública, Ética Profissional, Biossegurança
+` : areaDetectada === 'DIREITO/JURÍDICO' ? `
+- CONHECIMENTOS GERAIS: Língua Portuguesa, Raciocínio Lógico, Informática
+- CONHECIMENTOS ESPECÍFICOS: Direito Constitucional, Direito Administrativo, Direito Civil, Direito Penal
+` : `
+- CONHECIMENTOS GERAIS: Língua Portuguesa, Matemática/Raciocínio Lógico, Informática, Atualidades
+- CONHECIMENTOS ESPECÍFICOS: Depende do cargo específico
+`}
+
+FORMATO DE RESPOSTA (APENAS JSON, sem explicação):
+{
+  "disciplinas": [
+    {
+      "nome": "Nome Exato da Disciplina",
+      "peso": 1,
+      "topicos": ["Tópico 1 completo", "Tópico 2 completo", "..."]
+    }
+  ]
+}
+
+IMPORTANTE:
+- Use os NOMES EXATOS das disciplinas como aparecem no edital
+- NÃO invente tópicos - extraia apenas o que está escrito
+- Inclua entre 4 a 8 disciplinas
+- Cada disciplina deve ter seus tópicos reais do edital`
 
           const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
@@ -4352,7 +4386,7 @@ RETORNE APENAS JSON (sem explicações):
                 }],
                 generationConfig: {
                   temperature: 0.1,
-                  maxOutputTokens: 32768
+                  maxOutputTokens: 65536
                 }
               })
             }
@@ -4640,49 +4674,72 @@ INSTRUÇÕES:
     
     console.log(`🎯 Área detectada do cargo: ${areaDetectada}`)
     
-    const prompt = `TAREFA CRÍTICA: Extrair APENAS as disciplinas do edital que são REALMENTE cobradas para o cargo "${cargoDesejado || 'não especificado'}" na área de ${areaDetectada}.
+    // ✅ PROMPT APRIMORADO - Extração precisa de disciplinas
+    const prompt = `VOCÊ É UM ESPECIALISTA EM ANÁLISE DE EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
+
+TAREFA: Extrair TODAS as disciplinas e seus tópicos do CONTEÚDO PROGRAMÁTICO para o cargo especificado.
+
+CARGO DO CANDIDATO: ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO'}
+ÁREA: ${areaDetectada}
+PESOS DETECTADOS: CG=${pesoCG}, CE=${pesoCE}
 
 ${instrucaoCargo}
 
-⚠️ REGRAS ABSOLUTAS - SIGA RIGOROSAMENTE:
+INSTRUÇÕES DETALHADAS:
 
-1. ÁREA DO CARGO: ${areaDetectada}
-   - Se o cargo é de ${areaDetectada}, NÃO inclua disciplinas de outras áreas
-   - Exemplo: Se é ENFERMAGEM, NÃO inclua "Direito Administrativo", "Direito Constitucional", etc.
-   
-2. APENAS DISCIPLINAS DA PROVA:
-   - Extraia somente matérias que REALMENTE caem na prova deste cargo
-   - Procure seções como "NÍVEL SUPERIOR", "${cargoDesejado?.toUpperCase()}" ou "${areaDetectada}"
-   
-3. ESTRUTURA CORRETA:
-   - 3-6 disciplinas no máximo
-   - "Conhecimentos Específicos de ${cargoDesejado || areaDetectada}" = UMA disciplina com tópicos técnicos
-   - NÃO transforme subtópicos em disciplinas separadas
-   
-4. PESOS:
-   - Conhecimentos Gerais (Português, Raciocínio) = peso ${pesoCG}
-   - Conhecimentos Específicos = peso ${pesoCE}
+1. ESTRUTURA DO CONTEÚDO PROGRAMÁTICO:
+   - CONHECIMENTOS GERAIS (peso ${pesoCG}): Língua Portuguesa, Raciocínio Lógico, Informática, etc.
+   - CONHECIMENTOS ESPECÍFICOS (peso ${pesoCE}): Disciplinas técnicas da área
 
-EXEMPLOS PARA ÁREA DE ${areaDetectada}:
-${areaDetectada === 'SAÚDE/ENFERMAGEM' ? `
-- "Língua Portuguesa" (peso ${pesoCG})
-- "Raciocínio Lógico" (peso ${pesoCG}) 
-- "Legislação SUS" (peso ${pesoCE})
-- "Conhecimentos Específicos de Enfermagem" (peso ${pesoCE}) - com tópicos de enfermagem, saúde pública, etc.` : 
+2. DISCIPLINAS ESPERADAS POR ÁREA:
+${areaDetectada === 'SAÚDE/ENFERMAGEM' || areaDetectada === 'SAÚDE - NÍVEL TÉCNICO' ? `
+   CONHECIMENTOS GERAIS:
+   - Língua Portuguesa (peso ${pesoCG})
+   - Raciocínio Lógico (peso ${pesoCG})
+   - Informática (peso ${pesoCG}) - se houver
+   - Conhecimentos Regionais/Atualidades (peso ${pesoCG}) - se houver
+   
+   CONHECIMENTOS ESPECÍFICOS:
+   - Legislação do SUS (peso ${pesoCE}) - Leis 8080/90, 8142/90, etc.
+   - Enfermagem/Saúde Pública (peso ${pesoCE}) - técnicas, procedimentos, saúde coletiva
+   - Ética e Legislação Profissional (peso ${pesoCE}) - se separado` :
 areaDetectada === 'DIREITO/JURÍDICO' ? `
-- "Língua Portuguesa" (peso ${pesoCG})
-- "Direito Constitucional" (peso ${pesoCE})
-- "Direito Administrativo" (peso ${pesoCE})
-- "Direito Civil" (peso ${pesoCE})` : `
-- "Língua Portuguesa" (peso ${pesoCG})
-- "Raciocínio Lógico" (peso ${pesoCG})
-- "Conhecimentos Específicos" (peso ${pesoCE})`}
+   CONHECIMENTOS GERAIS:
+   - Língua Portuguesa (peso ${pesoCG})
+   - Raciocínio Lógico (peso ${pesoCG})
+   
+   CONHECIMENTOS ESPECÍFICOS:
+   - Direito Constitucional (peso ${pesoCE})
+   - Direito Administrativo (peso ${pesoCE})
+   - Direito Civil (peso ${pesoCE})
+   - Direito Penal (peso ${pesoCE})` : `
+   CONHECIMENTOS GERAIS:
+   - Língua Portuguesa (peso ${pesoCG})
+   - Matemática/Raciocínio Lógico (peso ${pesoCG})
+   - Informática (peso ${pesoCG})
+   
+   CONHECIMENTOS ESPECÍFICOS:
+   - Disciplinas técnicas da área (peso ${pesoCE})`}
 
-TEXTO DO EDITAL:
-${textoParaIA}
+3. REGRAS IMPORTANTES:
+   - NÃO invente disciplinas - use apenas o que está no edital
+   - Use os NOMES EXATOS como aparecem no conteúdo programático
+   - Inclua entre 4 a 8 disciplinas
+   - Cada disciplina deve ter seus tópicos completos
 
-RETORNE APENAS JSON (sem markdown, sem explicações):
-{"disciplinas":[{"nome":"Nome da Disciplina","peso":${pesoCG},"topicos":["Tópico 1","Tópico 2"]}]}`
+4. FORMATO DE RESPOSTA (APENAS JSON, sem explicações):
+{
+  "disciplinas": [
+    {
+      "nome": "Nome Exato da Disciplina",
+      "peso": ${pesoCG},
+      "topicos": ["Tópico 1 completo", "Tópico 2 completo"]
+    }
+  ]
+}
+
+TEXTO DO EDITAL PARA ANÁLISE:
+${textoParaIA}`
 
     // ════════════════════════════════════════════════════════════════════════
     // ✅ SISTEMA SIMPLIFICADO DE CHAMADA À API GEMINI (máximo 2 tentativas)
