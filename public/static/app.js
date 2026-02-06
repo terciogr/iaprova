@@ -11482,15 +11482,22 @@ window.renderDashboardSimulados = async function() {
         </header>
       
         <div class="max-w-7xl mx-auto py-6 px-4">
-          <!-- Titulo da Pagina -->
-          <div class="mb-6">
-            <h1 class="text-2xl md:text-3xl font-bold ${themes[currentTheme].text} mb-1">
-              <i class="fas fa-chart-line mr-3 text-[#4A90D9]"></i>
-              Dashboard de Simulados
-            </h1>
-            <p class="${themes[currentTheme].textSecondary} text-sm">
-              Acompanhe sua evolução e performance nos simulados
-            </p>
+          <!-- Titulo da Pagina + Botão Novo Simulado -->
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div>
+              <h1 class="text-2xl md:text-3xl font-bold ${themes[currentTheme].text} mb-1">
+                <i class="fas fa-chart-line mr-3 text-[#4A90D9]"></i>
+                Dashboard de Simulados
+              </h1>
+              <p class="${themes[currentTheme].textSecondary} text-sm">
+                Acompanhe sua evolução e performance nos simulados
+              </p>
+            </div>
+            <!-- ✅ BOTÃO NOVO SIMULADO NO TOPO -->
+            <button onclick="abrirModalSimulado()" class="px-6 py-3 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition shadow-lg flex items-center gap-2 self-start md:self-auto">
+              <i class="fas fa-plus"></i>
+              <span>Novo Simulado</span>
+            </button>
           </div>
           
           <!-- Estatísticas Rápidas com novo design -->
@@ -11646,12 +11653,6 @@ window.renderDashboardSimulados = async function() {
                     }).join('')}
                   </tbody>
                 </table>
-              </div>
-              
-              <div class="mt-4 text-center">
-                <button onclick="abrirModalSimulado()" class="px-6 py-3 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition">
-                  <i class="fas fa-plus mr-2"></i>Novo Simulado
-                </button>
               </div>
             `}
           </div>

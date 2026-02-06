@@ -8610,31 +8610,49 @@ app.get('/api/planos/list/:user_id', async (c) => {
       
       const disciplinaIds = disciplinasPlano.map((d: any) => d.disciplina_id)
       
-      console.log(`📊 Plano ${p.id}: ${disciplinaIds.length} disciplinas`)
+      console.log(`📊 Plano ${p.id}: ${disciplinaIds.length} disciplinas, edital_id: ${p.edital_id || 'nenhum'}`)
       
       if (disciplinaIds.length > 0) {
         const placeholders = disciplinaIds.map(() => '?').join(',')
         
-        // ✅ CORREÇÃO: SEMPRE buscar de topicos_edital (onde as metas buscam os tópicos)
-        // A tabela topicos_edital é usada pelas metas semanais, então é aí que o progresso é registrado
-        const topicosResult = await DB.prepare(`
+        // ✅ CORREÇÃO v2: Buscar de AMBAS as tabelas (topicos_edital e edital_topicos)
+        // Tópicos em topicos_edital (metas semanais)
+        const topicosTeResult = await DB.prepare(`
           SELECT COUNT(*) as total FROM topicos_edital 
           WHERE user_id = ? AND disciplina_id IN (${placeholders})
         `).bind(user_id, ...disciplinaIds).first() as any
         
-        totalTopicos = topicosResult?.total || 0
+        // Tópicos em edital_topicos (edital processado)
+        const topicosEtResult = p.edital_id ? await DB.prepare(`
+          SELECT COUNT(*) as total FROM edital_topicos et
+          INNER JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id
+          WHERE ed.edital_id = ? AND ed.disciplina_id IN (${placeholders})
+        `).bind(p.edital_id, ...disciplinaIds).first() as any : { total: 0 }
         
-        // ✅ CORREÇÃO: Contar tópicos onde nivel_dominio >= 2 (estudado pelo menos 1x)
-        // nivel_dominio = 10 é "concluído", mas >= 2 já indica progresso
+        // Usar o maior valor
+        totalTopicos = Math.max(topicosTeResult?.total || 0, topicosEtResult?.total || 0)
+        
+        // Contar estudados
         const topicosEstudadosResult = await DB.prepare(`
           SELECT COUNT(*) as total FROM user_topicos_progresso utp
           INNER JOIN topicos_edital te ON utp.topico_id = te.id
           WHERE utp.user_id = ? AND te.disciplina_id IN (${placeholders}) AND utp.nivel_dominio >= 2
         `).bind(user_id, ...disciplinaIds).first() as any
         
-        topicosEstudados = topicosEstudadosResult?.total || 0
+        // Contar metas concluídas como fallback
+        const metasConcluidasResult = await DB.prepare(`
+          SELECT COUNT(DISTINCT ms.id) as total FROM metas_semana ms
+          INNER JOIN semanas_estudo se ON ms.semana_id = se.id
+          WHERE ms.user_id = ? AND se.plano_id = ? AND ms.concluida = 1 AND ms.disciplina_id IN (${placeholders})
+        `).bind(user_id, p.id, ...disciplinaIds).first() as any
         
-        console.log(`   → ${totalTopicos} tópicos total, ${topicosEstudados} estudados`)
+        // Usar o maior valor entre progresso registrado e metas concluídas
+        topicosEstudados = Math.min(
+          Math.max(topicosEstudadosResult?.total || 0, metasConcluidasResult?.total || 0),
+          totalTopicos
+        )
+        
+        console.log(`   → ${totalTopicos} tópicos (te:${topicosTeResult?.total}, et:${topicosEtResult?.total}), ${topicosEstudados} estudados`)
       }
       
       // Calcular progresso percentual - NUNCA acima de 100%
@@ -9036,13 +9054,13 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
       return c.json({ error: 'Plano não encontrado' }, 404)
     }
 
-    console.log(`📊 Calculando progresso do plano ${plano_id}`)
+    console.log(`📊 Calculando progresso do plano ${plano_id}, edital_id: ${plano.edital_id || 'nenhum'}`)
 
     let totalTopicos = 0
     let topicosEstudados = 0
     const disciplinasDetalhes: any[] = []
 
-    // ✅ CORREÇÃO: SEMPRE buscar via ciclos_estudo + topicos_edital (onde as metas registram progresso)
+    // ✅ CORREÇÃO v2: Buscar tópicos de AMBAS as tabelas (topicos_edital E edital_topicos)
     const { results: disciplinasPlano } = await DB.prepare(`
       SELECT DISTINCT 
         c.disciplina_id,
@@ -9050,25 +9068,38 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
         d.area,
         COALESCE(ud.peso, 1) as peso,
         ud.nivel_dominio,
-        (SELECT COUNT(*) FROM topicos_edital te WHERE te.disciplina_id = c.disciplina_id AND te.user_id = ?) as total_topicos_disc,
+        -- Contar tópicos em topicos_edital (metas semanais)
+        (SELECT COUNT(*) FROM topicos_edital te WHERE te.disciplina_id = c.disciplina_id AND te.user_id = ?) as topicos_te,
+        -- Contar tópicos em edital_topicos (edital processado)
+        (SELECT COUNT(*) FROM edital_topicos et 
+         INNER JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id 
+         WHERE ed.disciplina_id = c.disciplina_id AND ed.edital_id = ?) as topicos_et,
+        -- Contar estudados em topicos_edital
         (SELECT COUNT(*) FROM user_topicos_progresso utp 
          INNER JOIN topicos_edital te ON utp.topico_id = te.id 
-         WHERE te.disciplina_id = c.disciplina_id AND utp.user_id = ? AND utp.nivel_dominio >= 2) as topicos_estudados_disc
+         WHERE te.disciplina_id = c.disciplina_id AND utp.user_id = ? AND utp.nivel_dominio >= 2) as estudados_te,
+        -- Contar estudados via metas concluídas (fallback)
+        (SELECT COUNT(DISTINCT ms.id) FROM metas_semana ms 
+         WHERE ms.disciplina_id = c.disciplina_id AND ms.user_id = ? AND ms.concluida = 1) as metas_concluidas
       FROM ciclos_estudo c
       JOIN disciplinas d ON c.disciplina_id = d.id
       LEFT JOIN user_disciplinas ud ON ud.disciplina_id = c.disciplina_id AND ud.user_id = ?
       WHERE c.plano_id = ?
-    `).bind(plano.user_id, plano.user_id, plano.user_id, plano_id).all() as any[]
+    `).bind(plano.user_id, plano.edital_id || 0, plano.user_id, plano.user_id, plano.user_id, plano_id).all() as any[]
 
     console.log(`📚 Encontradas ${disciplinasPlano.length} disciplinas no plano ${plano_id}`)
 
     for (const disc of disciplinasPlano) {
       const peso = disc.peso || 1
-      const topicos = disc.total_topicos_disc || 0
-      const estudados = disc.topicos_estudados_disc || 0
+      // ✅ CORREÇÃO: Usar o maior valor entre topicos_edital e edital_topicos
+      const topicos = Math.max(disc.topicos_te || 0, disc.topicos_et || 0)
+      // ✅ CORREÇÃO: Usar estudados ou metas concluídas (o que for maior)
+      const estudados = Math.max(disc.estudados_te || 0, disc.metas_concluidas || 0)
+      
+      console.log(`   📖 ${disc.disciplina_nome}: ${estudados}/${topicos} (te:${disc.topicos_te}, et:${disc.topicos_et}, estudados:${disc.estudados_te}, metas:${disc.metas_concluidas})`)
       
       totalTopicos += topicos
-      topicosEstudados += estudados
+      topicosEstudados += Math.min(estudados, topicos) // Nunca mais que o total
 
       disciplinasDetalhes.push({
         disciplina_id: disc.disciplina_id,
