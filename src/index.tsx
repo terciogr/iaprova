@@ -8388,48 +8388,53 @@ app.get('/api/planos/list/:user_id', async (c) => {
   const { DB } = c.env
   const user_id = c.req.param('user_id')
 
-  const { results: planos } = await DB.prepare(`
-    SELECT 
-      p.*,
-      i.objetivo_tipo,
-      i.concurso_nome,
-      i.area_geral,
-      i.tempo_disponivel_dia,
-      COUNT(DISTINCT ce.disciplina_id) as total_disciplinas,
-      COUNT(DISTINCT ms.id) as total_metas,
-      SUM(CASE WHEN ms.concluida = 1 THEN 1 ELSE 0 END) as metas_concluidas
-    FROM planos_estudo p
-    LEFT JOIN interviews i ON p.interview_id = i.id
-    LEFT JOIN ciclos_estudo ce ON p.id = ce.plano_id
-    LEFT JOIN semanas_estudo se ON p.id = se.plano_id
-    LEFT JOIN metas_semana ms ON se.id = ms.semana_id
-    WHERE p.user_id = ?
-    GROUP BY p.id
-    ORDER BY p.created_at DESC
-  `).bind(user_id).all()
+  try {
+    const { results: planos } = await DB.prepare(`
+      SELECT 
+        p.*,
+        i.objetivo_tipo,
+        i.concurso_nome,
+        i.area_geral,
+        i.tempo_disponivel_dia,
+        COUNT(DISTINCT ce.disciplina_id) as total_disciplinas,
+        COUNT(DISTINCT ms.id) as total_metas,
+        SUM(CASE WHEN ms.concluida = 1 THEN 1 ELSE 0 END) as metas_concluidas
+      FROM planos_estudo p
+      LEFT JOIN interviews i ON p.interview_id = i.id
+      LEFT JOIN ciclos_estudo ce ON p.id = ce.plano_id
+      LEFT JOIN semanas_estudo se ON p.id = se.plano_id
+      LEFT JOIN metas_semana ms ON se.id = ms.semana_id
+      WHERE p.user_id = ?
+      GROUP BY p.id
+      ORDER BY p.created_at DESC
+    `).bind(user_id).all()
 
-  // Para cada plano, contar tópicos do edital associado
-  const planosComTopicos = await Promise.all(planos.map(async (p: any) => {
-    // Buscar total de tópicos do usuário (todos os tópicos do edital)
-    const topicosResult = await DB.prepare(`
-      SELECT COUNT(*) as total FROM topicos_edital WHERE user_id = ?
-    `).bind(user_id).first() as any
+    // Para cada plano, contar tópicos do edital associado
+    const planosComTopicos = await Promise.all(planos.map(async (p: any) => {
+      // Buscar total de tópicos do usuário (todos os tópicos do edital)
+      const topicosResult = await DB.prepare(`
+        SELECT COUNT(*) as total FROM topicos_edital WHERE user_id = ?
+      `).bind(user_id).first() as any
 
-    // Buscar tópicos estudados (com vezes_estudado > 0)
-    const topicosEstudadosResult = await DB.prepare(`
-      SELECT COUNT(*) as total FROM topicos_edital WHERE user_id = ? AND vezes_estudado > 0
-    `).bind(user_id).first() as any
+      // Buscar tópicos estudados usando user_topicos_progresso
+      const topicosEstudadosResult = await DB.prepare(`
+        SELECT COUNT(*) as total FROM user_topicos_progresso WHERE user_id = ? AND vezes_estudado > 0
+      `).bind(user_id).first() as any
 
-    return {
-      ...p,
-      diagnostico: p.diagnostico ? JSON.parse(p.diagnostico) : null,
-      mapa_prioridades: p.mapa_prioridades ? JSON.parse(p.mapa_prioridades) : null,
-      total_topicos: topicosResult?.total || 0,
-      topicos_estudados: topicosEstudadosResult?.total || 0
-    }
-  }))
+      return {
+        ...p,
+        diagnostico: p.diagnostico ? JSON.parse(p.diagnostico) : null,
+        mapa_prioridades: p.mapa_prioridades ? JSON.parse(p.mapa_prioridades) : null,
+        total_topicos: topicosResult?.total || 0,
+        topicos_estudados: topicosEstudadosResult?.total || 0
+      }
+    }))
 
-  return c.json(planosComTopicos)
+    return c.json(planosComTopicos)
+  } catch (error) {
+    console.error('Erro ao listar planos:', error)
+    return c.json({ error: 'Erro ao listar planos' }, 500)
+  }
 })
 
 // Ativar um plano específico (desativa os outros)
