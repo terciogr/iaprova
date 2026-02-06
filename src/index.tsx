@@ -1183,6 +1183,221 @@ async function sendWelcomeEmail(email: string, name: string, env?: any): Promise
   }
 }
 
+// Função para enviar email de confirmação de pagamento (usando Resend)
+async function sendPaymentConfirmationEmail(
+  email: string, 
+  name: string, 
+  plan: string, 
+  amount: number, 
+  expiresAt: string,
+  paymentId: string,
+  env?: any
+): Promise<boolean> {
+  const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
+  const FROM_EMAIL = env?.FROM_EMAIL || 'noreply@iaprova.app';
+  const APP_URL = env?.APP_URL || 'https://iaprova.app';
+  
+  // Verificar se tem API key configurada
+  if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
+    console.log('⚠️ MODO DEV: Email de pagamento não enviado (configure RESEND_API_KEY)');
+    return false;
+  }
+  
+  // Formatar dados
+  const planName = plan === 'anual' ? 'Premium Anual (12 meses)' : 'Premium Mensal';
+  const amountFormatted = 'R$ ' + amount.toFixed(2).replace('.', ',');
+  const expiresDate = new Date(expiresAt).toLocaleDateString('pt-BR', { 
+    day: '2-digit', 
+    month: 'long', 
+    year: 'numeric' 
+  });
+  const purchaseDate = new Date().toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  
+  // Calcular economia para plano anual
+  const savingsHtml = plan === 'anual' 
+    ? '<div style="margin-top: 16px; padding: 12px; background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%); border-radius: 8px; text-align: center;"><span style="color: #059669; font-weight: 600; font-size: 14px;">🎁 Você economizou R$ 108,90 (30% de desconto!)</span></div>'
+    : '';
+  
+  try {
+    const htmlContent = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pagamento Confirmado - IAprova</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #E8EDF5;">
+  <table cellpadding="0" cellspacing="0" width="100%" style="background-color: #E8EDF5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(18, 45, 106, 0.12); overflow: hidden;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #122D6A 0%, #1A3A7F 50%, #2A4A9F 100%); padding: 40px 30px; text-align: center;">
+              <div style="background-color: rgba(255,255,255,0.15); width: 80px; height: 80px; border-radius: 50%; display: inline-block; line-height: 80px; margin-bottom: 16px;">
+                <span style="font-size: 40px;">👑</span>
+              </div>
+              <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 700;">Pagamento Confirmado!</h1>
+              <p style="color: #7BC4FF; margin: 12px 0 0 0; font-size: 16px; font-weight: 600;">Você agora é IAprova Premium</p>
+            </td>
+          </tr>
+          
+          <!-- Mensagem de agradecimento -->
+          <tr>
+            <td style="padding: 40px 40px 20px 40px;">
+              <h2 style="color: #122D6A; margin: 0 0 12px 0; font-size: 22px; font-weight: 700;">
+                Olá, ${name}! 🎊
+              </h2>
+              <p style="color: #4A6491; margin: 0; font-size: 16px; line-height: 1.7;">
+                <strong>Muito obrigado por confiar no IAprova!</strong> Seu pagamento foi processado com sucesso 
+                e sua conta Premium já está <span style="color: #059669; font-weight: 600;">100% ativa</span>.
+              </p>
+              <p style="color: #4A6491; margin: 16px 0 0 0; font-size: 15px; line-height: 1.6;">
+                Estamos muito felizes em fazer parte da sua jornada rumo à aprovação! 
+                Agora você tem acesso ilimitado a todos os recursos que vão acelerar seus estudos.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Detalhes do Pagamento -->
+          <tr>
+            <td style="padding: 0 40px 24px 40px;">
+              <div style="background: linear-gradient(135deg, #F0F7FF 0%, #E8EDF5 100%); border-radius: 12px; padding: 24px; border: 1px solid #C5D5EA;">
+                <p style="color: #122D6A; font-size: 14px; font-weight: 700; margin: 0 0 20px 0; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #122D6A; padding-bottom: 12px;">
+                  📋 Detalhes da Compra
+                </p>
+                <table cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4A6491;">Plano:</td>
+                    <td style="padding: 8px 0; color: #122D6A; font-weight: 600; text-align: right;">${planName}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4A6491;">Valor:</td>
+                    <td style="padding: 8px 0; color: #059669; font-weight: 700; text-align: right; font-size: 18px;">${amountFormatted}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4A6491;">Data da compra:</td>
+                    <td style="padding: 8px 0; color: #122D6A; font-weight: 500; text-align: right;">${purchaseDate}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4A6491;">Válido até:</td>
+                    <td style="padding: 8px 0; color: #122D6A; font-weight: 600; text-align: right;">${expiresDate}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4A6491;">ID do pagamento:</td>
+                    <td style="padding: 8px 0; color: #6B7C93; font-size: 12px; text-align: right;">${paymentId}</td>
+                  </tr>
+                </table>
+                ${savingsHtml}
+              </div>
+            </td>
+          </tr>
+          
+          <!-- Benefícios Premium -->
+          <tr>
+            <td style="padding: 0 40px 24px 40px;">
+              <div style="background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); border-radius: 12px; padding: 24px; border-left: 4px solid #F59E0B;">
+                <p style="color: #92400E; font-size: 14px; font-weight: 700; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                  ⭐ Seus Benefícios Premium:
+                </p>
+                <table cellpadding="0" cellspacing="0" width="100%">
+                  <tr><td style="padding: 6px 0; color: #78350F; font-size: 14px;">✅ Geração <strong>ilimitada</strong> de conteúdo por IA</td></tr>
+                  <tr><td style="padding: 6px 0; color: #78350F; font-size: 14px;">✅ Questões personalizadas no estilo da sua banca</td></tr>
+                  <tr><td style="padding: 6px 0; color: #78350F; font-size: 14px;">✅ Flashcards e resumos inteligentes</td></tr>
+                  <tr><td style="padding: 6px 0; color: #78350F; font-size: 14px;">✅ Simulados completos com correção automática</td></tr>
+                  <tr><td style="padding: 6px 0; color: #78350F; font-size: 14px;">✅ Assistente Lilu disponível 24/7</td></tr>
+                  <tr><td style="padding: 6px 0; color: #78350F; font-size: 14px;">✅ Planos de estudo personalizados</td></tr>
+                  <tr><td style="padding: 6px 0; color: #78350F; font-size: 14px;">✅ Suporte prioritário</td></tr>
+                </table>
+              </div>
+            </td>
+          </tr>
+          
+          <!-- CTA -->
+          <tr>
+            <td style="padding: 0 40px 32px 40px; text-align: center;">
+              <a href="${APP_URL}" style="display: inline-block; padding: 18px 56px; background: linear-gradient(135deg, #122D6A 0%, #2A4A9F 100%); color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 16px; box-shadow: 0 6px 20px rgba(18, 45, 106, 0.4);">
+                🚀 Começar a Estudar Agora
+              </a>
+              <p style="color: #6B7C93; font-size: 13px; margin: 16px 0 0 0;">Aproveite ao máximo sua assinatura!</p>
+            </td>
+          </tr>
+          
+          <!-- Dica motivacional -->
+          <tr>
+            <td style="padding: 0 40px 32px 40px;">
+              <div style="background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%); border-radius: 12px; padding: 20px; text-align: center;">
+                <p style="color: #3730A3; font-size: 15px; margin: 0; font-style: italic; line-height: 1.6;">
+                  "O sucesso é a soma de pequenos esforços repetidos dia após dia."<br>
+                  <span style="font-size: 13px; color: #4F46E5;">— Robert Collier</span>
+                </p>
+              </div>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F8FAFC; padding: 24px 40px; border-top: 1px solid #E2E8F0;">
+              <table cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td style="text-align: center;">
+                    <p style="color: #122D6A; font-size: 18px; font-weight: 700; margin: 0 0 8px 0;">
+                      <span style="color: #7BC4FF;">IA</span>prova
+                    </p>
+                    <p style="color: #6B7C93; font-size: 12px; margin: 0 0 12px 0;">Seu parceiro na jornada rumo à aprovação</p>
+                    <p style="color: #9CA3AF; font-size: 11px; margin: 0;">
+                      Dúvidas? Responda este email ou acesse nossa Central de Ajuda.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [email],
+        subject: '🎉 Pagamento Confirmado! Bem-vindo ao IAprova Premium',
+        html: htmlContent,
+      }),
+    });
+
+    console.log('💳 Resposta do Resend (Pagamento):', response.status, response.statusText);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Erro do Resend (Pagamento):', errorText);
+    } else {
+      console.log('✅ Email de confirmação de pagamento enviado com sucesso para:', email);
+    }
+
+    return response.ok;
+  } catch (error) {
+    console.error('Erro ao enviar email de confirmação de pagamento:', error);
+    return false;
+  }
+}
+
 // ============== ROTAS DE USUÁRIOS ==============
 
 // Alias para /api/register (usado pela landing page)
@@ -1302,12 +1517,16 @@ app.post('/api/users', async (c) => {
     const verificationToken = generateSecureToken()
     const APP_URL = c.env?.APP_URL || 'https://iaprova.app'
     
+    // Calcular expiração em JavaScript (48 horas - mais seguro para evitar problemas de timezone)
+    const tokenExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+    
     console.log('💾 Inserindo no banco:', { userName, userEmail, hasPassword: !!userPassword })
+    console.log('⏰ Token expira em:', tokenExpiresAt)
 
     const result = await DB.prepare(
       `INSERT INTO users (name, email, password, email_verified, verification_token, verification_token_expires) 
-       VALUES (?, ?, ?, 0, ?, datetime('now', '+24 hours'))`
-    ).bind(userName, userEmail, userPassword, verificationToken).run()
+       VALUES (?, ?, ?, 0, ?, ?)`
+    ).bind(userName, userEmail, userPassword, verificationToken, tokenExpiresAt).run()
 
     // Enviar email de verificação
     const emailSent = await sendVerificationEmail(userEmail, verificationToken, userName, c.env)
@@ -1685,6 +1904,8 @@ app.post('/api/subscription/activate', async (c) => {
     const now = new Date()
     const durationDays = plan === 'anual' ? 365 : 30
     const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString()
+    const finalPaymentId = paymentId || 'manual_' + Date.now()
+    const amount = plan === 'anual' ? 249.90 : 29.90
     
     await DB.prepare(`
       UPDATE users SET 
@@ -1694,15 +1915,37 @@ app.post('/api/subscription/activate', async (c) => {
         payment_id = ?,
         payment_date = ?
       WHERE id = ?
-    `).bind(plan, expiresAt, paymentId || 'manual_' + Date.now(), now.toISOString(), userId).run()
+    `).bind(plan, expiresAt, finalPaymentId, now.toISOString(), userId).run()
     
     console.log(`✅ Assinatura ${plan} ativada para usuário ${userId} até ${expiresAt}`)
+    
+    // Buscar dados do usuário para enviar email
+    const user = await DB.prepare('SELECT email, name FROM users WHERE id = ?').bind(userId).first() as any
+    
+    // Enviar email de confirmação de pagamento
+    if (user) {
+      try {
+        await sendPaymentConfirmationEmail(
+          user.email,
+          user.name || 'Usuário',
+          plan,
+          amount,
+          expiresAt,
+          finalPaymentId,
+          c.env
+        )
+        console.log(`📧 Email de confirmação enviado para ${user.email}`)
+      } catch (emailError) {
+        console.error('⚠️ Erro ao enviar email de confirmação (não crítico):', emailError)
+      }
+    }
     
     return c.json({
       success: true,
       message: `Assinatura ${plan} ativada com sucesso!`,
       expiresAt,
-      durationDays
+      durationDays,
+      emailSent: !!user
     })
   } catch (error) {
     console.error('Erro ao ativar assinatura:', error)
@@ -1895,6 +2138,27 @@ app.post('/api/webhook/mercadopago', async (c) => {
     `).bind(plan, expiresAt, paymentId.toString(), now.toISOString(), user_id).run()
     
     console.log(`✅ Assinatura ${plan} ativada para usuário ${user_id} até ${expiresAt}`)
+    
+    // Buscar dados do usuário para enviar email
+    const user = await DB.prepare('SELECT email, name FROM users WHERE id = ?').bind(user_id).first() as any
+    
+    // Enviar email de confirmação de pagamento
+    if (user) {
+      try {
+        await sendPaymentConfirmationEmail(
+          user.email,
+          user.name || 'Usuário',
+          plan,
+          payment.transaction_amount,
+          expiresAt,
+          paymentId.toString(),
+          c.env
+        )
+        console.log(`📧 Email de confirmação enviado para ${user.email}`)
+      } catch (emailError) {
+        console.error('⚠️ Erro ao enviar email de confirmação (não crítico):', emailError)
+      }
+    }
     
     // Registrar histórico de pagamento
     try {
@@ -3333,13 +3597,16 @@ app.post('/api/resend-verification', async (c) => {
     // Gerar novo token
     const newToken = generateSecureToken()
     
+    // Calcular expiração em JavaScript (48 horas)
+    const tokenExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+    
     // Atualizar token no banco
     await DB.prepare(
       `UPDATE users 
        SET verification_token = ?, 
-           verification_token_expires = datetime('now', '+24 hours') 
+           verification_token_expires = ? 
        WHERE id = ?`
-    ).bind(newToken, user.id).run()
+    ).bind(newToken, tokenExpiresAt, user.id).run()
     
     // Reenviar email
     const emailSent = await sendVerificationEmail(email, newToken, user.name, c.env)
