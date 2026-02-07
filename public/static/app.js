@@ -11314,12 +11314,81 @@ window.renderDashboardDesempenho = async function() {
             </div>
           </div>
           
-          <!-- Seção C: Evolução por Disciplina -->
+          <!-- Seção C: GRÁFICOS DE PROGRESSO POR MATÉRIA -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            
+            <!-- Gráfico 1: Progresso por Disciplina (Barras Horizontais) -->
+            <div class="${themes[currentTheme].card} rounded-2xl border ${themes[currentTheme].border} p-6 hover:shadow-lg transition">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold ${themes[currentTheme].text} flex items-center gap-2">
+                  <i class="fas fa-chart-bar text-[#4A6AC0]"></i>
+                  Progresso por Matéria
+                </h2>
+                <span class="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-[#2A4A9F]">
+                  ${progressoGeral.disciplinas?.length || 0} disciplinas
+                </span>
+              </div>
+              
+              <div class="h-80">
+                <canvas id="chartProgressoMateria"></canvas>
+              </div>
+              
+              <div class="mt-4 pt-4 border-t ${themes[currentTheme].border}">
+                <div class="flex justify-between items-center">
+                  <span class="text-sm ${themes[currentTheme].textSecondary}">Média geral:</span>
+                  <span class="text-lg font-bold text-[#2A4A9F]">${progressoGeral.progresso_percentual || 0}%</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Gráfico 2: Nível de Domínio por Disciplina (Radar) -->
+            <div class="${themes[currentTheme].card} rounded-2xl border ${themes[currentTheme].border} p-6 hover:shadow-lg transition">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold ${themes[currentTheme].text} flex items-center gap-2">
+                  <i class="fas fa-bullseye text-[#4A90D9]"></i>
+                  Nível de Domínio
+                </h2>
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-[#2A4A9F]"></span>
+                    Domínio
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-[#7BC4FF]"></span>
+                    Progresso
+                  </span>
+                </div>
+              </div>
+              
+              <div class="h-80">
+                <canvas id="chartNivelDominio"></canvas>
+              </div>
+              
+              <div class="mt-4 pt-4 border-t ${themes[currentTheme].border}">
+                <div class="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p class="text-lg font-bold text-red-500">${progressoGeral.disciplinas?.filter(d => d.nivel_dominio <= 3).length || 0}</p>
+                    <p class="text-[10px] ${themes[currentTheme].textSecondary}">Precisam atenção</p>
+                  </div>
+                  <div>
+                    <p class="text-lg font-bold text-yellow-500">${progressoGeral.disciplinas?.filter(d => d.nivel_dominio > 3 && d.nivel_dominio <= 6).length || 0}</p>
+                    <p class="text-[10px] ${themes[currentTheme].textSecondary}">Em progresso</p>
+                  </div>
+                  <div>
+                    <p class="text-lg font-bold text-green-500">${progressoGeral.disciplinas?.filter(d => d.nivel_dominio > 6).length || 0}</p>
+                    <p class="text-[10px] ${themes[currentTheme].textSecondary}">Dominadas</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Seção D: Detalhes por Disciplina -->
           <div class="${themes[currentTheme].card} rounded-2xl border ${themes[currentTheme].border} p-6 hover:shadow-lg transition">
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-lg font-bold ${themes[currentTheme].text} flex items-center gap-2">
                 <i class="fas fa-book-open text-[#4A6AC0]"></i>
-                Evolução por Disciplina
+                Detalhes por Disciplina
               </h2>
               <button onclick="renderPortfolioDisciplinas()" class="text-xs text-[#2A4A9F] hover:underline">
                 Ver todas <i class="fas fa-arrow-right ml-1"></i>
@@ -11327,26 +11396,30 @@ window.renderDashboardDesempenho = async function() {
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              ${evolucaoDisciplinas.slice(0, 6).map(disc => `
-                <div class="p-4 rounded-xl border ${themes[currentTheme].border} hover:border-[#3A5AB0] transition">
+              ${(progressoGeral.disciplinas || []).map(disc => `
+                <div class="p-4 rounded-xl border ${themes[currentTheme].border} hover:border-[#3A5AB0] transition cursor-pointer"
+                     onclick="window.abrirDisciplinaDetalhe && window.abrirDisciplinaDetalhe(${disc.disciplina_id})">
                   <div class="flex items-center justify-between mb-2">
                     <h3 class="font-medium ${themes[currentTheme].text} text-sm truncate" title="${disc.nome}">${disc.nome}</h3>
-                    <span class="text-xs px-2 py-0.5 rounded-full ${disc.tendencia >= 0 ? 'bg-[#E8EDF5] text-[#122D6A]' : 'bg-gray-100 text-gray-600'} font-medium">
-                      ${disc.tendencia >= 0 ? '↑' : '↓'} ${Math.abs(disc.tendencia)}%
+                    <span class="text-xs px-2 py-0.5 rounded-full ${disc.nivel_dominio >= 7 ? 'bg-green-100 text-green-600' : disc.nivel_dominio >= 4 ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600'} font-medium">
+                      ${disc.nivel_dominio >= 7 ? '★★★' : disc.nivel_dominio >= 4 ? '★★' : '★'}
                     </span>
                   </div>
                   <div class="flex items-center gap-2 mb-2">
                     <div class="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#3A5AB0]" style="width: ${disc.percentual}%"></div>
+                      <div class="h-full rounded-full ${disc.progresso_percentual >= 70 ? 'bg-gradient-to-r from-green-400 to-green-500' : disc.progresso_percentual >= 30 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' : 'bg-gradient-to-r from-red-400 to-red-500'}" style="width: ${disc.progresso_percentual}%"></div>
                     </div>
-                    <span class="text-sm font-bold text-[#2A4A9F]">${disc.percentual}%</span>
+                    <span class="text-sm font-bold ${disc.progresso_percentual >= 70 ? 'text-green-500' : disc.progresso_percentual >= 30 ? 'text-yellow-500' : 'text-red-500'}">${disc.progresso_percentual}%</span>
                   </div>
-                  <p class="text-[10px] ${themes[currentTheme].textSecondary}">${disc.topicosEstudados}/${disc.totalTopicos} tópicos concluídos</p>
+                  <div class="flex justify-between">
+                    <p class="text-[10px] ${themes[currentTheme].textSecondary}">${disc.topicos_estudados}/${disc.total_topicos} tópicos</p>
+                    <p class="text-[10px] ${themes[currentTheme].textSecondary}">Domínio: ${disc.nivel_dominio}/10</p>
+                  </div>
                 </div>
               `).join('')}
             </div>
             
-            ${evolucaoDisciplinas.length === 0 ? `
+            ${(!progressoGeral.disciplinas || progressoGeral.disciplinas.length === 0) ? `
               <div class="text-center py-8">
                 <i class="fas fa-chart-line text-4xl text-gray-300 mb-3"></i>
                 <p class="${themes[currentTheme].textSecondary}">Comece a estudar para ver sua evolução aqui</p>
@@ -11357,6 +11430,11 @@ window.renderDashboardDesempenho = async function() {
         </div>
       </div>
     `;
+    
+    // Inicializar gráficos após renderização
+    setTimeout(() => {
+      inicializarGraficosDesempenho(progressoGeral);
+    }, 100);
     
   } catch (error) {
     console.error('Erro ao carregar dashboard de desempenho:', error);
@@ -11373,6 +11451,213 @@ window.renderDashboardDesempenho = async function() {
       </div>
     `;
   }
+}
+
+// Função para inicializar os gráficos de desempenho
+function inicializarGraficosDesempenho(progressoGeral) {
+  const disciplinas = progressoGeral?.disciplinas || [];
+  const isDark = currentTheme === 'dark';
+  
+  if (disciplinas.length === 0) {
+    console.log('📊 Nenhuma disciplina para exibir nos gráficos');
+    return;
+  }
+  
+  console.log('📊 Inicializando gráficos com', disciplinas.length, 'disciplinas');
+  
+  // Cores para os gráficos
+  const cores = [
+    'rgba(42, 74, 159, 0.8)',    // Azul escuro
+    'rgba(74, 144, 217, 0.8)',   // Azul médio
+    'rgba(123, 196, 255, 0.8)',  // Azul claro
+    'rgba(18, 45, 106, 0.8)',    // Azul marinho
+    'rgba(58, 90, 176, 0.8)',    // Azul vibrante
+    'rgba(100, 149, 237, 0.8)',  // Azul cornflower
+  ];
+  
+  const coresBorda = cores.map(c => c.replace('0.8', '1'));
+  
+  // Truncar nomes longos
+  const truncarNome = (nome, max = 20) => {
+    if (nome.length <= max) return nome;
+    return nome.substring(0, max - 3) + '...';
+  };
+  
+  // GRÁFICO 1: Barras Horizontais - Progresso por Matéria
+  const ctxBarras = document.getElementById('chartProgressoMateria');
+  if (ctxBarras) {
+    // Destruir gráfico anterior se existir
+    if (window.chartProgressoMateriaInstance) {
+      window.chartProgressoMateriaInstance.destroy();
+    }
+    
+    const labels = disciplinas.map(d => truncarNome(d.nome));
+    const dados = disciplinas.map(d => d.progresso_percentual || 0);
+    const coresBarras = disciplinas.map((d, i) => {
+      if (d.progresso_percentual >= 70) return 'rgba(34, 197, 94, 0.8)';  // Verde
+      if (d.progresso_percentual >= 30) return 'rgba(234, 179, 8, 0.8)';  // Amarelo
+      return 'rgba(239, 68, 68, 0.8)';  // Vermelho
+    });
+    
+    window.chartProgressoMateriaInstance = new Chart(ctxBarras, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Progresso (%)',
+          data: dados,
+          backgroundColor: coresBarras,
+          borderColor: coresBarras.map(c => c.replace('0.8', '1')),
+          borderWidth: 2,
+          borderRadius: 8,
+          barThickness: 'flex',
+          maxBarThickness: 40
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const disc = disciplinas[context.dataIndex];
+                return [
+                  \`Progresso: \${context.raw}%\`,
+                  \`Tópicos: \${disc.topicos_estudados}/\${disc.total_topicos}\`,
+                  \`Domínio: \${disc.nivel_dominio}/10\`
+                ];
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            max: 100,
+            grid: {
+              color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+            },
+            ticks: {
+              color: isDark ? '#9CA3AF' : '#6B7280',
+              callback: function(value) {
+                return value + '%';
+              }
+            }
+          },
+          y: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              color: isDark ? '#E5E7EB' : '#374151',
+              font: {
+                size: 11
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+  
+  // GRÁFICO 2: Radar - Nível de Domínio
+  const ctxRadar = document.getElementById('chartNivelDominio');
+  if (ctxRadar) {
+    // Destruir gráfico anterior se existir
+    if (window.chartNivelDominioInstance) {
+      window.chartNivelDominioInstance.destroy();
+    }
+    
+    const labels = disciplinas.map(d => truncarNome(d.nome, 15));
+    const dadosDominio = disciplinas.map(d => d.nivel_dominio || 0);
+    const dadosProgresso = disciplinas.map(d => d.progresso_percentual / 10 || 0); // Escala 0-10
+    
+    window.chartNivelDominioInstance = new Chart(ctxRadar, {
+      type: 'radar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Domínio (0-10)',
+            data: dadosDominio,
+            backgroundColor: 'rgba(42, 74, 159, 0.3)',
+            borderColor: 'rgba(42, 74, 159, 1)',
+            borderWidth: 2,
+            pointBackgroundColor: 'rgba(42, 74, 159, 1)',
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: 'rgba(42, 74, 159, 1)'
+          },
+          {
+            label: 'Progresso (escala 10)',
+            data: dadosProgresso,
+            backgroundColor: 'rgba(123, 196, 255, 0.3)',
+            borderColor: 'rgba(123, 196, 255, 1)',
+            borderWidth: 2,
+            pointBackgroundColor: 'rgba(123, 196, 255, 1)',
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: 'rgba(123, 196, 255, 1)'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              color: isDark ? '#E5E7EB' : '#374151',
+              font: {
+                size: 11
+              },
+              usePointStyle: true,
+              pointStyle: 'circle'
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const disc = disciplinas[context.dataIndex];
+                if (context.dataset.label.includes('Domínio')) {
+                  return \`Domínio: \${context.raw}/10\`;
+                }
+                return \`Progresso: \${disc.progresso_percentual}%\`;
+              }
+            }
+          }
+        },
+        scales: {
+          r: {
+            beginAtZero: true,
+            max: 10,
+            ticks: {
+              stepSize: 2,
+              color: isDark ? '#9CA3AF' : '#6B7280',
+              backdropColor: 'transparent'
+            },
+            grid: {
+              color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+            },
+            pointLabels: {
+              color: isDark ? '#E5E7EB' : '#374151',
+              font: {
+                size: 10
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+  
+  console.log('📊 Gráficos de desempenho inicializados com sucesso');
 }
 
 // Funções auxiliares para o Dashboard de Desempenho
@@ -20622,7 +20907,7 @@ window.gerarSimulado = async function() {
   }
 }
 
-// Version: 1770429665
+// Version: 1770470668
 
 // ============== FUNÇÕES DE MATERIAIS ==============
 
