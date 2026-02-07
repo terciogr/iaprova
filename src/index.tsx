@@ -13995,14 +13995,36 @@ app.post('/api/chat', async (c) => {
       LIMIT 5
     `).bind(user_id).all()
     
-    // Buscar estatísticas adicionais
-    const estatisticas = await DB.prepare(`
-      SELECT 
-        (SELECT COUNT(*) FROM metas_semana ms JOIN semanas_estudo se ON ms.semana_id = se.id WHERE se.user_id = ? AND ms.status = 'concluida') as metas_concluidas,
-        (SELECT COUNT(*) FROM simulados_historico WHERE user_id = ?) as total_simulados,
-        (SELECT AVG(percentual_acerto) FROM simulados_historico WHERE user_id = ?) as media_simulados,
-        (SELECT COUNT(*) FROM materiais_salvos WHERE user_id = ?) as materiais_salvos
-    `).bind(user_id, user_id, user_id, user_id).first()
+    // Buscar estatísticas adicionais (queries separadas para evitar erro)
+    let estatisticas = {
+      metas_concluidas: 0,
+      total_simulados: 0,
+      media_simulados: 0,
+      materiais_salvos: 0
+    }
+    
+    try {
+      const metasRes = await DB.prepare(`
+        SELECT COUNT(*) as total FROM metas_semana ms 
+        JOIN semanas_estudo se ON ms.semana_id = se.id 
+        WHERE se.user_id = ? AND ms.status = 'concluida'
+      `).bind(user_id).first()
+      estatisticas.metas_concluidas = metasRes?.total || 0
+      
+      const simuladosRes = await DB.prepare(`
+        SELECT COUNT(*) as total, AVG(percentual_acerto) as media 
+        FROM simulados_historico WHERE user_id = ?
+      `).bind(user_id).first()
+      estatisticas.total_simulados = simuladosRes?.total || 0
+      estatisticas.media_simulados = simuladosRes?.media || 0
+      
+      const materiaisRes = await DB.prepare(`
+        SELECT COUNT(*) as total FROM materiais_salvos WHERE user_id = ?
+      `).bind(user_id).first()
+      estatisticas.materiais_salvos = materiaisRes?.total || 0
+    } catch (e) {
+      console.log('⚠️ Erro ao buscar estatísticas do chat:', e)
+    }
     
     // Contexto COMPLETO do sistema para a Lilu
     const systemContext = `Você é a LILU, a assistente virtual amigável e inteligente do IAprova - uma plataforma completa de estudos para concursos públicos brasileiros.
@@ -14020,10 +14042,10 @@ app.post('/api/chat', async (c) => {
 - Plano Ativo: ${plano ? plano.nome : 'Nenhum plano ativo'}
 - Total de Disciplinas no Plano: ${plano?.total_disciplinas || 0}
 - Tempo de Estudo Diário Configurado: ${plano?.tempo_diario || 0} minutos
-- Metas Concluídas: ${estatisticas?.metas_concluidas || 0}
-- Simulados Realizados: ${estatisticas?.total_simulados || 0}
-- Média em Simulados: ${estatisticas?.media_simulados ? Math.round(Number(estatisticas.media_simulados)) + '%' : 'Sem dados'}
-- Materiais Salvos: ${estatisticas?.materiais_salvos || 0}
+- Metas Concluídas: ${estatisticas.metas_concluidas}
+- Simulados Realizados: ${estatisticas.total_simulados}
+- Média em Simulados: ${estatisticas.media_simulados ? Math.round(Number(estatisticas.media_simulados)) + '%' : 'Sem dados'}
+- Materiais Salvos: ${estatisticas.materiais_salvos}
 
 📚 DISCIPLINAS DO USUÁRIO:
 ${disciplinas.results.length > 0 ? disciplinas.results.map((d: any) => `- ${d.nome} (Nível: ${d.nivel_atual}/10, Estudou: ${d.ja_estudou ? 'Sim' : 'Não'})`).join('\n') : '- Nenhuma disciplina cadastrada ainda'}
