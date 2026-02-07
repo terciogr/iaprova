@@ -11527,9 +11527,9 @@ function inicializarGraficosDesempenho(progressoGeral) {
               label: function(context) {
                 const disc = disciplinas[context.dataIndex];
                 return [
-                  \`Progresso: \${context.raw}%\`,
-                  \`Tópicos: \${disc.topicos_estudados}/\${disc.total_topicos}\`,
-                  \`Domínio: \${disc.nivel_dominio}/10\`
+                  `Progresso: ${context.raw}%`,
+                  `Tópicos: ${disc.topicos_estudados}/${disc.total_topicos}`,
+                  `Domínio: ${disc.nivel_dominio}/10`
                 ];
               }
             }
@@ -11626,9 +11626,9 @@ function inicializarGraficosDesempenho(progressoGeral) {
               label: function(context) {
                 const disc = disciplinas[context.dataIndex];
                 if (context.dataset.label.includes('Domínio')) {
-                  return \`Domínio: \${context.raw}/10\`;
+                  return `Domínio: ${context.raw}/10`;
                 }
-                return \`Progresso: \${disc.progresso_percentual}%\`;
+                return `Progresso: ${disc.progresso_percentual}%`;
               }
             }
           }
@@ -20907,7 +20907,7 @@ window.gerarSimulado = async function() {
   }
 }
 
-// Version: 1770470668
+// Version: 1770477073
 
 // ============== FUNÇÕES DE MATERIAIS ==============
 
