@@ -8615,7 +8615,7 @@ app.get('/api/planos/list/:user_id', async (c) => {
       if (disciplinaIds.length > 0) {
         const placeholders = disciplinaIds.map(() => '?').join(',')
         
-        // ✅ CORREÇÃO v2: Buscar de AMBAS as tabelas (topicos_edital e edital_topicos)
+        // ✅ CORREÇÃO v3: Buscar de TODAS as fontes possíveis
         // Tópicos em topicos_edital (metas semanais)
         const topicosTeResult = await DB.prepare(`
           SELECT COUNT(*) as total FROM topicos_edital 
@@ -8629,8 +8629,21 @@ app.get('/api/planos/list/:user_id', async (c) => {
           WHERE ed.edital_id = ? AND ed.disciplina_id IN (${placeholders})
         `).bind(p.edital_id, ...disciplinaIds).first() as any : { total: 0 }
         
-        // Usar o maior valor
+        // ✅ NOVO: Total de metas do plano (fallback quando não há tópicos)
+        const metasTotalResult = await DB.prepare(`
+          SELECT COUNT(*) as total FROM metas_semana ms
+          INNER JOIN semanas_estudo se ON ms.semana_id = se.id
+          WHERE ms.user_id = ? AND se.plano_id = ? AND ms.disciplina_id IN (${placeholders})
+        `).bind(user_id, p.id, ...disciplinaIds).first() as any
+        
+        // ✅ CORREÇÃO v3: Usar hierarquia de fontes para total
         totalTopicos = Math.max(topicosTeResult?.total || 0, topicosEtResult?.total || 0)
+        
+        // Se não há tópicos cadastrados, usar metas como base de progresso
+        if (totalTopicos === 0 && (metasTotalResult?.total || 0) > 0) {
+          totalTopicos = metasTotalResult?.total || 0
+          console.log(`   ⚠️ Plano ${p.id}: usando ${totalTopicos} metas como base de progresso`)
+        }
         
         // Contar estudados
         const topicosEstudadosResult = await DB.prepare(`
@@ -8639,20 +8652,20 @@ app.get('/api/planos/list/:user_id', async (c) => {
           WHERE utp.user_id = ? AND te.disciplina_id IN (${placeholders}) AND utp.nivel_dominio >= 2
         `).bind(user_id, ...disciplinaIds).first() as any
         
-        // Contar metas concluídas como fallback
+        // Contar metas concluídas
         const metasConcluidasResult = await DB.prepare(`
-          SELECT COUNT(DISTINCT ms.id) as total FROM metas_semana ms
+          SELECT COUNT(*) as total FROM metas_semana ms
           INNER JOIN semanas_estudo se ON ms.semana_id = se.id
           WHERE ms.user_id = ? AND se.plano_id = ? AND ms.concluida = 1 AND ms.disciplina_id IN (${placeholders})
         `).bind(user_id, p.id, ...disciplinaIds).first() as any
         
-        // Usar o maior valor entre progresso registrado e metas concluídas
+        // ✅ CORREÇÃO v3: Usar o maior entre tópicos estudados e metas concluídas
         topicosEstudados = Math.min(
           Math.max(topicosEstudadosResult?.total || 0, metasConcluidasResult?.total || 0),
           totalTopicos
         )
         
-        console.log(`   → ${totalTopicos} tópicos (te:${topicosTeResult?.total}, et:${topicosEtResult?.total}), ${topicosEstudados} estudados`)
+        console.log(`   → ${totalTopicos} tópicos (te:${topicosTeResult?.total}, et:${topicosEtResult?.total}, metas:${metasTotalResult?.total}), ${topicosEstudados} estudados (metas concluídas: ${metasConcluidasResult?.total})`)
       }
       
       // Calcular progresso percentual - NUNCA acima de 100%
@@ -9060,7 +9073,7 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
     let topicosEstudados = 0
     const disciplinasDetalhes: any[] = []
 
-    // ✅ CORREÇÃO v2: Buscar tópicos de AMBAS as tabelas (topicos_edital E edital_topicos)
+    // ✅ CORREÇÃO v3: Buscar tópicos de TODAS as fontes possíveis + usar metas como base de progresso real
     const { results: disciplinasPlano } = await DB.prepare(`
       SELECT DISTINCT 
         c.disciplina_id,
@@ -9078,25 +9091,41 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
         (SELECT COUNT(*) FROM user_topicos_progresso utp 
          INNER JOIN topicos_edital te ON utp.topico_id = te.id 
          WHERE te.disciplina_id = c.disciplina_id AND utp.user_id = ? AND utp.nivel_dominio >= 2) as estudados_te,
-        -- Contar estudados via metas concluídas (fallback)
-        (SELECT COUNT(DISTINCT ms.id) FROM metas_semana ms 
-         WHERE ms.disciplina_id = c.disciplina_id AND ms.user_id = ? AND ms.concluida = 1) as metas_concluidas
+        -- ✅ NOVO: Contar TODAS as metas da disciplina no plano (total)
+        (SELECT COUNT(*) FROM metas_semana ms 
+         INNER JOIN semanas_estudo se ON ms.semana_id = se.id
+         WHERE ms.disciplina_id = c.disciplina_id AND ms.user_id = ? AND se.plano_id = ?) as metas_total,
+        -- Contar metas CONCLUÍDAS da disciplina no plano
+        (SELECT COUNT(*) FROM metas_semana ms 
+         INNER JOIN semanas_estudo se ON ms.semana_id = se.id
+         WHERE ms.disciplina_id = c.disciplina_id AND ms.user_id = ? AND se.plano_id = ? AND ms.concluida = 1) as metas_concluidas
       FROM ciclos_estudo c
       JOIN disciplinas d ON c.disciplina_id = d.id
       LEFT JOIN user_disciplinas ud ON ud.disciplina_id = c.disciplina_id AND ud.user_id = ?
       WHERE c.plano_id = ?
-    `).bind(plano.user_id, plano.edital_id || 0, plano.user_id, plano.user_id, plano.user_id, plano_id).all() as any[]
+    `).bind(plano.user_id, plano.edital_id || 0, plano.user_id, plano.user_id, plano_id, plano.user_id, plano_id, plano.user_id, plano_id).all() as any[]
 
     console.log(`📚 Encontradas ${disciplinasPlano.length} disciplinas no plano ${plano_id}`)
 
     for (const disc of disciplinasPlano) {
       const peso = disc.peso || 1
-      // ✅ CORREÇÃO: Usar o maior valor entre topicos_edital e edital_topicos
-      const topicos = Math.max(disc.topicos_te || 0, disc.topicos_et || 0)
-      // ✅ CORREÇÃO: Usar estudados ou metas concluídas (o que for maior)
+      
+      // ✅ CORREÇÃO v3: Usar hierarquia de fontes para total
+      // 1. Tópicos do edital processado (mais preciso)
+      // 2. Tópicos cadastrados para o usuário
+      // 3. Metas semanais como fallback (progresso real de trabalho)
+      let topicos = Math.max(disc.topicos_et || 0, disc.topicos_te || 0)
+      
+      // Se não há tópicos cadastrados, usar metas como base de progresso
+      if (topicos === 0 && (disc.metas_total || 0) > 0) {
+        topicos = disc.metas_total || 0
+        console.log(`   ⚠️ ${disc.disciplina_nome}: usando ${topicos} metas como base de progresso`)
+      }
+      
+      // ✅ CORREÇÃO v3: Usar a maior contagem de progresso entre tópicos estudados e metas concluídas
       const estudados = Math.max(disc.estudados_te || 0, disc.metas_concluidas || 0)
       
-      console.log(`   📖 ${disc.disciplina_nome}: ${estudados}/${topicos} (te:${disc.topicos_te}, et:${disc.topicos_et}, estudados:${disc.estudados_te}, metas:${disc.metas_concluidas})`)
+      console.log(`   📖 ${disc.disciplina_nome}: ${estudados}/${topicos} (te:${disc.topicos_te}, et:${disc.topicos_et}, estudados:${disc.estudados_te}, metas:${disc.metas_concluidas}/${disc.metas_total})`)
       
       totalTopicos += topicos
       topicosEstudados += Math.min(estudados, topicos) // Nunca mais que o total
@@ -15214,20 +15243,31 @@ e) Alternativa 5
       })
     })
     
+    // ✅ CORREÇÃO: Verificar se a resposta HTTP foi bem sucedida
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`❌ Erro HTTP ${response.status} ao gerar simulado:`, errorText)
+      return c.json({ 
+        error: `Erro HTTP ${response.status} ao gerar simulado`,
+        details: errorText.substring(0, 500)
+      }, 500)
+    }
+    
     const data: any = await response.json()
     
     if (data.error) {
       console.error('❌ Erro Gemini ao gerar simulado:', data.error)
       return c.json({ 
         error: 'Erro ao gerar simulado',
-        details: data.error.message 
+        details: data.error.message || 'Erro na API de IA'
       }, 500)
     }
     
     const conteudo = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     
-    if (!conteudo || conteudo.length < 500) {
-      return c.json({ error: 'Simulado gerado muito curto ou vazio' }, 500)
+    if (!conteudo || conteudo.length < 100) {
+      console.error('❌ Simulado gerado muito curto:', conteudo.length, 'chars')
+      return c.json({ error: 'Simulado gerado muito curto ou vazio. Tente novamente.' }, 500)
     }
     
     // Contar questões geradas
@@ -15239,7 +15279,7 @@ e) Alternativa 5
       success: true,
       conteudo,
       questoes_geradas: questoesGeradas,
-      disciplinas: disciplinasInfo.map(d => d.nome),
+      disciplinas: disciplinasComTopicos.map(d => d.nome),
       caracteres: conteudo.length,
       gerado_em: new Date().toISOString()
     })

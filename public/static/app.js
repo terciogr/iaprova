@@ -8824,9 +8824,13 @@ window.exibirConteudoGerado = function(data) {
   // Garantir que conteudo é string
   const conteudoTexto = typeof conteudo === 'string' ? conteudo : (conteudo?.texto || JSON.stringify(conteudo) || '');
   
+  // ✅ Tratar tipo exercicios_texto (quando não conseguiu parsear como interativo)
+  const tipoFinal = tipo === 'exercicios_texto' ? 'exercicios' : tipo;
+  
   const tipoLabel = {
     'teoria': { label: 'Teoria Completa', icon: 'fa-book', color: 'blue' },
     'exercicios': { label: 'Exercícios', icon: 'fa-tasks', color: 'green' },
+    'exercicios_texto': { label: 'Exercícios (Texto)', icon: 'fa-tasks', color: 'green' },
     'resumo': { label: 'Resumo Esquematizado', icon: 'fa-sticky-note', color: 'yellow' },
     'flashcards': { label: 'Flashcards', icon: 'fa-clone', color: 'blue' }
   }[tipo] || { label: 'Conteúdo', icon: 'fa-file', color: 'gray' };
@@ -19395,13 +19399,37 @@ let exercicioAtual = {
 
 // Função para processar e exibir exercícios de forma interativa
 window.exibirExerciciosInterativos = function(data) {
+  console.log('🎯 exibirExerciciosInterativos chamado com:', data);
+  
   const { topico_nome, disciplina_nome, conteudo, disciplina_id, topico_id } = data;
+  
+  // Verificar se conteúdo existe
+  if (!conteudo || typeof conteudo !== 'string') {
+    console.error('❌ Conteúdo inválido recebido:', typeof conteudo, conteudo?.substring?.(0, 100));
+    showToast('Erro: conteúdo das questões não encontrado', 'error');
+    return;
+  }
+  
+  console.log('📝 Conteúdo recebido (primeiros 300 chars):', conteudo.substring(0, 300));
   
   // Parsear questões do conteúdo
   const questoes = parseQuestoes(conteudo);
   
+  console.log('📊 Questões parseadas:', questoes.length);
+  
   if (questoes.length === 0) {
-    showToast('Não foi possível processar as questões', 'error');
+    console.error('❌ Nenhuma questão parseada do conteúdo');
+    showToast('Não foi possível processar as questões. Tente gerar novamente.', 'error');
+    
+    // Mostrar conteúdo como texto se não conseguiu parsear
+    exibirConteudoGerado({
+      topico_nome,
+      disciplina_nome,
+      conteudo,
+      disciplina_id,
+      topico_id,
+      tipo: 'exercicios_texto' // Forçar exibição como texto
+    });
     return;
   }
   
