@@ -19468,9 +19468,9 @@ window.verificarResposta = function(questaoIndex) {
   renderExercicioModal(questaoIndex);
 }
 
-// Parser de questões do texto gerado pela IA - VERSÃO ROBUSTA V2
+// Parser de questões do texto gerado pela IA - VERSÃO ROBUSTA V3
 function parseQuestoes(texto) {
-  console.log('📝 Iniciando parse de questões...');
+  console.log('📝 Iniciando parse de questões V3...');
   console.log('Texto recebido (primeiros 500 chars):', texto.substring(0, 500));
   
   const questoes = [];
@@ -19491,6 +19491,12 @@ function parseQuestoes(texto) {
     console.log('Blocos encontrados (Questão X.):', blocos.length);
   }
   
+  // ✅ NOVO: Tentar separar por **Questão X** sem asteriscos duplos
+  if (blocos.length <= 1) {
+    blocos = texto.split(/(?=Questão\s+\d+)/i);
+    console.log('Blocos encontrados (Questão X simples):', blocos.length);
+  }
+  
   // Se ainda só tem 1 bloco, tentar separar por número + ponto no início de linha
   if (blocos.length <= 1) {
     blocos = texto.split(/(?=\n\s*\d+\.\s+(?!\d))/);
@@ -19503,6 +19509,43 @@ function parseQuestoes(texto) {
     console.log('\\n--- Processando bloco ---');
     console.log('Bloco (primeiros 200 chars):', bloco.substring(0, 200));
     
+    // ✅ NOVO: Detectar se é questão CERTO/ERRADO
+    const isCertoErrado = /\b(CERTO|ERRADO|Certo|Errado)\b/.test(bloco) && 
+                          !/\b[a-eA-E]\)/.test(bloco);
+    
+    if (isCertoErrado) {
+      // Processar questão Certo/Errado
+      const gabaritoMatch = bloco.match(/\*{0,2}Gabarito[:\s*]*\*{0,2}\s*(CERTO|ERRADO|Certo|Errado)/i);
+      const comentarioMatch = bloco.match(/\*{0,2}Comentário[:\s*]*\*{0,2}\s*(.+?)(?=\n\s*---|\n\s*\*{2}Questão|$)/is);
+      
+      // Extrair enunciado (afirmação a ser julgada)
+      let enunciado = bloco
+        .replace(/^\*{2}Questão\s*\d+\*{2}.*/im, '')
+        .replace(/^Questão\s*\d+.*/im, '')
+        .replace(/\[Aspecto:.*?\]/gi, '')
+        .replace(/\*{0,2}Gabarito[:\s*].*/is, '')
+        .replace(/\*+/g, '')
+        .trim();
+      
+      if (enunciado.length < 20) continue;
+      
+      questoes.push({
+        id: questoes.length + 1,
+        pergunta: enunciado,
+        alternativas: [
+          { letra: 'c', texto: 'CERTO' },
+          { letra: 'e', texto: 'ERRADO' }
+        ],
+        correta: gabaritoMatch ? (gabaritoMatch[1].toUpperCase() === 'CERTO' ? 'c' : 'e') : 'c',
+        explicacao: comentarioMatch ? comentarioMatch[1].trim() : '',
+        verificada: false,
+        tipoCertoErrado: true
+      });
+      console.log('✅ Questão CERTO/ERRADO', questoes.length, 'adicionada');
+      continue;
+    }
+    
+    // Processar questão múltipla escolha (código anterior)
     // Separar gabarito/comentário do resto
     const gabaritoSplit = bloco.split(/\n\s*\*{0,2}(?:Gabarito|Resposta\s+correta)[:\s*]*/i);
     const questaoTexto = gabaritoSplit[0];
@@ -19522,6 +19565,7 @@ function parseQuestoes(texto) {
         .replace(/^Questão\s*\d+[\.:\)]/i, '')
         .replace(/^\d+[\.\)]\s*/, '')
         .replace(/\(Nível:\s*[^)]+\)/gi, '')
+        .replace(/\[Aspecto:.*?\]/gi, '')
         .replace(/\*+/g, '')
         .trim();
       

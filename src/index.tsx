@@ -9212,7 +9212,7 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
       // Resumo
       total_topicos: totalTopicos,
       topicos_estudados: topicosEstudados,
-      total_disciplinas: disciplinasProgresso.length,
+      total_disciplinas: disciplinasDetalhes.length,
       
       // Detalhes por disciplina
       disciplinas: disciplinasDetalhes,
