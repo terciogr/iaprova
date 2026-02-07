@@ -6435,14 +6435,18 @@ async function renderDashboard() {
       axios.get(`/api/estatisticas/${currentUser.id}`),
       axios.get(`/api/score/${currentUser.id}`).catch(() => ({ data: { score: 0 } })),
       axios.get(`/api/planos/${plano.id}/analise-viabilidade`).catch(() => ({ data: null })),
-      axios.get(`/api/planos/${plano.id}/progresso-geral`).catch(() => ({ data: { progresso_percentual: 0, total_topicos: 0, topicos_estudados: 0 } }))
+      axios.get(`/api/planos/${plano.id}/progresso-geral`).catch((err) => {
+        console.error('❌ Erro ao buscar progresso-geral:', err);
+        return { data: { progresso_percentual: 0, total_topicos: 0, topicos_estudados: 0 } };
+      })
     ]);
 
     console.log('✅ Todos os dados carregados com sucesso');
     console.log('📊 Score do usuário:', scoreRes.data);
     console.log('📋 Metas do dia carregadas:', metas.length, 'metas', metas.map(m => m.disciplina_nome));
     console.log('📈 Análise de viabilidade:', viabilidadeRes.data);
-    console.log('📊 Progresso geral:', progressoRes.data);
+    console.log('📊 Progresso geral RAW:', progressoRes.data);
+    console.log('📊 Progresso percentual:', progressoRes.data?.progresso_percentual);
     renderDashboardUI(plano, metas, desempenho, calendarioRes.data, estatisticasRes.data, entrevista, scoreRes.data, viabilidadeRes.data, progressoRes.data);
   } catch (error) {
     console.error('❌ Erro ao carregar dashboard:', error);
@@ -20618,7 +20622,7 @@ window.gerarSimulado = async function() {
   }
 }
 
-// Version: 1764888006
+// Version: 1770429665
 
 // ============== FUNÇÕES DE MATERIAIS ==============
 
