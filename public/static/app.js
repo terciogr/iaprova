@@ -20907,7 +20907,7 @@ window.gerarSimulado = async function() {
   }
 }
 
-// Version: 1770477073
+// Version: 1770479125
 
 // ============== FUNÇÕES DE MATERIAIS ==============
 
@@ -22056,7 +22056,7 @@ window.verDetalhesSimulado = async function(simuladoId) {
 }
 
 // ============================================================================
-// 🎯 SISTEMA DE TUTORIAL INTERATIVO (ONBOARDING)
+// 🎯 SISTEMA DE TUTORIAL INTERATIVO (ONBOARDING) - VERSÃO MELHORADA
 // ============================================================================
 
 // Configuração dos passos do tutorial
@@ -22065,8 +22065,16 @@ const tutorialSteps = [
     id: 'welcome',
     title: '👋 Bem-vindo ao IAprova!',
     content: `
-      <p class="mb-3">Vou te guiar por todas as funcionalidades do sistema para você aproveitar ao máximo sua preparação para concursos.</p>
-      <p class="text-sm text-gray-600">🎯 <b>Dica:</b> Este tour pode ser acessado novamente pelo menu a qualquer momento.</p>
+      <div class="text-center mb-4">
+        <div class="w-16 h-16 mx-auto bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-2xl flex items-center justify-center mb-3">
+          <span class="text-3xl">🎯</span>
+        </div>
+      </div>
+      <p class="mb-3 text-gray-700">Olá! Eu sou a <b class="text-[#122D6A]">Lilu</b>, sua assistente de estudos! 🤖</p>
+      <p class="mb-3">Vou te guiar por todas as funcionalidades do sistema para você <b>maximizar sua aprovação</b> em concursos.</p>
+      <div class="bg-blue-50 rounded-lg p-3 text-sm">
+        <p class="text-blue-700"><i class="fas fa-lightbulb mr-1"></i> <b>Dica:</b> Este tour pode ser acessado novamente pelo menu a qualquer momento.</p>
+      </div>
     `,
     target: null,
     position: 'center',
@@ -22074,11 +22082,34 @@ const tutorialSteps = [
     showPrev: false
   },
   {
+    id: 'lilu-assistant',
+    title: '🤖 Conheça a Lilu - Sua Assistente',
+    content: `
+      <p class="mb-3">A <b class="text-purple-600">Lilu</b> é sua assistente virtual inteligente que conhece <b>TUDO</b> sobre o sistema!</p>
+      <div class="bg-purple-50 rounded-lg p-3 mb-3">
+        <p class="text-purple-700 font-semibold mb-2">Ela pode te ajudar com:</p>
+        <ul class="text-sm text-purple-600 space-y-1">
+          <li>✨ Explicar qualquer funcionalidade do sistema</li>
+          <li>📊 Mostrar seu progresso e estatísticas</li>
+          <li>💡 Dar dicas personalizadas de estudo</li>
+          <li>🔧 Resolver dúvidas e problemas</li>
+          <li>📚 Orientar sobre como usar cada recurso</li>
+        </ul>
+      </div>
+      <p class="text-sm text-gray-600"><i class="fas fa-comment-dots mr-1"></i> Acesse pelo <b>botão flutuante roxo</b> ou pelo menu!</p>
+    `,
+    target: null,
+    position: 'center'
+  },
+  {
     id: 'countdown',
     title: '📅 Contagem Regressiva',
     content: `
       <p class="mb-2">Mostra quantos dias faltam para sua prova.</p>
-      <p class="text-sm text-gray-600">💡 <b>Clique</b> para editar a data da prova a qualquer momento.</p>
+      <p class="text-sm text-gray-600 mb-2">💡 <b>Clique</b> para editar a data da prova a qualquer momento.</p>
+      <div class="bg-amber-50 rounded-lg p-2 text-xs text-amber-700">
+        <i class="fas fa-info-circle mr-1"></i> Manter a data atualizada ajuda o sistema a calcular suas metas!
+      </div>
     `,
     target: '[onclick*="abrirModalEditarDataProva"]',
     position: 'bottom',
@@ -22086,19 +22117,38 @@ const tutorialSteps = [
     arrow: 'top'
   },
   {
+    id: 'progress-important',
+    title: '⭐ IMPORTANTE: Como Avançar o Progresso',
+    content: `
+      <div class="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-4 mb-3">
+        <p class="font-bold text-[#122D6A] mb-2 text-center">🎯 O progresso do edital avança assim:</p>
+        <ol class="text-sm space-y-2 list-decimal list-inside">
+          <li><b>Clique em "Disciplinas"</b> no menu ou card</li>
+          <li><b>Escolha uma disciplina</b> para ver os tópicos</li>
+          <li><b>Marque tópicos como "✅ Concluído"</b> após estudar</li>
+        </ol>
+      </div>
+      <div class="bg-amber-50 rounded-lg p-2 text-xs text-amber-700">
+        <i class="fas fa-exclamation-triangle mr-1"></i> <b>Atenção:</b> Concluir metas semanais é para organização - o progresso REAL vem dos tópicos marcados!
+      </div>
+    `,
+    target: null,
+    position: 'center'
+  },
+  {
     id: 'disciplines',
     title: '📚 Suas Disciplinas',
     content: `
-      <p class="mb-2">Acesse todas as disciplinas do seu edital aqui.</p>
-      <ul class="text-sm text-gray-600 space-y-1">
-        <li>• Veja o <b>progresso</b> de cada matéria</li>
-        <li>• Ajuste o <b>nível de domínio</b> (0-10)</li>
-        <li>• <b class="text-green-600">Marque tópicos como concluídos</b></li>
+      <p class="mb-2">Aqui você encontra todas as matérias do seu edital.</p>
+      <ul class="text-sm text-gray-600 space-y-1 mb-3">
+        <li>📊 Veja o <b>progresso</b> de cada matéria</li>
+        <li>⭐ Ajuste o <b>nível de domínio</b> (0-10)</li>
+        <li>✅ <b class="text-green-600">Marque tópicos como concluídos</b></li>
+        <li>🤖 <b>Gere conteúdo</b> (teoria, exercícios, resumo)</li>
       </ul>
-      <p class="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
-        <i class="fas fa-lightbulb mr-1"></i>
-        <b>IMPORTANTE:</b> O progresso do edital só avança quando você marca tópicos como concluídos dentro de cada disciplina!
-      </p>
+      <div class="bg-green-50 rounded-lg p-2 text-xs text-green-700">
+        <i class="fas fa-check-circle mr-1"></i> <b>É aqui que seu progresso real é contabilizado!</b>
+      </div>
     `,
     target: '[onclick="renderPortfolioDisciplinas()"]',
     position: 'bottom',
@@ -22106,40 +22156,51 @@ const tutorialSteps = [
     arrow: 'top'
   },
   {
-    id: 'progress',
-    title: '📊 Progresso Geral do Edital',
+    id: 'content-generation',
+    title: '🤖 Geração de Conteúdo com IA',
     content: `
-      <p class="mb-2">Seu avanço geral no edital é mostrado aqui.</p>
-      <div class="text-sm text-gray-600 space-y-2">
-        <p>A barra considera o <b>peso</b> de cada disciplina para calcular o progresso real.</p>
-        <div class="p-2 bg-amber-50 rounded">
-          <p class="text-amber-700 font-semibold">
-            <i class="fas fa-info-circle mr-1"></i>
-            Como avançar o progresso:
-          </p>
-          <ol class="text-amber-600 text-xs mt-1 space-y-1 list-decimal list-inside">
-            <li>Clique em <b>"Disciplinas"</b></li>
-            <li>Escolha uma disciplina</li>
-            <li>Clique em <b>"✓ Concluído"</b> nos tópicos estudados</li>
-          </ol>
+      <p class="mb-3">O sistema usa <b>Inteligência Artificial</b> para criar conteúdo personalizado!</p>
+      <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
+        <div class="bg-blue-50 rounded-lg p-2 text-center">
+          <span class="text-2xl">📖</span>
+          <p class="font-semibold text-blue-700">Teoria</p>
+          <p class="text-blue-600">Explicação completa</p>
+        </div>
+        <div class="bg-green-50 rounded-lg p-2 text-center">
+          <span class="text-2xl">✏️</span>
+          <p class="font-semibold text-green-700">Exercícios</p>
+          <p class="text-green-600">Questões comentadas</p>
+        </div>
+        <div class="bg-yellow-50 rounded-lg p-2 text-center">
+          <span class="text-2xl">📝</span>
+          <p class="font-semibold text-yellow-700">Resumo</p>
+          <p class="text-yellow-600">Pontos principais</p>
+        </div>
+        <div class="bg-purple-50 rounded-lg p-2 text-center">
+          <span class="text-2xl">🃏</span>
+          <p class="font-semibold text-purple-700">Flashcards</p>
+          <p class="text-purple-600">Memorização</p>
         </div>
       </div>
+      <p class="text-xs text-gray-500"><i class="fas fa-save mr-1"></i> Todo conteúdo é salvo automaticamente em "Materiais"!</p>
     `,
-    target: '.progresso-geral-card',
-    position: 'bottom',
-    highlight: true,
-    arrow: 'top'
+    target: null,
+    position: 'center'
   },
   {
     id: 'simulados',
     title: '✍️ Simulados',
     content: `
-      <p class="mb-2">Teste seus conhecimentos com simulados.</p>
-      <ul class="text-sm text-gray-600 space-y-1">
-        <li>• Questões no estilo da <b>sua banca</b></li>
-        <li>• Acompanhe sua <b>evolução</b></li>
-        <li>• Identifique <b>pontos fracos</b></li>
+      <p class="mb-2">Teste seus conhecimentos com simulados personalizados!</p>
+      <ul class="text-sm text-gray-600 space-y-1 mb-3">
+        <li>🎯 Questões no estilo da <b>sua banca</b> (CESPE, FCC, FGV...)</li>
+        <li>📊 Acompanhe sua <b>evolução</b> ao longo do tempo</li>
+        <li>🔍 Identifique <b>pontos fracos</b> para focar</li>
+        <li>💬 Cada questão tem <b>gabarito comentado</b></li>
       </ul>
+      <div class="bg-cyan-50 rounded-lg p-2 text-xs text-cyan-700">
+        <i class="fas fa-chart-line mr-1"></i> O dashboard mostra sua média e evolução nos últimos simulados!
+      </div>
     `,
     target: '[onclick*="renderDashboardSimulados"]',
     position: 'bottom',
@@ -22150,12 +22211,15 @@ const tutorialSteps = [
     id: 'weekly-goals',
     title: '🎯 Metas Semanais',
     content: `
-      <p class="mb-2">O sistema gera metas automáticas distribuídas na semana.</p>
-      <p class="text-sm text-gray-600">Respeita seu <b>tempo disponível</b> e <b>dias de estudo</b> configurados.</p>
-      <p class="mt-2 text-xs text-blue-600">
-        <i class="fas fa-info-circle mr-1"></i>
-        As metas semanais ajudam a organizar seu estudo, mas <b>não afetam</b> o progresso do edital diretamente.
-      </p>
+      <p class="mb-2">O sistema gera <b>metas automáticas</b> distribuídas na semana.</p>
+      <ul class="text-sm text-gray-600 space-y-1 mb-3">
+        <li>⏰ Respeita seu <b>tempo disponível</b></li>
+        <li>📅 Considera seus <b>dias de estudo</b></li>
+        <li>🔄 Alterna entre <b>teoria, exercícios e revisão</b></li>
+      </ul>
+      <div class="bg-blue-50 rounded-lg p-2 text-xs text-blue-700">
+        <i class="fas fa-info-circle mr-1"></i> As metas são para <b>organização</b> - o progresso do edital vem dos tópicos em Disciplinas!
+      </div>
     `,
     target: '.semana-resumo-card',
     position: 'top',
@@ -22163,26 +22227,15 @@ const tutorialSteps = [
     arrow: 'bottom'
   },
   {
-    id: 'generate-goals',
-    title: '✨ Gerar Metas',
-    content: `
-      <p class="mb-2">Clique para gerar suas metas semanais.</p>
-      <p class="text-sm text-gray-600">O sistema cria um <b>cronograma personalizado</b> baseado no seu perfil e tempo até a prova.</p>
-    `,
-    target: '[onclick="gerarMetasSemana()"]',
-    position: 'left',
-    highlight: true,
-    arrow: 'right'
-  },
-  {
     id: 'daily-goals',
-    title: '📋 Metas Diárias',
+    title: '📋 Metas do Dia',
     content: `
       <p class="mb-2">Cada dia tem metas de <b>teoria</b>, <b>exercícios</b> e <b>revisão</b>.</p>
-      <ul class="text-sm text-gray-600 space-y-1">
+      <ul class="text-sm text-gray-600 space-y-1 mb-3">
         <li>📖 Clique para <b>estudar o conteúdo</b></li>
         <li>✅ Marque como <b>concluída</b> ao finalizar</li>
         <li>🤖 A IA gera o <b>material de estudo</b></li>
+        <li>🔄 Pode <b>regenerar</b> se quiser outro conteúdo</li>
       </ul>
     `,
     target: '.meta-card',
@@ -22192,53 +22245,32 @@ const tutorialSteps = [
     fallbackTarget: '.calendario-semanal'
   },
   {
-    id: 'edital-progress-tip',
-    title: '💡 Progresso do Edital - Passo a Passo',
+    id: 'desempenho',
+    title: '📊 Dashboard de Desempenho',
     content: `
-      <div class="space-y-3">
-        <p class="font-semibold text-[#122D6A]">Para avançar o progresso do seu edital:</p>
-        <div class="bg-gradient-to-r from-blue-50 to-green-50 p-3 rounded-lg">
-          <ol class="text-sm space-y-2 list-decimal list-inside">
-            <li><b>Vá em "Disciplinas"</b> no menu ou no card de disciplinas</li>
-            <li><b>Clique em uma disciplina</b> para ver os tópicos</li>
-            <li><b>Marque os tópicos como "Concluído"</b> após estudá-los</li>
-          </ol>
-        </div>
-        <p class="text-xs text-gray-500 italic">
-          <i class="fas fa-info-circle mr-1"></i>
-          As metas semanais são para organização. O progresso real é medido pelos tópicos concluídos em Disciplinas.
-        </p>
-      </div>
+      <p class="mb-2">Acompanhe sua evolução com <b>gráficos detalhados</b>!</p>
+      <ul class="text-sm text-gray-600 space-y-1 mb-3">
+        <li>📈 <b>Progresso por Matéria:</b> Gráfico de barras</li>
+        <li>🎯 <b>Nível de Domínio:</b> Gráfico radar</li>
+        <li>📊 <b>Estatísticas:</b> Dias estudados, horas, média</li>
+        <li>🏆 <b>Simulados:</b> Evolução e meta de acertos</li>
+      </ul>
+      <p class="text-xs text-gray-500">Clique em "Desempenho" para acessar!</p>
     `,
     target: null,
     position: 'center'
   },
   {
-    id: 'calendar',
-    title: '📆 Calendário Mensal',
-    content: `
-      <p class="mb-2">Visualize seu histórico de estudos.</p>
-      <ul class="text-sm text-gray-600 space-y-1">
-        <li>🟢 <b>Verde:</b> 100% concluído</li>
-        <li>🟡 <b>Amarelo:</b> Parcialmente estudado</li>
-        <li>⚪ <b>Cinza:</b> Não estudado</li>
-      </ul>
-    `,
-    target: '.calendario-mes',
-    position: 'left',
-    highlight: true,
-    arrow: 'right'
-  },
-  {
     id: 'fab-button',
     title: '🔘 Menu de Ações Rápidas',
     content: `
-      <p class="mb-3">Este botão flutuante dá acesso rápido a funcionalidades importantes:</p>
+      <p class="mb-3">O <b>botão flutuante</b> dá acesso rápido às funcionalidades:</p>
       <ul class="text-sm space-y-2">
-        <li>🤖 <b class="text-blue-600">Assistente Lilu:</b> Tire dúvidas sobre qualquer assunto</li>
-        <li>📚 <b class="text-[#122D6A]">Disciplinas:</b> Gerencie tópicos e marque como concluídos</li>
-        <li>✍️ <b class="text-cyan-600">Simulados:</b> Faça testes práticos</li>
-        <li>📅 <b class="text-teal-600">Calendário:</b> Veja seu histórico</li>
+        <li>🤖 <b class="text-purple-600">Assistente Lilu:</b> Tire qualquer dúvida</li>
+        <li>📚 <b class="text-[#122D6A]">Disciplinas:</b> Gerencie tópicos</li>
+        <li>✍️ <b class="text-cyan-600">Simulados:</b> Faça testes</li>
+        <li>📅 <b class="text-teal-600">Calendário:</b> Histórico de estudos</li>
+        <li>🎨 <b class="text-pink-600">Personalizar IA:</b> Configure a geração</li>
       </ul>
     `,
     target: '#fab-main',
@@ -22248,49 +22280,84 @@ const tutorialSteps = [
   },
   {
     id: 'ia-personalization',
-    title: '🧠 Personalização da IA',
+    title: '🎨 Personalização da IA',
     content: `
-      <p class="mb-3">Configure como a IA gera seu conteúdo de estudo:</p>
-      <ul class="text-sm text-gray-600 space-y-1">
-        <li>📝 <b>Tom:</b> Formal, técnico, didático ou direto</li>
-        <li>📊 <b>Intensidade:</b> Superficial, intermediária ou aprofundada</li>
-        <li>🔍 <b>Profundidade:</b> Conceitual, aplicada ou analítica</li>
-        <li>📏 <b>Extensão:</b> Curto (500), médio (2000) ou longo (5000) caracteres</li>
-      </ul>
-      <p class="mt-2 text-xs text-blue-600">💡 Acesse pelo botão roxo no menu flutuante!</p>
+      <p class="mb-3">Configure como a IA gera seu conteúdo:</p>
+      <div class="grid grid-cols-2 gap-2 text-xs mb-3">
+        <div class="bg-gray-50 rounded p-2">
+          <span class="font-semibold">📝 Tom</span>
+          <p class="text-gray-600">Formal, didático, direto</p>
+        </div>
+        <div class="bg-gray-50 rounded p-2">
+          <span class="font-semibold">📊 Intensidade</span>
+          <p class="text-gray-600">Superficial a aprofundada</p>
+        </div>
+        <div class="bg-gray-50 rounded p-2">
+          <span class="font-semibold">🔍 Profundidade</span>
+          <p class="text-gray-600">Conceitual, aplicada, analítica</p>
+        </div>
+        <div class="bg-gray-50 rounded p-2">
+          <span class="font-semibold">📏 Extensão</span>
+          <p class="text-gray-600">5K a 20K caracteres</p>
+        </div>
+      </div>
+      <p class="text-xs text-purple-600"><i class="fas fa-magic mr-1"></i> Acesse pelo botão roxo no menu flutuante!</p>
     `,
     target: null,
     position: 'center'
   },
   {
-    id: 'new-plan',
-    title: '🚀 Criar Novo Plano',
+    id: 'multiple-plans',
+    title: '📋 Múltiplos Planos',
     content: `
-      <p class="mb-2">Inicie uma nova entrevista inteligente para:</p>
-      <ul class="text-sm text-gray-600 space-y-1">
-        <li>• Estudar para <b>outro concurso</b></li>
-        <li>• Atualizar seu <b>plano atual</b></li>
-        <li>• Importar <b>novo edital</b></li>
+      <p class="mb-3">Você pode ter <b>vários planos de estudo</b> - um para cada concurso!</p>
+      <ul class="text-sm text-gray-600 space-y-1 mb-3">
+        <li>✅ Apenas <b>um plano ativo</b> por vez</li>
+        <li>💾 Ao trocar, o <b>progresso é preservado</b></li>
+        <li>🔄 Pode <b>reativar</b> planos anteriores</li>
       </ul>
-      <p class="mt-2 text-xs text-orange-600">⚠️ Planos com mesmo nome são substituídos automaticamente.</p>
+      <div class="bg-green-50 rounded-lg p-2 text-xs text-green-700">
+        <i class="fas fa-shield-alt mr-1"></i> Seus dados nunca são perdidos ao alternar planos!
+      </div>
     `,
-    target: '[onclick="iniciarEntrevista()"]',
-    position: 'left',
-    highlight: true,
-    arrow: 'right'
+    target: null,
+    position: 'center'
   },
   {
     id: 'tips',
-    title: '💡 Dicas para Aprovação',
+    title: '🏆 Dicas de Ouro para Aprovação',
     content: `
-      <ul class="text-left space-y-2">
-        <li>📌 <b>Consistência:</b> Estude um pouco todos os dias</li>
-        <li>🎯 <b>Siga as metas:</b> O sistema otimiza seu tempo</li>
-        <li>📊 <b>Faça simulados:</b> Identifique pontos fracos</li>
-        <li>🔄 <b>Revise sempre:</b> Consolida o aprendizado</li>
-        <li>✅ <b>Marque tópicos concluídos:</b> Acompanhe seu progresso real</li>
-      </ul>
-      <p class="mt-3 text-center text-sm text-blue-600 font-semibold">🏆 Bons estudos e boa aprovação!</p>
+      <div class="space-y-2">
+        <div class="flex items-start gap-2 bg-blue-50 rounded-lg p-2">
+          <span class="text-xl">📌</span>
+          <div>
+            <p class="font-semibold text-blue-700">Consistência</p>
+            <p class="text-xs text-blue-600">Estude um pouco todos os dias</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-2 bg-green-50 rounded-lg p-2">
+          <span class="text-xl">✅</span>
+          <div>
+            <p class="font-semibold text-green-700">Marque Tópicos</p>
+            <p class="text-xs text-green-600">Acompanhe seu progresso real</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-2 bg-purple-50 rounded-lg p-2">
+          <span class="text-xl">📊</span>
+          <div>
+            <p class="font-semibold text-purple-700">Faça Simulados</p>
+            <p class="text-xs text-purple-600">Identifique pontos fracos</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-2 bg-amber-50 rounded-lg p-2">
+          <span class="text-xl">🤖</span>
+          <div>
+            <p class="font-semibold text-amber-700">Use a Lilu</p>
+            <p class="text-xs text-amber-600">Ela conhece tudo do sistema!</p>
+          </div>
+        </div>
+      </div>
+      <p class="mt-3 text-center text-sm text-[#122D6A] font-bold">🎯 Bons estudos e boa aprovação!</p>
     `,
     target: null,
     position: 'center',
