@@ -3391,8 +3391,9 @@ async function processarTextoEditalColado(texto) {
       
       isProcessingEdital = false;
       
-      // Ir diretamente para Step3 (disciplinas) para revisão
-      await renderEntrevistaStep3();
+      // ✅ CORREÇÃO: Ir para Step2 (perfil) primeiro, não direto para Step3
+      // Step2 define tempo_disponivel_dia, experiencia, etc. que são obrigatórios
+      renderEntrevistaStep2();
     } else {
       throw new Error(response.data.error || 'Não foi possível extrair disciplinas do texto');
     }
@@ -21222,7 +21223,7 @@ window.gerarSimulado = async function() {
   }
 }
 
-// Version: 20260208181551
+// Version: 20260208190237
 
 // ============== FUNÇÕES DE MATERIAIS ==============
 
