@@ -3044,53 +3044,92 @@ function renderConcursoEspecifico() {
                 class="w-full px-3 md:px-4 py-2.5 md:py-3 ${themes[currentTheme].input} rounded-lg md:rounded-xl border-2 border-gray-200 focus:border-[#1A3A7F] focus:ring-2 focus:ring-[#1A3A7F]/20 transition-all text-sm md:text-base">
             </div>
 
-            <!-- Seção de Upload - Modernizada e compacta no mobile -->
+            <!-- Seção de Upload - Modernizada com opção de colar texto -->
             <div class="bg-gradient-to-br from-[#E8EDF5] via-[#F3F6FA] to-white p-3 md:p-5 rounded-xl border-2 border-[#C5D1E8]">
               <label class="block text-xs md:text-sm font-semibold text-gray-800 mb-2 md:mb-3 flex items-center">
                 <div class="w-6 h-6 md:w-8 md:h-8 bg-[#122D6A] rounded-lg flex items-center justify-center mr-2">
                   <i class="fas fa-file-upload text-white text-xs md:text-sm"></i>
                 </div>
-                Anexar Edital <span class="text-gray-400 font-normal ml-1">(recomendado)</span>
+                Importar Disciplinas do Edital <span class="text-gray-400 font-normal ml-1">(recomendado)</span>
               </label>
               
-              <!-- Tipos de arquivo aceitos - Apenas TXT e XLSX -->
-              <div class="bg-white rounded-lg p-2 md:p-3 mb-3 border border-[#C5D1E8]/50">
-                <div class="grid grid-cols-2 gap-2 text-center">
-                  <div class="p-2 rounded-lg hover:bg-gray-50 transition border border-gray-200">
-                    <i class="fas fa-file-alt text-blue-500 text-lg md:text-xl mb-1"></i>
-                    <p class="text-[9px] md:text-xs text-gray-700 font-medium">TXT</p>
-                    <p class="text-[8px] md:text-[10px] text-gray-500 hidden md:block">Processamento rápido</p>
-                  </div>
-                  <div class="p-2 rounded-lg hover:bg-[#2A4A9F]/5 transition border-2 border-green-400 bg-green-50/50">
-                    <i class="fas fa-file-excel text-green-600 text-lg md:text-xl mb-1"></i>
-                    <p class="text-[9px] md:text-xs text-green-700 font-medium">XLSX</p>
-                    <p class="text-[8px] md:text-[10px] text-green-600 hidden md:block">✨ Recomendado!</p>
+              <!-- Tabs para escolher método -->
+              <div class="flex gap-1 mb-3 bg-gray-100 p-1 rounded-lg">
+                <button type="button" id="tab-upload" onclick="trocarMetodoImportacao('upload')"
+                  class="flex-1 py-2 px-3 text-xs md:text-sm font-medium rounded-md bg-white text-[#122D6A] shadow-sm transition">
+                  <i class="fas fa-file-upload mr-1"></i>
+                  <span class="hidden md:inline">Arquivo</span>
+                  <span class="md:hidden">Upload</span>
+                </button>
+                <button type="button" id="tab-colar" onclick="trocarMetodoImportacao('colar')"
+                  class="flex-1 py-2 px-3 text-xs md:text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 transition">
+                  <i class="fas fa-paste mr-1"></i>
+                  <span class="hidden md:inline">Colar Texto</span>
+                  <span class="md:hidden">Colar</span>
+                </button>
+              </div>
+              
+              <!-- Método 1: Upload de Arquivo -->
+              <div id="metodo-upload" class="space-y-3">
+                <div class="bg-white rounded-lg p-2 md:p-3 border border-[#C5D1E8]/50">
+                  <div class="grid grid-cols-2 gap-2 text-center">
+                    <div class="p-2 rounded-lg hover:bg-gray-50 transition border border-gray-200">
+                      <i class="fas fa-file-alt text-blue-500 text-lg md:text-xl mb-1"></i>
+                      <p class="text-[9px] md:text-xs text-gray-700 font-medium">TXT</p>
+                    </div>
+                    <div class="p-2 rounded-lg hover:bg-[#2A4A9F]/5 transition border-2 border-green-400 bg-green-50/50">
+                      <i class="fas fa-file-excel text-green-600 text-lg md:text-xl mb-1"></i>
+                      <p class="text-[9px] md:text-xs text-green-700 font-medium">XLSX ✨</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <!-- Input de upload - Apenas TXT e XLSX -->
-              <div class="relative">
-                <input type="file" id="editaisUpload" multiple accept=".txt,.xlsx"
-                  class="w-full px-3 md:px-4 py-2 md:py-2.5 bg-white rounded-lg focus:ring-2 focus:ring-[#1A3A7F] file:mr-2 md:file:mr-4 file:py-1.5 md:file:py-2 file:px-3 md:file:px-4 file:rounded-lg file:border-0 file:text-xs md:file:text-sm file:font-semibold file:bg-[#122D6A] file:text-white hover:file:bg-[#0D1F4D] border-2 border-dashed border-gray-300 hover:border-[#1A3A7F] transition-all text-xs md:text-sm">
+                <div class="relative">
+                  <input type="file" id="editaisUpload" multiple accept=".txt,.xlsx"
+                    class="w-full px-3 md:px-4 py-2 md:py-2.5 bg-white rounded-lg focus:ring-2 focus:ring-[#1A3A7F] file:mr-2 md:file:mr-4 file:py-1.5 md:file:py-2 file:px-3 md:file:px-4 file:rounded-lg file:border-0 file:text-xs md:file:text-sm file:font-semibold file:bg-[#122D6A] file:text-white hover:file:bg-[#0D1F4D] border-2 border-dashed border-gray-300 hover:border-[#1A3A7F] transition-all text-xs md:text-sm">
+                </div>
+                
+                <div class="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[10px] md:text-xs text-amber-700">
+                  <i class="fas fa-info-circle mr-1"></i>
+                  <strong>Tem PDF?</strong> 
+                  <a href="https://convertio.co/pt/pdf-txt/" target="_blank" class="underline text-amber-800 hover:text-amber-900">Converta para TXT</a>
+                </div>
+                
+                <div id="editaisPreview" class="space-y-1.5"></div>
               </div>
               
-              <!-- Aviso sobre PDF -->
-              <div class="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-[10px] md:text-xs text-amber-700">
-                <i class="fas fa-info-circle mr-1"></i>
-                <strong>Tem PDF?</strong> 
-                <a href="https://convertio.co/pt/pdf-txt/" target="_blank" class="underline text-amber-800 hover:text-amber-900">Converta para TXT aqui</a> (leva 30 segundos)
+              <!-- Método 2: Colar Texto -->
+              <div id="metodo-colar" class="hidden space-y-3">
+                <div class="p-2 bg-blue-50 border border-blue-200 rounded-lg text-[10px] md:text-xs text-blue-700">
+                  <i class="fas fa-magic mr-1"></i>
+                  <strong>Copie e cole</strong> a parte do edital com as disciplinas/conteúdo programático. 
+                  A IA vai extrair automaticamente!
+                </div>
+                
+                <textarea id="textoEdital" 
+                  placeholder="Cole aqui o conteúdo programático do edital...
+
+Exemplo:
+CONHECIMENTOS BÁSICOS
+- Língua Portuguesa: Interpretação de texto...
+- Raciocínio Lógico: Proposições, conectivos...
+
+CONHECIMENTOS ESPECÍFICOS
+- Direito Constitucional: Princípios fundamentais...
+- Direito Administrativo: Organização administrativa..."
+                  class="w-full h-40 md:h-48 px-3 py-2 ${themes[currentTheme].input} rounded-lg border-2 border-gray-200 focus:border-[#1A3A7F] focus:ring-2 focus:ring-[#1A3A7F]/20 transition-all text-xs md:text-sm resize-none"
+                ></textarea>
+                
+                <div class="flex items-center justify-between text-[10px] md:text-xs text-gray-500">
+                  <span id="contadorTexto">0 caracteres</span>
+                  <span class="text-green-600"><i class="fas fa-bolt mr-1"></i>Processamento instantâneo</span>
+                </div>
               </div>
               
-              <!-- Dicas de processamento - Compactas no mobile -->
-              <div class="mt-2 md:mt-3 space-y-1 md:space-y-1.5 text-[10px] md:text-xs">
-                <p class="text-[#1A3A7F] flex items-center">
-                  <i class="fas fa-robot mr-1.5"></i>
-                  <span>IA extrai disciplinas automaticamente</span>
-                </p>
+              <div class="mt-2 md:mt-3 text-[10px] md:text-xs text-[#1A3A7F] flex items-center">
+                <i class="fas fa-robot mr-1.5"></i>
+                <span>IA extrai disciplinas e tópicos automaticamente</span>
               </div>
-              
-              <div id="editaisPreview" class="mt-2 md:mt-3 space-y-1.5"></div>
             </div>
 
             <!-- Botões - Responsivos -->
@@ -3124,7 +3163,37 @@ function renderConcursoEspecifico() {
     console.log('📋 Continuando sem edital - usuário irá adicionar disciplinas manualmente');
     interviewData.editais_arquivos = [];
     interviewData.sem_edital = true;
+    interviewData.texto_edital = null;
     renderEntrevistaStep2();
+  };
+  
+  // Função para trocar entre métodos de importação
+  window.trocarMetodoImportacao = function(metodo) {
+    const tabUpload = document.getElementById('tab-upload');
+    const tabColar = document.getElementById('tab-colar');
+    const metodoUpload = document.getElementById('metodo-upload');
+    const metodoColar = document.getElementById('metodo-colar');
+    
+    if (metodo === 'upload') {
+      tabUpload.className = 'flex-1 py-2 px-3 text-xs md:text-sm font-medium rounded-md bg-white text-[#122D6A] shadow-sm transition';
+      tabColar.className = 'flex-1 py-2 px-3 text-xs md:text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 transition';
+      metodoUpload.classList.remove('hidden');
+      metodoColar.classList.add('hidden');
+    } else {
+      tabColar.className = 'flex-1 py-2 px-3 text-xs md:text-sm font-medium rounded-md bg-white text-[#122D6A] shadow-sm transition';
+      tabUpload.className = 'flex-1 py-2 px-3 text-xs md:text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 transition';
+      metodoColar.classList.remove('hidden');
+      metodoUpload.classList.add('hidden');
+      
+      // Adicionar listener para contador de texto
+      const textarea = document.getElementById('textoEdital');
+      const contador = document.getElementById('contadorTexto');
+      if (textarea && contador) {
+        textarea.addEventListener('input', () => {
+          contador.textContent = `${textarea.value.length} caracteres`;
+        });
+      }
+    }
   };
 
   // Função para remover edital da lista
@@ -3177,14 +3246,15 @@ function renderConcursoEspecifico() {
     
     console.log('📋 Banca organizadora selecionada:', interviewData.banca_organizadora);
     
-    // Salvar arquivos de editais
+    // Verificar qual método de importação foi usado
+    const textoEdital = document.getElementById('textoEdital')?.value?.trim();
     const editaisFiles = document.getElementById('editaisUpload').files;
+    
+    // Salvar arquivos de editais
     interviewData.editais_arquivos = Array.from(editaisFiles);
+    interviewData.texto_edital = textoEdital || null;
     
-    // ✅ Informar sobre PDFs (mas não bloquear)
-    // TXT e XLSX apenas - PDFs não são mais aceitos
-    
-    console.log(`📄 ${editaisFiles.length} edital(is) anexado(s)`);
+    console.log(`📄 ${editaisFiles.length} edital(is) anexado(s), texto colado: ${textoEdital ? textoEdital.length + ' chars' : 'não'}`);
     
     // Detectar área automaticamente baseado no cargo
     const areaDetectada = detectarAreaPorCargo(interviewData.cargo);
@@ -3193,9 +3263,12 @@ function renderConcursoEspecifico() {
       console.log(`Área detectada automaticamente: ${areaDetectada} para cargo: ${interviewData.cargo}`);
     }
     
-    // ✅ NOVO: Processar edital ANTES de ir para Step2
+    // Processar edital ANTES de ir para Step2
     if (editaisFiles.length > 0) {
       await processarEditalAntesDeStep2();
+    } else if (textoEdital && textoEdital.length > 50) {
+      // Processar texto colado
+      await processarTextoEditalColado(textoEdital);
     } else {
       renderEntrevistaStep2();
     }
@@ -3225,6 +3298,133 @@ function cancelarCountdownENavegar(destino) {
     renderEntrevistaStep2();
   } else if (destino === 'dashboard') {
     renderDashboard();
+  }
+}
+
+// ✅ NOVA FUNÇÃO: Processar texto colado do edital
+async function processarTextoEditalColado(texto) {
+  if (isProcessingEdital) {
+    console.log('⚠️ Já existe um processamento em andamento, ignorando...');
+    return;
+  }
+  isProcessingEdital = true;
+  
+  console.log(`📋 Processando texto colado: ${texto.length} caracteres`);
+  
+  // Mostrar loading
+  document.getElementById('app').innerHTML = `
+    <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+      <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center">
+        <div class="mb-6">
+          <div class="w-20 h-20 mx-auto bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-2xl flex items-center justify-center mb-4">
+            <i class="fas fa-robot text-3xl text-white animate-pulse"></i>
+          </div>
+          <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-2">Analisando Conteúdo...</h3>
+          <p class="${themes[currentTheme].textSecondary} text-sm">A IA está extraindo disciplinas e tópicos</p>
+        </div>
+        
+        <div class="space-y-3 text-left mb-6">
+          <div class="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+            <i class="fas fa-spinner fa-spin text-[#2A4A9F]"></i>
+            <span class="text-sm text-[#1A3A7F]">Identificando disciplinas...</span>
+          </div>
+          <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg opacity-50">
+            <i class="far fa-circle text-gray-400"></i>
+            <span class="text-sm text-gray-500">Extraindo tópicos...</span>
+          </div>
+          <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg opacity-50">
+            <i class="far fa-circle text-gray-400"></i>
+            <span class="text-sm text-gray-500">Organizando estrutura...</span>
+          </div>
+        </div>
+        
+        <div class="flex items-center justify-center gap-2 text-xs text-gray-500">
+          <i class="fas fa-bolt text-yellow-500"></i>
+          <span>Processamento rápido (~10 segundos)</span>
+        </div>
+        
+        <button onclick="cancelarCountdownENavegar('step1')" 
+          class="mt-6 px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition">
+          <i class="fas fa-times mr-1"></i> Cancelar
+        </button>
+      </div>
+    </div>
+  `;
+  
+  try {
+    // Enviar texto para o backend processar
+    const response = await axios.post('/api/editais/processar-texto', {
+      texto: texto,
+      concurso_nome: interviewData.concurso_nome,
+      cargo: interviewData.cargo,
+      banca: interviewData.banca_organizadora,
+      user_id: currentUser?.id
+    });
+    
+    console.log('✅ Resposta do processamento:', response.data);
+    
+    if (response.data.success && response.data.disciplinas) {
+      // Salvar disciplinas extraídas para usar na Step3
+      // Mapear para o formato esperado por disciplinas_do_edital
+      const disciplinasMapeadas = response.data.disciplinas.map((d, index) => ({
+        id: index + 1,  // ID temporário
+        disciplina_id_real: null, // Será criado ao salvar
+        nome: d.nome,
+        peso: d.peso || 1,
+        tipo: d.tipo || 'geral',
+        total_topicos: d.topicos?.length || 0,
+        topicos: (d.topicos || []).map((t, idx) => ({
+          id: idx + 1,
+          nome: typeof t === 'string' ? t : t.nome
+        }))
+      }));
+      
+      interviewData.disciplinas_do_edital = disciplinasMapeadas;
+      interviewData.disciplinas_extraidas = response.data.disciplinas;
+      interviewData.area_detectada = response.data.area_detectada;
+      interviewData.concurso_detectado = response.data.concurso_detectado;
+      interviewData.via_texto_colado = true;
+      
+      console.log(`✅ ${response.data.disciplinas.length} disciplinas extraídas do texto colado`);
+      console.log('📋 Disciplinas mapeadas:', disciplinasMapeadas.map(d => `${d.nome} (${d.total_topicos} tópicos)`).join(', '));
+      
+      isProcessingEdital = false;
+      
+      // Ir diretamente para Step3 (disciplinas) para revisão
+      await renderEntrevistaStep3();
+    } else {
+      throw new Error(response.data.error || 'Não foi possível extrair disciplinas do texto');
+    }
+    
+  } catch (error) {
+    console.error('❌ Erro ao processar texto:', error);
+    isProcessingEdital = false;
+    
+    // Mostrar erro com opção de tentar novamente ou continuar sem
+    document.getElementById('app').innerHTML = `
+      <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+        <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center">
+          <div class="w-16 h-16 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-4">
+            <i class="fas fa-exclamation-triangle text-2xl text-amber-600"></i>
+          </div>
+          <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-2">Ops! Algo deu errado</h3>
+          <p class="${themes[currentTheme].textSecondary} text-sm mb-6">
+            ${error?.response?.data?.error || error?.message || 'Não foi possível processar o texto. Tente novamente ou adicione as disciplinas manualmente.'}
+          </p>
+          
+          <div class="flex flex-col gap-3">
+            <button onclick="selecionarObjetivo('concurso_especifico')" 
+              class="w-full py-3 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition font-medium">
+              <i class="fas fa-redo mr-2"></i>Tentar Novamente
+            </button>
+            <button onclick="continuarSemEdital()" 
+              class="w-full py-3 border-2 border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition">
+              Continuar sem edital
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
   }
 }
 
@@ -4437,7 +4637,7 @@ function renderAreaGeral() {
             </div>
           </div>
 
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-6">
             ${areas.map(area => `
               <button onclick="selecionarArea('${area.id}')" 
                 class="p-4 md:p-6 border-2 ${themes[currentTheme].border} rounded-xl hover:border-[#122D6A] hover:shadow-lg transition-all duration-200 group flex flex-col items-center justify-center">
@@ -4447,6 +4647,27 @@ function renderAreaGeral() {
                 <h4 class="font-semibold text-sm md:text-base ${themes[currentTheme].text}">${area.nome}</h4>
               </button>
             `).join('')}
+          </div>
+          
+          <!-- ✅ NOVO: Opção de colar texto do edital mesmo sem concurso específico -->
+          <div class="border-t pt-5 mt-4">
+            <div class="bg-gradient-to-br from-[#E8EDF5] via-[#F3F6FA] to-white p-4 rounded-xl border border-[#C5D1E8]">
+              <div class="flex items-start gap-3 mb-3">
+                <div class="w-8 h-8 bg-[#122D6A]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <i class="fas fa-magic text-[#122D6A] text-sm"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold text-gray-800 text-sm mb-0.5">Tem o edital?</h4>
+                  <p class="text-xs text-gray-600">Cole o conteúdo programático e a IA extrai as disciplinas automaticamente</p>
+                </div>
+              </div>
+              
+              <button onclick="abrirColarTextoEditalArea()" 
+                class="w-full py-2.5 px-4 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition text-sm font-medium flex items-center justify-center gap-2">
+                <i class="fas fa-paste"></i>
+                Colar texto do edital
+              </button>
+            </div>
           </div>
 
           <button onclick="renderEntrevistaStep1()" 
@@ -4458,6 +4679,99 @@ function renderAreaGeral() {
       </div>
     </div>
   `;
+  
+  // ✅ Função para abrir modal de colar texto
+  window.abrirColarTextoEditalArea = function() {
+    const modalHtml = `
+      <div id="modal-colar-texto" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="${themes[currentTheme].card} rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div class="p-4 md:p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-lg flex items-center justify-center">
+                  <i class="fas fa-paste text-white"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-bold ${themes[currentTheme].text}">Colar Conteúdo do Edital</h3>
+                  <p class="text-xs text-gray-500">Cole o conteúdo programático para extrair disciplinas</p>
+                </div>
+              </div>
+              <button onclick="fecharModalColarTexto()" class="text-gray-400 hover:text-gray-600 p-2">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4 text-xs text-blue-700">
+              <i class="fas fa-lightbulb mr-1"></i>
+              <strong>Dica:</strong> Copie a seção "Conteúdo Programático" ou "Disciplinas" do seu edital e cole abaixo. 
+              A IA identifica automaticamente as matérias e os tópicos!
+            </div>
+            
+            <textarea id="textoEditalArea" 
+              placeholder="Cole aqui o conteúdo programático do edital...
+
+Exemplo:
+CONHECIMENTOS BÁSICOS
+Língua Portuguesa: Interpretação de texto, coesão e coerência...
+Raciocínio Lógico: Proposições, conectivos, negação...
+
+CONHECIMENTOS ESPECÍFICOS
+Legislação do SUS: Lei 8.080/90, Lei 8.142/90...
+Enfermagem: Técnicas de enfermagem, biossegurança..."
+              class="w-full h-60 px-3 py-3 ${themes[currentTheme].input} rounded-lg border-2 border-gray-200 focus:border-[#1A3A7F] focus:ring-2 focus:ring-[#1A3A7F]/20 transition-all text-sm resize-none"
+            ></textarea>
+            
+            <div class="flex items-center justify-between text-xs text-gray-500 mt-2 mb-4">
+              <span id="contadorTextoArea">0 caracteres</span>
+              <span class="text-green-600"><i class="fas fa-bolt mr-1"></i>~10 segundos de processamento</span>
+            </div>
+            
+            <div class="flex gap-3">
+              <button onclick="fecharModalColarTexto()" 
+                class="flex-1 py-2.5 border-2 border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition text-sm font-medium">
+                Cancelar
+              </button>
+              <button onclick="processarTextoEditalAreaGeral()" 
+                class="flex-1 py-2.5 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white rounded-lg hover:from-[#0D1F4D] hover:to-[#122D6A] transition text-sm font-medium flex items-center justify-center gap-2">
+                <i class="fas fa-magic"></i>
+                Extrair Disciplinas
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Contador de caracteres
+    document.getElementById('textoEditalArea').addEventListener('input', (e) => {
+      document.getElementById('contadorTextoArea').textContent = e.target.value.length + ' caracteres';
+    });
+  };
+  
+  window.fecharModalColarTexto = function() {
+    document.getElementById('modal-colar-texto')?.remove();
+  };
+  
+  window.processarTextoEditalAreaGeral = async function() {
+    const texto = document.getElementById('textoEditalArea')?.value?.trim();
+    
+    if (!texto || texto.length < 50) {
+      alert('Por favor, cole pelo menos 50 caracteres do conteúdo programático.');
+      return;
+    }
+    
+    // Fechar modal e processar
+    fecharModalColarTexto();
+    
+    // Definir objetivo como area_geral
+    interviewData.objetivo_tipo = 'area_geral';
+    interviewData.texto_edital = texto;
+    
+    // Usar a mesma função de processamento
+    await processarTextoEditalColado(texto);
+  };
 }
 
 function selecionarArea(area) {
@@ -20907,7 +21221,7 @@ window.gerarSimulado = async function() {
   }
 }
 
-// Version: 1770479125
+// Version: 20260208161221
 
 // ============== FUNÇÕES DE MATERIAIS ==============
 

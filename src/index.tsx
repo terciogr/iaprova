@@ -5489,6 +5489,188 @@ ${textoParaIA}`
 })
 
 // ════════════════════════════════════════════════════════════════════════
+// ✅ NOVO ENDPOINT: Processar texto de edital colado pelo usuário
+// Permite análise rápida sem upload de arquivo
+// ════════════════════════════════════════════════════════════════════════
+app.post('/api/editais/processar-texto', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    const { texto, user_id, cargo, concurso_nome, area_geral } = await c.req.json()
+    
+    if (!texto || texto.trim().length < 100) {
+      return c.json({ 
+        error: 'Texto muito curto. Cole pelo menos o conteúdo programático do edital.',
+        minLength: 100,
+        currentLength: texto?.length || 0
+      }, 400)
+    }
+    
+    if (!user_id) {
+      return c.json({ error: 'user_id é obrigatório' }, 400)
+    }
+    
+    console.log('═'.repeat(60))
+    console.log('📋 PROCESSANDO TEXTO DE EDITAL COLADO')
+    console.log('═'.repeat(60))
+    console.log(`📝 Texto recebido: ${texto.length} caracteres`)
+    console.log(`👤 Usuário: ${user_id}`)
+    console.log(`🎯 Cargo: ${cargo || 'Não especificado'}`)
+    
+    // Detectar área automaticamente pelo cargo
+    const cargoLower = cargo?.toLowerCase() || ''
+    const areaDetectada = area_geral || (
+      (cargoLower.includes('enfermeiro') || cargoLower.includes('enfermagem') || cargoLower.includes('saúde') || cargoLower.includes('sus')) ? 'saude' :
+      (cargoLower.includes('técnico em enfermagem')) ? 'saude' :
+      (cargoLower.includes('direito') || cargoLower.includes('advogado') || cargoLower.includes('jurídico')) ? 'juridico' :
+      (cargoLower.includes('contador') || cargoLower.includes('contábil')) ? 'fiscal' :
+      (cargoLower.includes('admin') || cargoLower.includes('gestão') || cargoLower.includes('analista')) ? 'gestao' :
+      (cargoLower.includes('professor') || cargoLower.includes('educação') || cargoLower.includes('pedagog')) ? 'educacao' :
+      (cargoLower.includes('técnico') || cargoLower.includes('assistente')) ? 'tecnico' :
+      'geral'
+    )
+    
+    console.log(`📚 Área detectada: ${areaDetectada}`)
+    
+    // Chamar Gemini para extrair disciplinas
+    const geminiKey = c.env.GEMINI_API_KEY || 'SUA_CHAVE_GEMINI_AQUI'
+    
+    const prompt = `VOCÊ É UM ESPECIALISTA EM ANÁLISE DE EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
+
+TAREFA: Extrair TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO colado abaixo.
+
+CARGO DO CANDIDATO: ${cargo?.toUpperCase() || 'NÃO ESPECIFICADO'}
+ÁREA DETECTADA: ${areaDetectada.toUpperCase()}
+
+INSTRUÇÕES:
+1. Identifique TODAS as disciplinas mencionadas no texto
+2. Para cada disciplina, extraia TODOS os tópicos/itens listados
+3. Agrupe os tópicos corretamente por disciplina
+4. Mantenha a ordem original quando possível
+5. Use os NOMES EXATOS como aparecem no texto
+
+REGRAS DE PESO:
+- Conhecimentos Gerais (Português, Raciocínio Lógico, Informática): peso 1
+- Conhecimentos Específicos (área técnica): peso 2
+
+FORMATO DE RESPOSTA (APENAS JSON, sem explicações):
+{
+  "disciplinas": [
+    {
+      "nome": "Nome Exato da Disciplina",
+      "peso": 1,
+      "tipo": "geral" ou "especifico",
+      "topicos": ["Tópico 1 completo", "Tópico 2 completo", "..."]
+    }
+  ],
+  "concurso_detectado": "Nome do concurso se identificável",
+  "observacoes": "Observações relevantes sobre o conteúdo"
+}
+
+TEXTO DO EDITAL PARA ANÁLISE:
+${texto.substring(0, 50000)}`
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 32000
+          }
+        })
+      }
+    )
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`❌ Erro Gemini: ${response.status}`)
+      
+      if (response.status === 429) {
+        return c.json({
+          error: 'API temporariamente sobrecarregada',
+          errorType: 'RATE_LIMIT',
+          suggestion: 'Aguarde 30 segundos e tente novamente',
+          canRetry: true
+        }, 429)
+      }
+      
+      return c.json({
+        error: 'Erro ao processar texto com IA',
+        details: errorText.substring(0, 200)
+      }, 500)
+    }
+    
+    const data = await response.json() as any
+    const textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text
+    
+    if (!textoResposta) {
+      return c.json({
+        error: 'Resposta vazia da IA',
+        suggestion: 'Tente novamente ou verifique se o texto contém conteúdo programático válido'
+      }, 500)
+    }
+    
+    console.log(`✅ Resposta da IA: ${textoResposta.length} caracteres`)
+    
+    // Parsear JSON
+    const jsonMatch = textoResposta.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      return c.json({
+        error: 'Não foi possível extrair disciplinas do texto',
+        suggestion: 'Verifique se o texto contém um conteúdo programático estruturado'
+      }, 400)
+    }
+    
+    try {
+      const resultado = JSON.parse(
+        jsonMatch[0]
+          .replace(/[\x00-\x1F\x7F]/g, ' ')
+          .replace(/,\s*([}\]])/g, '$1')
+      )
+      
+      if (!resultado?.disciplinas || resultado.disciplinas.length === 0) {
+        return c.json({
+          error: 'Nenhuma disciplina identificada no texto',
+          suggestion: 'Cole o conteúdo programático completo, incluindo as disciplinas e seus tópicos'
+        }, 400)
+      }
+      
+      console.log(`✅ ${resultado.disciplinas.length} disciplinas extraídas do texto colado`)
+      
+      // Retornar disciplinas para revisão (não salvar automaticamente)
+      return c.json({
+        success: true,
+        disciplinas: resultado.disciplinas,
+        total: resultado.disciplinas.length,
+        concurso_detectado: resultado.concurso_detectado || concurso_nome,
+        area_detectada: areaDetectada,
+        observacoes: resultado.observacoes,
+        modo: 'revisao',
+        message: `${resultado.disciplinas.length} disciplinas identificadas. Revise antes de confirmar.`
+      })
+      
+    } catch (parseError) {
+      console.error('❌ Erro ao parsear JSON:', parseError)
+      return c.json({
+        error: 'Erro ao interpretar resposta da IA',
+        suggestion: 'Tente novamente ou cole um texto mais estruturado'
+      }, 500)
+    }
+    
+  } catch (error) {
+    console.error('❌ Erro ao processar texto de edital:', error)
+    return c.json({
+      error: 'Erro interno ao processar texto',
+      details: String(error)
+    }, 500)
+  }
+})
+
+// ════════════════════════════════════════════════════════════════════════
 // ✅ NOVO ENDPOINT: Atualizar disciplinas do edital (revisão pelo usuário)
 // ════════════════════════════════════════════════════════════════════════
 app.put('/api/editais/:id/disciplinas', async (c) => {
