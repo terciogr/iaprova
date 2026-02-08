@@ -5641,11 +5641,92 @@ ${texto.substring(0, 50000)}`
       
       console.log(`✅ ${resultado.disciplinas.length} disciplinas extraídas do texto colado`)
       
-      // Retornar disciplinas para revisão (não salvar automaticamente)
+      // ✅ SALVAR EDITAL E DISCIPLINAS NO BANCO DE DADOS
+      // Criar edital
+      const editalResult = await DB.prepare(`
+        INSERT INTO editais (user_id, nome_concurso, texto_completo, status)
+        VALUES (?, ?, ?, 'processado')
+      `).bind(
+        user_id,
+        concurso_nome || resultado.concurso_detectado || 'Edital via texto',
+        texto.substring(0, 10000) // Limitar o texto salvo
+      ).run()
+      
+      const editalId = editalResult.meta.last_row_id
+      console.log(`📁 Edital criado com ID ${editalId}`)
+      
+      // Salvar disciplinas e tópicos
+      const disciplinasComIds = []
+      
+      for (let i = 0; i < resultado.disciplinas.length; i++) {
+        const disc = resultado.disciplinas[i]
+        
+        // Verificar/criar disciplina na tabela principal
+        let disciplina_id_real = null
+        const discExistente = await DB.prepare(`
+          SELECT id FROM disciplinas WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?))
+        `).bind(disc.nome).first() as any
+        
+        if (discExistente) {
+          disciplina_id_real = discExistente.id
+          console.log(`  ℹ️ Disciplina "${disc.nome}" já existe (ID ${disciplina_id_real})`)
+        } else {
+          const novaDiscResult = await DB.prepare(`
+            INSERT INTO disciplinas (nome, area, descricao)
+            VALUES (?, ?, ?)
+          `).bind(disc.nome, areaDetectada, 'Disciplina extraída do edital').run()
+          disciplina_id_real = novaDiscResult.meta.last_row_id
+          console.log(`  ✅ Disciplina "${disc.nome}" criada (ID ${disciplina_id_real})`)
+        }
+        
+        // Inserir em edital_disciplinas
+        const discResult = await DB.prepare(`
+          INSERT INTO edital_disciplinas (edital_id, nome, ordem, disciplina_id, peso)
+          VALUES (?, ?, ?, ?, ?)
+        `).bind(editalId, disc.nome, i + 1, disciplina_id_real, disc.peso || 1).run()
+        
+        const edital_disciplina_id = discResult.meta.last_row_id
+        
+        // Inserir tópicos
+        const topicosComIds = []
+        if (disc.topicos && disc.topicos.length > 0) {
+          for (let j = 0; j < disc.topicos.length; j++) {
+            const topicoNome = typeof disc.topicos[j] === 'string' ? disc.topicos[j] : disc.topicos[j].nome
+            
+            const topicoResult = await DB.prepare(`
+              INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem)
+              VALUES (?, ?, ?)
+            `).bind(edital_disciplina_id, topicoNome, j + 1).run()
+            
+            topicosComIds.push({
+              id: topicoResult.meta.last_row_id,
+              nome: topicoNome
+            })
+          }
+        }
+        
+        // Guardar disciplina com IDs reais
+        disciplinasComIds.push({
+          id: edital_disciplina_id,
+          disciplina_id_real: disciplina_id_real,
+          nome: disc.nome,
+          peso: disc.peso || 1,
+          tipo: disc.tipo || 'geral',
+          total_topicos: disc.topicos?.length || 0,
+          topicos: topicosComIds
+        })
+        
+        console.log(`  ✅ ${disc.nome}: ${topicosComIds.length} tópicos salvos`)
+      }
+      
+      console.log(`✅ Edital ${editalId} processado com ${disciplinasComIds.length} disciplinas`)
+      
+      // Retornar disciplinas com IDs reais do banco
       return c.json({
         success: true,
-        disciplinas: resultado.disciplinas,
-        total: resultado.disciplinas.length,
+        edital_id: editalId,
+        disciplinas: disciplinasComIds,
+        total: disciplinasComIds.length,
         concurso_detectado: resultado.concurso_detectado || concurso_nome,
         area_detectada: areaDetectada,
         observacoes: resultado.observacoes,

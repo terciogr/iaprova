@@ -3364,29 +3364,30 @@ async function processarTextoEditalColado(texto) {
     console.log('✅ Resposta do processamento:', response.data);
     
     if (response.data.success && response.data.disciplinas) {
-      // Salvar disciplinas extraídas para usar na Step3
-      // Mapear para o formato esperado por disciplinas_do_edital
-      const disciplinasMapeadas = response.data.disciplinas.map((d, index) => ({
-        id: index + 1,  // ID temporário
-        disciplina_id_real: null, // Será criado ao salvar
+      // ✅ CORRIGIDO: Usar IDs reais retornados pelo backend (não mais IDs temporários)
+      // O backend já criou o edital e as disciplinas no banco
+      const disciplinasComIds = response.data.disciplinas.map(d => ({
+        id: d.id,  // ID de edital_disciplinas (real)
+        disciplina_id_real: d.disciplina_id_real,  // ID real da tabela disciplinas
         nome: d.nome,
         peso: d.peso || 1,
         tipo: d.tipo || 'geral',
-        total_topicos: d.topicos?.length || 0,
-        topicos: (d.topicos || []).map((t, idx) => ({
-          id: idx + 1,
+        total_topicos: d.total_topicos || d.topicos?.length || 0,
+        topicos: (d.topicos || []).map(t => ({
+          id: t.id || 0,
           nome: typeof t === 'string' ? t : t.nome
         }))
       }));
       
-      interviewData.disciplinas_do_edital = disciplinasMapeadas;
+      interviewData.edital_id = response.data.edital_id;
+      interviewData.disciplinas_do_edital = disciplinasComIds;
       interviewData.disciplinas_extraidas = response.data.disciplinas;
       interviewData.area_detectada = response.data.area_detectada;
       interviewData.concurso_detectado = response.data.concurso_detectado;
       interviewData.via_texto_colado = true;
       
       console.log(`✅ ${response.data.disciplinas.length} disciplinas extraídas do texto colado`);
-      console.log('📋 Disciplinas mapeadas:', disciplinasMapeadas.map(d => `${d.nome} (${d.total_topicos} tópicos)`).join(', '));
+      console.log('📋 Disciplinas com IDs reais:', disciplinasComIds.map(d => `${d.nome} (ID: ${d.id}, disciplina_id_real: ${d.disciplina_id_real})`).join(', '));
       
       isProcessingEdital = false;
       
@@ -21221,7 +21222,7 @@ window.gerarSimulado = async function() {
   }
 }
 
-// Version: 20260208161221
+// Version: 20260208181551
 
 // ============== FUNÇÕES DE MATERIAIS ==============
 
