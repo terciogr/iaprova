@@ -21223,7 +21223,7 @@ window.gerarSimulado = async function() {
   }
 }
 
-// Version: 20260208195003
+// Version: 20260208213642
 
 // ============== FUNÇÕES DE MATERIAIS ==============
 

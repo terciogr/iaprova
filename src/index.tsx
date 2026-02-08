@@ -14013,13 +14013,59 @@ function gerarRecomendacao(interview: any, disciplinas: any[], nivelGeral: strin
 }
 
 function gerarDiagnosticoCompleto(interview: any, disciplinas: any[]) {
-  const nivelMedio = disciplinas.reduce((sum, d: any) => sum + d.nivel_atual, 0) / disciplinas.length
+  const nivelMedio = disciplinas.length > 0 
+    ? disciplinas.reduce((sum, d: any) => sum + (d.nivel_atual || 0), 0) / disciplinas.length
+    : 0
+  
+  // Calcular nível geral
+  let nivelGeral = 'Iniciante'
+  if (nivelMedio >= 7) nivelGeral = 'Avançado'
+  else if (nivelMedio >= 4) nivelGeral = 'Intermediário'
+  
+  // Identificar prioridades
+  const prioridades = disciplinas
+    .filter((d: any) => !d.ja_estudou || (d.nivel_atual || 0) < 6 || d.dificuldade)
+    .map((d: any) => ({
+      disciplina_id: d.disciplina_id,
+      nome: d.nome,
+      peso: calcularPeso(d),
+      razao: gerarRazaoPrioridade(d)
+    }))
+    .sort((a, b) => b.peso - a.peso)
+    .slice(0, 5)
+  
+  // Identificar lacunas
+  const lacunas = disciplinas
+    .filter((d: any) => !d.ja_estudou)
+    .map((d: any) => d.nome)
+  
+  // Gerar recomendação
+  const tempoDia = interview?.tempo_disponivel_dia || 120
+  const nuncaEstudou = disciplinas.filter((d: any) => !d.ja_estudou).length
+  
+  let recomendacao = ''
+  if (nivelGeral === 'Iniciante' && nuncaEstudou > 5) {
+    recomendacao = `Com ${tempoDia} minutos por dia, foque em construir uma base sólida. Comece pelas disciplinas que nunca estudou, dedicando 70% do tempo à teoria e 30% a exercícios básicos.`
+  } else if (nivelGeral === 'Intermediário') {
+    recomendacao = `Você já tem uma base. Distribua seu tempo: 40% teoria (focando nas lacunas), 40% exercícios e 20% revisão. Mantenha consistência diária.`
+  } else if (nivelGeral === 'Avançado') {
+    recomendacao = `Nível avançado! Foque em: 20% revisão de conceitos, 50% resolução intensiva de questões e 30% em pontos fracos identificados.`
+  } else {
+    recomendacao = `Com ${tempoDia} minutos diários e ${disciplinas.length} disciplinas, mantenha consistência. Alterne entre teoria e exercícios para melhor fixação.`
+  }
+  
   return {
+    // Campos para o frontend (tela de resultado)
+    nivel_geral: nivelGeral,
+    prioridades,
+    lacunas,
+    recomendacao,
+    // Campos para o dashboard
     nivel_medio: Math.round(nivelMedio * 10) / 10,
     total_disciplinas: disciplinas.length,
-    nunca_estudadas: disciplinas.filter((d: any) => !d.ja_estudou).length,
+    nunca_estudadas: nuncaEstudou,
     com_dificuldade: disciplinas.filter((d: any) => d.dificuldade).length,
-    experiencia: interview.experiencia
+    experiencia: interview?.experiencia || 'iniciante'
   }
 }
 
