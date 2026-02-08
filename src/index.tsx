@@ -8512,13 +8512,18 @@ app.post('/api/interviews', async (c) => {
       console.log(`✅ Plano ${plano_id} criado com sucesso!`)
       
       // Gerar ciclos de estudo (usar disciplinas validadas)
-      await gerarCiclosEstudo(DB, plano_id, disciplinasValidadas, interview.tempo_disponivel_dia)
+      // ✅ CORREÇÃO: Garantir tempo mínimo de 30 minutos se tempo_disponivel_dia for 0 ou inválido
+      const tempoDisponivel = interview.tempo_disponivel_dia && interview.tempo_disponivel_dia > 0 
+        ? interview.tempo_disponivel_dia 
+        : 120 // Padrão: 2 horas se não definido
+      console.log(`⏱️ Tempo disponível por dia: ${tempoDisponivel} minutos`)
+      await gerarCiclosEstudo(DB, plano_id, disciplinasValidadas, tempoDisponivel)
       console.log('✅ Ciclos de estudo gerados!')
       
       return c.json({ 
         interview_id,
         plano_id,
-        diagnostico,
+        diagnostico: diagnosticoCompleto, // ✅ CORREÇÃO: Usar diagnóstico completo com disciplinas validadas
         message: 'Entrevista e plano criados com sucesso!'
       })
     } catch (planError) {
@@ -8526,7 +8531,7 @@ app.post('/api/interviews', async (c) => {
       // Retorna a entrevista mesmo se o plano falhar
       return c.json({ 
         interview_id, 
-        diagnostico,
+        diagnostico, // Em caso de erro, usar diagnóstico antigo como fallback
         warning: 'Entrevista criada, mas houve erro ao criar o plano. Use POST /api/planos para criar manualmente.'
       })
     }

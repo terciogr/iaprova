@@ -7102,7 +7102,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                       <i class="fas fa-book-open text-[#122D6A] dark:text-blue-400 group-hover:text-white text-xs transition-colors"></i>
                     </div>
                     <div class="min-w-0 text-left">
-                      <p class="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">${plano.diagnostico.total_disciplinas}</p>
+                      <p class="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0}</p>
                       <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Disciplinas</p>
                     </div>
                   </div>
@@ -7114,7 +7114,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                       <i class="fas fa-exclamation-circle text-[#3A5AB0] group-hover:text-white text-xs transition-colors"></i>
                     </div>
                     <div class="min-w-0 text-left">
-                      <p class="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">${plano.diagnostico.nunca_estudadas}</p>
+                      <p class="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">${progressoGeral?.disciplinas?.filter(d => d.progresso_percentual === 0).length || plano.diagnostico?.nunca_estudadas || 0}</p>
                       <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Pendentes</p>
                     </div>
                   </div>
@@ -7149,7 +7149,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-white/20">
                 <div class="flex items-center gap-1.5 px-2 py-1 rounded-full ${currentTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800/50'}">
                   <i class="fas fa-book text-[#122D6A] text-[9px]"></i>
-                  <span class="text-[9px] ${themes[currentTheme].text}">${plano.diagnostico?.total_disciplinas || 0} disc.</span>
+                  <span class="text-[9px] ${themes[currentTheme].text}">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0} disc.</span>
                 </div>
                 ${entrevista?.banca_organizadora ? `
                   <div class="flex items-center gap-1.5 px-2 py-1 rounded-full ${currentTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800/50'}">
@@ -7259,7 +7259,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               </div>
               <div class="text-left flex-1 min-w-0">
                 <div class="flex items-baseline gap-1 md:gap-2">
-                  <span class="text-xl md:text-3xl font-bold ${themes[currentTheme].text}">${plano.diagnostico.total_disciplinas}</span>
+                  <span class="text-xl md:text-3xl font-bold ${themes[currentTheme].text}">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0}</span>
                 </div>
                 <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">Disciplinas</p>
               </div>
@@ -21223,7 +21223,7 @@ window.gerarSimulado = async function() {
   }
 }
 
-// Version: 20260208190237
+// Version: 20260208195003
 
 // ============== FUNÇÕES DE MATERIAIS ==============
 
