@@ -3868,11 +3868,11 @@ app.post('/api/editais/upload', async (c) => {
             const editalDisciplinaId = discResult.meta.last_row_id
             console.log(`  ✅ Disciplina "${disciplina.nome}" vinculada ao edital (edital_disciplina_id: ${editalDisciplinaId}, disciplina_id: ${disciplinaBaseId})`)
             
-            // Salvar tópicos
+            // Salvar tópicos (INSERT OR IGNORE para evitar duplicatas)
             let topicoOrdem = 0
             for (const topico of disciplina.topicos) {
               await DB.prepare(`
-                INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem)
+                INSERT OR IGNORE INTO edital_topicos (edital_disciplina_id, nome, ordem)
                 VALUES (?, ?, ?)
               `).bind(editalDisciplinaId, topico, topicoOrdem++).run()
             }
@@ -4384,10 +4384,10 @@ IMPORTANTE:
                     'INSERT INTO edital_disciplinas (edital_id, disciplina_id, nome, peso) VALUES (?, ?, ?, ?)'
                   ).bind(editalId, disciplinaBaseId, disc.nome, disc.peso || 1).run()
                   
-                  // Salvar tópicos
+                  // Salvar tópicos (INSERT OR IGNORE para evitar duplicatas)
                   for (let i = 0; i < (disc.topicos || []).length; i++) {
                     await DB.prepare(
-                      'INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem) VALUES (?, ?, ?)'
+                      'INSERT OR IGNORE INTO edital_topicos (edital_disciplina_id, nome, ordem) VALUES (?, ?, ?)'
                     ).bind(editalDisc.meta.last_row_id, disc.topicos[i], i).run()
                   }
                 }
@@ -5687,19 +5687,31 @@ ${texto.substring(0, 50000)}`
         
         const edital_disciplina_id = discResult.meta.last_row_id
         
-        // Inserir tópicos
+        // Inserir tópicos (evitando duplicatas)
         const topicosComIds = []
         if (disc.topicos && disc.topicos.length > 0) {
           for (let j = 0; j < disc.topicos.length; j++) {
             const topicoNome = typeof disc.topicos[j] === 'string' ? disc.topicos[j] : disc.topicos[j].nome
             
-            const topicoResult = await DB.prepare(`
-              INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem)
-              VALUES (?, ?, ?)
-            `).bind(edital_disciplina_id, topicoNome, j + 1).run()
+            // Verificar se já existe para evitar duplicatas
+            const topicoExistente = await DB.prepare(`
+              SELECT id FROM edital_topicos 
+              WHERE edital_disciplina_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
+            `).bind(edital_disciplina_id, topicoNome).first() as any
+            
+            let topicoId
+            if (topicoExistente) {
+              topicoId = topicoExistente.id
+            } else {
+              const topicoResult = await DB.prepare(`
+                INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem)
+                VALUES (?, ?, ?)
+              `).bind(edital_disciplina_id, topicoNome, j + 1).run()
+              topicoId = topicoResult.meta.last_row_id
+            }
             
             topicosComIds.push({
-              id: topicoResult.meta.last_row_id,
+              id: topicoId,
               nome: topicoNome
             })
           }
@@ -5805,14 +5817,14 @@ app.put('/api/editais/:id/disciplinas', async (c) => {
       
       const edital_disciplina_id = discResult.meta.last_row_id
       
-      // Inserir tópicos
+      // Inserir tópicos (evitando duplicatas)
       if (disc.topicos && disc.topicos.length > 0) {
         for (let j = 0; j < disc.topicos.length; j++) {
           const topicoNome = typeof disc.topicos[j] === 'string' ? disc.topicos[j] : disc.topicos[j].nome
           
-          // Inserir apenas em edital_topicos (tabela principal)
+          // Inserir apenas em edital_topicos (INSERT OR IGNORE para evitar duplicatas)
           await DB.prepare(`
-            INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem)
+            INSERT OR IGNORE INTO edital_topicos (edital_disciplina_id, nome, ordem)
             VALUES (?, ?, ?)
           `).bind(edital_disciplina_id, topicoNome, j + 1).run()
         }
@@ -6284,7 +6296,24 @@ app.post('/api/topicos/manual', async (c) => {
     return c.json({ error: 'user_id é obrigatório' }, 400)
   }
   
+  if (!nome || !nome.trim()) {
+    return c.json({ error: 'Nome do tópico é obrigatório' }, 400)
+  }
+  
   try {
+    // ✅ Verificar se tópico já existe para esta disciplina/usuário
+    const topicoExistente = await DB.prepare(`
+      SELECT id, nome FROM topicos_edital 
+      WHERE disciplina_id = ? AND user_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
+    `).bind(disciplina_id, user_id, nome.trim()).first() as any
+    
+    if (topicoExistente) {
+      return c.json({ 
+        error: 'Tópico já existe nesta disciplina',
+        existente: { id: topicoExistente.id, nome: topicoExistente.nome }
+      }, 409) // 409 Conflict
+    }
+    
     // Obter a próxima ordem (para este usuário)
     const { ordem: maxOrdem } = await DB.prepare(`
       SELECT COALESCE(MAX(ordem), 0) as ordem FROM topicos_edital WHERE disciplina_id = ? AND user_id = ?
@@ -6293,7 +6322,7 @@ app.post('/api/topicos/manual', async (c) => {
     const result = await DB.prepare(`
       INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(disciplina_id, nome, categoria || 'Outros', (maxOrdem || 0) + 1, peso || 1, user_id).run()
+    `).bind(disciplina_id, nome.trim(), categoria || 'Outros', (maxOrdem || 0) + 1, peso || 1, user_id).run()
     
     console.log(`✅ Tópico "${nome}" adicionado à disciplina ${disciplina_id} para user ${user_id}`)
     return c.json({ success: true, id: result.meta.last_row_id })
@@ -6863,10 +6892,10 @@ async function popularTopicosEdital(DB: any, disciplina_id: number, user_id?: nu
       return
     }
     
-    // ✅ CORREÇÃO: Inserir tópicos COM user_id
+    // ✅ CORREÇÃO: Inserir tópicos COM user_id (INSERT OR IGNORE para evitar duplicatas)
     for (const topico of topicos) {
       await DB.prepare(`
-        INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
+        INSERT OR IGNORE INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
         VALUES (?, ?, ?, ?, ?, ?)
       `).bind(
         disciplina_id,

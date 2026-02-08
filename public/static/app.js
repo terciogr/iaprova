@@ -9777,7 +9777,12 @@ window.adicionarTopicoNaDisciplina = async function(disciplinaId, disciplinaNome
     }, 100);
   } catch (error) {
     console.error('Erro ao adicionar tópico:', error);
-    showToast('Erro ao adicionar tópico: ' + (error.response?.data?.error || error.message), 'error');
+    // ✅ Mensagem específica para tópico duplicado
+    if (error.response?.status === 409) {
+      showToast('⚠️ Este tópico já existe nesta disciplina!', 'warning');
+    } else {
+      showToast('Erro ao adicionar tópico: ' + (error.response?.data?.error || error.message), 'error');
+    }
   }
 }
 
@@ -21223,7 +21228,7 @@ window.gerarSimulado = async function() {
   }
 }
 
-// Version: 20260208213642
+// Version: 20260208234952
 
 // ============== FUNÇÕES DE MATERIAIS ==============
 
