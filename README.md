@@ -6,6 +6,7 @@ Sistema web completo para preparação inteligente para concursos públicos, uti
 
 ### 📋 Análise Inteligente de Editais
 - **Upload de PDF/TXT** com extração automática de conteúdo
+- **✨ Colar Texto do Edital** - Cole o conteúdo programático e a IA extrai disciplinas em ~10 segundos
 - **Detecção automática de banca organizadora** (15 bancas brasileiras)
 - **Identificação de disciplinas e tópicos** do edital
 - **Peso por disciplina** baseado na análise do edital
