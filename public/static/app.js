@@ -14902,7 +14902,7 @@ window.iniciarPagamento = async function(plano) {
 };
 
 // Verificar se retornou de um pagamento
-window.verificarRetornoPagamento = function() {
+window.verificarRetornoPagamento = async function() {
   const urlParams = new URLSearchParams(window.location.search);
   const paymentStatus = urlParams.get('payment');
   const paymentId = urlParams.get('payment_id');
@@ -14912,7 +14912,29 @@ window.verificarRetornoPagamento = function() {
   // Limpar URL
   window.history.replaceState({}, document.title, window.location.pathname);
   
-  if (paymentStatus === 'success') {
+  if (paymentStatus === 'success' && paymentId) {
+    // ✅ CORREÇÃO v10: Verificar e ativar pagamento automaticamente
+    console.log('💳 Verificando pagamento:', paymentId);
+    
+    try {
+      // Chamar endpoint para verificar e ativar
+      const response = await axios.post(`/api/mercadopago/verify-and-activate/${paymentId}`, {}, {
+        headers: { 'X-User-ID': currentUser?.id || '' }
+      });
+      
+      console.log('✅ Pagamento verificado:', response.data);
+      
+      // Atualizar dados do usuário local
+      if (currentUser && response.data.user) {
+        currentUser.is_premium = response.data.user.is_premium;
+        currentUser.subscription_status = response.data.user.subscription_status;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      }
+    } catch (error) {
+      console.error('Erro ao verificar pagamento:', error);
+      // Continuar mesmo com erro - o webhook pode ter ativado
+    }
+    
     // Mostrar modal de sucesso
     const successModal = document.createElement('div');
     successModal.id = 'modal-payment-success';
@@ -14933,16 +14955,13 @@ window.verificarRetornoPagamento = function() {
             Seus dados de assinatura foram atualizados automaticamente.
           </p>
         </div>
-        <button onclick="document.getElementById('modal-payment-success')?.remove(); renderDashboard();" 
+        <button onclick="document.getElementById('modal-payment-success')?.remove(); location.reload();" 
           class="w-full px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition">
           <i class="fas fa-rocket mr-2"></i>Começar a usar
         </button>
       </div>
     `;
     document.body.appendChild(successModal);
-    
-    // Recarregar dados do usuário
-    verificarEntrevista();
   } else if (paymentStatus === 'pending') {
     showToast('⏳ Pagamento pendente. Assim que for confirmado, sua assinatura será ativada.', 'warning', 8000);
   } else if (paymentStatus === 'failed') {

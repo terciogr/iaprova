@@ -1449,20 +1449,31 @@ app.post('/api/register', async (c) => {
       }
     }
 
-    // Criar novo usuário
+    // ✅ CORREÇÃO v10: Criar novo usuário COM verificação de email obrigatória
+    const verificationToken = crypto.randomUUID()
+    
     const result = await DB.prepare(
-      `INSERT INTO users (name, email, password, email_verified, trial_started_at, trial_expires_at, subscription_status) 
-       VALUES (?, ?, ?, 1, datetime('now'), datetime('now', '+7 days'), 'trial')`
-    ).bind(name, email, password).run()
+      `INSERT INTO users (name, email, password, email_verified, verification_token, trial_started_at, trial_expires_at, subscription_status) 
+       VALUES (?, ?, ?, 0, ?, datetime('now'), datetime('now', '+7 days'), 'trial')`
+    ).bind(name, email, password, verificationToken).run()
+
+    // Enviar email de verificação
+    try {
+      await sendVerificationEmail(email, name, verificationToken, c.env)
+      console.log(`📧 Email de verificação enviado para ${email}`)
+    } catch (emailError) {
+      console.error('⚠️ Erro ao enviar email de verificação:', emailError)
+    }
 
     // Buscar usuário criado
     const newUser = await DB.prepare(
-      'SELECT id, email, name, created_at FROM users WHERE id = ?'
+      'SELECT id, email, name, created_at, email_verified FROM users WHERE id = ?'
     ).bind(result.meta.last_row_id).first()
 
     return c.json({ 
       user: newUser,
-      message: '🎉 Conta criada com sucesso! Bem-vindo ao IAprova!'
+      message: '🎉 Conta criada! Verifique seu email para ativar sua conta.',
+      requiresVerification: true
     })
   } catch (error) {
     console.error('Erro no registro:', error)
@@ -2212,15 +2223,145 @@ app.get('/api/mercadopago/payment-status/:payment_id', async (c) => {
 
 // Callback de retorno após pagamento
 app.get('/pagamento/sucesso', async (c) => {
-  const { DB } = c.env
+  const { DB, MP_ACCESS_TOKEN } = c.env as any
   const paymentId = c.req.query('payment_id')
   const status = c.req.query('status')
   const externalReference = c.req.query('external_reference')
   
-  console.log(`💰 Retorno de pagamento: ${paymentId}, status: ${status}`)
+  console.log(`💰 Retorno de pagamento: ${paymentId}, status: ${status}, ref: ${externalReference}`)
+  
+  // ✅ CORREÇÃO v10: Tentar ativar assinatura automaticamente no retorno
+  if (paymentId && status === 'approved') {
+    try {
+      // Buscar detalhes do pagamento na API do Mercado Pago
+      const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+        headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
+      })
+      
+      const payment = await paymentResponse.json() as any
+      console.log('💳 Pagamento aprovado, ativando assinatura:', payment.status)
+      
+      if (payment.status === 'approved' && payment.external_reference) {
+        // Extrair dados do external_reference
+        let userData
+        try {
+          userData = JSON.parse(payment.external_reference)
+        } catch {
+          console.error('external_reference inválido no callback:', payment.external_reference)
+        }
+        
+        if (userData?.user_id) {
+          const { user_id, plan, days } = userData
+          
+          // Verificar se já não foi ativado
+          const user = await DB.prepare('SELECT subscription_status, payment_id FROM users WHERE id = ?').bind(user_id).first() as any
+          
+          if (!user?.payment_id || user.payment_id !== paymentId.toString()) {
+            // Calcular data de expiração
+            const now = new Date()
+            const expiresAt = new Date(now.getTime() + (days || 30) * 24 * 60 * 60 * 1000).toISOString()
+            
+            // Ativar assinatura
+            await DB.prepare(`
+              UPDATE users SET 
+                subscription_status = 'active',
+                subscription_plan = ?,
+                subscription_expires_at = ?,
+                payment_id = ?,
+                payment_date = ?,
+                is_premium = 1,
+                premium_expires_at = ?
+              WHERE id = ?
+            `).bind(plan || 'mensal', expiresAt, paymentId.toString(), now.toISOString(), expiresAt, user_id).run()
+            
+            console.log(`✅ Assinatura ativada via callback para usuário ${user_id}`)
+          } else {
+            console.log(`ℹ️ Assinatura já estava ativa para usuário ${user_id}`)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao ativar assinatura no callback:', error)
+    }
+  }
   
   // Redirecionar para o app com parâmetros
   return c.redirect(`/?payment=success&payment_id=${paymentId}&status=${status}`)
+})
+
+// ✅ NOVO v10: Endpoint para verificar e ativar pagamento manualmente (admin ou usuário)
+app.post('/api/mercadopago/verify-and-activate/:payment_id', async (c) => {
+  const { DB, MP_ACCESS_TOKEN } = c.env as any
+  const paymentId = c.req.param('payment_id')
+  const userId = c.req.header('X-User-ID')
+  
+  console.log(`🔍 Verificando pagamento ${paymentId} para usuário ${userId}`)
+  
+  try {
+    // Buscar detalhes do pagamento na API do Mercado Pago
+    const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
+    })
+    
+    const payment = await paymentResponse.json() as any
+    
+    if (payment.status !== 'approved') {
+      return c.json({ 
+        error: 'Pagamento não aprovado', 
+        status: payment.status,
+        status_detail: payment.status_detail 
+      }, 400)
+    }
+    
+    // Extrair dados do external_reference
+    let userData
+    try {
+      userData = JSON.parse(payment.external_reference)
+    } catch {
+      // Se não conseguiu parsear, usar o userId do header
+      userData = { user_id: parseInt(userId || '0'), plan: 'mensal', days: 30 }
+    }
+    
+    const targetUserId = userData.user_id || parseInt(userId || '0')
+    
+    if (!targetUserId) {
+      return c.json({ error: 'Usuário não identificado' }, 400)
+    }
+    
+    const { plan, days } = userData
+    
+    // Calcular data de expiração
+    const now = new Date()
+    const expiresAt = new Date(now.getTime() + (days || 30) * 24 * 60 * 60 * 1000).toISOString()
+    
+    // Ativar assinatura
+    await DB.prepare(`
+      UPDATE users SET 
+        subscription_status = 'active',
+        subscription_plan = ?,
+        subscription_expires_at = ?,
+        payment_id = ?,
+        payment_date = ?,
+        is_premium = 1,
+        premium_expires_at = ?
+      WHERE id = ?
+    `).bind(plan || 'mensal', expiresAt, paymentId.toString(), now.toISOString(), expiresAt, targetUserId).run()
+    
+    console.log(`✅ Assinatura ${plan || 'mensal'} ativada manualmente para usuário ${targetUserId}`)
+    
+    // Buscar usuário atualizado
+    const user = await DB.prepare('SELECT id, email, name, subscription_status, subscription_plan, is_premium FROM users WHERE id = ?').bind(targetUserId).first()
+    
+    return c.json({ 
+      success: true, 
+      message: 'Assinatura ativada com sucesso!',
+      user,
+      expires_at: expiresAt
+    })
+  } catch (error: any) {
+    console.error('Erro ao verificar pagamento:', error)
+    return c.json({ error: error.message }, 500)
+  }
 })
 
 app.get('/pagamento/falha', async (c) => {
