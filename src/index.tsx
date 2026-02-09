@@ -539,6 +539,52 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
+// ✅ CORREÇÃO v13: Função para registrar histórico de emails enviados
+async function logEmailSent(
+  DB: any,
+  emailTo: string,
+  emailType: string,
+  subject: string,
+  status: 'sent' | 'failed' | 'pending',
+  userId?: number,
+  errorMessage?: string,
+  metadata?: any
+): Promise<void> {
+  try {
+    // Criar tabela se não existir
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS email_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        email_to TEXT NOT NULL,
+        email_type TEXT NOT NULL,
+        subject TEXT,
+        status TEXT DEFAULT 'sent',
+        error_message TEXT,
+        metadata TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    
+    await DB.prepare(`
+      INSERT INTO email_history (user_id, email_to, email_type, subject, status, error_message, metadata)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      userId || null,
+      emailTo,
+      emailType,
+      subject,
+      status,
+      errorMessage || null,
+      metadata ? JSON.stringify(metadata) : null
+    ).run()
+    
+    console.log(`📧 Email registrado: ${emailType} -> ${emailTo} (${status})`)
+  } catch (e: any) {
+    console.error('⚠️ Erro ao registrar email no histórico:', e.message)
+  }
+}
+
 // Função para enviar email de reset de senha
 async function sendPasswordResetEmail(email: string, token: string, name: string, env?: any): Promise<boolean> {
   // Obter configurações do ambiente
@@ -1368,6 +1414,8 @@ async function sendPaymentConfirmationEmail(
 </body>
 </html>`;
 
+    const emailSubject = '🎉 Pagamento Confirmado! Bem-vindo ao IAprova Premium';
+    
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -1377,23 +1425,54 @@ async function sendPaymentConfirmationEmail(
       body: JSON.stringify({
         from: FROM_EMAIL,
         to: [email],
-        subject: '🎉 Pagamento Confirmado! Bem-vindo ao IAprova Premium',
+        subject: emailSubject,
         html: htmlContent,
       }),
     });
 
     console.log('💳 Resposta do Resend (Pagamento):', response.status, response.statusText);
     
-    if (!response.ok) {
+    const success = response.ok;
+    
+    // ✅ CORREÇÃO v13: Registrar no histórico de emails (exceto verificação)
+    if (env?.DB) {
+      await logEmailSent(
+        env.DB,
+        email,
+        'payment_confirmation',
+        emailSubject,
+        success ? 'sent' : 'failed',
+        undefined, // userId será determinado depois se necessário
+        success ? undefined : await response.text(),
+        { plan, amount, paymentId, expiresAt }
+      )
+    }
+    
+    if (!success) {
       const errorText = await response.text();
       console.error('❌ Erro do Resend (Pagamento):', errorText);
     } else {
       console.log('✅ Email de confirmação de pagamento enviado com sucesso para:', email);
     }
 
-    return response.ok;
-  } catch (error) {
+    return success;
+  } catch (error: any) {
     console.error('Erro ao enviar email de confirmação de pagamento:', error);
+    
+    // Registrar falha no histórico
+    if (env?.DB) {
+      await logEmailSent(
+        env.DB,
+        email,
+        'payment_confirmation',
+        '🎉 Pagamento Confirmado! Bem-vindo ao IAprova Premium',
+        'failed',
+        undefined,
+        error.message,
+        { plan, amount, paymentId, expiresAt }
+      )
+    }
+    
     return false;
   }
 }
@@ -2585,17 +2664,6 @@ async function isAdmin(c: any): Promise<boolean> {
 }
 
 // Registrar log de email enviado
-async function logEmailSent(DB: any, userId: number | null, emailTo: string, emailType: string, status: string = 'sent') {
-  try {
-    await DB.prepare(`
-      INSERT INTO email_logs (user_id, email_to, email_type, status)
-      VALUES (?, ?, ?, ?)
-    `).bind(userId, emailTo, emailType, status).run()
-  } catch (e) {
-    console.log('⚠️ Erro ao registrar log de email (tabela pode não existir ainda):', e)
-  }
-}
-
 // Dashboard Admin - Estatísticas gerais
 app.get('/api/admin/dashboard', async (c) => {
   const { DB } = c.env
@@ -3155,7 +3223,7 @@ app.get('/api/admin/financeiro', async (c) => {
   }
 })
 
-// Histórico de emails enviados
+// ✅ CORREÇÃO v13: Histórico de emails enviados (exceto verificação)
 app.get('/api/admin/emails', async (c) => {
   const { DB } = c.env
   
@@ -3164,24 +3232,63 @@ app.get('/api/admin/emails', async (c) => {
   }
   
   try {
+    // Criar tabela se não existir
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS email_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        email_to TEXT NOT NULL,
+        email_type TEXT NOT NULL,
+        subject TEXT,
+        status TEXT DEFAULT 'sent',
+        error_message TEXT,
+        metadata TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    
     const page = parseInt(c.req.query('page') || '1')
     const limit = parseInt(c.req.query('limit') || '50')
+    const filterType = c.req.query('type') || '' // Filtro por tipo
     const offset = (page - 1) * limit
+    
+    // Filtrar excluindo emails de verificação (só mostrar pagamentos, etc.)
+    let whereClause = "WHERE eh.email_type != 'verification'"
+    if (filterType) {
+      whereClause += ` AND eh.email_type = '${filterType}'`
+    }
     
     const emails = await DB.prepare(`
       SELECT 
-        el.id, el.email_to, el.email_type, el.status, el.sent_at,
-        u.name as user_name
-      FROM email_logs el
-      LEFT JOIN users u ON u.id = el.user_id
-      ORDER BY el.sent_at DESC
+        eh.id, eh.email_to, eh.email_type, eh.subject, eh.status, 
+        eh.error_message, eh.metadata, eh.created_at,
+        u.name as user_name, u.id as user_id
+      FROM email_history eh
+      LEFT JOIN users u ON u.email = eh.email_to
+      ${whereClause}
+      ORDER BY eh.created_at DESC
       LIMIT ? OFFSET ?
     `).bind(limit, offset).all()
     
-    const total = await DB.prepare('SELECT COUNT(*) as count FROM email_logs').first() as any
+    const total = await DB.prepare(`
+      SELECT COUNT(*) as count FROM email_history eh ${whereClause}
+    `).first() as any
+    
+    // Estatísticas por tipo
+    const stats = await DB.prepare(`
+      SELECT 
+        email_type,
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as enviados,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as falhas
+      FROM email_history
+      WHERE email_type != 'verification'
+      GROUP BY email_type
+    `).all()
     
     return c.json({
       emails: emails.results,
+      stats: stats.results,
       pagination: {
         page,
         limit,
@@ -3189,9 +3296,9 @@ app.get('/api/admin/emails', async (c) => {
         pages: Math.ceil((total?.count || 0) / limit)
       }
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao listar emails:', error)
-    return c.json({ error: 'Erro ao listar emails' }, 500)
+    return c.json({ error: 'Erro ao listar emails', details: error.message }, 500)
   }
 })
 
@@ -3262,6 +3369,187 @@ app.get('/api/admin/subscriptions', async (c) => {
   } catch (error) {
     console.error('Erro ao listar assinaturas:', error)
     return c.json({ error: 'Erro ao listar assinaturas' }, 500)
+  }
+})
+
+// ============== SISTEMA DE FEEDBACKS ==============
+
+// ✅ CORREÇÃO v13: Endpoint para usuário enviar feedback/avaliação
+app.post('/api/feedbacks', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    const body = await c.req.json()
+    const { user_id, rating, feedback_type, message, page_context } = body
+    
+    if (!user_id || !message) {
+      return c.json({ error: 'Usuário e mensagem são obrigatórios' }, 400)
+    }
+    
+    // Criar tabela se não existir
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS user_feedbacks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        rating INTEGER,
+        feedback_type TEXT DEFAULT 'suggestion',
+        message TEXT NOT NULL,
+        page_context TEXT,
+        is_read INTEGER DEFAULT 0,
+        admin_response TEXT,
+        responded_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    
+    const result = await DB.prepare(`
+      INSERT INTO user_feedbacks (user_id, rating, feedback_type, message, page_context)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(
+      user_id,
+      rating || null,
+      feedback_type || 'suggestion',
+      message,
+      page_context || null
+    ).run()
+    
+    console.log(`📝 Feedback recebido: user_id=${user_id}, type=${feedback_type}`)
+    
+    return c.json({ 
+      success: true, 
+      id: result.meta.last_row_id,
+      message: 'Obrigado pelo seu feedback! Sua opinião é muito importante para nós.'
+    })
+  } catch (error: any) {
+    console.error('Erro ao salvar feedback:', error)
+    return c.json({ error: 'Erro ao salvar feedback' }, 500)
+  }
+})
+
+// ✅ CORREÇÃO v13: Endpoint admin para listar todos os feedbacks
+app.get('/api/admin/feedbacks', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    // Criar tabela se não existir
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS user_feedbacks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        rating INTEGER,
+        feedback_type TEXT DEFAULT 'suggestion',
+        message TEXT NOT NULL,
+        page_context TEXT,
+        is_read INTEGER DEFAULT 0,
+        admin_response TEXT,
+        responded_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    
+    const page = parseInt(c.req.query('page') || '1')
+    const limit = parseInt(c.req.query('limit') || '50')
+    const filterRead = c.req.query('is_read') // 'all', '0', '1'
+    const offset = (page - 1) * limit
+    
+    let whereClause = ''
+    if (filterRead === '0') {
+      whereClause = 'WHERE f.is_read = 0'
+    } else if (filterRead === '1') {
+      whereClause = 'WHERE f.is_read = 1'
+    }
+    
+    const feedbacks = await DB.prepare(`
+      SELECT 
+        f.id, f.user_id, f.rating, f.feedback_type, f.message, 
+        f.page_context, f.is_read, f.admin_response, f.responded_at, f.created_at,
+        u.name as user_name, u.email as user_email
+      FROM user_feedbacks f
+      LEFT JOIN users u ON u.id = f.user_id
+      ${whereClause}
+      ORDER BY f.is_read ASC, f.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(limit, offset).all()
+    
+    const total = await DB.prepare(`
+      SELECT COUNT(*) as count FROM user_feedbacks f ${whereClause}
+    `).first() as any
+    
+    const unreadCount = await DB.prepare(`
+      SELECT COUNT(*) as count FROM user_feedbacks WHERE is_read = 0
+    `).first() as any
+    
+    // Estatísticas
+    const stats = await DB.prepare(`
+      SELECT 
+        feedback_type,
+        COUNT(*) as total,
+        AVG(rating) as avg_rating
+      FROM user_feedbacks
+      GROUP BY feedback_type
+    `).all()
+    
+    return c.json({
+      feedbacks: feedbacks.results,
+      unread_count: unreadCount?.count || 0,
+      stats: stats.results,
+      pagination: {
+        page,
+        limit,
+        total: total?.count || 0,
+        pages: Math.ceil((total?.count || 0) / limit)
+      }
+    })
+  } catch (error: any) {
+    console.error('Erro ao listar feedbacks:', error)
+    return c.json({ error: 'Erro ao listar feedbacks', details: error.message }, 500)
+  }
+})
+
+// ✅ CORREÇÃO v13: Marcar feedback como lido/responder
+app.put('/api/admin/feedbacks/:id', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const feedbackId = c.req.param('id')
+    const { is_read, admin_response } = await c.req.json()
+    
+    let query = 'UPDATE user_feedbacks SET '
+    const updates: string[] = []
+    const bindings: any[] = []
+    
+    if (typeof is_read !== 'undefined') {
+      updates.push('is_read = ?')
+      bindings.push(is_read ? 1 : 0)
+    }
+    
+    if (admin_response) {
+      updates.push('admin_response = ?')
+      bindings.push(admin_response)
+      updates.push("responded_at = datetime('now')")
+    }
+    
+    if (updates.length === 0) {
+      return c.json({ error: 'Nenhum campo para atualizar' }, 400)
+    }
+    
+    query += updates.join(', ') + ' WHERE id = ?'
+    bindings.push(feedbackId)
+    
+    await DB.prepare(query).bind(...bindings).run()
+    
+    return c.json({ success: true })
+  } catch (error: any) {
+    console.error('Erro ao atualizar feedback:', error)
+    return c.json({ error: 'Erro ao atualizar feedback' }, 500)
   }
 })
 
@@ -3485,12 +3773,20 @@ app.delete('/api/admin/users/:id', async (c) => {
     console.log(`🗑️ Iniciando exclusão do usuário ${userId}...`)
     
     // Verificar se não é o próprio admin
-    const user = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first() as any
+    const user = await DB.prepare('SELECT email, email_verified FROM users WHERE id = ?').bind(userId).first() as any
     if (!user) {
       return c.json({ error: 'Usuário não encontrado' }, 404)
     }
     if (user?.email === ADMIN_EMAIL) {
       return c.json({ error: 'Não é possível deletar o administrador' }, 400)
+    }
+    
+    // ✅ CORREÇÃO v13: Não permitir exclusão de usuários com email verificado
+    if (user.email_verified === 1) {
+      return c.json({ 
+        error: 'Não é possível excluir usuários com email verificado. Apenas usuários que não confirmaram o email podem ser excluídos.',
+        reason: 'email_verified'
+      }, 403)
     }
     
     // ═══════════════════════════════════════════════════════════════

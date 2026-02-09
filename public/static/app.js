@@ -1059,16 +1059,16 @@ function createUnifiedFAB() {
     <!-- Container dos sub-botões -->
     <div id="fab-menu" class="absolute bottom-16 right-0 flex flex-col items-end gap-3 opacity-0 pointer-events-none transition-all duration-300 z-[9999]">
       
-      <!-- Botão Logout -->
+      <!-- ✅ CORREÇÃO v13: Botão de Feedback/Avaliação -->
       <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
         <span class="bg-gray-800 text-white px-3 py-1 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Sair do Sistema
+          Enviar Feedback
         </span>
         <button 
-          onclick="toggleFabMenu(); voltarAoLogin(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Sair do Sistema">
-          <i class="fas fa-sign-out-alt text-lg"></i>
+          onclick="abrirModalFeedback(); toggleFabMenu(); event.stopPropagation();"
+          class="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          title="Enviar Feedback">
+          <i class="fas fa-comment-dots text-lg"></i>
         </button>
       </div>
       
@@ -13238,6 +13238,168 @@ window.abrirMinhaAssinatura = async function() {
   document.body.appendChild(modal);
 };
 
+// ============== SISTEMA DE FEEDBACK ==============
+
+// ✅ CORREÇÃO v13: Modal para enviar feedback/avaliação
+window.abrirModalFeedback = function() {
+  const currentPage = window.location.pathname || '/home';
+  
+  const modal = document.createElement('div');
+  modal.id = 'modal-feedback';
+  modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[10000] p-4';
+  modal.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
+            <i class="fas fa-comment-dots text-white text-xl"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold ${themes[currentTheme].text}">Enviar Feedback</h3>
+            <p class="${themes[currentTheme].textSecondary} text-sm">Sua opinião é muito importante!</p>
+          </div>
+        </div>
+        <button onclick="document.getElementById('modal-feedback')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      
+      <!-- Tipo de feedback -->
+      <div class="mb-4">
+        <label class="block ${themes[currentTheme].text} font-medium mb-2">Tipo de Feedback</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="selecionarTipoFeedback('suggestion')" id="fb-type-suggestion" class="p-3 rounded-xl border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 flex items-center justify-center gap-2">
+            <i class="fas fa-lightbulb"></i> Sugestão
+          </button>
+          <button onclick="selecionarTipoFeedback('bug')" id="fb-type-bug" class="p-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-red-500 flex items-center justify-center gap-2 ${themes[currentTheme].text}">
+            <i class="fas fa-bug"></i> Problema
+          </button>
+          <button onclick="selecionarTipoFeedback('compliment')" id="fb-type-compliment" class="p-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-emerald-500 flex items-center justify-center gap-2 ${themes[currentTheme].text}">
+            <i class="fas fa-heart"></i> Elogio
+          </button>
+          <button onclick="selecionarTipoFeedback('other')" id="fb-type-other" class="p-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-gray-500 flex items-center justify-center gap-2 ${themes[currentTheme].text}">
+            <i class="fas fa-ellipsis-h"></i> Outro
+          </button>
+        </div>
+        <input type="hidden" id="feedback-type" value="suggestion">
+      </div>
+      
+      <!-- Avaliação (estrelas) -->
+      <div class="mb-4">
+        <label class="block ${themes[currentTheme].text} font-medium mb-2">Como você avalia o IAprova? (opcional)</label>
+        <div class="flex gap-2 justify-center" id="star-rating">
+          ${[1,2,3,4,5].map(i => `
+            <button onclick="selecionarEstrela(${i})" class="star-btn text-3xl text-gray-300 hover:text-yellow-400 transition" data-rating="${i}">
+              <i class="fas fa-star"></i>
+            </button>
+          `).join('')}
+        </div>
+        <input type="hidden" id="feedback-rating" value="">
+      </div>
+      
+      <!-- Mensagem -->
+      <div class="mb-4">
+        <label class="block ${themes[currentTheme].text} font-medium mb-2">Sua mensagem *</label>
+        <textarea id="feedback-message" rows="4" 
+          class="w-full px-4 py-3 rounded-xl border ${themes[currentTheme].border} ${themes[currentTheme].card} ${themes[currentTheme].text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition"
+          placeholder="Conte-nos sua experiência, sugestão ou problema encontrado..."></textarea>
+      </div>
+      
+      <!-- Botões -->
+      <div class="flex gap-3">
+        <button onclick="document.getElementById('modal-feedback')?.remove()" 
+          class="flex-1 px-4 py-3 rounded-xl ${themes[currentTheme].border} border ${themes[currentTheme].text} hover:bg-gray-100 dark:hover:bg-gray-800 transition font-medium">
+          Cancelar
+        </button>
+        <button onclick="enviarFeedback()" 
+          class="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 text-white font-medium hover:from-pink-600 hover:to-rose-700 transition">
+          <i class="fas fa-paper-plane mr-2"></i>Enviar
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+};
+
+// Selecionar tipo de feedback
+window.selecionarTipoFeedback = function(tipo) {
+  document.getElementById('feedback-type').value = tipo;
+  
+  // Atualizar visual dos botões
+  const tipos = ['suggestion', 'bug', 'compliment', 'other'];
+  const cores = {
+    suggestion: 'blue',
+    bug: 'red',
+    compliment: 'emerald',
+    other: 'gray'
+  };
+  
+  tipos.forEach(t => {
+    const btn = document.getElementById('fb-type-' + t);
+    if (t === tipo) {
+      const cor = cores[t];
+      btn.className = `p-3 rounded-xl border-2 border-${cor}-500 bg-${cor}-50 dark:bg-${cor}-900/20 text-${cor}-700 dark:text-${cor}-300 flex items-center justify-center gap-2`;
+    } else {
+      btn.className = `p-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-${cores[t]}-500 flex items-center justify-center gap-2 ${themes[currentTheme].text}`;
+    }
+  });
+};
+
+// Selecionar estrelas
+window.selecionarEstrela = function(rating) {
+  document.getElementById('feedback-rating').value = rating;
+  
+  document.querySelectorAll('.star-btn').forEach(btn => {
+    const starRating = parseInt(btn.dataset.rating);
+    if (starRating <= rating) {
+      btn.classList.remove('text-gray-300');
+      btn.classList.add('text-yellow-400');
+    } else {
+      btn.classList.remove('text-yellow-400');
+      btn.classList.add('text-gray-300');
+    }
+  });
+};
+
+// Enviar feedback
+window.enviarFeedback = async function() {
+  const message = document.getElementById('feedback-message').value.trim();
+  const feedbackType = document.getElementById('feedback-type').value;
+  const rating = document.getElementById('feedback-rating').value;
+  
+  if (!message) {
+    showToast('Por favor, escreva sua mensagem', 'error');
+    return;
+  }
+  
+  if (message.length < 10) {
+    showToast('Sua mensagem deve ter pelo menos 10 caracteres', 'error');
+    return;
+  }
+  
+  try {
+    const response = await axios.post('/api/feedbacks', {
+      user_id: currentUser.id,
+      rating: rating ? parseInt(rating) : null,
+      feedback_type: feedbackType,
+      message: message,
+      page_context: window.location.pathname
+    });
+    
+    if (response.data.success) {
+      showToast('🎉 ' + response.data.message, 'success');
+      document.getElementById('modal-feedback')?.remove();
+    } else {
+      showToast(response.data.error || 'Erro ao enviar feedback', 'error');
+    }
+  } catch (error) {
+    console.error('Erro ao enviar feedback:', error);
+    showToast('Erro ao enviar feedback. Tente novamente.', 'error');
+  }
+};
+
 // ============== ADMINISTRAÇÃO ==============
 
 // Abrir modal de administração
@@ -13769,6 +13931,10 @@ window.abrirPainelAdmin = async function() {
                 <i class="fas fa-sync text-green-500 text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Atualizar</p>
               </button>
+              <button onclick="verFeedbacksUsuarios()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-purple-50 dark:hover:bg-purple-900/20 transition text-center">
+                <i class="fas fa-comment-dots text-purple-500 text-xl mb-1"></i>
+                <p class="text-xs ${themes[currentTheme].text} font-medium">Feedbacks</p>
+              </button>
             </div>
           </div>
         </div>
@@ -14214,8 +14380,9 @@ window.verListaUsuarios = async function() {
                         <i class="fas ${(u.is_premium_real || u.is_premium) ? 'fa-user-minus' : 'fa-crown'}"></i>
                       </button>
                       ${u.email !== 'terciogomesrabelo@gmail.com' ? `
-                        <button onclick="deletarUsuarioAdmin(${u.id}, '${u.email}')" 
-                          class="p-1.5 text-red-500 hover:bg-red-50 rounded" title="Deletar">
+                        <button onclick="deletarUsuarioAdmin(${u.id}, '${u.email}', ${u.email_verified ? 'true' : 'false'})" 
+                          class="p-1.5 ${u.email_verified ? 'text-gray-300 cursor-not-allowed' : 'text-red-500 hover:bg-red-50'} rounded" 
+                          title="${u.email_verified ? 'Não pode deletar (email verificado)' : 'Deletar'}">
                           <i class="fas fa-trash"></i>
                         </button>
                       ` : ''}
@@ -14229,7 +14396,7 @@ window.verListaUsuarios = async function() {
         <div class="p-3 border-t ${themes[currentTheme].border} flex-shrink-0 text-center">
           <p class="text-xs ${themes[currentTheme].textMuted}">
             <i class="fas fa-info-circle mr-1"></i>
-            Clique nos ícones para gerenciar cada usuário
+            Clique nos ícones para gerenciar cada usuário. <span class="text-red-500">Apenas usuários sem email verificado podem ser excluídos.</span>
           </p>
         </div>
       </div>
@@ -14412,7 +14579,14 @@ window.salvarUsuarioAdmin = async function(userId) {
 };
 
 // Deletar usuário (admin)
-window.deletarUsuarioAdmin = async function(userId, email) {
+// ✅ CORREÇÃO v13: Verificar se usuário pode ser deletado (apenas sem email verificado)
+window.deletarUsuarioAdmin = async function(userId, email, emailVerified) {
+  // Verificar no frontend se o email é verificado
+  if (emailVerified) {
+    showModal('⚠️ Este usuário possui email verificado e NÃO pode ser excluído.\n\nApenas usuários que não confirmaram o email podem ser removidos.', { type: 'error', title: 'Exclusão Não Permitida' });
+    return;
+  }
+  
   if (!confirm(`⚠️ ATENÇÃO!\n\nVocê está prestes a DELETAR permanentemente o usuário:\n${email}\n\nTodos os dados (planos, metas, progresso) serão perdidos.\n\nTem certeza?`)) {
     return;
   }
@@ -14426,7 +14600,14 @@ window.deletarUsuarioAdmin = async function(userId, email) {
     document.getElementById(`user-row-${userId}`)?.remove();
     showToast('✅ Usuário deletado com sucesso!', 'success');
   } catch (error) {
-    showToast('❌ Erro ao deletar usuário', 'error');
+    const errorMsg = error.response?.data?.error || 'Erro ao deletar usuário';
+    
+    // Verificar se é erro de email verificado
+    if (error.response?.data?.reason === 'email_verified') {
+      showModal('⚠️ ' + errorMsg, { type: 'error', title: 'Exclusão Não Permitida' });
+    } else {
+      showToast('❌ ' + errorMsg, 'error');
+    }
   }
 };
 
@@ -14500,6 +14681,126 @@ window.verHistoricoEmails = async function() {
     showToast('❌ Erro ao carregar histórico de emails', 'error');
   }
 };
+
+// ✅ CORREÇÃO v13: Ver feedbacks dos usuários (admin)
+window.verFeedbacksAdmin = async function() {
+  try {
+    const response = await axios.get('/api/admin/feedbacks?limit=50', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    const { feedbacks, unread_count, stats, pagination } = response.data;
+    
+    const tipoLabels = {
+      suggestion: { icon: 'lightbulb', label: 'Sugestão', color: 'blue' },
+      bug: { icon: 'bug', label: 'Problema', color: 'red' },
+      compliment: { icon: 'heart', label: 'Elogio', color: 'emerald' },
+      other: { icon: 'ellipsis-h', label: 'Outro', color: 'gray' }
+    };
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-admin-feedbacks';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    modal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
+          <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
+            <i class="fas fa-comment-dots text-pink-500"></i>
+            Feedbacks dos Usuários (${pagination.total})
+            ${unread_count > 0 ? `<span class="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">${unread_count} novos</span>` : ''}
+          </h3>
+          <button onclick="document.getElementById('modal-admin-feedbacks')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        
+        <!-- Estatísticas -->
+        <div class="p-3 bg-gray-50 dark:bg-gray-800/50 border-b ${themes[currentTheme].border} flex gap-4 flex-wrap">
+          ${(stats || []).map(s => {
+            const t = tipoLabels[s.feedback_type] || tipoLabels.other;
+            return `
+              <div class="flex items-center gap-2 px-3 py-1.5 bg-${t.color}-100 dark:bg-${t.color}-900/30 rounded-full">
+                <i class="fas fa-${t.icon} text-${t.color}-600 dark:text-${t.color}-400 text-xs"></i>
+                <span class="text-${t.color}-700 dark:text-${t.color}-300 text-xs font-medium">${t.label}: ${s.total}</span>
+                ${s.avg_rating ? `<span class="text-yellow-500 text-xs">★ ${s.avg_rating.toFixed(1)}</span>` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+        
+        <div class="overflow-y-auto flex-1 p-4">
+          ${feedbacks.length === 0 ? `
+            <div class="text-center py-8 ${themes[currentTheme].textSecondary}">
+              <i class="fas fa-comment-slash text-4xl mb-3 opacity-50"></i>
+              <p>Nenhum feedback recebido ainda</p>
+            </div>
+          ` : `
+            <div class="space-y-3">
+              ${feedbacks.map(f => {
+                const t = tipoLabels[f.feedback_type] || tipoLabels.other;
+                return `
+                  <div class="p-4 rounded-xl border ${f.is_read ? themes[currentTheme].border : 'border-pink-300 dark:border-pink-600'} ${f.is_read ? '' : 'bg-pink-50 dark:bg-pink-900/20'}">
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-2">
+                          <span class="px-2 py-0.5 rounded-full text-xs bg-${t.color}-100 text-${t.color}-700 dark:bg-${t.color}-900/30 dark:text-${t.color}-300">
+                            <i class="fas fa-${t.icon} mr-1"></i>${t.label}
+                          </span>
+                          ${f.rating ? `<span class="text-yellow-500 text-sm">${'★'.repeat(f.rating)}${'☆'.repeat(5-f.rating)}</span>` : ''}
+                          ${!f.is_read ? '<span class="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">Novo</span>' : ''}
+                        </div>
+                        <p class="${themes[currentTheme].text} mb-2">${f.message}</p>
+                        <div class="flex items-center gap-4 text-xs ${themes[currentTheme].textMuted}">
+                          <span><i class="fas fa-user mr-1"></i>${f.user_name || f.user_email || 'Anônimo'}</span>
+                          <span><i class="fas fa-clock mr-1"></i>${new Date(f.created_at).toLocaleString('pt-BR')}</span>
+                          ${f.page_context ? `<span><i class="fas fa-link mr-1"></i>${f.page_context}</span>` : ''}
+                        </div>
+                      </div>
+                      <div class="flex gap-1">
+                        ${!f.is_read ? `
+                          <button onclick="marcarFeedbackLido(${f.id})" class="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg" title="Marcar como lido">
+                            <i class="fas fa-check"></i>
+                          </button>
+                        ` : ''}
+                      </div>
+                    </div>
+                    ${f.admin_response ? `
+                      <div class="mt-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                        <p class="text-xs ${themes[currentTheme].textMuted} mb-1"><i class="fas fa-reply mr-1"></i>Resposta do admin:</p>
+                        <p class="${themes[currentTheme].text} text-sm">${f.admin_response}</p>
+                      </div>
+                    ` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  } catch (error) {
+    console.error('Erro ao carregar feedbacks:', error);
+    showToast('❌ Erro ao carregar feedbacks', 'error');
+  }
+};
+
+// Marcar feedback como lido
+window.marcarFeedbackLido = async function(feedbackId) {
+  try {
+    await axios.put(`/api/admin/feedbacks/${feedbackId}`, { is_read: true }, {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    showToast('✅ Feedback marcado como lido', 'success');
+    // Recarregar lista
+    document.getElementById('modal-admin-feedbacks')?.remove();
+    verFeedbacksAdmin();
+  } catch (error) {
+    showToast('❌ Erro ao marcar feedback', 'error');
+  }
+};
+
+// Alias para botão do painel admin
+window.verFeedbacksUsuarios = window.verFeedbacksAdmin;
 
 // ✅ NOVO: Ver visitas detalhadas (admin)
 window.verVisitasDetalhadas = async function() {
