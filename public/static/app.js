@@ -16363,10 +16363,58 @@ window.gerarConteudoTipo = async function(tipo) {
     return;
   }
   
+  // ✅ CORREÇÃO v15: Para exercicios e flashcards, abrir modal de quantidade
+  if (tipo === 'exercicios' || tipo === 'flashcards') {
+    // Criar modal rápido de quantidade
+    const modalHtml = `
+      <div id="modal-quantidade-rapida" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-sm w-full p-5">
+          <div class="text-center mb-4">
+            <div class="w-14 h-14 mx-auto rounded-full bg-gradient-to-br ${tipo === 'exercicios' ? 'from-green-500 to-emerald-600' : 'from-blue-500 to-indigo-600'} flex items-center justify-center mb-3">
+              <i class="fas ${tipo === 'exercicios' ? 'fa-tasks' : 'fa-clone'} text-white text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold ${themes[currentTheme].text}">
+              Gerar ${tipo === 'exercicios' ? 'Exercícios' : 'Flashcards'}
+            </h3>
+            <p class="text-sm ${themes[currentTheme].textSecondary} mt-1">${topicoNome || 'Tópico'}</p>
+          </div>
+          
+          <div class="mb-4">
+            <label class="block text-sm font-medium ${themes[currentTheme].text} mb-2 text-center">
+              Quantos ${tipo === 'exercicios' ? 'exercícios' : 'flashcards'} deseja gerar?
+            </label>
+            <div class="flex items-center gap-3">
+              <input type="range" id="quantidade-rapida-slider" min="5" max="20" value="${tipo === 'exercicios' ? '10' : '15'}" 
+                     class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
+                     oninput="document.getElementById('quantidade-rapida-valor').textContent = this.value">
+              <span id="quantidade-rapida-valor" class="text-2xl font-bold text-[#122D6A] w-10 text-center">${tipo === 'exercicios' ? '10' : '15'}</span>
+            </div>
+            <p class="text-xs ${themes[currentTheme].textSecondary} mt-2 text-center">
+              Entre 5 e 20 ${tipo === 'exercicios' ? 'questões' : 'cards'}
+            </p>
+          </div>
+          
+          <div class="flex gap-2">
+            <button onclick="document.getElementById('modal-quantidade-rapida').remove()"
+                    class="flex-1 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition font-medium">
+              Cancelar
+            </button>
+            <button onclick="confirmarGeracaoRapida('${tipo}', ${metaId || 'null'}, '${(topicoId || '').toString().replace(/'/g, "\\'")}', '${(topicoNome || '').replace(/'/g, "\\'")}', '${(disciplinaNome || '').replace(/'/g, "\\'")}')"
+                    class="flex-1 py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition font-semibold flex items-center justify-center gap-2">
+              <i class="fas fa-magic"></i> Gerar
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    return;
+  }
+  
   // Limpar dados pendentes agora (modal já foi fechado)
   window.conteudoPendente = null;
   
-  // Chamar função de geração com meta_id
+  // Chamar função de geração com meta_id (para teoria e resumo)
   await window.executarGeracaoConteudo(topicoId, topicoNome, disciplinaNome, tipo, null, metaId);
   
   // Após gerar, atualizar ícones da meta (aguarda um pouco para garantir que salvou no banco)
@@ -21561,7 +21609,7 @@ function parseFlashcards(texto) {
   return flashcards;
 }
 
-// Renderizar modal de flashcards - VISUAL MELHORADO
+// Renderizar modal de flashcards - VISUAL MELHORADO E RESPONSIVO
 function renderFlashcardsModal(flashcards, topicoNome, disciplinaNome, cardIndex) {
   const card = flashcards[cardIndex];
   const total = flashcards.length;
@@ -21574,61 +21622,61 @@ function renderFlashcardsModal(flashcards, topicoNome, disciplinaNome, cardIndex
   window._currentFlashcardDiscipline = disciplinaNome;
   
   const modalHtml = `
-    <div id="modal-flashcards" class="fixed inset-0 bg-gradient-to-br from-cyan-900/90 via-[#0D1F4D]/90 to-blue-900/90 flex items-center justify-center z-50 p-4">
-      <div class="w-full max-w-2xl">
+    <div id="modal-flashcards" class="fixed inset-0 bg-gradient-to-br from-cyan-900/90 via-[#0D1F4D]/90 to-blue-900/90 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+      <div class="w-full max-w-2xl mx-auto my-auto">
         <!-- Header -->
-        <div class="text-center mb-6">
-          <div class="inline-flex items-center gap-2 px-4 py-1 bg-white/10 rounded-full backdrop-blur mb-2">
+        <div class="text-center mb-4 sm:mb-6">
+          <div class="inline-flex items-center gap-2 px-3 sm:px-4 py-1 bg-white/10 rounded-full backdrop-blur mb-2">
             <i class="fas fa-clone text-[#7BC4FF]"></i>
-            <span class="text-[#A8D4FF] text-sm">Flashcards</span>
+            <span class="text-[#A8D4FF] text-xs sm:text-sm">Flashcards</span>
           </div>
-          <h2 class="text-white text-2xl font-bold">${topicoNome}</h2>
-          <p class="text-white/60 text-sm mt-1">${disciplinaNome}</p>
+          <h2 class="text-white text-lg sm:text-2xl font-bold px-2 line-clamp-2">${topicoNome}</h2>
+          <p class="text-white/60 text-xs sm:text-sm mt-1 px-2">${disciplinaNome}</p>
         </div>
         
         <!-- Progress Bar -->
-        <div class="flex items-center gap-3 mb-6">
-          <span class="text-white/60 text-sm">${cardIndex + 1}</span>
+        <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 px-2">
+          <span class="text-white/60 text-xs sm:text-sm font-semibold">${cardIndex + 1}</span>
           <div class="flex-1 h-2 bg-white/20 rounded-full overflow-hidden">
             <div class="h-full bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] rounded-full transition-all duration-300" style="width: ${Math.round(((cardIndex + 1) / total) * 100)}%"></div>
           </div>
-          <span class="text-white/60 text-sm">${total}</span>
+          <span class="text-white/60 text-xs sm:text-sm font-semibold">${total}</span>
         </div>
         
         <!-- Flashcard com animação 3D -->
-        <div id="flashcard-container" class="perspective-1000 cursor-pointer" onclick="flipFlashcard()">
-          <div id="flashcard" class="relative w-full h-80 transition-transform duration-500 transform-style-preserve-3d">
+        <div id="flashcard-container" class="perspective-1000 cursor-pointer px-2" onclick="flipFlashcard()">
+          <div id="flashcard" class="relative w-full min-h-[250px] sm:min-h-[320px] transition-transform duration-500 transform-style-preserve-3d">
             <!-- Frente (TERMO/CONCEITO) -->
-            <div class="absolute inset-0 bg-white rounded-3xl shadow-2xl p-8 backface-hidden flex flex-col justify-center items-center text-center border-4 border-cyan-200">
-              <div class="absolute top-4 right-4">
-                <span class="px-3 py-1 bg-[#6BB6FF]/10 text-[#122D6A] rounded-full text-xs font-semibold">
+            <div class="absolute inset-0 bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-8 backface-hidden flex flex-col justify-center items-center text-center border-2 sm:border-4 border-cyan-200">
+              <div class="absolute top-2 sm:top-4 right-2 sm:right-4">
+                <span class="px-2 sm:px-3 py-1 bg-[#6BB6FF]/10 text-[#122D6A] rounded-full text-xs font-semibold">
                   <i class="fas fa-tag mr-1"></i>Conceito
                 </span>
               </div>
-              <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center mb-4 shadow-lg">
-                <i class="fas fa-lightbulb text-[#122D6A] text-2xl"></i>
+              <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center mb-3 sm:mb-4 shadow-lg">
+                <i class="fas fa-lightbulb text-[#122D6A] text-xl sm:text-2xl"></i>
               </div>
-              <p class="text-2xl md:text-3xl text-[#122D6A] leading-relaxed font-bold">${card.frente}</p>
-              <p class="text-xs text-gray-400 mt-4 uppercase tracking-wider">O que significa?</p>
-              <p class="text-sm text-gray-400 mt-4 flex items-center gap-2">
+              <p class="text-lg sm:text-2xl md:text-3xl text-[#122D6A] leading-relaxed font-bold px-2">${card.frente}</p>
+              <p class="text-xs text-gray-400 mt-3 sm:mt-4 uppercase tracking-wider">O que significa?</p>
+              <p class="text-xs sm:text-sm text-gray-400 mt-2 sm:mt-4 flex items-center gap-2">
                 <i class="fas fa-hand-pointer animate-bounce"></i>
                 Toque para ver a definição
               </p>
             </div>
             
             <!-- Verso (DEFINIÇÃO) -->
-            <div class="absolute inset-0 bg-gradient-to-br from-[#E8EDF5] to-white rounded-3xl shadow-2xl p-8 backface-hidden rotate-y-180 flex flex-col justify-center items-center text-center border-4 border-[#122D6A]/20">
-              <div class="absolute top-4 right-4">
-                <span class="px-3 py-1 bg-[#E8EDF5] text-[#122D6A] rounded-full text-xs font-semibold">
+            <div class="absolute inset-0 bg-gradient-to-br from-[#E8EDF5] to-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-8 backface-hidden rotate-y-180 flex flex-col justify-center items-center text-center border-2 sm:border-4 border-[#122D6A]/20">
+              <div class="absolute top-2 sm:top-4 right-2 sm:right-4">
+                <span class="px-2 sm:px-3 py-1 bg-[#E8EDF5] text-[#122D6A] rounded-full text-xs font-semibold">
                   <i class="fas fa-book-open mr-1"></i>Definição
                 </span>
               </div>
-              <div class="w-16 h-16 rounded-full bg-gradient-to-br from-[#122D6A]/10 to-[#2A4A9F]/10 flex items-center justify-center mb-4 shadow-lg">
-                <i class="fas fa-check text-[#122D6A] text-2xl"></i>
+              <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-[#122D6A]/10 to-[#2A4A9F]/10 flex items-center justify-center mb-3 sm:mb-4 shadow-lg">
+                <i class="fas fa-check text-[#122D6A] text-xl sm:text-2xl"></i>
               </div>
-              <p class="text-sm text-[#122D6A] font-semibold mb-2 uppercase tracking-wider">${card.frente}</p>
-              <p class="text-lg text-gray-800 leading-relaxed">${card.verso}</p>
-              <p class="text-sm text-gray-400 mt-4 flex items-center gap-2">
+              <p class="text-xs sm:text-sm text-[#122D6A] font-semibold mb-2 uppercase tracking-wider line-clamp-1">${card.frente}</p>
+              <p class="text-sm sm:text-lg text-gray-800 leading-relaxed px-2 overflow-y-auto max-h-[120px] sm:max-h-[150px]">${card.verso}</p>
+              <p class="text-xs sm:text-sm text-gray-400 mt-2 sm:mt-4 flex items-center gap-2">
                 <i class="fas fa-redo"></i>
                 Toque para voltar
               </p>
@@ -21637,45 +21685,46 @@ function renderFlashcardsModal(flashcards, topicoNome, disciplinaNome, cardIndex
         </div>
         
         <!-- Navegação -->
-        <div class="flex justify-center gap-3 mt-6">
+        <div class="flex justify-center gap-2 sm:gap-3 mt-4 sm:mt-6 px-2">
           ${cardIndex > 0 ? `
             <button onclick="navegarFlashcardSimples(${cardIndex - 1})"
-                    class="px-6 py-3 bg-white/20 text-white rounded-xl hover:bg-white/30 transition font-medium backdrop-blur flex items-center gap-2">
+                    class="px-3 sm:px-6 py-2 sm:py-3 bg-white/20 text-white rounded-xl hover:bg-white/30 transition font-medium backdrop-blur flex items-center gap-1 sm:gap-2 text-sm">
               <i class="fas fa-chevron-left"></i>
               <span class="hidden sm:inline">Anterior</span>
             </button>
-          ` : '<div class="w-24"></div>'}
+          ` : '<div class="w-16 sm:w-24"></div>'}
           
           <button onclick="fecharModalFlashcards()"
-                  class="px-6 py-3 bg-gray-600/80 text-white rounded-xl hover:bg-gray-700 transition font-medium backdrop-blur">
-            <i class="fas fa-times mr-2"></i>Fechar
+                  class="px-3 sm:px-6 py-2 sm:py-3 bg-gray-600/80 text-white rounded-xl hover:bg-gray-700 transition font-medium backdrop-blur text-sm">
+            <i class="fas fa-times mr-1 sm:mr-2"></i><span class="hidden sm:inline">Fechar</span><span class="sm:hidden">X</span>
           </button>
           
           ${cardIndex < total - 1 ? `
             <button onclick="navegarFlashcardSimples(${cardIndex + 1})"
-                    class="px-6 py-3 bg-white/20 text-white rounded-xl hover:bg-white/30 transition font-medium backdrop-blur flex items-center gap-2">
+                    class="px-3 sm:px-6 py-2 sm:py-3 bg-white/20 text-white rounded-xl hover:bg-white/30 transition font-medium backdrop-blur flex items-center gap-1 sm:gap-2 text-sm">
               <span class="hidden sm:inline">Próximo</span>
               <i class="fas fa-chevron-right"></i>
             </button>
           ` : `
             <button onclick="fecharModalFlashcards(); showToast('🎉 Parabéns! Você completou todos os flashcards!', 'success')"
-                    class="px-6 py-3 bg-[#122D6A]/80 text-white rounded-xl hover:bg-[#122D6A] transition font-medium backdrop-blur flex items-center gap-2">
+                    class="px-3 sm:px-6 py-2 sm:py-3 bg-[#122D6A]/80 text-white rounded-xl hover:bg-[#122D6A] transition font-medium backdrop-blur flex items-center gap-1 sm:gap-2 text-sm">
               <i class="fas fa-trophy"></i>
-              <span>Concluir</span>
+              <span class="hidden sm:inline">Concluir</span>
             </button>
           `}
         </div>
         
-        <!-- Indicadores de navegação -->
-        <div class="flex justify-center gap-1.5 mt-4">
-          ${flashcards.map((_, i) => `
+        <!-- Indicadores de navegação (limitar para não ficar muito grande em mobile) -->
+        <div class="flex justify-center gap-1 sm:gap-1.5 mt-3 sm:mt-4 px-2 flex-wrap max-w-xs sm:max-w-full mx-auto">
+          ${flashcards.slice(0, 20).map((_, i) => `
             <button onclick="navegarFlashcardSimples(${i})"
-                    class="w-2.5 h-2.5 rounded-full transition-all duration-300 ${i === cardIndex ? 'bg-white w-6' : 'bg-white/30 hover:bg-white/50'}"></button>
+                    class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-all duration-300 ${i === cardIndex ? 'bg-white w-4 sm:w-6' : 'bg-white/30 hover:bg-white/50'}"></button>
           `).join('')}
+          ${flashcards.length > 20 ? `<span class="text-white/50 text-xs ml-1">+${flashcards.length - 20}</span>` : ''}
         </div>
         
-        <!-- Atalhos de teclado -->
-        <p class="text-center text-white/40 text-xs mt-4">
+        <!-- Atalhos de teclado (só em desktop) -->
+        <p class="hidden sm:block text-center text-white/40 text-xs mt-4">
           <i class="fas fa-keyboard mr-1"></i>
           Use ← → para navegar, Espaço para virar
         </p>
@@ -21691,6 +21740,8 @@ function renderFlashcardsModal(flashcards, topicoNome, disciplinaNome, cardIndex
       #flashcard-container:hover #flashcard:not(.flipped) {
         transform: rotateY(5deg);
       }
+      .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+      .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     </style>
   `;
   
