@@ -8529,23 +8529,23 @@ window.atualizarProgressoPlanoUI = async function() {
 }
 
 // Função para marcar/desmarcar tópico como revisado
-// ✅ CORREÇÃO v6: Incluir plano_id para isolamento entre planos
+// ✅ CORREÇÃO v7: nivel_dominio >= 2 para contabilizar como estudado
 window.toggleRevisaoTopico = async function(topicoId, marcarRevisado, disciplinaId) {
   try {
     // Obter plano ativo
     const planoAtivo = window.planoAtivo || window.currentPlano;
     const planoId = planoAtivo?.id;
     
-    // Atualizar no backend COM plano_id
+    // ✅ CORREÇÃO v7: nivel_dominio = 2 para contabilizar na contagem (critério é >= 2)
     await axios.post(`/api/user-topicos/progresso`, {
       user_id: currentUser.id,
       topico_id: topicoId,
       vezes_estudado: marcarRevisado ? 1 : 0,
-      nivel_dominio: marcarRevisado ? 1 : 0,
-      plano_id: planoId // ✅ NOVO: Vincular ao plano
+      nivel_dominio: marcarRevisado ? 2 : 0, // ✅ CORREÇÃO: Usar 2 para contabilizar
+      plano_id: planoId
     });
     
-    showToast(marcarRevisado ? '✅ Tópico marcado como revisado!' : '↩️ Revisão desmarcada', 'success');
+    showToast(marcarRevisado ? '✅ Tópico marcado como estudado!' : '↩️ Marcação removida', 'success');
     
     // Recarregar a tela
     await renderPortfolioDisciplinas();
@@ -9809,12 +9809,15 @@ window.adicionarTopicoNaDisciplina = async function(disciplinaId, disciplinaNome
   const peso = parseInt(pesoStr) || 1;
   
   try {
+    // ✅ CORREÇÃO v7: Incluir plano_id para isolamento
+    const planoAtivo = window.planoAtivo || window.currentPlano;
     await axios.post('/api/topicos/manual', {
       disciplina_id: disciplinaId,
       nome: nome.trim(),
       peso: Math.min(10, Math.max(1, peso)),
       categoria: 'Geral',
-      user_id: currentUser.id // ✅ Incluir user_id para isolamento
+      user_id: currentUser.id,
+      plano_id: planoAtivo?.id // ✅ NOVO: Vincular ao plano
     });
     
     showToast('✅ Tópico adicionado com sucesso!', 'success');
@@ -10056,6 +10059,9 @@ window.confirmarImportacaoTopicos = async function(disciplinaId) {
   let sucesso = 0;
   let erros = 0;
   
+  // ✅ CORREÇÃO v7: Obter plano ativo antes do loop
+  const planoAtivo = window.planoAtivo || window.currentPlano;
+  
   for (const nomeTopico of topicos) {
     try {
       await axios.post('/api/topicos/manual', {
@@ -10063,7 +10069,8 @@ window.confirmarImportacaoTopicos = async function(disciplinaId) {
         nome: nomeTopico,
         peso: Math.min(10, Math.max(1, peso)),
         categoria: 'Edital',
-        user_id: currentUser.id
+        user_id: currentUser.id,
+        plano_id: planoAtivo?.id // ✅ NOVO: Vincular ao plano
       });
       sucesso++;
     } catch (error) {
@@ -10469,19 +10476,21 @@ window.adicionarTopicoManual = async () => {
       return;
     }
     
+    // ✅ CORREÇÃO v7: Incluir plano_id para isolamento
+    const planoAtivo = window.planoAtivo || window.currentPlano;
     const response = await axios.post('/api/topicos/manual', {
       disciplina_id: window.currentDisciplinaId,
       nome: nome.trim(),
       peso: pesoNum,
       categoria: categoria.trim() || 'Outros',
-      user_id: currentUser.id // ✅ Incluir user_id para isolamento
+      user_id: currentUser.id,
+      plano_id: planoAtivo?.id // ✅ NOVO: Vincular ao plano
     });
     
     showToast('Tópico adicionado com sucesso!', 'success');
     
     // Recarregar tópicos
     // ✅ CORREÇÃO v5: Incluir plano_id
-    const planoAtivo = window.planoAtivo || window.currentPlano;
     let topicosUrl = `/api/user-topicos/${currentUser.id}/${window.currentDisciplinaId}`;
     if (planoAtivo?.id) topicosUrl += `?plano_id=${planoAtivo.id}`;
     const topicosRes = await axios.get(topicosUrl);
@@ -10506,19 +10515,21 @@ window.adicionarTopicoCategoria = async (categoria) => {
       return;
     }
     
+    // ✅ CORREÇÃO v7: Incluir plano_id para isolamento
+    const planoAtivo = window.planoAtivo || window.currentPlano;
     const response = await axios.post('/api/topicos/manual', {
       disciplina_id: window.currentDisciplinaId,
       nome: nome.trim(),
       peso: pesoNum,
       categoria: categoria,
-      user_id: currentUser.id // ✅ Incluir user_id para isolamento
+      user_id: currentUser.id,
+      plano_id: planoAtivo?.id // ✅ NOVO: Vincular ao plano
     });
     
     showToast('Tópico adicionado com sucesso!', 'success');
     
     // Recarregar tópicos
     // ✅ CORREÇÃO v5: Incluir plano_id
-    const planoAtivo = window.planoAtivo || window.currentPlano;
     let topicosUrl = `/api/user-topicos/${currentUser.id}/${window.currentDisciplinaId}`;
     if (planoAtivo?.id) topicosUrl += `?plano_id=${planoAtivo.id}`;
     const topicosRes = await axios.get(topicosUrl);
@@ -10806,13 +10817,16 @@ window.salvarNovaDisciplinaComTopicos = async function() {
     });
     
     // 3. Criar os tópicos
+    // ✅ CORREÇÃO v7: Obter plano ativo para vincular tópicos
+    const planoAtivo = window.planoAtivo || window.currentPlano;
     for (const topicoNome of window.topicosNovaDisciplina) {
       await axios.post('/api/topicos/manual', {
         disciplina_id: disciplina_id,
         nome: topicoNome,
         peso: 1,
         categoria: 'Custom',
-        user_id: currentUser.id
+        user_id: currentUser.id,
+        plano_id: planoAtivo?.id // ✅ NOVO: Vincular ao plano
       });
     }
     

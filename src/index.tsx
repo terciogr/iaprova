@@ -6527,9 +6527,10 @@ app.get('/api/topicos/:disciplina_id', async (c) => {
 })
 
 // ✅ CRUD de Tópicos - Adicionar tópico manualmente
+// ✅ CORREÇÃO v7: Incluir plano_id para isolamento entre planos
 app.post('/api/topicos/manual', async (c) => {
   const { DB } = c.env
-  const { disciplina_id, nome, peso, categoria, user_id } = await c.req.json()
+  const { disciplina_id, nome, peso, categoria, user_id, plano_id } = await c.req.json()
   
   if (!user_id) {
     return c.json({ error: 'user_id é obrigatório' }, 400)
@@ -6540,11 +6541,20 @@ app.post('/api/topicos/manual', async (c) => {
   }
   
   try {
-    // ✅ Verificar se tópico já existe para esta disciplina/usuário
+    // ✅ CORREÇÃO v7: Buscar plano ativo se não fornecido
+    let planoAtivo = plano_id
+    if (!planoAtivo) {
+      const plano = await DB.prepare(`
+        SELECT id FROM planos_estudo WHERE user_id = ? AND ativo = 1 LIMIT 1
+      `).bind(user_id).first() as any
+      planoAtivo = plano?.id
+    }
+    
+    // ✅ Verificar se tópico já existe para esta disciplina/plano
     const topicoExistente = await DB.prepare(`
       SELECT id, nome FROM topicos_edital 
-      WHERE disciplina_id = ? AND user_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
-    `).bind(disciplina_id, user_id, nome.trim()).first() as any
+      WHERE disciplina_id = ? AND plano_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
+    `).bind(disciplina_id, planoAtivo, nome.trim()).first() as any
     
     if (topicoExistente) {
       return c.json({ 
@@ -6553,18 +6563,18 @@ app.post('/api/topicos/manual', async (c) => {
       }, 409) // 409 Conflict
     }
     
-    // Obter a próxima ordem (para este usuário)
+    // Obter a próxima ordem (para este plano)
     const { ordem: maxOrdem } = await DB.prepare(`
-      SELECT COALESCE(MAX(ordem), 0) as ordem FROM topicos_edital WHERE disciplina_id = ? AND user_id = ?
-    `).bind(disciplina_id, user_id).first() || { ordem: 0 }
+      SELECT COALESCE(MAX(ordem), 0) as ordem FROM topicos_edital WHERE disciplina_id = ? AND plano_id = ?
+    `).bind(disciplina_id, planoAtivo).first() || { ordem: 0 }
     
     const result = await DB.prepare(`
-      INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(disciplina_id, nome.trim(), categoria || 'Outros', (maxOrdem || 0) + 1, peso || 1, user_id).run()
+      INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id, plano_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(disciplina_id, nome.trim(), categoria || 'Outros', (maxOrdem || 0) + 1, peso || 1, user_id, planoAtivo).run()
     
-    console.log(`✅ Tópico "${nome}" adicionado à disciplina ${disciplina_id} para user ${user_id}`)
-    return c.json({ success: true, id: result.meta.last_row_id })
+    console.log(`✅ Tópico "${nome}" adicionado à disciplina ${disciplina_id} no plano ${planoAtivo}`)
+    return c.json({ success: true, id: result.meta.last_row_id, plano_id: planoAtivo })
   } catch (error) {
     console.error('Erro ao adicionar tópico:', error)
     return c.json({ error: 'Erro ao adicionar tópico' }, 500)
@@ -6595,17 +6605,31 @@ app.put('/api/topicos/:topico_id', async (c) => {
 })
 
 // ✅ CRUD de Tópicos - Excluir tópico
+// ✅ CORREÇÃO v7: Remover referências antes de excluir
 app.delete('/api/topicos/:topico_id', async (c) => {
   const { DB } = c.env
   const topico_id = c.req.param('topico_id')
   
   try {
+    // ✅ CORREÇÃO v7: Primeiro remover registros relacionados
+    // 1. Remover progresso do usuário
+    await DB.prepare('DELETE FROM user_topicos_progresso WHERE topico_id = ?').bind(topico_id).run()
+    
+    // 2. Remover relações com conteúdos
+    try {
+      await DB.prepare('DELETE FROM conteudo_topicos WHERE topico_id = ?').bind(topico_id).run()
+    } catch (e) {
+      // Tabela pode não existir
+    }
+    
+    // 3. Agora excluir o tópico
     await DB.prepare('DELETE FROM topicos_edital WHERE id = ?').bind(topico_id).run()
-    console.log(`✅ Tópico ${topico_id} excluído`)
+    
+    console.log(`✅ Tópico ${topico_id} e suas referências excluídos`)
     return c.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao excluir tópico:', error)
-    return c.json({ error: 'Erro ao excluir tópico' }, 500)
+    return c.json({ error: 'Erro ao excluir tópico: ' + error.message }, 500)
   }
 })
 
