@@ -4356,7 +4356,7 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
                     <span class="truncate">Revisar Disciplinas</span>
                   </h2>
                   <p class="text-blue-100 text-xs sm:text-sm mt-1">
-                    Verifique os pesos e ajuste antes de confirmar
+                    ⚠️ Revise as disciplinas, pesos e tópicos de acordo com o edital. Ajuste se necessário!
                   </p>
                 </div>
                 <button onclick="fecharModalRevisao()" class="text-white hover:text-gray-200 ml-2 p-1">
@@ -4367,12 +4367,12 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
               ${quadroProvas?.encontrado ? `
                 <div class="mt-2 p-2 bg-white bg-opacity-20 rounded text-white text-xs sm:text-sm">
                   <i class="fas fa-info-circle mr-1"></i>
-                  Pesos: CG=${quadroProvas.peso_conhecimentos_gerais}, CE=${quadroProvas.peso_conhecimentos_especificos}
+                  Pesos encontrados: CG=${quadroProvas.peso_conhecimentos_gerais}, CE=${quadroProvas.peso_conhecimentos_especificos}
                 </div>
               ` : `
-                <div class="mt-2 p-2 bg-orange-500 bg-opacity-80 rounded text-white text-xs sm:text-sm">
+                <div class="mt-2 p-3 bg-orange-500 bg-opacity-90 rounded text-white text-xs sm:text-sm">
                   <i class="fas fa-exclamation-triangle mr-1"></i>
-                  Quadro de provas não encontrado. Verifique os pesos manualmente!
+                  <strong>Atenção:</strong> Revise as disciplinas, pesos e tópicos conforme o edital oficial e ajuste se necessário antes de confirmar!
                 </div>
               `}
             </div>

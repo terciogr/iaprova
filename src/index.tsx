@@ -8912,12 +8912,12 @@ app.get('/api/planos/list/:user_id', async (c) => {
       if (disciplinaIds.length > 0) {
         const placeholders = disciplinaIds.map(() => '?').join(',')
         
-        // ✅ CORREÇÃO v3: Buscar de TODAS as fontes possíveis
-        // Tópicos em topicos_edital (metas semanais)
+        // ✅ CORREÇÃO v4: Buscar tópicos ESPECÍFICOS DO PLANO
+        // Tópicos em topicos_edital (vinculados ao PLANO, não ao usuário)
         const topicosTeResult = await DB.prepare(`
           SELECT COUNT(*) as total FROM topicos_edital 
-          WHERE user_id = ? AND disciplina_id IN (${placeholders})
-        `).bind(user_id, ...disciplinaIds).first() as any
+          WHERE plano_id = ? AND disciplina_id IN (${placeholders})
+        `).bind(p.id, ...disciplinaIds).first() as any
         
         // Tópicos em edital_topicos (edital processado)
         const topicosEtResult = p.edital_id ? await DB.prepare(`
@@ -8942,12 +8942,12 @@ app.get('/api/planos/list/:user_id', async (c) => {
           console.log(`   ⚠️ Plano ${p.id}: usando ${totalTopicos} metas como base de progresso`)
         }
         
-        // Contar estudados
+        // Contar estudados - ✅ CORREÇÃO v4: Filtrar por plano_id
         const topicosEstudadosResult = await DB.prepare(`
           SELECT COUNT(*) as total FROM user_topicos_progresso utp
           INNER JOIN topicos_edital te ON utp.topico_id = te.id
-          WHERE utp.user_id = ? AND te.disciplina_id IN (${placeholders}) AND utp.nivel_dominio >= 2
-        `).bind(user_id, ...disciplinaIds).first() as any
+          WHERE utp.plano_id = ? AND te.plano_id = ? AND te.disciplina_id IN (${placeholders}) AND utp.nivel_dominio >= 2
+        `).bind(p.id, p.id, ...disciplinaIds).first() as any
         
         // Contar metas concluídas
         const metasConcluidasResult = await DB.prepare(`
@@ -9712,7 +9712,15 @@ app.delete('/api/planos/:plano_id', async (c) => {
       const ciclosResult = await DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id = ?').bind(plano_id).run()
       console.log(`  ✓ ${ciclosResult.meta.changes} ciclos deletados`)
       
-      // 5. Deletar o plano
+      // 5. ✅ NOVO: Deletar tópicos e progresso vinculados ao plano
+      console.log('🗑️ Deletando tópicos e progresso do plano...')
+      const progressoResult = await DB.prepare('DELETE FROM user_topicos_progresso WHERE plano_id = ?').bind(plano_id).run()
+      console.log(`  ✓ ${progressoResult.meta.changes} registros de progresso deletados`)
+      
+      const topicosResult = await DB.prepare('DELETE FROM topicos_edital WHERE plano_id = ?').bind(plano_id).run()
+      console.log(`  ✓ ${topicosResult.meta.changes} tópicos do plano deletados`)
+      
+      // 6. Deletar o plano
       console.log('🗑️ Deletando plano...')
       await DB.prepare('DELETE FROM planos_estudo WHERE id = ?').bind(plano_id).run()
       console.log(`✅ Plano ${plano_id} deletado com sucesso!`)
