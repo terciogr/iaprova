@@ -1913,9 +1913,11 @@ app.post('/api/subscription/activate', async (c) => {
         subscription_plan = ?,
         subscription_expires_at = ?,
         payment_id = ?,
-        payment_date = ?
+        payment_date = ?,
+        is_premium = 1,
+        premium_expires_at = ?
       WHERE id = ?
-    `).bind(plan, expiresAt, finalPaymentId, now.toISOString(), userId).run()
+    `).bind(plan, expiresAt, finalPaymentId, now.toISOString(), expiresAt, userId).run()
     
     console.log(`✅ Assinatura ${plan} ativada para usuário ${userId} até ${expiresAt}`)
     
@@ -2126,16 +2128,18 @@ app.post('/api/webhook/mercadopago', async (c) => {
     const now = new Date()
     const expiresAt = new Date(now.getTime() + (days || 30) * 24 * 60 * 60 * 1000).toISOString()
     
-    // Atualizar usuário com assinatura ativa
+    // ✅ CORREÇÃO v9: Atualizar usuário com assinatura ativa E is_premium = 1
     await DB.prepare(`
       UPDATE users SET 
         subscription_status = 'active',
         subscription_plan = ?,
         subscription_expires_at = ?,
         payment_id = ?,
-        payment_date = ?
+        payment_date = ?,
+        is_premium = 1,
+        premium_expires_at = ?
       WHERE id = ?
-    `).bind(plan, expiresAt, paymentId.toString(), now.toISOString(), user_id).run()
+    `).bind(plan, expiresAt, paymentId.toString(), now.toISOString(), expiresAt, user_id).run()
     
     console.log(`✅ Assinatura ${plan} ativada para usuário ${user_id} até ${expiresAt}`)
     
@@ -2616,12 +2620,20 @@ app.get('/api/admin/users', async (c) => {
     const search = c.req.query('search') || ''
     const offset = (page - 1) * limit
     
+    // ✅ CORREÇÃO v9: Incluir subscription_status para determinar premium corretamente
     let query = `
       SELECT 
         u.id, u.name, u.email, u.email_verified, u.is_premium, 
         u.premium_expires_at, u.created_at, u.auth_provider,
+        u.subscription_status, u.subscription_plan, u.subscription_expires_at,
         COUNT(DISTINCT pe.id) as total_planos,
-        COUNT(DISTINCT md.id) as total_metas
+        COUNT(DISTINCT md.id) as total_metas,
+        -- ✅ NOVO: Calcular is_premium_real considerando subscription ativa
+        CASE 
+          WHEN u.is_premium = 1 THEN 1
+          WHEN u.subscription_status = 'active' AND (u.subscription_expires_at IS NULL OR u.subscription_expires_at > datetime('now')) THEN 1
+          ELSE 0
+        END as is_premium_real
       FROM users u
       LEFT JOIN planos_estudo pe ON pe.user_id = u.id
       LEFT JOIN metas_diarias md ON md.user_id = u.id
@@ -2925,28 +2937,81 @@ app.post('/api/admin/users/:id/premium', async (c) => {
   
   try {
     const userId = c.req.param('id')
-    const { is_premium, days } = await c.req.json()
+    const { is_premium, days, plan } = await c.req.json()
     
     if (is_premium && days) {
-      // Ativar premium por X dias
+      // ✅ CORREÇÃO v9: Ativar premium por X dias E subscription_status
+      const selectedPlan = plan || (days >= 365 ? 'anual' : 'mensal')
       await DB.prepare(`
         UPDATE users 
-        SET is_premium = 1, premium_expires_at = DATE('now', '+' || ? || ' days')
+        SET is_premium = 1, 
+            premium_expires_at = DATE('now', '+' || ? || ' days'),
+            subscription_status = 'active',
+            subscription_plan = ?,
+            subscription_expires_at = DATE('now', '+' || ? || ' days')
         WHERE id = ?
-      `).bind(days, userId).run()
+      `).bind(days, selectedPlan, days, userId).run()
+      console.log(`✅ Premium ativado para usuário ${userId} por ${days} dias (${selectedPlan})`)
     } else {
       // Remover premium
       await DB.prepare(`
         UPDATE users 
-        SET is_premium = 0, premium_expires_at = NULL
+        SET is_premium = 0, 
+            premium_expires_at = NULL,
+            subscription_status = 'cancelled',
+            subscription_plan = NULL,
+            subscription_expires_at = NULL
         WHERE id = ?
       `).bind(userId).run()
+      console.log(`❌ Premium removido do usuário ${userId}`)
     }
     
     return c.json({ success: true })
   } catch (error) {
     console.error('Erro ao atualizar premium:', error)
     return c.json({ error: 'Erro ao atualizar premium' }, 500)
+  }
+})
+
+// ✅ NOVO v9: Sincronizar status premium com subscription_status
+// Útil para corrigir usuários que pagaram mas não tiveram is_premium atualizado
+app.post('/api/admin/sync-premium', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    // Sincronizar: se subscription_status = 'active' e subscription_expires_at > now, então is_premium = 1
+    const result = await DB.prepare(`
+      UPDATE users 
+      SET is_premium = 1,
+          premium_expires_at = subscription_expires_at
+      WHERE subscription_status = 'active' 
+        AND subscription_expires_at > datetime('now')
+        AND is_premium = 0
+    `).run()
+    
+    // Também sincronizar ao contrário: se expirou, remover premium
+    const expiredResult = await DB.prepare(`
+      UPDATE users 
+      SET is_premium = 0,
+          subscription_status = 'expired'
+      WHERE subscription_status = 'active' 
+        AND subscription_expires_at <= datetime('now')
+    `).run()
+    
+    console.log(`✅ Sincronização premium: ${result.meta.changes} ativados, ${expiredResult.meta.changes} expirados`)
+    
+    return c.json({ 
+      success: true,
+      activated: result.meta.changes || 0,
+      expired: expiredResult.meta.changes || 0
+    })
+  } catch (error) {
+    console.error('Erro ao sincronizar premium:', error)
+    return c.json({ error: 'Erro ao sincronizar premium' }, 500)
   }
 })
 
