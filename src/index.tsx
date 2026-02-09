@@ -6605,30 +6605,60 @@ app.put('/api/topicos/:topico_id', async (c) => {
 })
 
 // ✅ CRUD de Tópicos - Excluir tópico
-// ✅ CORREÇÃO v7: Remover referências antes de excluir
+// ✅ CORREÇÃO DEFINITIVA v8: Remover TODAS as referências antes de excluir
 app.delete('/api/topicos/:topico_id', async (c) => {
   const { DB } = c.env
   const topico_id = c.req.param('topico_id')
   
+  console.log(`🗑️ Iniciando exclusão do tópico ${topico_id}`)
+  
   try {
-    // ✅ CORREÇÃO v7: Primeiro remover registros relacionados
+    // ✅ CORREÇÃO v8: Remover TODAS as FKs em ordem correta
+    
     // 1. Remover progresso do usuário
-    await DB.prepare('DELETE FROM user_topicos_progresso WHERE topico_id = ?').bind(topico_id).run()
+    try {
+      await DB.prepare('DELETE FROM user_topicos_progresso WHERE topico_id = ?').bind(topico_id).run()
+      console.log(`   ✓ Removido progresso do tópico ${topico_id}`)
+    } catch (e) {
+      console.log(`   ⚠ Tabela user_topicos_progresso: ${e}`)
+    }
     
     // 2. Remover relações com conteúdos
     try {
       await DB.prepare('DELETE FROM conteudo_topicos WHERE topico_id = ?').bind(topico_id).run()
+      console.log(`   ✓ Removido conteudo_topicos do tópico ${topico_id}`)
     } catch (e) {
-      // Tabela pode não existir
+      console.log(`   ⚠ Tabela conteudo_topicos: ${e}`)
     }
     
-    // 3. Agora excluir o tópico
-    await DB.prepare('DELETE FROM topicos_edital WHERE id = ?').bind(topico_id).run()
+    // 3. ✅ NOVO: Desvinvular materiais_salvos (SET NULL em vez de DELETE)
+    try {
+      await DB.prepare('UPDATE materiais_salvos SET topico_id = NULL WHERE topico_id = ?').bind(topico_id).run()
+      console.log(`   ✓ Desvinculado materiais_salvos do tópico ${topico_id}`)
+    } catch (e) {
+      console.log(`   ⚠ Tabela materiais_salvos: ${e}`)
+    }
     
-    console.log(`✅ Tópico ${topico_id} e suas referências excluídos`)
+    // 4. ✅ NOVO: Remover de conteudo_estudo se existir
+    try {
+      await DB.prepare('UPDATE conteudo_estudo SET topico_id = NULL WHERE topico_id = ?').bind(topico_id).run()
+      console.log(`   ✓ Desvinculado conteudo_estudo do tópico ${topico_id}`)
+    } catch (e) {
+      console.log(`   ⚠ Tabela conteudo_estudo: ${e}`)
+    }
+    
+    // 5. Agora excluir o tópico
+    const result = await DB.prepare('DELETE FROM topicos_edital WHERE id = ?').bind(topico_id).run()
+    
+    if (result.meta.changes === 0) {
+      console.log(`⚠️ Tópico ${topico_id} não encontrado ou já excluído`)
+      return c.json({ success: true, warning: 'Tópico já não existia' })
+    }
+    
+    console.log(`✅ Tópico ${topico_id} excluído com sucesso`)
     return c.json({ success: true })
   } catch (error: any) {
-    console.error('Erro ao excluir tópico:', error)
+    console.error('❌ Erro ao excluir tópico:', error)
     return c.json({ error: 'Erro ao excluir tópico: ' + error.message }, 500)
   }
 })
@@ -7172,31 +7202,48 @@ app.post('/api/user-topicos/progresso', async (c) => {
   console.log('📊 Atualizando progresso do tópico:', { user_id, topico_id, vezes_estudado, nivel_dominio, plano_id })
   
   try {
-    // ✅ CORREÇÃO v5: Verificar se já existe registro PARA ESTE PLANO
+    // ✅ CORREÇÃO DEFINITIVA v8: Buscar plano ativo se não fornecido
+    let planoAtivo = plano_id
+    if (!planoAtivo) {
+      const plano = await DB.prepare(`
+        SELECT id FROM planos_estudo WHERE user_id = ? AND ativo = 1 LIMIT 1
+      `).bind(user_id).first() as any
+      planoAtivo = plano?.id || null
+    }
+    
+    // ✅ CORREÇÃO v8: Usar INSERT OR REPLACE para evitar problemas de constraint
+    // A tabela tem UNIQUE(user_id, topico_id), então precisamos atualizar/inserir por essa combinação
+    // Mas também precisamos garantir que o plano_id seja considerado
+    
+    // Primeiro, verificar se existe registro para este usuário/tópico
     const existing = await DB.prepare(`
-      SELECT id FROM user_topicos_progresso WHERE user_id = ? AND topico_id = ? AND plano_id = ?
-    `).bind(user_id, topico_id, plano_id || null).first()
+      SELECT id, plano_id FROM user_topicos_progresso WHERE user_id = ? AND topico_id = ?
+    `).bind(user_id, topico_id).first() as any
     
     if (existing) {
-      // Atualizar
+      // ✅ Atualizar o registro existente E definir o plano_id correto
       await DB.prepare(`
         UPDATE user_topicos_progresso 
-        SET vezes_estudado = ?, nivel_dominio = ?, ultima_vez = CURRENT_TIMESTAMP
-        WHERE user_id = ? AND topico_id = ? AND plano_id = ?
-      `).bind(vezes_estudado, nivel_dominio, user_id, topico_id, plano_id || null).run()
+        SET vezes_estudado = ?, 
+            nivel_dominio = ?, 
+            ultima_vez = CURRENT_TIMESTAMP,
+            plano_id = COALESCE(?, plano_id)
+        WHERE user_id = ? AND topico_id = ?
+      `).bind(vezes_estudado, nivel_dominio, planoAtivo, user_id, topico_id).run()
+      console.log(`✅ Progresso atualizado (UPDATE) para tópico ${topico_id}, plano: ${planoAtivo}`)
     } else {
-      // Inserir com plano_id
+      // ✅ Inserir novo registro
       await DB.prepare(`
         INSERT INTO user_topicos_progresso (user_id, topico_id, vezes_estudado, nivel_dominio, ultima_vez, plano_id)
         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
-      `).bind(user_id, topico_id, vezes_estudado, nivel_dominio, plano_id || null).run()
+      `).bind(user_id, topico_id, vezes_estudado, nivel_dominio, planoAtivo).run()
+      console.log(`✅ Progresso inserido (INSERT) para tópico ${topico_id}, plano: ${planoAtivo}`)
     }
     
-    console.log('✅ Progresso atualizado com sucesso para plano:', plano_id)
     return c.json({ success: true })
   } catch (error: any) {
     console.error('❌ Erro ao atualizar progresso:', error)
-    return c.json({ error: 'Erro ao atualizar progresso' }, 500)
+    return c.json({ error: 'Erro ao atualizar progresso: ' + error.message }, 500)
   }
 })
 
