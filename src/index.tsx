@@ -5384,24 +5384,32 @@ ${textoParaIA}`
 
       // Inserir tópicos em edital_topicos
       if (disc.topicos && disc.topicos.length > 0) {
-        for (let j = 0; j < disc.topicos.length; j++) {
-          const topicoNome = disc.topicos[j]
+        // ✅ DEDUPLICAR tópicos antes de salvar (IA às vezes retorna duplicados)
+        const topicosUnicos = [...new Set(
+          disc.topicos
+            .map((t: any) => typeof t === 'string' ? t.trim() : t)
+            .filter((t: string) => t && t.length > 0)
+        )]
+        
+        console.log(`    📋 ${disc.topicos.length} tópicos recebidos, ${topicosUnicos.length} únicos`)
+        
+        for (let j = 0; j < topicosUnicos.length; j++) {
+          const topicoNome = topicosUnicos[j]
           
-          // Salvar em edital_topicos (referência ao edital)
+          // Salvar em edital_topicos (INSERT OR IGNORE para evitar duplicatas)
           await DB.prepare(`
-            INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem)
+            INSERT OR IGNORE INTO edital_topicos (edital_disciplina_id, nome, ordem)
             VALUES (?, ?, ?)
           `).bind(edital_disciplina_id, topicoNome, j + 1).run()
           
-          // ✅ NOVO: Também salvar em topicos_edital (usado nas metas semanais)
-          // Verificar se já existe para evitar duplicatas
-          // ✅ CORREÇÃO: Verificar se existe para ESTE USUÁRIO
+          // ✅ Também salvar em topicos_edital (usado nas metas semanais)
+          // Verificar se já existe para ESTE USUÁRIO
           const topicoExistente = await DB.prepare(`
             SELECT id FROM topicos_edital WHERE disciplina_id = ? AND user_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
           `).bind(disciplina_id_real, edital.user_id, topicoNome).first()
           
           if (!topicoExistente) {
-            // ✅ CORREÇÃO: Usar o peso da disciplina pai para os tópicos + user_id
+            // Usar o peso da disciplina pai para os tópicos + user_id
             const pesoTopico = disc.peso || 1
             await DB.prepare(`
               INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
@@ -5409,7 +5417,7 @@ ${textoParaIA}`
             `).bind(disciplina_id_real, topicoNome, 'Conteúdo Programático', j + 1, pesoTopico, edital.user_id).run()
           }
         }
-        console.log(`    → ${disc.topicos.length} tópicos salvos (edital_topicos + topicos_edital)`)
+        console.log(`    → ${topicosUnicos.length} tópicos únicos salvos (edital_topicos + topicos_edital)`)
       }
     }
 
@@ -5690,24 +5698,47 @@ ${texto.substring(0, 50000)}`
         // Inserir tópicos (evitando duplicatas)
         const topicosComIds = []
         if (disc.topicos && disc.topicos.length > 0) {
-          for (let j = 0; j < disc.topicos.length; j++) {
-            const topicoNome = typeof disc.topicos[j] === 'string' ? disc.topicos[j] : disc.topicos[j].nome
+          // ✅ DEDUPLICAR tópicos antes de salvar (IA às vezes retorna duplicados)
+          const topicosUnicos = [...new Set(
+            disc.topicos
+              .map((t: any) => typeof t === 'string' ? t.trim() : t.nome?.trim())
+              .filter((t: string) => t && t.length > 0)
+          )]
+          
+          console.log(`  📋 ${disc.nome}: ${disc.topicos.length} tópicos recebidos, ${topicosUnicos.length} únicos`)
+          
+          for (let j = 0; j < topicosUnicos.length; j++) {
+            const topicoNome = topicosUnicos[j]
             
-            // Verificar se já existe para evitar duplicatas
-            const topicoExistente = await DB.prepare(`
+            // 1. Verificar/inserir em edital_topicos
+            const topicoExistenteEdital = await DB.prepare(`
               SELECT id FROM edital_topicos 
               WHERE edital_disciplina_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
             `).bind(edital_disciplina_id, topicoNome).first() as any
             
             let topicoId
-            if (topicoExistente) {
-              topicoId = topicoExistente.id
+            if (topicoExistenteEdital) {
+              topicoId = topicoExistenteEdital.id
             } else {
               const topicoResult = await DB.prepare(`
                 INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem)
                 VALUES (?, ?, ?)
               `).bind(edital_disciplina_id, topicoNome, j + 1).run()
               topicoId = topicoResult.meta.last_row_id
+            }
+            
+            // 2. ✅ TAMBÉM salvar em topicos_edital (para metas semanais e progresso)
+            const topicoExistenteUser = await DB.prepare(`
+              SELECT id FROM topicos_edital 
+              WHERE disciplina_id = ? AND user_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
+            `).bind(disciplina_id_real, user_id, topicoNome).first()
+            
+            if (!topicoExistenteUser) {
+              const pesoTopico = disc.peso || 1
+              await DB.prepare(`
+                INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+              `).bind(disciplina_id_real, topicoNome, 'Conteúdo Programático', j + 1, pesoTopico, user_id).run()
             }
             
             topicosComIds.push({
@@ -5817,20 +5848,43 @@ app.put('/api/editais/:id/disciplinas', async (c) => {
       
       const edital_disciplina_id = discResult.meta.last_row_id
       
-      // Inserir tópicos (evitando duplicatas)
+      // Inserir tópicos (evitando duplicatas e salvando em AMBAS as tabelas)
       if (disc.topicos && disc.topicos.length > 0) {
-        for (let j = 0; j < disc.topicos.length; j++) {
-          const topicoNome = typeof disc.topicos[j] === 'string' ? disc.topicos[j] : disc.topicos[j].nome
+        // ✅ DEDUPLICAR tópicos antes de salvar
+        const topicosUnicos = [...new Set(
+          disc.topicos
+            .map((t: any) => typeof t === 'string' ? t.trim() : t.nome?.trim())
+            .filter((t: string) => t && t.length > 0)
+        )]
+        
+        for (let j = 0; j < topicosUnicos.length; j++) {
+          const topicoNome = topicosUnicos[j]
           
-          // Inserir apenas em edital_topicos (INSERT OR IGNORE para evitar duplicatas)
+          // 1. Inserir em edital_topicos (INSERT OR IGNORE para evitar duplicatas)
           await DB.prepare(`
             INSERT OR IGNORE INTO edital_topicos (edital_disciplina_id, nome, ordem)
             VALUES (?, ?, ?)
           `).bind(edital_disciplina_id, topicoNome, j + 1).run()
+          
+          // 2. ✅ TAMBÉM salvar em topicos_edital (para metas semanais e progresso)
+          const topicoExistenteUser = await DB.prepare(`
+            SELECT id FROM topicos_edital 
+            WHERE disciplina_id = ? AND user_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
+          `).bind(disciplina_id_real, edital.user_id, topicoNome).first()
+          
+          if (!topicoExistenteUser) {
+            const pesoTopico = disc.peso || 1
+            await DB.prepare(`
+              INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
+              VALUES (?, ?, ?, ?, ?, ?)
+            `).bind(disciplina_id_real, topicoNome, 'Conteúdo Programático', j + 1, pesoTopico, edital.user_id).run()
+          }
         }
+        
+        console.log(`  ✅ ${disc.nome}: peso ${disc.peso}, ${topicosUnicos.length} tópicos únicos salvos`)
+      } else {
+        console.log(`  ✅ ${disc.nome}: peso ${disc.peso}, 0 tópicos`)
       }
-      
-      console.log(`  ✅ ${disc.nome}: peso ${disc.peso}, ${disc.topicos?.length || 0} tópicos`)
     }
     
     // Atualizar status do edital
