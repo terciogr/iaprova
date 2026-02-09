@@ -13365,9 +13365,23 @@ window.selecionarEstrela = function(rating) {
 
 // Enviar feedback
 window.enviarFeedback = async function() {
-  const message = document.getElementById('feedback-message').value.trim();
-  const feedbackType = document.getElementById('feedback-type').value;
-  const rating = document.getElementById('feedback-rating').value;
+  console.log('📝 Iniciando envio de feedback...');
+  
+  const messageEl = document.getElementById('feedback-message');
+  const feedbackTypeEl = document.getElementById('feedback-type');
+  const ratingEl = document.getElementById('feedback-rating');
+  
+  if (!messageEl) {
+    console.error('❌ Elemento feedback-message não encontrado');
+    showToast('Erro: campo de mensagem não encontrado', 'error');
+    return;
+  }
+  
+  const message = messageEl.value.trim();
+  const feedbackType = feedbackTypeEl?.value || 'suggestion';
+  const rating = ratingEl?.value || '';
+  
+  console.log('📝 Dados do feedback:', { message, feedbackType, rating, userId: currentUser?.id });
   
   if (!message) {
     showToast('Por favor, escreva sua mensagem', 'error');
@@ -13379,14 +13393,30 @@ window.enviarFeedback = async function() {
     return;
   }
   
+  // Verificar se usuário está logado
+  if (!currentUser?.id) {
+    showToast('Você precisa estar logado para enviar feedback', 'error');
+    return;
+  }
+  
+  // Mostrar loading no botão
+  const btnEnviar = document.querySelector('#modal-feedback button[onclick="enviarFeedback()"]');
+  const btnOriginalText = btnEnviar?.innerHTML;
+  if (btnEnviar) {
+    btnEnviar.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
+    btnEnviar.disabled = true;
+  }
+  
   try {
     const response = await axios.post('/api/feedbacks', {
       user_id: currentUser.id,
       rating: rating ? parseInt(rating) : null,
       feedback_type: feedbackType,
       message: message,
-      page_context: window.location.pathname
+      page_context: window.location.pathname || '/home'
     });
+    
+    console.log('📝 Resposta do servidor:', response.data);
     
     if (response.data.success) {
       showToast('🎉 ' + response.data.message, 'success');
@@ -13395,8 +13425,15 @@ window.enviarFeedback = async function() {
       showToast(response.data.error || 'Erro ao enviar feedback', 'error');
     }
   } catch (error) {
-    console.error('Erro ao enviar feedback:', error);
-    showToast('Erro ao enviar feedback. Tente novamente.', 'error');
+    console.error('❌ Erro ao enviar feedback:', error);
+    const errorMsg = error.response?.data?.error || error.message || 'Erro desconhecido';
+    showToast('Erro ao enviar feedback: ' + errorMsg, 'error');
+  } finally {
+    // Restaurar botão
+    if (btnEnviar && btnOriginalText) {
+      btnEnviar.innerHTML = btnOriginalText;
+      btnEnviar.disabled = false;
+    }
   }
 };
 
