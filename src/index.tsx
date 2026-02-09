@@ -9790,8 +9790,18 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
       pesoTotal += peso
     }
 
-    // Calcular progresso final ponderado - NUNCA acima de 100%
-    const progressoFinal = pesoTotal > 0 ? Math.min(100, Math.round(progressoPonderado / pesoTotal)) : 0
+    // ✅ CORREÇÃO DEFINITIVA v9: Usar cálculo ABSOLUTO (total estudados / total tópicos)
+    // Isso garante consistência com a tela "Minhas Disciplinas"
+    // O cálculo ponderado (por disciplina) será mantido apenas como referência
+    const progressoPonderadoFinal = pesoTotal > 0 ? Math.min(100, Math.round(progressoPonderado / pesoTotal)) : 0
+    
+    // ✅ NOVO: Cálculo absoluto - igual ao "Minhas Disciplinas"
+    const progressoAbsoluto = totalTopicos > 0 ? Math.min(100, Math.round((topicosEstudados / totalTopicos) * 100)) : 0
+    
+    // ✅ USAR O CÁLCULO ABSOLUTO para exibição (consistência com Minhas Disciplinas)
+    const progressoFinal = progressoAbsoluto
+    
+    console.log(`📊 Progresso plano ${plano_id}: absoluto=${progressoAbsoluto}% (${topicosEstudados}/${totalTopicos}), ponderado=${progressoPonderadoFinal}%`)
 
     // Determinar cor e status baseado no progresso
     let cor = 'gray'
