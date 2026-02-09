@@ -10570,8 +10570,8 @@ window.editarTopicoGestao = async (topicoId, nomeAtual, pesoAtual) => {
   }
 };
 
-window.excluirTopicoGestao = async (topicoId) => {
-  // ✅ CORREÇÃO: showConfirm retorna Promise, não usa callback
+window.excluirTopicoGestao = async (topicoId, disciplinaId) => {
+  // ✅ CORREÇÃO DEFINITIVA v8: Aceitar disciplinaId como parâmetro opcional
   const confirmed = await showConfirm('Tem certeza que deseja excluir este tópico? Esta ação não pode ser desfeita.', {
     type: 'danger',
     title: 'Excluir Tópico',
@@ -10583,23 +10583,41 @@ window.excluirTopicoGestao = async (topicoId) => {
   
   try {
     // ✅ Usar endpoint direto de exclusão de tópico
-    await axios.delete(`/api/topicos/${topicoId}`);
+    const response = await axios.delete(`/api/topicos/${topicoId}`);
+    console.log('✅ Resposta exclusão:', response.data);
     
-    showToast('Tópico excluído com sucesso!', 'info');
+    showToast('Tópico excluído com sucesso!', 'success');
     
-    // ✅ CORREÇÃO v5: Incluir plano_id na busca de tópicos
+    // ✅ CORREÇÃO v8: Usar disciplinaId do parâmetro ou window.currentDisciplinaId
+    const disciplina = disciplinaId || window.currentDisciplinaId;
     const planoAtivo = window.planoAtivo || window.currentPlano;
     const planoId = planoAtivo?.id;
-    let topicosUrl = `/api/user-topicos/${currentUser.id}/${window.currentDisciplinaId}`;
+    
+    if (!disciplina) {
+      console.log('⚠️ Sem disciplina definida, recarregando portfolio');
+      // Se não tem disciplina, recarregar todo o portfolio
+      await renderPortfolioDisciplinas();
+      return;
+    }
+    
+    let topicosUrl = `/api/user-topicos/${currentUser.id}/${disciplina}`;
     if (planoId) {
       topicosUrl += `?plano_id=${planoId}`;
     }
     
     const topicosRes = await axios.get(topicosUrl);
     window.currentDisciplinaTopicos = topicosRes.data;
-    document.getElementById('conteudo-tab').innerHTML = renderTabTopicos(topicosRes.data);
+    
+    // Verificar se o elemento existe antes de atualizar
+    const conteudoTab = document.getElementById('conteudo-tab');
+    if (conteudoTab) {
+      conteudoTab.innerHTML = renderTabTopicos(topicosRes.data);
+    } else {
+      // Se não encontrar o elemento, recarregar o portfolio
+      await renderPortfolioDisciplinas();
+    }
   } catch (error) {
-    console.error('Erro ao excluir tópico:', error);
+    console.error('❌ Erro ao excluir tópico:', error);
     showModal('Erro ao excluir tópico: ' + (error.response?.data?.error || error.message), 'error');
   }
 };
