@@ -583,6 +583,9 @@ document.addEventListener('DOMContentLoaded', () => {
   applyTheme(currentTheme);
   checkUser();
   
+  // ✅ NOVO: Registrar visita ao site
+  registrarVisita();
+  
   // Verificar retorno de pagamento (Mercado Pago)
   setTimeout(() => {
     if (typeof verificarRetornoPagamento === 'function') {
@@ -593,6 +596,33 @@ document.addEventListener('DOMContentLoaded', () => {
   // Adicionar botão de emergência "Voltar ao Login"
   addEmergencyBackButton();
 });
+
+// ✅ NOVO: Função para registrar visita (IP único)
+function registrarVisita() {
+  try {
+    // Evitar múltiplos registros na mesma sessão
+    const visitKey = 'visit_registered_' + new Date().toDateString();
+    if (sessionStorage.getItem(visitKey)) return;
+    
+    const userId = currentUser?.id || null;
+    const pagePath = window.location.pathname || '/';
+    const referrer = document.referrer || '';
+    
+    axios.post('/api/visits/track', {
+      page_path: pagePath,
+      referrer: referrer,
+      user_id: userId
+    }).then(() => {
+      sessionStorage.setItem(visitKey, 'true');
+      console.log('📊 Visita registrada');
+    }).catch(err => {
+      // Silenciosamente ignorar erros de registro
+      console.log('⚠️ Visita não registrada:', err.message);
+    });
+  } catch (e) {
+    // Ignorar erros
+  }
+}
 
 // ============== SISTEMA DE CONTAGEM DE ACESSOS ==============
 function contabilizarAcesso() {
@@ -6691,6 +6721,11 @@ async function renderDashboard() {
       console.warn('⚠️ Plano não encontrado ou incompleto');
       throw new Error('Plano não disponível');
     }
+    
+    // ✅ CORREÇÃO v6: Salvar plano ativo globalmente para uso em outras funções
+    window.planoAtivo = plano;
+    window.currentPlano = plano;
+    console.log('✅ Plano ativo salvo globalmente:', plano?.id, plano?.nome);
 
     // ✅ CORREÇÃO: Buscar entrevista do PLANO ATIVO (não a última)
     let entrevista = null;
@@ -7905,6 +7940,11 @@ window.renderPortfolioDisciplinas = async function() {
     const planoRes = await axios.get(`/api/planos/user/${currentUser.id}`);
     const plano = planoRes.data;
     
+    // ✅ CORREÇÃO v6: Salvar plano ativo globalmente para uso em outras funções
+    window.planoAtivo = plano;
+    window.currentPlano = plano;
+    console.log('✅ Plano ativo salvo globalmente:', plano?.id);
+    
     // Extrair IDs de disciplinas ÚNICAS do plano atual (dos ciclos)
     const disciplinasIdPlano = [...new Set(plano.ciclos.map(c => c.disciplina_id))];
     console.log('Disciplinas no plano ativo:', disciplinasIdPlano.length);
@@ -8489,14 +8529,20 @@ window.atualizarProgressoPlanoUI = async function() {
 }
 
 // Função para marcar/desmarcar tópico como revisado
+// ✅ CORREÇÃO v6: Incluir plano_id para isolamento entre planos
 window.toggleRevisaoTopico = async function(topicoId, marcarRevisado, disciplinaId) {
   try {
-    // Atualizar no backend
+    // Obter plano ativo
+    const planoAtivo = window.planoAtivo || window.currentPlano;
+    const planoId = planoAtivo?.id;
+    
+    // Atualizar no backend COM plano_id
     await axios.post(`/api/user-topicos/progresso`, {
       user_id: currentUser.id,
       topico_id: topicoId,
       vezes_estudado: marcarRevisado ? 1 : 0,
-      nivel_dominio: marcarRevisado ? 1 : 0
+      nivel_dominio: marcarRevisado ? 1 : 0,
+      plano_id: planoId // ✅ NOVO: Vincular ao plano
     });
     
     showToast(marcarRevisado ? '✅ Tópico marcado como revisado!' : '↩️ Revisão desmarcada', 'success');
@@ -13476,6 +13522,62 @@ window.abrirPainelAdmin = async function() {
             </div>
           </div>
           
+          <!-- ✅ NOVO: Seção de Visitas -->
+          <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-eye text-indigo-500"></i>
+                Visitas ao Site
+              </h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Visitantes únicos hoje</span>
+                  <span class="font-bold text-indigo-600 text-lg">${stats.visits?.unique_today || 0}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Visitantes únicos (7 dias)</span>
+                  <span class="font-bold ${themes[currentTheme].text}">${stats.visits?.unique_week || 0}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Visitantes únicos (30 dias)</span>
+                  <span class="font-bold ${themes[currentTheme].text}">${stats.visits?.unique_month || 0}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Total de visitas</span>
+                  <span class="font-bold ${themes[currentTheme].text}">${stats.visits?.total || 0}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Page views hoje</span>
+                  <span class="font-bold text-green-600">${stats.visits?.page_views_today || 0}</span>
+                </div>
+              </div>
+              <button onclick="verVisitasDetalhadas()" class="mt-4 w-full py-2 px-4 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition text-sm font-medium">
+                <i class="fas fa-chart-bar mr-1"></i>Ver Relatório Completo
+              </button>
+            </div>
+            
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
+                <i class="fas fa-info-circle text-gray-500"></i>
+                Informações do Sistema
+              </h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Versão</span>
+                  <span class="font-bold ${themes[currentTheme].text}">1.5.0</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Ambiente</span>
+                  <span class="font-bold text-green-600">Produção</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}">Última atualização</span>
+                  <span class="font-bold ${themes[currentTheme].text}">${new Date().toLocaleDateString('pt-BR')}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <!-- Ações Rápidas -->
           <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
             <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
@@ -14222,6 +14324,125 @@ window.verHistoricoEmails = async function() {
     document.body.appendChild(modal);
   } catch (error) {
     showToast('❌ Erro ao carregar histórico de emails', 'error');
+  }
+};
+
+// ✅ NOVO: Ver visitas detalhadas (admin)
+window.verVisitasDetalhadas = async function() {
+  try {
+    const response = await axios.get('/api/admin/visits?days=7', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    const { daily_stats, top_pages, top_ips, recent_visits, pagination } = response.data;
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-admin-visits';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    modal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
+          <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
+            <i class="fas fa-eye text-indigo-500"></i>
+            Relatório de Visitas (${pagination?.total || 0} total)
+          </h3>
+          <button onclick="this.closest('#modal-admin-visits').remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500 text-xl">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="p-4 overflow-y-auto flex-1">
+          <!-- Estatísticas diárias -->
+          <div class="mb-6">
+            <h4 class="font-semibold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+              <i class="fas fa-chart-line text-blue-500"></i>
+              Visitas por Dia (últimos 7 dias)
+            </h4>
+            <div class="grid grid-cols-7 gap-2">
+              ${(daily_stats || []).slice(0, 7).map(day => `
+                <div class="text-center ${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-lg p-2">
+                  <p class="text-xs ${themes[currentTheme].textSecondary}">${new Date(day.date).toLocaleDateString('pt-BR', {weekday: 'short'})}</p>
+                  <p class="font-bold text-indigo-600 text-lg">${day.unique_visitors}</p>
+                  <p class="text-xs ${themes[currentTheme].textMuted}">${day.total_visits} views</p>
+                </div>
+              `).join('') || '<p class="col-span-7 text-center text-gray-500">Nenhum dado disponível</p>'}
+            </div>
+          </div>
+          
+          <!-- Top páginas e IPs -->
+          <div class="grid md:grid-cols-2 gap-4 mb-6">
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-lg p-4">
+              <h4 class="font-semibold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+                <i class="fas fa-file text-green-500"></i>
+                Top Páginas
+              </h4>
+              <div class="space-y-2 max-h-40 overflow-y-auto">
+                ${(top_pages || []).map((page, i) => `
+                  <div class="flex justify-between items-center text-sm">
+                    <span class="${themes[currentTheme].textSecondary} truncate max-w-[200px]">${i+1}. ${page.page_path}</span>
+                    <span class="font-medium ${themes[currentTheme].text}">${page.unique_visitors} visitantes</span>
+                  </div>
+                `).join('') || '<p class="text-gray-500 text-sm">Nenhum dado</p>'}
+              </div>
+            </div>
+            
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-lg p-4">
+              <h4 class="font-semibold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+                <i class="fas fa-globe text-purple-500"></i>
+                IPs Ativos (24h)
+              </h4>
+              <div class="space-y-2 max-h-40 overflow-y-auto">
+                ${(top_ips || []).slice(0, 10).map((ip, i) => `
+                  <div class="flex justify-between items-center text-sm">
+                    <span class="${themes[currentTheme].textSecondary}">
+                      ${i+1}. ${ip.ip_address.substring(0, 15)}... 
+                      ${ip.country ? `<span class="text-xs">(${ip.country})</span>` : ''}
+                    </span>
+                    <span class="font-medium ${themes[currentTheme].text}">${ip.visits}x</span>
+                  </div>
+                `).join('') || '<p class="text-gray-500 text-sm">Nenhum dado</p>'}
+              </div>
+            </div>
+          </div>
+          
+          <!-- Últimas visitas -->
+          <div>
+            <h4 class="font-semibold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+              <i class="fas fa-history text-amber-500"></i>
+              Últimas Visitas
+            </h4>
+            <div class="space-y-2 max-h-60 overflow-y-auto">
+              ${(recent_visits || []).slice(0, 20).map(visit => `
+                <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-lg p-2 text-sm flex justify-between items-center">
+                  <div class="flex-1 min-w-0">
+                    <p class="${themes[currentTheme].text} truncate">
+                      <i class="fas fa-file text-gray-400 mr-1"></i>${visit.page_path}
+                    </p>
+                    <p class="${themes[currentTheme].textMuted} text-xs">
+                      IP: ${visit.ip_address?.substring(0, 12)}... ${visit.country ? `(${visit.country})` : ''}
+                      ${visit.user_name ? `• <span class="text-blue-500">${visit.user_name}</span>` : ''}
+                    </p>
+                  </div>
+                  <span class="${themes[currentTheme].textSecondary} text-xs whitespace-nowrap ml-2">
+                    ${new Date(visit.created_at).toLocaleString('pt-BR')}
+                  </span>
+                </div>
+              `).join('') || '<p class="text-gray-500 text-center">Nenhuma visita registrada ainda</p>'}
+            </div>
+          </div>
+        </div>
+        
+        <div class="p-4 border-t ${themes[currentTheme].border} flex-shrink-0">
+          <button onclick="this.closest('#modal-admin-visits').remove()" class="w-full py-2 bg-gray-200 dark:bg-gray-700 ${themes[currentTheme].text} rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+            Fechar
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    
+  } catch (error) {
+    console.error('Erro ao carregar visitas:', error);
+    showToast('Erro ao carregar relatório de visitas', 'error');
   }
 };
 

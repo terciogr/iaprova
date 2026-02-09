@@ -2401,6 +2401,44 @@ app.get('/api/admin/dashboard', async (c) => {
       console.log('⚠️ Tabela conteudo_estudo não existe')
     }
     
+    // ✅ NOVO: Estatísticas de visitas
+    let visitStats = { 
+      total: 0, 
+      unique_today: 0, 
+      unique_week: 0, 
+      unique_month: 0,
+      page_views_today: 0
+    }
+    try {
+      const totalVisits = await DB.prepare('SELECT COUNT(*) as count FROM site_visits').first() as any
+      const uniqueToday = await DB.prepare(`
+        SELECT COUNT(DISTINCT ip_address) as count FROM site_visits 
+        WHERE DATE(created_at) = DATE('now')
+      `).first() as any
+      const uniqueWeek = await DB.prepare(`
+        SELECT COUNT(DISTINCT ip_address) as count FROM site_visits 
+        WHERE created_at >= DATE('now', '-7 days')
+      `).first() as any
+      const uniqueMonth = await DB.prepare(`
+        SELECT COUNT(DISTINCT ip_address) as count FROM site_visits 
+        WHERE created_at >= DATE('now', '-30 days')
+      `).first() as any
+      const pageViewsToday = await DB.prepare(`
+        SELECT COUNT(*) as count FROM site_visits 
+        WHERE DATE(created_at) = DATE('now')
+      `).first() as any
+      
+      visitStats = {
+        total: totalVisits?.count || 0,
+        unique_today: uniqueToday?.count || 0,
+        unique_week: uniqueWeek?.count || 0,
+        unique_month: uniqueMonth?.count || 0,
+        page_views_today: pageViewsToday?.count || 0
+      }
+    } catch (e) {
+      console.log('⚠️ Tabela site_visits não existe ainda')
+    }
+    
     return c.json({
       users: {
         total: totalUsers?.count || 0,
@@ -2422,11 +2460,145 @@ app.get('/api/admin/dashboard', async (c) => {
       emails: emailStats,
       subscriptions: subscriptionStats,
       feedback: feedbackStats,
-      conteudo: conteudoStats
+      conteudo: conteudoStats,
+      visits: visitStats // ✅ NOVO
     })
   } catch (error) {
     console.error('Erro ao buscar dashboard admin:', error)
     return c.json({ error: 'Erro ao buscar estatísticas' }, 500)
+  }
+})
+
+// ✅ NOVO: Registrar visita ao site
+app.post('/api/visits/track', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    const body = await c.req.json()
+    const { page_path, referrer, user_id } = body
+    
+    // Obter IP do header (Cloudflare)
+    const ip_address = c.req.header('CF-Connecting-IP') || 
+                       c.req.header('X-Forwarded-For')?.split(',')[0] || 
+                       'unknown'
+    const user_agent = c.req.header('User-Agent') || ''
+    const country = c.req.header('CF-IPCountry') || ''
+    
+    await DB.prepare(`
+      INSERT INTO site_visits (ip_address, user_agent, page_path, referrer, country, user_id)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(ip_address, user_agent, page_path || '/', referrer || '', country, user_id || null).run()
+    
+    return c.json({ success: true })
+  } catch (error: any) {
+    // Se a tabela não existe, ignorar silenciosamente
+    if (error.message?.includes('no such table')) {
+      return c.json({ success: true, warning: 'Table not created yet' })
+    }
+    console.error('Erro ao registrar visita:', error)
+    return c.json({ error: 'Erro ao registrar visita' }, 500)
+  }
+})
+
+// ✅ NOVO: Consultar visitas detalhadas (Admin)
+app.get('/api/admin/visits', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const page = parseInt(c.req.query('page') || '1')
+    const limit = parseInt(c.req.query('limit') || '50')
+    const days = parseInt(c.req.query('days') || '7')
+    const offset = (page - 1) * limit
+    
+    // Visitas únicas por dia
+    const { results: dailyStats } = await DB.prepare(`
+      SELECT 
+        DATE(created_at) as date,
+        COUNT(*) as total_visits,
+        COUNT(DISTINCT ip_address) as unique_visitors
+      FROM site_visits
+      WHERE created_at >= DATE('now', '-' || ? || ' days')
+      GROUP BY DATE(created_at)
+      ORDER BY date DESC
+    `).bind(days).all()
+    
+    // Top páginas visitadas
+    const { results: topPages } = await DB.prepare(`
+      SELECT 
+        page_path,
+        COUNT(*) as visits,
+        COUNT(DISTINCT ip_address) as unique_visitors
+      FROM site_visits
+      WHERE created_at >= DATE('now', '-' || ? || ' days')
+      GROUP BY page_path
+      ORDER BY visits DESC
+      LIMIT 10
+    `).bind(days).all()
+    
+    // Top IPs (últimas 24h)
+    const { results: topIps } = await DB.prepare(`
+      SELECT 
+        ip_address,
+        country,
+        COUNT(*) as visits,
+        MIN(created_at) as first_visit,
+        MAX(created_at) as last_visit
+      FROM site_visits
+      WHERE created_at >= DATETIME('now', '-1 day')
+      GROUP BY ip_address
+      ORDER BY visits DESC
+      LIMIT 20
+    `).all()
+    
+    // Últimas visitas
+    const { results: recentVisits } = await DB.prepare(`
+      SELECT 
+        sv.id,
+        sv.ip_address,
+        sv.page_path,
+        sv.referrer,
+        sv.country,
+        sv.created_at,
+        u.name as user_name,
+        u.email as user_email
+      FROM site_visits sv
+      LEFT JOIN users u ON sv.user_id = u.id
+      ORDER BY sv.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(limit, offset).all()
+    
+    // Total de registros
+    const totalResult = await DB.prepare('SELECT COUNT(*) as count FROM site_visits').first() as any
+    
+    return c.json({
+      daily_stats: dailyStats || [],
+      top_pages: topPages || [],
+      top_ips: topIps || [],
+      recent_visits: recentVisits || [],
+      pagination: {
+        page,
+        limit,
+        total: totalResult?.count || 0,
+        pages: Math.ceil((totalResult?.count || 0) / limit)
+      }
+    })
+  } catch (error: any) {
+    if (error.message?.includes('no such table')) {
+      return c.json({
+        daily_stats: [],
+        top_pages: [],
+        top_ips: [],
+        recent_visits: [],
+        pagination: { page: 1, limit: 50, total: 0, pages: 0 },
+        warning: 'Table site_visits not created yet'
+      })
+    }
+    console.error('Erro ao buscar visitas:', error)
+    return c.json({ error: 'Erro ao buscar visitas' }, 500)
   }
 })
 
