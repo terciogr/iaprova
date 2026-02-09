@@ -6802,35 +6802,106 @@ app.post('/api/topicos/popular-usuario/:user_id', async (c) => {
 })
 
 // Buscar progresso do usuário nos tópicos de uma disciplina
+// ✅ CORREÇÃO v5: Aceita ?plano_id=X para filtrar por plano específico
 app.get('/api/user-topicos/:user_id/:disciplina_id', async (c) => {
   const { DB } = c.env
   const user_id = c.req.param('user_id')
   const disciplina_id = c.req.param('disciplina_id')
+  const plano_id = c.req.query('plano_id') // ✅ NOVO: Filtrar por plano
 
-  // ✅ CORREÇÃO v3: Filtrar por user_id para isolamento de dados
-  let { results } = await DB.prepare(`
-    SELECT 
-      te.id,
-      te.disciplina_id,
-      te.nome,
-      te.categoria,
-      te.ordem,
-      COALESCE(te.peso, (
-        SELECT ed.peso FROM edital_disciplinas ed 
-        WHERE ed.disciplina_id = te.disciplina_id 
-        LIMIT 1
-      ), 1) as peso,
-      COALESCE(utp.vezes_estudado, 0) as vezes_estudado,
-      COALESCE(utp.nivel_dominio, 0) as nivel_dominio,
-      utp.ultima_vez
-    FROM topicos_edital te
-    LEFT JOIN user_topicos_progresso utp ON te.id = utp.topico_id AND utp.user_id = ?
-    WHERE te.disciplina_id = ? AND te.user_id = ?
-    ORDER BY te.ordem, te.nome
-  `).bind(user_id, disciplina_id, user_id).all()
+  // ✅ CORREÇÃO v5: Se plano_id fornecido, filtrar por plano (isolamento entre planos)
+  let results: any[] = []
+  
+  if (plano_id) {
+    // Buscar tópicos APENAS do plano específico
+    console.log(`📋 Buscando tópicos da disciplina ${disciplina_id} no plano ${plano_id}...`)
+    
+    const { results: topicosPlano } = await DB.prepare(`
+      SELECT 
+        te.id,
+        te.disciplina_id,
+        te.nome,
+        te.categoria,
+        te.ordem,
+        COALESCE(te.peso, 1) as peso,
+        COALESCE(utp.vezes_estudado, 0) as vezes_estudado,
+        COALESCE(utp.nivel_dominio, 0) as nivel_dominio,
+        utp.ultima_vez
+      FROM topicos_edital te
+      LEFT JOIN user_topicos_progresso utp ON te.id = utp.topico_id AND utp.plano_id = ?
+      WHERE te.disciplina_id = ? AND te.plano_id = ?
+      ORDER BY te.ordem, te.nome
+    `).bind(plano_id, disciplina_id, plano_id).all()
+    
+    results = topicosPlano || []
+    console.log(`✅ Encontrados ${results.length} tópicos no plano ${plano_id}`)
+  } else {
+    // Fallback: filtrar por user_id (comportamento antigo para compatibilidade)
+    const { results: topicosUser } = await DB.prepare(`
+      SELECT 
+        te.id,
+        te.disciplina_id,
+        te.nome,
+        te.categoria,
+        te.ordem,
+        COALESCE(te.peso, (
+          SELECT ed.peso FROM edital_disciplinas ed 
+          WHERE ed.disciplina_id = te.disciplina_id 
+          LIMIT 1
+        ), 1) as peso,
+        COALESCE(utp.vezes_estudado, 0) as vezes_estudado,
+        COALESCE(utp.nivel_dominio, 0) as nivel_dominio,
+        utp.ultima_vez
+      FROM topicos_edital te
+      LEFT JOIN user_topicos_progresso utp ON te.id = utp.topico_id AND utp.user_id = ?
+      WHERE te.disciplina_id = ? AND te.user_id = ?
+      ORDER BY te.ordem, te.nome
+    `).bind(user_id, disciplina_id, user_id).all()
+    
+    results = topicosUser || []
+  }
 
-  // ✅ Se não encontrou tópicos em topicos_edital, buscar em edital_topicos (do edital processado DO USUÁRIO)
-  if (!results || results.length === 0) {
+  // ✅ Se não encontrou tópicos e temos plano_id, tentar copiar do edital para o plano
+  if ((!results || results.length === 0) && plano_id) {
+    console.log(`📋 Nenhum tópico no plano ${plano_id}, tentando copiar do edital...`)
+    
+    // Buscar edital do usuário
+    const editalUsuario = await DB.prepare(`
+      SELECT id FROM editais WHERE user_id = ? ORDER BY created_at DESC LIMIT 1
+    `).bind(user_id).first() as any
+    
+    // Copiar tópicos para este plano
+    await copiarTopicosParaPlano(
+      DB,
+      parseInt(plano_id),
+      parseInt(user_id),
+      [parseInt(disciplina_id)],
+      editalUsuario?.id || undefined
+    )
+    
+    // Buscar novamente
+    const { results: novosTopicos } = await DB.prepare(`
+      SELECT 
+        te.id,
+        te.disciplina_id,
+        te.nome,
+        te.categoria,
+        te.ordem,
+        COALESCE(te.peso, 1) as peso,
+        COALESCE(utp.vezes_estudado, 0) as vezes_estudado,
+        COALESCE(utp.nivel_dominio, 0) as nivel_dominio,
+        utp.ultima_vez
+      FROM topicos_edital te
+      LEFT JOIN user_topicos_progresso utp ON te.id = utp.topico_id AND utp.plano_id = ?
+      WHERE te.disciplina_id = ? AND te.plano_id = ?
+      ORDER BY te.ordem, te.nome
+    `).bind(plano_id, disciplina_id, plano_id).all()
+    
+    results = novosTopicos || []
+    console.log(`✅ Copiados e encontrados ${results.length} tópicos no plano ${plano_id}`)
+  }
+  // Fallback legado (sem plano_id): buscar em edital_topicos
+  else if (!results || results.length === 0) {
     console.log(`📋 Buscando tópicos em edital_topicos para disciplina ${disciplina_id} do user ${user_id}...`)
     
     // ✅ CORREÇÃO v4: Buscar apenas tópicos do edital DO USUÁRIO
@@ -6897,34 +6968,35 @@ app.get('/api/user-topicos/:user_id/:disciplina_id', async (c) => {
 })
 
 // ✅ POST para salvar/atualizar progresso de um tópico
+// ✅ CORREÇÃO v5: Aceita plano_id para isolamento entre planos
 app.post('/api/user-topicos/progresso', async (c) => {
   const { DB } = c.env
-  const { user_id, topico_id, vezes_estudado, nivel_dominio } = await c.req.json()
+  const { user_id, topico_id, vezes_estudado, nivel_dominio, plano_id } = await c.req.json()
   
-  console.log('📊 Atualizando progresso do tópico:', { user_id, topico_id, vezes_estudado, nivel_dominio })
+  console.log('📊 Atualizando progresso do tópico:', { user_id, topico_id, vezes_estudado, nivel_dominio, plano_id })
   
   try {
-    // Verificar se já existe registro
+    // ✅ CORREÇÃO v5: Verificar se já existe registro PARA ESTE PLANO
     const existing = await DB.prepare(`
-      SELECT id FROM user_topicos_progresso WHERE user_id = ? AND topico_id = ?
-    `).bind(user_id, topico_id).first()
+      SELECT id FROM user_topicos_progresso WHERE user_id = ? AND topico_id = ? AND plano_id = ?
+    `).bind(user_id, topico_id, plano_id || null).first()
     
     if (existing) {
       // Atualizar
       await DB.prepare(`
         UPDATE user_topicos_progresso 
         SET vezes_estudado = ?, nivel_dominio = ?, ultima_vez = CURRENT_TIMESTAMP
-        WHERE user_id = ? AND topico_id = ?
-      `).bind(vezes_estudado, nivel_dominio, user_id, topico_id).run()
+        WHERE user_id = ? AND topico_id = ? AND plano_id = ?
+      `).bind(vezes_estudado, nivel_dominio, user_id, topico_id, plano_id || null).run()
     } else {
-      // Inserir
+      // Inserir com plano_id
       await DB.prepare(`
-        INSERT INTO user_topicos_progresso (user_id, topico_id, vezes_estudado, nivel_dominio, ultima_vez)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `).bind(user_id, topico_id, vezes_estudado, nivel_dominio).run()
+        INSERT INTO user_topicos_progresso (user_id, topico_id, vezes_estudado, nivel_dominio, ultima_vez, plano_id)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+      `).bind(user_id, topico_id, vezes_estudado, nivel_dominio, plano_id || null).run()
     }
     
-    console.log('✅ Progresso atualizado com sucesso')
+    console.log('✅ Progresso atualizado com sucesso para plano:', plano_id)
     return c.json({ success: true })
   } catch (error: any) {
     console.error('❌ Erro ao atualizar progresso:', error)
@@ -8901,9 +8973,17 @@ app.get('/api/planos/list/:user_id', async (c) => {
       let topicosEstudados = 0
       
       // Buscar disciplinas do plano via ciclos_estudo
-      const { results: disciplinasPlano } = await DB.prepare(`
+      let { results: disciplinasPlano } = await DB.prepare(`
         SELECT DISTINCT disciplina_id FROM ciclos_estudo WHERE plano_id = ?
       `).bind(p.id).all() as any
+      
+      // ✅ CORREÇÃO v5: Se não há ciclos, buscar disciplinas de topicos_edital
+      if (!disciplinasPlano || disciplinasPlano.length === 0) {
+        const { results: disciplinasTopicos } = await DB.prepare(`
+          SELECT DISTINCT disciplina_id FROM topicos_edital WHERE plano_id = ?
+        `).bind(p.id).all() as any
+        disciplinasPlano = disciplinasTopicos || []
+      }
       
       const disciplinaIds = disciplinasPlano.map((d: any) => d.disciplina_id)
       

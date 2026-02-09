@@ -7993,9 +7993,17 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
   `;
   
   // Buscar tópicos de TODAS as disciplinas em paralelo
+  // ✅ CORREÇÃO v5: Incluir plano_id para isolamento entre planos
+  const planoAtivo = window.planoAtivo || window.currentPlano;
+  const planoId = planoAtivo?.id;
+  
   const disciplinasComTopicos = await Promise.all(disciplinas.map(async (disc) => {
     try {
-      const topicosRes = await axios.get(`/api/user-topicos/${currentUser.id}/${disc.disciplina_id}`);
+      let topicosUrl = `/api/user-topicos/${currentUser.id}/${disc.disciplina_id}`;
+      if (planoId) {
+        topicosUrl += `?plano_id=${planoId}`;
+      }
+      const topicosRes = await axios.get(topicosUrl);
       const topicos = topicosRes.data || [];
       
       // Calcular estatísticas
@@ -10108,10 +10116,18 @@ async function verDetalhesDisciplina(disciplinaId, disciplinaNome) {
 async function renderDetalheDisciplina(disciplinaId, disciplinaNome, conteudos, topicoPreSelecionado = null) {
   const app = document.getElementById('app');
   
+  // ✅ CORREÇÃO v5: Incluir plano_id para isolamento entre planos
+  const planoAtivo = window.planoAtivo || window.currentPlano;
+  const planoId = planoAtivo?.id;
+  
   // Buscar tópicos do edital e progresso
   let topicos = [];
   try {
-    const topicosRes = await axios.get(`/api/user-topicos/${currentUser.id}/${disciplinaId}`);
+    let topicosUrl = `/api/user-topicos/${currentUser.id}/${disciplinaId}`;
+    if (planoId) {
+      topicosUrl += `?plano_id=${planoId}`;
+    }
+    const topicosRes = await axios.get(topicosUrl);
     topicos = topicosRes.data;
   } catch (error) {
     console.error('Erro ao buscar tópicos:', error);
@@ -10418,7 +10434,11 @@ window.adicionarTopicoManual = async () => {
     showToast('Tópico adicionado com sucesso!', 'success');
     
     // Recarregar tópicos
-    const topicosRes = await axios.get(`/api/user-topicos/${currentUser.id}/${window.currentDisciplinaId}`);
+    // ✅ CORREÇÃO v5: Incluir plano_id
+    const planoAtivo = window.planoAtivo || window.currentPlano;
+    let topicosUrl = `/api/user-topicos/${currentUser.id}/${window.currentDisciplinaId}`;
+    if (planoAtivo?.id) topicosUrl += `?plano_id=${planoAtivo.id}`;
+    const topicosRes = await axios.get(topicosUrl);
     window.currentDisciplinaTopicos = topicosRes.data;
     document.getElementById('conteudo-tab').innerHTML = renderTabTopicos(topicosRes.data);
   } catch (error) {
@@ -10451,7 +10471,11 @@ window.adicionarTopicoCategoria = async (categoria) => {
     showToast('Tópico adicionado com sucesso!', 'success');
     
     // Recarregar tópicos
-    const topicosRes = await axios.get(`/api/user-topicos/${currentUser.id}/${window.currentDisciplinaId}`);
+    // ✅ CORREÇÃO v5: Incluir plano_id
+    const planoAtivo = window.planoAtivo || window.currentPlano;
+    let topicosUrl = `/api/user-topicos/${currentUser.id}/${window.currentDisciplinaId}`;
+    if (planoAtivo?.id) topicosUrl += `?plano_id=${planoAtivo.id}`;
+    const topicosRes = await axios.get(topicosUrl);
     window.currentDisciplinaTopicos = topicosRes.data;
     document.getElementById('conteudo-tab').innerHTML = renderTabTopicos(topicosRes.data);
   } catch (error) {
@@ -10476,8 +10500,11 @@ window.editarTopicoGestao = async (topicoId, nomeAtual, pesoAtual) => {
     
     showToast('Tópico atualizado com sucesso!', 'success');
     
-    // Recarregar tópicos
-    const topicosRes = await axios.get(`/api/user-topicos/${currentUser.id}/${window.currentDisciplinaId}`);
+    // ✅ CORREÇÃO v5: Incluir plano_id
+    const planoAtivo = window.planoAtivo || window.currentPlano;
+    let topicosUrl = `/api/user-topicos/${currentUser.id}/${window.currentDisciplinaId}`;
+    if (planoAtivo?.id) topicosUrl += `?plano_id=${planoAtivo.id}`;
+    const topicosRes = await axios.get(topicosUrl);
     window.currentDisciplinaTopicos = topicosRes.data;
     document.getElementById('conteudo-tab').innerHTML = renderTabTopicos(topicosRes.data);
   } catch (error) {
@@ -10503,8 +10530,15 @@ window.excluirTopicoGestao = async (topicoId) => {
     
     showToast('Tópico excluído com sucesso!', 'info');
     
-    // Recarregar tópicos
-    const topicosRes = await axios.get(`/api/user-topicos/${currentUser.id}/${window.currentDisciplinaId}`);
+    // ✅ CORREÇÃO v5: Incluir plano_id na busca de tópicos
+    const planoAtivo = window.planoAtivo || window.currentPlano;
+    const planoId = planoAtivo?.id;
+    let topicosUrl = `/api/user-topicos/${currentUser.id}/${window.currentDisciplinaId}`;
+    if (planoId) {
+      topicosUrl += `?plano_id=${planoId}`;
+    }
+    
+    const topicosRes = await axios.get(topicosUrl);
     window.currentDisciplinaTopicos = topicosRes.data;
     document.getElementById('conteudo-tab').innerHTML = renderTabTopicos(topicosRes.data);
   } catch (error) {
@@ -19235,8 +19269,13 @@ window.irParaTopicoNaDisciplina = async function(disciplinaId, disciplinaNome, t
 // Função para ajustar o tópico estudado (trocar por outro da disciplina)
 window.ajustarTopicoEstudado = async function(metaId, disciplinaId, disciplinaNome) {
   try {
-    // Buscar todos os tópicos da disciplina
-    const response = await axios.get(`/api/user-topicos/${currentUser.id}/${disciplinaId}`);
+    // ✅ CORREÇÃO v5: Incluir plano_id para isolamento entre planos
+    const planoAtivo = window.planoAtivo || window.currentPlano;
+    let topicosUrl = `/api/user-topicos/${currentUser.id}/${disciplinaId}`;
+    if (planoAtivo?.id) topicosUrl += `?plano_id=${planoAtivo.id}`;
+    
+    // Buscar todos os tópicos da disciplina DO PLANO ATUAL
+    const response = await axios.get(topicosUrl);
     const todosTopicos = response.data || [];
     
     if (todosTopicos.length === 0) {
@@ -19369,11 +19408,17 @@ window.toggleMetaSemanalComTopico = async function(metaId, tempoMinutos, topicos
       });
       
       // Marcar progresso dos tópicos associados como estudados
+      // ✅ CORREÇÃO v5: Incluir plano_id para isolamento entre planos
+      const planoAtivo = window.planoAtivo || window.currentPlano;
+      const planoId = planoAtivo?.id;
+      
       for (const topico of topicos) {
         if (topico.id) {
           // Buscar progresso atual para incrementar vezes_estudado
           try {
-            const progressoAtual = await axios.get(`/api/user-topicos/${currentUser.id}/${meta.disciplina_id}`);
+            let topicosUrl = `/api/user-topicos/${currentUser.id}/${meta.disciplina_id}`;
+            if (planoId) topicosUrl += `?plano_id=${planoId}`;
+            const progressoAtual = await axios.get(topicosUrl);
             const topicoData = progressoAtual.data.find(t => t.id === topico.id);
             const vezesAtual = topicoData?.vezes_estudado || 0;
             
@@ -19381,7 +19426,8 @@ window.toggleMetaSemanalComTopico = async function(metaId, tempoMinutos, topicos
               user_id: currentUser.id,
               topico_id: topico.id,
               vezes_estudado: vezesAtual + 1,
-              nivel_dominio: Math.min(10, (topicoData?.nivel_dominio || 0) + 1)
+              nivel_dominio: Math.min(10, (topicoData?.nivel_dominio || 0) + 1),
+              plano_id: planoId // ✅ NOVO: Incluir plano_id
             });
           } catch (e) {
             // Se não conseguir buscar, apenas marca como estudado 1x
@@ -19389,7 +19435,8 @@ window.toggleMetaSemanalComTopico = async function(metaId, tempoMinutos, topicos
               user_id: currentUser.id,
               topico_id: topico.id,
               vezes_estudado: 1,
-              nivel_dominio: 1
+              nivel_dominio: 1,
+              plano_id: planoId // ✅ NOVO: Incluir plano_id
             });
           }
         }
@@ -19523,9 +19570,13 @@ async function abrirModalEditar(metaId) {
   }
 
   // Carregar tópicos da disciplina atual
+  // ✅ CORREÇÃO v5: Incluir plano_id para isolamento entre planos
+  const planoAtivo = window.planoAtivo || window.currentPlano;
   let topicosAtuais = [];
   try {
-    const res = await axios.get(`/api/user-topicos/${currentUser.id}/${meta.disciplina_id}`);
+    let topicosUrl = `/api/user-topicos/${currentUser.id}/${meta.disciplina_id}`;
+    if (planoAtivo?.id) topicosUrl += `?plano_id=${planoAtivo.id}`;
+    const res = await axios.get(topicosUrl);
     topicosAtuais = res.data || [];
   } catch (error) {
     console.error('Erro ao carregar tópicos:', error);
@@ -19651,6 +19702,7 @@ async function abrirModalEditar(metaId) {
 }
 
 // Função para carregar tópicos quando mudar disciplina na edição
+// ✅ CORREÇÃO v5: Incluir plano_id para isolamento entre planos
 window.carregarTopicosParaEdicao = async function(disciplinaId) {
   const selectTopico = document.getElementById('editar-topico');
   if (!selectTopico) return;
@@ -19658,7 +19710,10 @@ window.carregarTopicosParaEdicao = async function(disciplinaId) {
   selectTopico.innerHTML = '<option value="">Carregando...</option>';
   
   try {
-    const res = await axios.get(`/api/user-topicos/${currentUser.id}/${disciplinaId}`);
+    const planoAtivo = window.planoAtivo || window.currentPlano;
+    let topicosUrl = `/api/user-topicos/${currentUser.id}/${disciplinaId}`;
+    if (planoAtivo?.id) topicosUrl += `?plano_id=${planoAtivo.id}`;
+    const res = await axios.get(topicosUrl);
     const topicos = res.data || [];
     
     selectTopico.innerHTML = `
@@ -21078,11 +21133,15 @@ window.toggleDisciplinaSimulado = async function(disciplinaId, disciplinaNome) {
     checkDiv.classList.add('bg-[#6BB6FF]/10', 'border-[#122D6A]');
     
     // Carregar e mostrar tópicos
+    // ✅ CORREÇÃO v5: Incluir plano_id para isolamento entre planos
     topicosDiv.classList.remove('hidden');
     chevron.classList.add('rotate-180');
     
     try {
-      const topicosRes = await axios.get(`/api/user-topicos/${currentUser.id}/${disciplinaId}`);
+      const planoAtivo = window.planoAtivo || window.currentPlano;
+      let topicosUrl = `/api/user-topicos/${currentUser.id}/${disciplinaId}`;
+      if (planoAtivo?.id) topicosUrl += `?plano_id=${planoAtivo.id}`;
+      const topicosRes = await axios.get(topicosUrl);
       const topicos = topicosRes.data || [];
       
       if (topicos.length === 0) {
