@@ -14058,18 +14058,18 @@ window.verListaUsuarios = async function() {
                     ${u.email_verified ? '<i class="fas fa-check-circle text-green-500"></i>' : '<i class="fas fa-times-circle text-red-400"></i>'}
                   </td>
                   <td class="p-2 text-center" id="premium-status-${u.id}">
-                    ${u.is_premium ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs"><i class="fas fa-crown mr-1"></i>Premium</span>' : '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs">Free</span>'}
+                    ${(u.is_premium_real || u.is_premium) ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs"><i class="fas fa-crown mr-1"></i>Premium</span>' : '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs">Free</span>'}
                   </td>
                   <td class="p-2 text-center">
                     <div class="flex items-center justify-center gap-1">
-                      <button onclick="editarUsuarioAdmin(${u.id}, '${u.name || ''}', '${u.email}', ${u.is_premium ? 1 : 0})" 
+                      <button onclick="editarUsuarioAdmin(${u.id}, '${(u.name || '').replace(/'/g, "\\'")}', '${u.email}', ${(u.is_premium_real || u.is_premium) ? 1 : 0})" 
                         class="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Editar">
                         <i class="fas fa-edit"></i>
                       </button>
-                      <button onclick="togglePremiumAdmin(${u.id}, ${u.is_premium ? 0 : 1})" 
-                        class="p-1.5 ${u.is_premium ? 'text-gray-500 hover:bg-gray-50' : 'text-yellow-500 hover:bg-yellow-50'} rounded" 
-                        title="${u.is_premium ? 'Remover Premium' : 'Dar Premium'}">
-                        <i class="fas ${u.is_premium ? 'fa-user-minus' : 'fa-crown'}"></i>
+                      <button onclick="togglePremiumAdmin(${u.id}, ${(u.is_premium_real || u.is_premium) ? 0 : 1})" 
+                        class="p-1.5 ${(u.is_premium_real || u.is_premium) ? 'text-gray-500 hover:bg-gray-50' : 'text-yellow-500 hover:bg-yellow-50'} rounded" 
+                        title="${(u.is_premium_real || u.is_premium) ? 'Remover Premium' : 'Dar Premium'}">
+                        <i class="fas ${(u.is_premium_real || u.is_premium) ? 'fa-user-minus' : 'fa-crown'}"></i>
                       </button>
                       ${u.email !== 'terciogomesrabelo@gmail.com' ? `
                         <button onclick="deletarUsuarioAdmin(${u.id}, '${u.email}')" 
