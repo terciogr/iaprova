@@ -1840,6 +1840,55 @@ app.get('/api/subscription/details/:userId', async (c) => {
       }
     }
     
+    // ✅ CORREÇÃO v11: Buscar histórico de pagamentos real da tabela payment_history
+    try {
+      // Criar tabela se não existir
+      await DB.prepare(`
+        CREATE TABLE IF NOT EXISTS payment_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          payment_id TEXT NOT NULL UNIQUE,
+          plan TEXT NOT NULL,
+          amount REAL,
+          status TEXT NOT NULL,
+          external_reference TEXT,
+          payer_email TEXT,
+          transaction_details TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+      
+      const payments = await DB.prepare(`
+        SELECT payment_id, plan, amount, status, created_at, payer_email
+        FROM payment_history 
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+      `).bind(userId).all()
+      
+      if (payments.results && payments.results.length > 0) {
+        planInfo.paymentHistory = payments.results.map((p: any) => ({
+          paymentId: p.payment_id,
+          date: p.created_at,
+          plan: p.plan === 'anual' ? 'Premium Anual' : 'Premium Mensal',
+          amount: p.amount || (p.plan === 'anual' ? 249.90 : 29.90),
+          status: p.status === 'approved' ? 'paid' : p.status,
+          payerEmail: p.payer_email
+        }))
+      }
+      // Se não há histórico na tabela mas tem payment_date no user, criar entrada legada
+      else if (user.payment_date && planInfo.paymentHistory.length === 0) {
+        planInfo.paymentHistory = [{
+          paymentId: user.payment_id || 'legacy',
+          date: user.payment_date,
+          plan: user.subscription_plan === 'anual' ? 'Premium Anual' : 'Premium Mensal',
+          amount: user.subscription_plan === 'anual' ? 249.90 : 29.90,
+          status: 'paid'
+        }]
+      }
+    } catch (e: any) {
+      console.log('⚠️ Erro ao buscar histórico de pagamentos:', e.message)
+    }
+    
     return c.json({
       userId: user.id,
       email: user.email,
@@ -2175,14 +2224,46 @@ app.post('/api/webhook/mercadopago', async (c) => {
       }
     }
     
-    // Registrar histórico de pagamento
+    // ✅ CORREÇÃO v11: Registrar histórico de pagamento com mais detalhes para auditoria
     try {
+      // Criar tabela se não existir (auto-migrate)
       await DB.prepare(`
-        INSERT INTO payment_history (user_id, payment_id, plan, amount, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).bind(user_id, paymentId.toString(), plan, payment.transaction_amount, 'approved', now.toISOString()).run()
-    } catch (e) {
-      console.log('Tabela payment_history não existe, ignorando histórico')
+        CREATE TABLE IF NOT EXISTS payment_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          payment_id TEXT NOT NULL UNIQUE,
+          plan TEXT NOT NULL,
+          amount REAL,
+          status TEXT NOT NULL,
+          external_reference TEXT,
+          payer_email TEXT,
+          transaction_details TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+      
+      await DB.prepare(`
+        INSERT OR REPLACE INTO payment_history (user_id, payment_id, plan, amount, status, external_reference, payer_email, transaction_details, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        user_id, 
+        paymentId.toString(), 
+        plan, 
+        payment.transaction_amount, 
+        'approved',
+        payment.external_reference,
+        payment.payer?.email || null,
+        JSON.stringify({
+          status_detail: payment.status_detail,
+          payment_method: payment.payment_method_id,
+          date_approved: payment.date_approved,
+          date_created: payment.date_created
+        }),
+        now.toISOString()
+      ).run()
+      console.log(`📝 Histórico de pagamento registrado: payment_id=${paymentId}, user_id=${user_id}`)
+    } catch (e: any) {
+      console.log('⚠️ Erro ao registrar histórico de pagamento:', e.message)
     }
     
     return c.json({ 
@@ -2195,6 +2276,121 @@ app.post('/api/webhook/mercadopago', async (c) => {
   } catch (error: any) {
     console.error('Erro no webhook:', error)
     return c.json({ error: 'Erro ao processar webhook' }, 500)
+  }
+})
+
+// ✅ CORREÇÃO v11: Endpoint para histórico de pagamentos de um usuário
+app.get('/api/user/:user_id/payments', async (c) => {
+  const { DB } = c.env
+  const userId = c.req.param('user_id')
+  const requestUserId = c.req.header('X-User-ID')
+  
+  // Verificar se é o próprio usuário ou admin
+  if (requestUserId !== userId && !await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    // Criar tabela se não existir
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS payment_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        payment_id TEXT NOT NULL UNIQUE,
+        plan TEXT NOT NULL,
+        amount REAL,
+        status TEXT NOT NULL,
+        external_reference TEXT,
+        payer_email TEXT,
+        transaction_details TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    
+    // Buscar histórico de pagamentos
+    const payments = await DB.prepare(`
+      SELECT 
+        id, payment_id, plan, amount, status, payer_email, 
+        created_at, transaction_details
+      FROM payment_history 
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+    `).bind(userId).all()
+    
+    // Buscar também o pagamento atual do usuário (se existir)
+    const user = await DB.prepare(`
+      SELECT payment_id, payment_date, subscription_plan, subscription_status, subscription_expires_at
+      FROM users WHERE id = ?
+    `).bind(userId).first() as any
+    
+    return c.json({
+      success: true,
+      payments: payments.results || [],
+      current_subscription: user ? {
+        payment_id: user.payment_id,
+        payment_date: user.payment_date,
+        plan: user.subscription_plan,
+        status: user.subscription_status,
+        expires_at: user.subscription_expires_at
+      } : null
+    })
+  } catch (error: any) {
+    console.error('Erro ao buscar histórico de pagamentos:', error)
+    return c.json({ error: 'Erro ao buscar pagamentos' }, 500)
+  }
+})
+
+// ✅ CORREÇÃO v11: Endpoint admin para listar TODOS os pagamentos
+app.get('/api/admin/payments', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    // Criar tabela se não existir
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS payment_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        payment_id TEXT NOT NULL UNIQUE,
+        plan TEXT NOT NULL,
+        amount REAL,
+        status TEXT NOT NULL,
+        external_reference TEXT,
+        payer_email TEXT,
+        transaction_details TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    
+    // Buscar todos os pagamentos com dados do usuário
+    const payments = await DB.prepare(`
+      SELECT 
+        ph.id, ph.user_id, ph.payment_id, ph.plan, ph.amount, ph.status, 
+        ph.payer_email, ph.created_at, ph.external_reference,
+        u.name as user_name, u.email as user_email
+      FROM payment_history ph
+      LEFT JOIN users u ON u.id = ph.user_id
+      ORDER BY ph.created_at DESC
+    `).all()
+    
+    // Buscar também usuários com assinatura ativa (podem não ter payment_history)
+    const activeUsers = await DB.prepare(`
+      SELECT id, name, email, payment_id, payment_date, subscription_plan, subscription_status
+      FROM users 
+      WHERE subscription_status = 'active' OR is_premium = 1
+    `).all()
+    
+    return c.json({
+      success: true,
+      payment_history: payments.results || [],
+      active_subscriptions: activeUsers.results || []
+    })
+  } catch (error: any) {
+    console.error('Erro ao listar pagamentos:', error)
+    return c.json({ error: 'Erro ao listar pagamentos' }, 500)
   }
 })
 
@@ -2761,15 +2957,16 @@ app.get('/api/admin/users', async (c) => {
     const search = c.req.query('search') || ''
     const offset = (page - 1) * limit
     
-    // ✅ CORREÇÃO v9: Incluir subscription_status para determinar premium corretamente
+    // ✅ CORREÇÃO v11: Incluir payment_id e payment_date na listagem
     let query = `
       SELECT 
         u.id, u.name, u.email, u.email_verified, u.is_premium, 
         u.premium_expires_at, u.created_at, u.auth_provider,
         u.subscription_status, u.subscription_plan, u.subscription_expires_at,
+        u.payment_id, u.payment_date,
         COUNT(DISTINCT pe.id) as total_planos,
         COUNT(DISTINCT md.id) as total_metas,
-        -- ✅ NOVO: Calcular is_premium_real considerando subscription ativa
+        -- ✅ Calcular is_premium_real considerando subscription ativa
         CASE 
           WHEN u.is_premium = 1 THEN 1
           WHEN u.subscription_status = 'active' AND (u.subscription_expires_at IS NULL OR u.subscription_expires_at > datetime('now')) THEN 1

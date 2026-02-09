@@ -12975,13 +12975,16 @@ window.abrirMinhaAssinatura = async function() {
   if (subscriptionDetails.paymentHistory && subscriptionDetails.paymentHistory.length > 0) {
     let historyItems = '';
     subscriptionDetails.paymentHistory.forEach(function(p) {
+      // ✅ CORREÇÃO v11: Exibir paymentId e mais detalhes
+      const paymentIdText = p.paymentId ? '<p class="text-xs ' + themes[currentTheme].textMuted + '">ID: ' + p.paymentId.substring(0, 12) + '...</p>' : '';
       historyItems += '<div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">' +
         '<div>' +
           '<p class="font-medium ' + themes[currentTheme].text + '">' + p.plan + '</p>' +
           '<p class="text-xs ' + themes[currentTheme].textMuted + '">' + formatDate(p.date) + '</p>' +
+          paymentIdText +
         '</div>' +
         '<div class="text-right">' +
-          '<p class="font-bold text-emerald-600">R$ ' + p.amount.toFixed(2).replace('.', ',') + '</p>' +
+          '<p class="font-bold text-emerald-600">R$ ' + (p.amount || 0).toFixed(2).replace('.', ',') + '</p>' +
           '<p class="text-xs text-emerald-500">✓ Pago</p>' +
         '</div>' +
       '</div>';
@@ -14045,11 +14048,17 @@ window.verListaUsuarios = async function() {
                 <th class="p-2 text-left ${themes[currentTheme].text}">Email</th>
                 <th class="p-2 text-center ${themes[currentTheme].text}">Verificado</th>
                 <th class="p-2 text-center ${themes[currentTheme].text}">Premium</th>
+                <th class="p-2 text-center ${themes[currentTheme].text}">Plano</th>
+                <th class="p-2 text-center ${themes[currentTheme].text}">Data Pag.</th>
                 <th class="p-2 text-center ${themes[currentTheme].text}">Ações</th>
               </tr>
             </thead>
             <tbody>
-              ${users.map(u => `
+              ${users.map(u => {
+                const paymentDate = u.payment_date ? new Date(u.payment_date).toLocaleDateString('pt-BR') : '-';
+                const planLabel = u.subscription_plan === 'anual' ? 'Anual' : (u.subscription_plan === 'mensal' ? 'Mensal' : '-');
+                const statusClass = u.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500';
+                return `
                 <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50 dark:hover:bg-gray-800" id="user-row-${u.id}">
                   <td class="p-2 ${themes[currentTheme].textSecondary}">${u.id}</td>
                   <td class="p-2 ${themes[currentTheme].text} font-medium">${u.name || '-'}</td>
@@ -14060,6 +14069,10 @@ window.verListaUsuarios = async function() {
                   <td class="p-2 text-center" id="premium-status-${u.id}">
                     ${(u.is_premium_real || u.is_premium) ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs"><i class="fas fa-crown mr-1"></i>Premium</span>' : '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs">Free</span>'}
                   </td>
+                  <td class="p-2 text-center">
+                    <span class="px-2 py-1 ${statusClass} rounded-full text-xs">${planLabel}</span>
+                  </td>
+                  <td class="p-2 text-center ${themes[currentTheme].textSecondary} text-xs">${paymentDate}</td>
                   <td class="p-2 text-center">
                     <div class="flex items-center justify-center gap-1">
                       <button onclick="editarUsuarioAdmin(${u.id}, '${(u.name || '').replace(/'/g, "\\'")}', '${u.email}', ${(u.is_premium_real || u.is_premium) ? 1 : 0})" 
@@ -14080,7 +14093,7 @@ window.verListaUsuarios = async function() {
                     </div>
                   </td>
                 </tr>
-              `).join('')}
+              `}).join('')}
             </tbody>
           </table>
         </div>
