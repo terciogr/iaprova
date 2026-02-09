@@ -6264,7 +6264,8 @@ app.get('/api/planos/:plano_id/disciplinas/:disciplina_id/topicos', async (c) =>
       return c.json({ error: 'Plano não encontrado' }, 404)
     }
 
-    // Primeiro, tentar buscar tópicos de topicos_edital (filtrado por user_id e disciplina)
+    // ✅ CORRIGIDO: Buscar tópicos FILTRADOS POR PLANO_ID (não user_id)
+    // Isso garante isolamento entre planos diferentes
     let { results } = await DB.prepare(`
       SELECT 
         t.id,
@@ -6272,29 +6273,41 @@ app.get('/api/planos/:plano_id/disciplinas/:disciplina_id/topicos', async (c) =>
         t.categoria,
         t.ordem
       FROM topicos_edital t
-      WHERE t.disciplina_id = ? AND t.user_id = ?
+      WHERE t.disciplina_id = ? AND t.plano_id = ?
       ORDER BY t.ordem, t.nome
-    `).bind(disciplina_id, plano.user_id).all()
+    `).bind(disciplina_id, plano_id).all()
 
-    // Se não encontrar, tentar buscar de edital_topicos via edital_disciplinas
+    // Se não encontrar tópicos do plano, tentar copiar do edital ou genéricos
     if (!results || results.length === 0) {
-      const disciplina = await DB.prepare('SELECT nome FROM disciplinas WHERE id = ?').bind(disciplina_id).first() as any
+      console.log(`⚠️ Nenhum tópico encontrado para disciplina ${disciplina_id} no plano ${plano_id}, tentando copiar...`)
       
-      if (disciplina) {
-        const editalTopicos = await DB.prepare(`
-          SELECT 
-            et.id,
-            et.nome,
-            et.ordem
-          FROM edital_topicos et
-          JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id
-          JOIN editais e ON ed.edital_id = e.id
-          WHERE LOWER(TRIM(ed.nome)) = LOWER(TRIM(?)) AND e.user_id = ?
-          ORDER BY et.ordem, et.nome
-        `).bind(disciplina.nome, plano.user_id).all()
-        
-        results = editalTopicos.results || []
-      }
+      // Buscar edital do usuário
+      const editalUsuario = await DB.prepare(`
+        SELECT id FROM editais WHERE user_id = ? ORDER BY created_at DESC LIMIT 1
+      `).bind(plano.user_id).first() as any
+      
+      // Copiar tópicos para este plano
+      await copiarTopicosParaPlano(
+        DB,
+        parseInt(plano_id),
+        plano.user_id,
+        [parseInt(disciplina_id)],
+        editalUsuario?.id || undefined
+      )
+      
+      // Buscar novamente
+      const novaBusca = await DB.prepare(`
+        SELECT 
+          t.id,
+          t.nome,
+          t.categoria,
+          t.ordem
+        FROM topicos_edital t
+        WHERE t.disciplina_id = ? AND t.plano_id = ?
+        ORDER BY t.ordem, t.nome
+      `).bind(disciplina_id, plano_id).all()
+      
+      results = novaBusca.results || []
     }
 
     console.log(`📋 Tópicos da disciplina ${disciplina_id} no plano ${plano_id}: ${results?.length || 0} tópicos`)
@@ -8603,6 +8616,23 @@ app.post('/api/interviews', async (c) => {
       await gerarCiclosEstudo(DB, plano_id, disciplinasValidadas, tempoDisponivel)
       console.log('✅ Ciclos de estudo gerados!')
       
+      // ✅ NOVO: Copiar tópicos do edital para o plano (vinculando ao plano_id)
+      const disciplinaIdsParaTopicos = disciplinasValidadas.map((d: any) => d.disciplina_id)
+      
+      // Buscar edital do usuário (se houver) para copiar tópicos
+      const editalUsuario = await DB.prepare(`
+        SELECT id FROM editais WHERE user_id = ? ORDER BY created_at DESC LIMIT 1
+      `).bind(data.user_id).first() as any
+      
+      await copiarTopicosParaPlano(
+        DB, 
+        plano_id, 
+        data.user_id, 
+        disciplinaIdsParaTopicos,
+        editalUsuario?.id || undefined
+      )
+      console.log('✅ Tópicos copiados para o plano!')
+      
       return c.json({ 
         interview_id,
         plano_id,
@@ -8778,6 +8808,23 @@ app.post('/api/planos', async (c) => {
 
     // Gerar ciclos de estudo
     await gerarCiclosEstudo(DB, plano_id, userDisciplinas, interview.tempo_disponivel_dia)
+    
+    // ✅ NOVO: Copiar tópicos do edital para o plano (vinculando ao plano_id)
+    const disciplinaIdsParaTopicos = userDisciplinas.map((d: any) => d.disciplina_id)
+    
+    // Buscar edital do usuário (se houver) para copiar tópicos
+    const editalUsuario = await DB.prepare(`
+      SELECT id FROM editais WHERE user_id = ? ORDER BY created_at DESC LIMIT 1
+    `).bind(user_id).first() as any
+    
+    await copiarTopicosParaPlano(
+      DB, 
+      plano_id, 
+      user_id, 
+      disciplinaIdsParaTopicos,
+      editalUsuario?.id || undefined
+    )
+    console.log('✅ Tópicos copiados para o plano!')
 
     return c.json({ 
       plano_id,
@@ -9323,7 +9370,8 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
     let topicosEstudados = 0
     const disciplinasDetalhes: any[] = []
 
-    // ✅ CORREÇÃO v3: Buscar tópicos de TODAS as fontes possíveis + usar metas como base de progresso real
+    // ✅ CORREÇÃO v4: Buscar tópicos VINCULADOS AO PLANO (não ao usuário)
+    // Isso garante isolamento entre planos diferentes do mesmo usuário
     const { results: disciplinasPlano } = await DB.prepare(`
       SELECT DISTINCT 
         c.disciplina_id,
@@ -9331,29 +9379,33 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
         d.area,
         COALESCE(ud.peso, 1) as peso,
         ud.nivel_dominio,
-        -- Contar tópicos em topicos_edital (metas semanais)
-        (SELECT COUNT(*) FROM topicos_edital te WHERE te.disciplina_id = c.disciplina_id AND te.user_id = ?) as topicos_te,
-        -- Contar tópicos em edital_topicos (edital processado)
+        -- ✅ CORRIGIDO: Contar tópicos em topicos_edital FILTRADO POR PLANO_ID
+        (SELECT COUNT(*) FROM topicos_edital te 
+         WHERE te.disciplina_id = c.disciplina_id AND te.plano_id = ?) as topicos_te,
+        -- Contar tópicos em edital_topicos (edital processado - fallback)
         (SELECT COUNT(*) FROM edital_topicos et 
          INNER JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id 
          WHERE ed.disciplina_id = c.disciplina_id AND ed.edital_id = ?) as topicos_et,
-        -- Contar estudados em topicos_edital
+        -- ✅ CORRIGIDO: Contar estudados FILTRADO POR PLANO_ID
         (SELECT COUNT(*) FROM user_topicos_progresso utp 
          INNER JOIN topicos_edital te ON utp.topico_id = te.id 
-         WHERE te.disciplina_id = c.disciplina_id AND utp.user_id = ? AND utp.nivel_dominio >= 2) as estudados_te,
-        -- ✅ NOVO: Contar TODAS as metas da disciplina no plano (total)
+         WHERE te.disciplina_id = c.disciplina_id 
+           AND te.plano_id = ?
+           AND utp.plano_id = ?
+           AND utp.nivel_dominio >= 2) as estudados_te,
+        -- Contar TODAS as metas da disciplina no plano (total)
         (SELECT COUNT(*) FROM metas_semana ms 
          INNER JOIN semanas_estudo se ON ms.semana_id = se.id
-         WHERE ms.disciplina_id = c.disciplina_id AND ms.user_id = ? AND se.plano_id = ?) as metas_total,
+         WHERE ms.disciplina_id = c.disciplina_id AND se.plano_id = ?) as metas_total,
         -- Contar metas CONCLUÍDAS da disciplina no plano
         (SELECT COUNT(*) FROM metas_semana ms 
          INNER JOIN semanas_estudo se ON ms.semana_id = se.id
-         WHERE ms.disciplina_id = c.disciplina_id AND ms.user_id = ? AND se.plano_id = ? AND ms.concluida = 1) as metas_concluidas
+         WHERE ms.disciplina_id = c.disciplina_id AND se.plano_id = ? AND ms.concluida = 1) as metas_concluidas
       FROM ciclos_estudo c
       JOIN disciplinas d ON c.disciplina_id = d.id
       LEFT JOIN user_disciplinas ud ON ud.disciplina_id = c.disciplina_id AND ud.user_id = ?
       WHERE c.plano_id = ?
-    `).bind(plano.user_id, plano.edital_id || 0, plano.user_id, plano.user_id, plano_id, plano.user_id, plano_id, plano.user_id, plano_id).all() as any[]
+    `).bind(plano_id, plano.edital_id || 0, plano_id, plano_id, plano_id, plano_id, plano.user_id, plano_id).all() as any[]
 
     console.log(`📚 Encontradas ${disciplinasPlano.length} disciplinas no plano ${plano_id}`)
 
@@ -9801,7 +9853,8 @@ app.get('/api/metas/hoje/:user_id', async (c) => {
       m.*, 
       c.tipo, 
       c.tempo_minutos, 
-      c.disciplina_id, 
+      c.disciplina_id,
+      c.plano_id,
       d.nome as disciplina_nome,
       CASE 
         WHEN EXISTS (
@@ -9818,19 +9871,19 @@ app.get('/api/metas/hoje/:user_id', async (c) => {
     ORDER BY c.ordem
   `).bind(user_id, hoje).all()
 
-  // Para cada meta, buscar APENAS 1 tópico (para garantir qualidade do material gerado)
+  // ✅ CORRIGIDO: Buscar tópicos FILTRADOS POR PLANO_ID
   for (const meta of metas) {
     const { results: topicos } = await DB.prepare(`
       SELECT te.id, te.nome, te.categoria, te.peso
       FROM topicos_edital te
-      LEFT JOIN user_topicos_progresso utp ON te.id = utp.topico_id AND utp.user_id = ?
-      WHERE te.disciplina_id = ?
+      LEFT JOIN user_topicos_progresso utp ON te.id = utp.topico_id AND utp.plano_id = ?
+      WHERE te.disciplina_id = ? AND te.plano_id = ?
       ORDER BY 
         COALESCE(utp.nivel_dominio, 0) ASC,
         te.peso DESC,
         te.ordem ASC
       LIMIT 1
-    `).bind(user_id, meta.disciplina_id).all()
+    `).bind(meta.plano_id, meta.disciplina_id, meta.plano_id).all()
     
     meta.topicos_sugeridos = topicos
   }
@@ -9844,18 +9897,18 @@ app.post('/api/metas/concluir', async (c) => {
 
   console.log(`🎯 Concluindo meta ${meta_id}, tipo: ${tipo_meta}, tempo: ${tempo_real_minutos}min`)
 
-  // ✅ FUNÇÃO AUXILIAR: Atualizar progresso do tópico
-  async function atualizarProgressoTopico(DB: any, user_id: number, topico_id: number) {
-    if (!topico_id) return
+  // ✅ FUNÇÃO AUXILIAR: Atualizar progresso do tópico (COM PLANO_ID)
+  async function atualizarProgressoTopico(DB: any, user_id: number, topico_id: number, plano_id: number) {
+    if (!topico_id || !plano_id) return
     
-    console.log(`📊 Atualizando progresso do tópico ${topico_id} para user ${user_id}`)
+    console.log(`📊 Atualizando progresso do tópico ${topico_id} para user ${user_id}, plano ${plano_id}`)
     
     try {
-      // Verificar se já existe registro de progresso
+      // ✅ CORRIGIDO: Filtrar por plano_id para isolar entre planos
       const progresso = await DB.prepare(`
         SELECT id, nivel_dominio, vezes_estudado FROM user_topicos_progresso 
-        WHERE user_id = ? AND topico_id = ?
-      `).bind(user_id, topico_id).first()
+        WHERE user_id = ? AND topico_id = ? AND plano_id = ?
+      `).bind(user_id, topico_id, plano_id).first()
       
       if (progresso) {
         // Incrementar nível de domínio (máximo 10) e vezes estudado
@@ -9870,13 +9923,13 @@ app.post('/api/metas/concluir', async (c) => {
         
         console.log(`✅ Progresso atualizado: nivel ${progresso.nivel_dominio} -> ${novoNivel}, vezes: ${novasVezes}`)
       } else {
-        // Criar novo registro com nível inicial 2 (estudado 1x)
+        // ✅ CORRIGIDO: Incluir plano_id ao criar novo registro
         await DB.prepare(`
-          INSERT INTO user_topicos_progresso (user_id, topico_id, nivel_dominio, vezes_estudado, ultima_vez)
-          VALUES (?, ?, 2, 1, CURRENT_TIMESTAMP)
-        `).bind(user_id, topico_id).run()
+          INSERT INTO user_topicos_progresso (user_id, topico_id, plano_id, nivel_dominio, vezes_estudado, ultima_vez)
+          VALUES (?, ?, ?, 2, 1, CURRENT_TIMESTAMP)
+        `).bind(user_id, topico_id, plano_id).run()
         
-        console.log(`✅ Novo progresso criado para tópico ${topico_id}`)
+        console.log(`✅ Novo progresso criado para tópico ${topico_id} no plano ${plano_id}`)
       }
     } catch (error) {
       console.error(`❌ Erro ao atualizar progresso do tópico ${topico_id}:`, error)
@@ -9893,21 +9946,24 @@ app.post('/api/metas/concluir', async (c) => {
   if (resultSemana.meta.changes > 0) {
     console.log('✅ Meta semanal concluída')
     
-    // Buscar dados da meta para atualizar histórico E progresso do tópico
+    // ✅ CORRIGIDO: Buscar dados da meta INCLUINDO plano_id
     const metaSemana = await DB.prepare(`
-      SELECT user_id, data, topicos_sugeridos FROM metas_semana WHERE id = ?
+      SELECT ms.user_id, ms.data, ms.topicos_sugeridos, se.plano_id
+      FROM metas_semana ms
+      JOIN semanas_estudo se ON ms.semana_id = se.id
+      WHERE ms.id = ?
     `).bind(meta_id).first() as any
     
     if (metaSemana) {
       await atualizarHistoricoDia(DB, metaSemana.user_id, metaSemana.data)
       
-      // ✅ NOVO: Atualizar progresso do tópico
-      if (metaSemana.topicos_sugeridos) {
+      // ✅ CORRIGIDO: Atualizar progresso do tópico COM plano_id
+      if (metaSemana.topicos_sugeridos && metaSemana.plano_id) {
         try {
           const topicos = JSON.parse(metaSemana.topicos_sugeridos)
           for (const topico of topicos) {
             if (topico.id) {
-              await atualizarProgressoTopico(DB, metaSemana.user_id, topico.id)
+              await atualizarProgressoTopico(DB, metaSemana.user_id, topico.id, metaSemana.plano_id)
             }
           }
         } catch (e) {
@@ -9926,18 +9982,24 @@ app.post('/api/metas/concluir', async (c) => {
     WHERE id = ?
   `).bind(tempo_real_minutos, meta_id).run()
 
-  // Atualizar histórico do dia E progresso do tópico
-  const meta = await DB.prepare('SELECT user_id, data, topicos_sugeridos FROM metas_diarias WHERE id = ?').bind(meta_id).first() as any
+  // ✅ CORRIGIDO: Buscar dados da meta INCLUINDO plano_id
+  const meta = await DB.prepare(`
+    SELECT md.user_id, md.data, md.topicos_sugeridos, ce.plano_id
+    FROM metas_diarias md
+    JOIN ciclos_estudo ce ON md.ciclo_id = ce.id
+    WHERE md.id = ?
+  `).bind(meta_id).first() as any
+  
   if (meta) {
     await atualizarHistoricoDia(DB, meta.user_id, meta.data)
     
-    // ✅ NOVO: Atualizar progresso do tópico
-    if (meta.topicos_sugeridos) {
+    // ✅ CORRIGIDO: Atualizar progresso do tópico COM plano_id
+    if (meta.topicos_sugeridos && meta.plano_id) {
       try {
         const topicos = JSON.parse(meta.topicos_sugeridos)
         for (const topico of topicos) {
           if (topico.id) {
-            await atualizarProgressoTopico(DB, meta.user_id, topico.id)
+            await atualizarProgressoTopico(DB, meta.user_id, topico.id, meta.plano_id)
           }
         }
       } catch (e) {
@@ -12681,6 +12743,121 @@ app.post('/api/backup/google-drive/load', async (c) => {
 })
 
 // ============== FUNÇÕES AUXILIARES ==============
+
+// ════════════════════════════════════════════════════════════════════════════
+// ✅ FUNÇÃO: Copiar tópicos do edital para o plano
+// Esta função é chamada quando um plano é criado, para vincular tópicos ao plano
+// ════════════════════════════════════════════════════════════════════════════
+async function copiarTopicosParaPlano(
+  DB: D1Database, 
+  plano_id: number, 
+  user_id: number, 
+  disciplinaIds: number[],
+  edital_id?: number
+): Promise<{ copiados: number, disciplinas: number }> {
+  let totalCopiados = 0
+  let disciplinasProcessadas = 0
+  
+  console.log(`📋 Copiando tópicos para plano ${plano_id}...`)
+  console.log(`   Disciplinas: ${disciplinaIds.join(', ')}`)
+  console.log(`   Edital ID: ${edital_id || 'nenhum'}`)
+  
+  for (const disciplina_id of disciplinaIds) {
+    let topicosCopiados = 0
+    
+    // 1. Primeiro, tentar buscar tópicos do edital específico (se houver)
+    if (edital_id) {
+      const { results: topicosEdital } = await DB.prepare(`
+        SELECT et.nome, et.ordem, ed.peso
+        FROM edital_topicos et
+        JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id
+        WHERE ed.edital_id = ? AND ed.disciplina_id = ?
+        ORDER BY et.ordem
+      `).bind(edital_id, disciplina_id).all() as any[]
+      
+      for (let i = 0; i < topicosEdital.length; i++) {
+        const topico = topicosEdital[i]
+        
+        // Verificar se já existe para ESTE PLANO
+        const existente = await DB.prepare(`
+          SELECT id FROM topicos_edital 
+          WHERE plano_id = ? AND disciplina_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
+        `).bind(plano_id, disciplina_id, topico.nome).first()
+        
+        if (!existente) {
+          await DB.prepare(`
+            INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id, plano_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            disciplina_id, 
+            topico.nome, 
+            'Conteúdo Programático', 
+            topico.ordem || (i + 1), 
+            topico.peso || 1, 
+            user_id, 
+            plano_id
+          ).run()
+          topicosCopiados++
+        }
+      }
+      
+      if (topicosCopiados > 0) {
+        console.log(`   ✅ ${disciplina_id}: ${topicosCopiados} tópicos copiados do edital`)
+      }
+    }
+    
+    // 2. Se não encontrou tópicos no edital, buscar tópicos genéricos da disciplina (sem plano_id)
+    if (topicosCopiados === 0) {
+      const { results: topicosGerais } = await DB.prepare(`
+        SELECT nome, categoria, ordem, peso
+        FROM topicos_edital
+        WHERE disciplina_id = ? AND plano_id IS NULL
+        ORDER BY ordem
+        LIMIT 20
+      `).bind(disciplina_id).all() as any[]
+      
+      for (let i = 0; i < topicosGerais.length; i++) {
+        const topico = topicosGerais[i]
+        
+        // Verificar se já existe para ESTE PLANO
+        const existente = await DB.prepare(`
+          SELECT id FROM topicos_edital 
+          WHERE plano_id = ? AND disciplina_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
+        `).bind(plano_id, disciplina_id, topico.nome).first()
+        
+        if (!existente) {
+          await DB.prepare(`
+            INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id, plano_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            disciplina_id, 
+            topico.nome, 
+            topico.categoria || 'Conteúdo Programático', 
+            topico.ordem || (i + 1), 
+            topico.peso || 1, 
+            user_id, 
+            plano_id
+          ).run()
+          topicosCopiados++
+        }
+      }
+      
+      if (topicosCopiados > 0) {
+        console.log(`   ✅ ${disciplina_id}: ${topicosCopiados} tópicos copiados (genéricos)`)
+      }
+    }
+    
+    if (topicosCopiados > 0) {
+      disciplinasProcessadas++
+      totalCopiados += topicosCopiados
+    }
+  }
+  
+  console.log(`📋 Total: ${totalCopiados} tópicos copiados para ${disciplinasProcessadas} disciplinas`)
+  
+  return { copiados: totalCopiados, disciplinas: disciplinasProcessadas }
+}
+
 async function atualizarHistoricoDia(DB: D1Database, user_id: number, data: string) {
   // ✅ CORREÇÃO: Buscar metas de AMBAS as tabelas (metas_diarias E metas_semana)
   // metas_diarias não tem tempo_minutos diretamente, precisa fazer JOIN com ciclos_estudo
