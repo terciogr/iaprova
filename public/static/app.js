@@ -1065,7 +1065,7 @@ function createUnifiedFAB() {
           Sair do Sistema
         </span>
         <button 
-          onclick="voltarAoLogin(); event.stopPropagation();"
+          onclick="toggleFabMenu(); voltarAoLogin(); event.stopPropagation();"
           class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Sair do Sistema">
           <i class="fas fa-sign-out-alt text-lg"></i>
@@ -2408,7 +2408,14 @@ window.handleLandingSignup = async function(event) {
     if (response.data && response.data.user) {
       const user = response.data.user;
       
-      // Salvar dados da sessão
+      // ✅ CORREÇÃO v12: Verificar se requer verificação de email
+      if (response.data.requiresVerification || !user.email_verified) {
+        // Mostrar tela de verificação de email ANTES de permitir acesso
+        mostrarTelaVerificacaoEmail(email, user.name || '');
+        return;
+      }
+      
+      // Se já está verificado (login de usuário existente), permitir acesso
       localStorage.setItem('userId', user.id);
       localStorage.setItem('userEmail', user.email);
       localStorage.setItem('userName', user.name || '');
@@ -2439,6 +2446,13 @@ window.handleLandingSignup = async function(event) {
         
         if (loginResponse.data && loginResponse.data.user) {
           const user = loginResponse.data.user;
+          
+          // ✅ CORREÇÃO v12: Verificar email_verified no login também
+          if (!user.email_verified) {
+            // Email não verificado - mostrar tela de verificação
+            mostrarTelaVerificacaoEmail(email, user.name || '');
+            return;
+          }
           
           localStorage.setItem('userId', user.id);
           localStorage.setItem('userEmail', user.email);
@@ -2472,6 +2486,121 @@ window.handleLandingSignup = async function(event) {
   } finally {
     btn.disabled = false;
     btn.innerHTML = originalText;
+  }
+};
+
+// ✅ CORREÇÃO v12: Tela de verificação de email obrigatória
+function mostrarTelaVerificacaoEmail(email, nome) {
+  const appRoot = document.getElementById('app');
+  appRoot.innerHTML = `
+    <div class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#0A1628] via-[#122D6A] to-[#1A3A7F]">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
+        <div class="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+          <i class="fas fa-envelope text-white text-3xl"></i>
+        </div>
+        
+        <h1 class="text-2xl font-bold text-gray-900 mb-3">
+          Verifique seu email! ✉️
+        </h1>
+        
+        <p class="text-gray-600 mb-6">
+          Olá${nome ? ', <strong>' + nome + '</strong>' : ''}! Enviamos um link de verificação para:
+        </p>
+        
+        <div class="bg-gray-100 rounded-xl p-4 mb-6">
+          <p class="text-lg font-semibold text-[#122D6A]">${email}</p>
+        </div>
+        
+        <div class="space-y-4 text-left bg-blue-50 rounded-xl p-4 mb-6">
+          <p class="text-sm text-gray-700">
+            <i class="fas fa-check-circle text-emerald-500 mr-2"></i>
+            Abra seu email e clique no link de verificação
+          </p>
+          <p class="text-sm text-gray-700">
+            <i class="fas fa-check-circle text-emerald-500 mr-2"></i>
+            Após verificar, você terá acesso completo ao sistema
+          </p>
+          <p class="text-sm text-gray-700">
+            <i class="fas fa-clock text-amber-500 mr-2"></i>
+            O link expira em 24 horas
+          </p>
+        </div>
+        
+        <p class="text-sm text-gray-500 mb-6">
+          Não recebeu? Verifique sua caixa de spam ou 
+          <button onclick="reenviarEmailVerificacao('${email}')" class="text-[#122D6A] font-semibold hover:underline">
+            clique aqui para reenviar
+          </button>
+        </p>
+        
+        <div class="flex gap-3">
+          <button onclick="goToLogin()" 
+            class="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition">
+            <i class="fas fa-arrow-left mr-2"></i>Voltar
+          </button>
+          <button onclick="verificarEmailJaValidado('${email}')" 
+            class="flex-1 px-4 py-3 bg-[#122D6A] text-white rounded-xl font-semibold hover:bg-[#0D1F4D] transition">
+            Já verifiquei <i class="fas fa-arrow-right ml-2"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Reenviar email de verificação
+window.reenviarEmailVerificacao = async function(email) {
+  try {
+    showToast('📧 Reenviando email de verificação...', 'info');
+    const response = await axios.post('/api/resend-verification', { email });
+    if (response.data.success) {
+      showToast('✅ Email de verificação reenviado! Verifique sua caixa de entrada.', 'success');
+    } else {
+      showToast(response.data.message || 'Erro ao reenviar email', 'error');
+    }
+  } catch (error) {
+    console.error('Erro ao reenviar:', error);
+    showToast(error.response?.data?.message || 'Erro ao reenviar email de verificação', 'error');
+  }
+};
+
+// Verificar se o email já foi validado
+window.verificarEmailJaValidado = async function(email) {
+  try {
+    showToast('🔍 Verificando...', 'info');
+    const response = await axios.get('/api/check-email-verified?email=' + encodeURIComponent(email));
+    
+    if (response.data.verified) {
+      // Email verificado! Fazer login automático
+      showToast('✅ Email verificado! Entrando...', 'success');
+      
+      // Buscar dados do usuário
+      const userResponse = await axios.get('/api/user-by-email?email=' + encodeURIComponent(email));
+      if (userResponse.data.user) {
+        const user = userResponse.data.user;
+        
+        localStorage.setItem('userId', user.id);
+        localStorage.setItem('userEmail', user.email);
+        localStorage.setItem('userName', user.name || '');
+        localStorage.setItem('userCreatedAt', user.created_at || '');
+        localStorage.setItem('authProvider', 'email');
+        
+        currentUser = {
+          id: user.id,
+          email: user.email,
+          name: user.name || '',
+          created_at: user.created_at,
+          authProvider: 'email'
+        };
+        
+        setTimeout(() => verificarEntrevista(), 500);
+      }
+    } else {
+      showToast('⚠️ Email ainda não verificado. Por favor, clique no link enviado para seu email.', 'warning');
+    }
+  } catch (error) {
+    console.error('Erro ao verificar:', error);
+    showToast('Erro ao verificar status do email', 'error');
   }
 };
 

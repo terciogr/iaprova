@@ -4205,6 +4205,59 @@ app.post('/api/resend-verification', async (c) => {
   }
 })
 
+// ✅ CORREÇÃO v12: Endpoint para verificar se email já foi validado
+app.get('/api/check-email-verified', async (c) => {
+  const { DB } = c.env
+  const email = c.req.query('email')?.toLowerCase()?.trim()
+  
+  if (!email) {
+    return c.json({ error: 'Email não fornecido' }, 400)
+  }
+  
+  try {
+    const user = await DB.prepare(
+      'SELECT email_verified FROM users WHERE email = ?'
+    ).bind(email).first() as any
+    
+    if (!user) {
+      return c.json({ error: 'Email não encontrado', verified: false }, 404)
+    }
+    
+    return c.json({ 
+      verified: user.email_verified === 1,
+      email 
+    })
+  } catch (error) {
+    console.error('Erro ao verificar email:', error)
+    return c.json({ error: 'Erro ao verificar' }, 500)
+  }
+})
+
+// ✅ CORREÇÃO v12: Endpoint para buscar usuário por email
+app.get('/api/user-by-email', async (c) => {
+  const { DB } = c.env
+  const email = c.req.query('email')?.toLowerCase()?.trim()
+  
+  if (!email) {
+    return c.json({ error: 'Email não fornecido' }, 400)
+  }
+  
+  try {
+    const user = await DB.prepare(
+      'SELECT id, email, name, created_at, email_verified FROM users WHERE email = ?'
+    ).bind(email).first() as any
+    
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404)
+    }
+    
+    return c.json({ user })
+  } catch (error) {
+    console.error('Erro ao buscar usuário:', error)
+    return c.json({ error: 'Erro ao buscar usuário' }, 500)
+  }
+})
+
 // [REMOVIDO - Definição duplicada de /api/verify-email/:token]
 // A definição principal está na linha ~2862
 
