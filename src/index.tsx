@@ -3174,6 +3174,254 @@ app.get('/api/admin/dashboard', async (c) => {
   }
 })
 
+// ════════════════════════════════════════════════════════════════════════════
+// ✅ NOVO v37: GERENCIAMENTO DE CHAVES DE API (Admin)
+// ════════════════════════════════════════════════════════════════════════════
+
+// Obter configurações de API
+app.get('/api/admin/api-keys', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    // Criar tabela se não existir
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS api_config (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        provider TEXT UNIQUE NOT NULL,
+        api_key TEXT,
+        is_active INTEGER DEFAULT 1,
+        priority INTEGER DEFAULT 0,
+        last_used DATETIME,
+        usage_count INTEGER DEFAULT 0,
+        last_error TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    
+    // Inserir providers padrão se não existirem
+    const providers = ['gemini', 'openai', 'groq']
+    for (let i = 0; i < providers.length; i++) {
+      await DB.prepare(`
+        INSERT OR IGNORE INTO api_config (provider, priority) VALUES (?, ?)
+      `).bind(providers[i], i + 1).run()
+    }
+    
+    // Buscar configurações
+    const { results: configs } = await DB.prepare(`
+      SELECT 
+        id, provider, 
+        CASE WHEN api_key IS NOT NULL AND api_key != '' THEN 
+          SUBSTR(api_key, 1, 10) || '...' || SUBSTR(api_key, -4)
+        ELSE NULL END as api_key_masked,
+        CASE WHEN api_key IS NOT NULL AND api_key != '' THEN 1 ELSE 0 END as has_key,
+        is_active, priority, last_used, usage_count, last_error,
+        created_at, updated_at
+      FROM api_config
+      ORDER BY priority ASC
+    `).all()
+    
+    return c.json({
+      success: true,
+      configs: configs || []
+    })
+  } catch (error: any) {
+    console.error('Erro ao buscar chaves API:', error)
+    return c.json({ error: 'Erro ao buscar configurações' }, 500)
+  }
+})
+
+// Atualizar chave de API
+app.post('/api/admin/api-keys', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const { provider, api_key, is_active, priority } = await c.req.json()
+    
+    if (!provider) {
+      return c.json({ error: 'Provider é obrigatório' }, 400)
+    }
+    
+    // Atualizar ou inserir
+    await DB.prepare(`
+      INSERT INTO api_config (provider, api_key, is_active, priority, updated_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(provider) DO UPDATE SET
+        api_key = COALESCE(excluded.api_key, api_config.api_key),
+        is_active = COALESCE(excluded.is_active, api_config.is_active),
+        priority = COALESCE(excluded.priority, api_config.priority),
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(
+      provider,
+      api_key || null,
+      is_active !== undefined ? (is_active ? 1 : 0) : 1,
+      priority || 0
+    ).run()
+    
+    return c.json({ success: true, message: `Configuração de ${provider} atualizada` })
+  } catch (error: any) {
+    console.error('Erro ao atualizar chave API:', error)
+    return c.json({ error: 'Erro ao atualizar configuração' }, 500)
+  }
+})
+
+// Reordenar prioridades das APIs
+app.post('/api/admin/api-keys/reorder', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const { order } = await c.req.json() // Array de providers na ordem desejada
+    
+    if (!Array.isArray(order)) {
+      return c.json({ error: 'Ordem inválida' }, 400)
+    }
+    
+    for (let i = 0; i < order.length; i++) {
+      await DB.prepare(`
+        UPDATE api_config SET priority = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE provider = ?
+      `).bind(i + 1, order[i]).run()
+    }
+    
+    return c.json({ success: true, message: 'Ordem atualizada' })
+  } catch (error: any) {
+    console.error('Erro ao reordenar APIs:', error)
+    return c.json({ error: 'Erro ao reordenar' }, 500)
+  }
+})
+
+// Testar chave de API
+app.post('/api/admin/api-keys/test', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const { provider } = await c.req.json()
+    
+    // Buscar chave
+    const config = await DB.prepare(`
+      SELECT api_key FROM api_config WHERE provider = ?
+    `).bind(provider).first() as any
+    
+    if (!config?.api_key) {
+      return c.json({ success: false, error: 'Chave não configurada' })
+    }
+    
+    let testResult = { success: false, message: '', latency: 0 }
+    const startTime = Date.now()
+    
+    if (provider === 'gemini') {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${config.api_key}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: 'Responda apenas: OK' }] }],
+            generationConfig: { temperature: 0, maxOutputTokens: 10 }
+          })
+        }
+      )
+      testResult.latency = Date.now() - startTime
+      
+      if (response.ok) {
+        testResult.success = true
+        testResult.message = 'Gemini funcionando!'
+      } else {
+        const err = await response.json() as any
+        testResult.message = err.error?.message || `HTTP ${response.status}`
+      }
+    } else if (provider === 'openai') {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.api_key}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: 'Responda apenas: OK' }],
+          max_tokens: 10
+        })
+      })
+      testResult.latency = Date.now() - startTime
+      
+      if (response.ok) {
+        testResult.success = true
+        testResult.message = 'OpenAI funcionando!'
+      } else {
+        const err = await response.json() as any
+        testResult.message = err.error?.message || `HTTP ${response.status}`
+      }
+    } else if (provider === 'groq') {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.api_key}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: 'Responda apenas: OK' }],
+          max_tokens: 10
+        })
+      })
+      testResult.latency = Date.now() - startTime
+      
+      if (response.ok) {
+        testResult.success = true
+        testResult.message = 'GROQ funcionando!'
+      } else {
+        const err = await response.json() as any
+        testResult.message = err.error?.message || `HTTP ${response.status}`
+      }
+    }
+    
+    // Atualizar last_used e last_error
+    await DB.prepare(`
+      UPDATE api_config SET 
+        last_used = CURRENT_TIMESTAMP,
+        last_error = ?,
+        usage_count = usage_count + 1
+      WHERE provider = ?
+    `).bind(testResult.success ? null : testResult.message, provider).run()
+    
+    return c.json(testResult)
+  } catch (error: any) {
+    console.error('Erro ao testar API:', error)
+    return c.json({ success: false, error: error.message })
+  }
+})
+
+// Função auxiliar para obter chaves ativas na ordem de prioridade
+async function getActiveAPIKeys(DB: any): Promise<{ provider: string, api_key: string }[]> {
+  try {
+    const { results } = await DB.prepare(`
+      SELECT provider, api_key FROM api_config 
+      WHERE is_active = 1 AND api_key IS NOT NULL AND api_key != ''
+      ORDER BY priority ASC
+    `).all()
+    return results || []
+  } catch {
+    return []
+  }
+}
+
 // ✅ NOVO: Registrar visita ao site
 app.post('/api/visits/track', async (c) => {
   const { DB } = c.env
@@ -5735,11 +5983,21 @@ ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo princ
     }
     
     console.log('═'.repeat(60))
-    console.log('📋 PASSO 4: Enviando para análise com IA Gemini...')
+    console.log('📋 PASSO 4: Enviando para análise com IA...')
     console.log('═'.repeat(60))
 
-    // Chamar Gemini AI para extrair disciplinas e tópicos
-    const geminiKey = c.env.GEMINI_API_KEY || 'SUA_CHAVE_GEMINI_AQUI'
+    // ✅ v37: Buscar chaves do banco de dados (ordem de prioridade configurada pelo admin)
+    const apiKeys = await getActiveAPIKeys(DB)
+    console.log(`🔑 APIs configuradas: ${apiKeys.map(k => k.provider).join(', ') || 'nenhuma'}`)
+    
+    // Fallback para variáveis de ambiente se não houver chaves no banco
+    const geminiKeyFromDB = apiKeys.find(k => k.provider === 'gemini')?.api_key
+    const openaiKeyFromDB = apiKeys.find(k => k.provider === 'openai')?.api_key
+    const groqKeyFromDB = apiKeys.find(k => k.provider === 'groq')?.api_key
+    
+    const geminiKey = geminiKeyFromDB || c.env.GEMINI_API_KEY || ''
+    const openaiKey = openaiKeyFromDB || c.env.OPENAI_API_KEY || ''
+    const groqKey = groqKeyFromDB || c.env.GROQ_API_KEY || ''
     
     // ════════════════════════════════════════════════════════════════
     // ✅ ETAPA 4A: PRIMEIRA EXTRAÇÃO - LOCALIZAR QUADRO DE PROVAS/PESOS
@@ -5840,64 +6098,118 @@ TEXTO:
 ${textoOtimizado}`
 
     // ════════════════════════════════════════════════════════════════
-    // ✅ v33 - SISTEMA DE FALLBACK COM GROQ
+    // ✅ v37 - SISTEMA DE FALLBACK MULTI-PROVIDER (ordem configurada pelo admin)
     // ════════════════════════════════════════════════════════════════
     
     let textoResposta = ''
     let modeloUsado = ''
     let lastError = ''
     
-    // Chave do Groq (fallback)
-    const groqKey = c.env.GROQ_API_KEY || ''
+    // Ordem de APIs configurada pelo admin
+    const ordemAPIs = apiKeys.map(k => k.provider)
+    console.log(`📋 Ordem de fallback: ${ordemAPIs.join(' → ') || 'padrão (gemini → openai → groq)'}`)
     
-    // ETAPA 1: Tentar modelos Gemini (v35 - usar mais modelos + maior output)
-    const modelosGemini = [
-      { nome: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}` },
-      { nome: 'gemini-1.5-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}` },
-      { nome: 'gemini-2.0-flash-lite', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}` }
-    ]
-    
-    for (const modelo of modelosGemini) {
-      console.log(`🚀 Tentando ${modelo.nome}...`)
-      
-      try {
-        const response = await fetch(modelo.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 65536 }  // v35: aumentado para mais disciplinas/tópicos
-          })
-        })
-        
-        if (response.status === 429) {
-          lastError = `${modelo.nome}: Rate limit`
-          await new Promise(r => setTimeout(r, 2000))
-          continue
-        }
-        
-        if (!response.ok) continue
-        
-        const data = await response.json() as any
-        textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-        
-        if (textoResposta && textoResposta.includes('disciplinas')) {
-          modeloUsado = modelo.nome
-          console.log(`✅ ${modelo.nome} OK!`)
-          break
-        }
-      } catch (err) {
-        lastError = `${modelo.nome}: ${err}`
-      }
+    // Se não houver ordem definida, usar ordem padrão
+    if (ordemAPIs.length === 0) {
+      if (geminiKey) ordemAPIs.push('gemini')
+      if (openaiKey) ordemAPIs.push('openai')
+      if (groqKey) ordemAPIs.push('groq')
     }
     
-    // ETAPA 2: Se Gemini falhou, tentar GROQ
-    if (!textoResposta && groqKey) {
-      console.log(`🔄 Gemini falhou, tentando GROQ...`)
+    // Tentar cada API na ordem configurada
+    for (const provider of ordemAPIs) {
+      if (textoResposta) break
       
-      // v35: GROQ tem limite de tokens menor, usar texto reduzido
-      const textoParaGroq = textoOtimizado.substring(0, 25000)
-      const promptGroq = `EXTRAIA TODAS AS DISCIPLINAS E TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
+      if (provider === 'gemini' && geminiKey) {
+        // GEMINI - tentar múltiplos modelos
+        const modelosGemini = [
+          { nome: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}` },
+          { nome: 'gemini-1.5-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}` },
+          { nome: 'gemini-2.0-flash-lite', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}` }
+        ]
+        
+        for (const modelo of modelosGemini) {
+          console.log(`🚀 Tentando ${modelo.nome}...`)
+          
+          try {
+            const response = await fetch(modelo.url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0, maxOutputTokens: 65536 }
+              })
+            })
+            
+            if (response.status === 429) {
+              lastError = `${modelo.nome}: Rate limit`
+              await new Promise(r => setTimeout(r, 2000))
+              continue
+            }
+            
+            if (!response.ok) continue
+            
+            const data = await response.json() as any
+            textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            
+            if (textoResposta && textoResposta.includes('disciplinas')) {
+              modeloUsado = modelo.nome
+              console.log(`✅ ${modelo.nome} OK!`)
+              break
+            }
+          } catch (err) {
+            lastError = `${modelo.nome}: ${err}`
+          }
+        }
+      }
+      
+      if (provider === 'openai' && openaiKey && !textoResposta) {
+        // OPENAI GPT - usar GPT-4o-mini (custo-benefício)
+        console.log(`🚀 Tentando OpenAI GPT-4o-mini...`)
+        
+        try {
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${openaiKey}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                { 
+                  role: 'system', 
+                  content: 'Você é um especialista em extrair informações de editais de concursos. Retorne APENAS JSON válido, sem markdown ou texto adicional.'
+                },
+                { role: 'user', content: prompt }
+              ],
+              temperature: 0,
+              max_tokens: 16000
+            })
+          })
+          
+          if (response.status === 429) {
+            lastError = 'OpenAI: Rate limit'
+          } else if (response.ok) {
+            const data = await response.json() as any
+            textoResposta = data?.choices?.[0]?.message?.content || ''
+            
+            if (textoResposta && textoResposta.includes('disciplinas')) {
+              modeloUsado = 'gpt-4o-mini'
+              console.log(`✅ OpenAI GPT-4o-mini OK!`)
+            }
+          }
+        } catch (err) {
+          lastError = `OpenAI: ${err}`
+        }
+      }
+      
+      if (provider === 'groq' && groqKey && !textoResposta) {
+        // GROQ - texto reduzido (limite de contexto menor)
+        console.log(`🚀 Tentando GROQ LLaMA...`)
+        
+        const textoParaGroq = textoOtimizado.substring(0, 25000)
+        const promptGroq = `EXTRAIA TODAS AS DISCIPLINAS E TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
 
 CARGO: ${cargoDesejado?.toUpperCase() || 'GERAL'}
 
@@ -5908,39 +6220,40 @@ PESOS: 1=Básicos, 2=Específicos
 
 TEXTO:
 ${textoParaGroq}`
-      
-      try {
-        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${groqKey}`
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [{ role: 'user', content: promptGroq }],
-            temperature: 0,
-            max_tokens: 8000
-          })
-        })
         
-        if (groqResponse.ok) {
-          const groqData = await groqResponse.json() as any
-          textoResposta = groqData?.choices?.[0]?.message?.content || ''
+        try {
+          const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${groqKey}`
+            },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [{ role: 'user', content: promptGroq }],
+              temperature: 0,
+              max_tokens: 8000
+            })
+          })
           
-          if (textoResposta && textoResposta.includes('disciplinas')) {
-            modeloUsado = 'groq-llama-3.3-70b'
-            console.log(`✅ GROQ OK!`)
+          if (groqResponse.status === 429 || groqResponse.status === 413) {
+            lastError = `GROQ: ${groqResponse.status === 429 ? 'Rate limit' : 'Payload muito grande'}`
+          } else if (groqResponse.ok) {
+            const groqData = await groqResponse.json() as any
+            textoResposta = groqData?.choices?.[0]?.message?.content || ''
+            
+            if (textoResposta && textoResposta.includes('disciplinas')) {
+              modeloUsado = 'groq-llama-3.3-70b'
+              console.log(`✅ GROQ OK!`)
+            }
           }
-        } else {
-          lastError = `GROQ: HTTP ${groqResponse.status}`
+        } catch (err) {
+          lastError = `GROQ: ${err}`
         }
-      } catch (groqErr) {
-        lastError = `GROQ: ${groqErr}`
       }
     }
     
-    // Se nenhum modelo funcionou, retornar erro
+    // Se todas as APIs falharam
     if (!textoResposta || !modeloUsado) {
       console.error(`❌ Todos falharam: ${lastError}`)
       
@@ -6595,8 +6908,18 @@ app.post('/api/editais/processar-texto', async (c) => {
     
     console.log(`📚 Área detectada: ${areaDetectada}`)
     
-    // Chamar Gemini para extrair disciplinas
-    const geminiKey = c.env.GEMINI_API_KEY || 'SUA_CHAVE_GEMINI_AQUI'
+    // ✅ v37: Buscar chaves do banco de dados (ordem de prioridade configurada pelo admin)
+    const apiKeys = await getActiveAPIKeys(DB)
+    console.log(`🔑 APIs configuradas: ${apiKeys.map(k => k.provider).join(', ') || 'nenhuma'}`)
+    
+    // Fallback para variáveis de ambiente se não houver chaves no banco
+    const geminiKeyFromDB = apiKeys.find(k => k.provider === 'gemini')?.api_key
+    const openaiKeyFromDB = apiKeys.find(k => k.provider === 'openai')?.api_key
+    const groqKeyFromDB = apiKeys.find(k => k.provider === 'groq')?.api_key
+    
+    const geminiKey = geminiKeyFromDB || c.env.GEMINI_API_KEY || ''
+    const openaiKey = openaiKeyFromDB || c.env.OPENAI_API_KEY || ''
+    const groqKey = groqKeyFromDB || c.env.GROQ_API_KEY || ''
     
     // ✅ CORREÇÃO v35d: Aumentado para 65k para capturar TODAS as disciplinas
     const textoLimitado = texto.substring(0, 65000)
@@ -6623,68 +6946,122 @@ PESOS: 1=Básicos, 2=Específicos
 TEXTO:
 ${textoLimitado}`
 
-    // ✅ CORREÇÃO v33 - SISTEMA DE FALLBACK COM GROQ
-    // Tenta Gemini primeiro, depois Groq como fallback final
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v37 - SISTEMA DE FALLBACK MULTI-PROVIDER (ordem configurada pelo admin)
+    // ════════════════════════════════════════════════════════════════
     let textoResposta = ''
     let modeloUsado = ''
     let ultimoErro = ''
     
-    // Chave do Groq (fallback)
-    const groqKey = c.env.GROQ_API_KEY || ''
+    // Ordem de APIs configurada pelo admin
+    const ordemAPIs = apiKeys.map(k => k.provider)
+    console.log(`📋 Ordem de fallback: ${ordemAPIs.join(' → ') || 'padrão (gemini → openai → groq)'}`)
     
-    console.log(`🔑 Gemini: ${geminiKey?.substring(0,10)}...`)
-    console.log(`🔑 Groq: ${groqKey ? groqKey.substring(0,10) + '...' : 'NÃO CONFIGURADA'}`)
-    
-    // ETAPA 1: Tentar modelos Gemini (v35 - usar mais modelos + maior output)
-    const modelosGemini = [
-      { nome: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}` },
-      { nome: 'gemini-1.5-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}` },
-      { nome: 'gemini-2.0-flash-lite', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}` }
-    ]
-    
-    for (const modelo of modelosGemini) {
-      console.log(`🚀 Tentando ${modelo.nome}...`)
-      
-      try {
-        const response = await fetch(modelo.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 65536 }  // v35: aumentado
-          })
-        })
-        
-        console.log(`📡 ${modelo.nome}: Status ${response.status}`)
-        
-        if (response.status === 429) {
-          ultimoErro = `${modelo.nome}: Rate limit`
-          await new Promise(r => setTimeout(r, 2000))
-          continue
-        }
-        
-        if (!response.ok) continue
-        
-        const data = await response.json() as any
-        textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-        
-        if (textoResposta && textoResposta.includes('disciplinas')) {
-          modeloUsado = modelo.nome
-          console.log(`✅ ${modelo.nome} OK!`)
-          break
-        }
-      } catch (err) {
-        ultimoErro = `${modelo.nome}: ${err}`
-      }
+    // Se não houver ordem definida, usar ordem padrão
+    if (ordemAPIs.length === 0) {
+      if (geminiKey) ordemAPIs.push('gemini')
+      if (openaiKey) ordemAPIs.push('openai')
+      if (groqKey) ordemAPIs.push('groq')
     }
     
-    // ETAPA 2: Se Gemini falhou, tentar GROQ como fallback
-    if (!textoResposta && groqKey) {
-      console.log(`🔄 Gemini falhou, tentando GROQ...`)
+    // Tentar cada API na ordem configurada
+    for (const provider of ordemAPIs) {
+      if (textoResposta) break
       
-      // v35: GROQ tem limite de tokens menor, usar texto reduzido
-      const textoParaGroq = textoLimitado.substring(0, 25000)
-      const promptGroq = `EXTRAIA TODAS AS DISCIPLINAS E TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
+      if (provider === 'gemini' && geminiKey) {
+        // GEMINI - tentar múltiplos modelos
+        const modelosGemini = [
+          { nome: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}` },
+          { nome: 'gemini-1.5-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}` },
+          { nome: 'gemini-2.0-flash-lite', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}` }
+        ]
+        
+        for (const modelo of modelosGemini) {
+          console.log(`🚀 Tentando ${modelo.nome}...`)
+          
+          try {
+            const response = await fetch(modelo.url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0, maxOutputTokens: 65536 }
+              })
+            })
+            
+            console.log(`📡 ${modelo.nome}: Status ${response.status}`)
+            
+            if (response.status === 429) {
+              ultimoErro = `${modelo.nome}: Rate limit`
+              await new Promise(r => setTimeout(r, 2000))
+              continue
+            }
+            
+            if (!response.ok) continue
+            
+            const data = await response.json() as any
+            textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            
+            if (textoResposta && textoResposta.includes('disciplinas')) {
+              modeloUsado = modelo.nome
+              console.log(`✅ ${modelo.nome} OK!`)
+              break
+            }
+          } catch (err) {
+            ultimoErro = `${modelo.nome}: ${err}`
+          }
+        }
+      }
+      
+      if (provider === 'openai' && openaiKey && !textoResposta) {
+        // OPENAI GPT - usar GPT-4o-mini (custo-benefício)
+        console.log(`🚀 Tentando OpenAI GPT-4o-mini...`)
+        
+        try {
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${openaiKey}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                { 
+                  role: 'system', 
+                  content: 'Você é um especialista em extrair informações de editais de concursos. Retorne APENAS JSON válido, sem markdown ou texto adicional.'
+                },
+                { role: 'user', content: prompt }
+              ],
+              temperature: 0,
+              max_tokens: 16000
+            })
+          })
+          
+          console.log(`📡 OpenAI: Status ${response.status}`)
+          
+          if (response.status === 429) {
+            ultimoErro = 'OpenAI: Rate limit'
+          } else if (response.ok) {
+            const data = await response.json() as any
+            textoResposta = data?.choices?.[0]?.message?.content || ''
+            
+            if (textoResposta && textoResposta.includes('disciplinas')) {
+              modeloUsado = 'gpt-4o-mini'
+              console.log(`✅ OpenAI GPT-4o-mini OK!`)
+            }
+          }
+        } catch (err) {
+          ultimoErro = `OpenAI: ${err}`
+        }
+      }
+      
+      if (provider === 'groq' && groqKey && !textoResposta) {
+        // GROQ - texto reduzido (limite de contexto menor)
+        console.log(`🚀 Tentando GROQ LLaMA...`)
+        
+        const textoParaGroq = textoLimitado.substring(0, 25000)
+        const promptGroq = `EXTRAIA TODAS AS DISCIPLINAS E TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
 
 CARGO: ${cargo?.toUpperCase() || 'GERAL'}
 
@@ -6695,40 +7072,38 @@ PESOS: 1=Básicos, 2=Específicos
 
 TEXTO:
 ${textoParaGroq}`
-      
-      try {
-        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${groqKey}`
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [{ role: 'user', content: promptGroq }],
-            temperature: 0,
-            max_tokens: 8000
+        
+        try {
+          const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${groqKey}`
+            },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [{ role: 'user', content: promptGroq }],
+              temperature: 0,
+              max_tokens: 8000
+            })
           })
-        })
-        
-        console.log(`📡 GROQ: Status ${groqResponse.status}`)
-        
-        if (groqResponse.ok) {
-          const groqData = await groqResponse.json() as any
-          textoResposta = groqData?.choices?.[0]?.message?.content || ''
           
-          if (textoResposta && textoResposta.includes('disciplinas')) {
-            modeloUsado = 'groq-llama-3.3-70b'
-            console.log(`✅ GROQ respondeu com sucesso!`)
+          console.log(`📡 GROQ: Status ${groqResponse.status}`)
+          
+          if (groqResponse.status === 429 || groqResponse.status === 413) {
+            ultimoErro = `GROQ: ${groqResponse.status === 429 ? 'Rate limit' : 'Payload muito grande'}`
+          } else if (groqResponse.ok) {
+            const groqData = await groqResponse.json() as any
+            textoResposta = groqData?.choices?.[0]?.message?.content || ''
+            
+            if (textoResposta && textoResposta.includes('disciplinas')) {
+              modeloUsado = 'groq-llama-3.3-70b'
+              console.log(`✅ GROQ OK!`)
+            }
           }
-        } else {
-          const errText = await groqResponse.text()
-          ultimoErro = `GROQ: HTTP ${groqResponse.status}`
-          console.error(`❌ GROQ falhou: ${errText.substring(0, 100)}`)
+        } catch (err) {
+          ultimoErro = `GROQ: ${err}`
         }
-      } catch (groqErr) {
-        ultimoErro = `GROQ: ${groqErr}`
-        console.error(`❌ GROQ erro:`, groqErr)
       }
     }
     

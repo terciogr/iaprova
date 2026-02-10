@@ -13399,7 +13399,7 @@ window.abrirModalFeedback = function() {
   modal.innerHTML = `
     <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
       <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
           <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
             <i class="fas fa-comment-dots text-white text-xl"></i>
@@ -13412,6 +13412,15 @@ window.abrirModalFeedback = function() {
         <button onclick="document.getElementById('modal-feedback')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
           <i class="fas fa-times text-xl"></i>
         </button>
+      </div>
+      
+      <!-- Email de contato -->
+      <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 mb-4">
+        <p class="text-blue-800 dark:text-blue-300 text-sm text-center">
+          <i class="fas fa-envelope mr-2"></i>
+          Você também pode nos contatar por e-mail:
+          <a href="mailto:contato@iaprova.app" class="font-bold underline hover:text-blue-600">contato@iaprova.app</a>
+        </p>
       </div>
       
       <!-- Tipo de feedback -->
@@ -14128,6 +14137,10 @@ window.abrirPainelAdmin = async function() {
               <button onclick="verFeedbacksUsuarios()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-purple-50 dark:hover:bg-purple-900/20 transition text-center">
                 <i class="fas fa-comment-dots text-purple-500 text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Feedbacks</p>
+              </button>
+              <button onclick="gerenciarChavesAPI()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-red-50 dark:hover:bg-red-900/20 transition text-center">
+                <i class="fas fa-key text-red-500 text-xl mb-1"></i>
+                <p class="text-xs ${themes[currentTheme].text} font-medium">Chaves API</p>
               </button>
             </div>
           </div>
@@ -14995,6 +15008,302 @@ window.marcarFeedbackLido = async function(feedbackId) {
 
 // Alias para botão do painel admin
 window.verFeedbacksUsuarios = window.verFeedbacksAdmin;
+
+// ✅ NOVO: Gerenciar Chaves de API (Admin)
+window.gerenciarChavesAPI = async function() {
+  try {
+    showToast('🔑 Carregando configurações de API...', 'info');
+    
+    const response = await axios.get('/api/admin/api-keys', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    const { configs } = response.data;
+    
+    // Ordem dos providers para exibição
+    const providerInfo = {
+      gemini: { name: 'Google Gemini', icon: 'fa-brain', color: 'blue' },
+      openai: { name: 'OpenAI GPT', icon: 'fa-robot', color: 'green' },
+      groq: { name: 'Groq (LLaMA)', icon: 'fa-bolt', color: 'orange' }
+    };
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-api-keys';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    modal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-red-600 to-pink-600 p-5 text-white flex-shrink-0">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <i class="fas fa-key text-xl"></i>
+              </div>
+              <div>
+                <h2 class="text-xl font-bold">Gerenciar Chaves de API</h2>
+                <p class="text-red-200 text-sm">Configure APIs de IA para processamento de editais</p>
+              </div>
+            </div>
+            <button onclick="this.closest('#modal-api-keys').remove()" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">
+              <i class="fas fa-times text-lg"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-5 overflow-y-auto flex-1 space-y-4">
+          <!-- Explicação -->
+          <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4">
+            <p class="text-blue-800 dark:text-blue-300 text-sm">
+              <i class="fas fa-info-circle mr-2"></i>
+              <strong>Ordem de prioridade:</strong> As APIs serão usadas na ordem configurada. 
+              Se uma falhar (rate limit ou erro), a próxima será tentada automaticamente.
+              <br><br>
+              <strong>Arraste</strong> para reordenar ou use as <strong>setas</strong> ↑↓
+            </p>
+          </div>
+          
+          <!-- Lista de APIs -->
+          <div id="api-keys-list" class="space-y-3">
+            ${configs.map((config, index) => `
+              <div class="api-key-item ${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4" data-provider="${config.provider}" data-priority="${config.priority}">
+                <div class="flex items-center gap-4">
+                  <!-- Prioridade / Drag Handle -->
+                  <div class="flex flex-col items-center gap-1">
+                    <button onclick="moverAPIKey('${config.provider}', 'up')" class="w-6 h-6 rounded hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center ${index === 0 ? 'opacity-30 cursor-not-allowed' : ''}" ${index === 0 ? 'disabled' : ''}>
+                      <i class="fas fa-chevron-up text-xs ${themes[currentTheme].textSecondary}"></i>
+                    </button>
+                    <span class="w-8 h-8 bg-${providerInfo[config.provider]?.color || 'gray'}-100 dark:bg-${providerInfo[config.provider]?.color || 'gray'}-900/30 rounded-lg flex items-center justify-center text-${providerInfo[config.provider]?.color || 'gray'}-600 font-bold text-sm">
+                      ${index + 1}º
+                    </span>
+                    <button onclick="moverAPIKey('${config.provider}', 'down')" class="w-6 h-6 rounded hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center ${index === configs.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}" ${index === configs.length - 1 ? 'disabled' : ''}>
+                      <i class="fas fa-chevron-down text-xs ${themes[currentTheme].textSecondary}"></i>
+                    </button>
+                  </div>
+                  
+                  <!-- Ícone do Provider -->
+                  <div class="w-12 h-12 bg-${providerInfo[config.provider]?.color || 'gray'}-100 dark:bg-${providerInfo[config.provider]?.color || 'gray'}-900/30 rounded-xl flex items-center justify-center">
+                    <i class="fas ${providerInfo[config.provider]?.icon || 'fa-cog'} text-xl text-${providerInfo[config.provider]?.color || 'gray'}-600"></i>
+                  </div>
+                  
+                  <!-- Info -->
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="font-bold ${themes[currentTheme].text}">${providerInfo[config.provider]?.name || config.provider}</span>
+                      ${config.has_key ? `<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">✓ Configurada</span>` : `<span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">⚠ Não configurada</span>`}
+                      ${config.is_active ? '' : `<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">Desativada</span>`}
+                    </div>
+                    <div class="flex items-center gap-4 text-xs ${themes[currentTheme].textSecondary}">
+                      ${config.api_key_masked ? `<span><i class="fas fa-key mr-1"></i>${config.api_key_masked}</span>` : '<span class="text-yellow-600">Sem chave</span>'}
+                      ${config.usage_count > 0 ? `<span><i class="fas fa-chart-bar mr-1"></i>${config.usage_count} usos</span>` : ''}
+                      ${config.last_error ? `<span class="text-red-500"><i class="fas fa-exclamation-triangle mr-1"></i>Erro recente</span>` : ''}
+                    </div>
+                  </div>
+                  
+                  <!-- Ações -->
+                  <div class="flex items-center gap-2">
+                    <button onclick="editarChaveAPI('${config.provider}')" class="w-9 h-9 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition flex items-center justify-center" title="Editar chave">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="testarChaveAPI('${config.provider}')" class="w-9 h-9 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition flex items-center justify-center" title="Testar conexão">
+                      <i class="fas fa-play"></i>
+                    </button>
+                    <button onclick="toggleAPIKey('${config.provider}', ${config.is_active ? 0 : 1})" class="w-9 h-9 ${config.is_active ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'} rounded-lg hover:opacity-80 transition flex items-center justify-center" title="${config.is_active ? 'Desativar' : 'Ativar'}">
+                      <i class="fas fa-${config.is_active ? 'power-off' : 'check'}"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          
+          <!-- Dica -->
+          <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4 mt-4">
+            <p class="text-yellow-800 dark:text-yellow-300 text-sm">
+              <i class="fas fa-lightbulb mr-2"></i>
+              <strong>Dica:</strong> O Gemini oferece bom custo-benefício. OpenAI/GPT é mais preciso mas mais caro. Groq é rápido e gratuito mas com limites.
+            </p>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="p-4 border-t ${themes[currentTheme].border} flex-shrink-0 bg-gray-50 dark:bg-gray-800">
+          <div class="flex gap-3 justify-end">
+            <button onclick="this.closest('#modal-api-keys').remove()" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+              Fechar
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+  } catch (error) {
+    console.error('Erro ao carregar chaves API:', error);
+    showToast('❌ Erro ao carregar configurações de API', 'error');
+  }
+};
+
+// Editar chave de API
+window.editarChaveAPI = async function(provider) {
+  const providerNames = {
+    gemini: 'Google Gemini',
+    openai: 'OpenAI GPT',
+    groq: 'Groq'
+  };
+  
+  const modal = document.createElement('div');
+  modal.id = 'modal-edit-api-key';
+  modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10001] p-4';
+  modal.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-xl shadow-xl max-w-md w-full p-6">
+      <h3 class="font-bold ${themes[currentTheme].text} text-lg mb-4 flex items-center gap-2">
+        <i class="fas fa-key text-blue-500"></i>
+        Editar Chave - ${providerNames[provider] || provider}
+      </h3>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium ${themes[currentTheme].text} mb-2">
+            Chave de API
+          </label>
+          <input 
+            type="password" 
+            id="input-api-key" 
+            placeholder="Cole sua chave de API aqui..."
+            class="w-full px-4 py-3 border ${themes[currentTheme].border} rounded-lg ${themes[currentTheme].text} bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p class="text-xs ${themes[currentTheme].textSecondary} mt-2">
+            <i class="fas fa-lock mr-1"></i>
+            A chave será armazenada de forma segura e criptografada
+          </p>
+        </div>
+      </div>
+      
+      <div class="flex gap-3 mt-6">
+        <button onclick="this.closest('#modal-edit-api-key').remove()" class="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 transition">
+          Cancelar
+        </button>
+        <button onclick="salvarChaveAPI('${provider}')" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+          <i class="fas fa-save mr-1"></i>
+          Salvar
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  document.getElementById('input-api-key')?.focus();
+};
+
+// Salvar chave de API
+window.salvarChaveAPI = async function(provider) {
+  const apiKey = document.getElementById('input-api-key')?.value?.trim();
+  
+  if (!apiKey) {
+    showToast('⚠️ Digite a chave de API', 'warning');
+    return;
+  }
+  
+  try {
+    showToast('💾 Salvando chave...', 'info');
+    
+    await axios.post('/api/admin/api-keys', {
+      provider,
+      api_key: apiKey
+    }, {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    
+    document.getElementById('modal-edit-api-key')?.remove();
+    showToast('✅ Chave salva com sucesso!', 'success');
+    
+    // Recarregar modal de chaves
+    document.getElementById('modal-api-keys')?.remove();
+    gerenciarChavesAPI();
+  } catch (error) {
+    console.error('Erro ao salvar chave:', error);
+    showToast('❌ Erro ao salvar chave', 'error');
+  }
+};
+
+// Testar chave de API
+window.testarChaveAPI = async function(provider) {
+  try {
+    showToast(`🔄 Testando ${provider}...`, 'info');
+    
+    const response = await axios.post('/api/admin/api-keys/test', {
+      provider
+    }, {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    
+    if (response.data.success) {
+      showToast(`✅ ${response.data.message} (${response.data.latency}ms)`, 'success');
+    } else {
+      showToast(`❌ Falha: ${response.data.message || response.data.error}`, 'error');
+    }
+  } catch (error) {
+    console.error('Erro ao testar API:', error);
+    showToast('❌ Erro ao testar conexão', 'error');
+  }
+};
+
+// Ativar/Desativar API
+window.toggleAPIKey = async function(provider, active) {
+  try {
+    await axios.post('/api/admin/api-keys', {
+      provider,
+      is_active: active
+    }, {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    
+    showToast(`✅ ${provider} ${active ? 'ativada' : 'desativada'}`, 'success');
+    
+    // Recarregar modal
+    document.getElementById('modal-api-keys')?.remove();
+    gerenciarChavesAPI();
+  } catch (error) {
+    showToast('❌ Erro ao atualizar', 'error');
+  }
+};
+
+// Mover API na ordem de prioridade
+window.moverAPIKey = async function(provider, direction) {
+  try {
+    // Pegar lista atual
+    const response = await axios.get('/api/admin/api-keys', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    
+    const configs = response.data.configs || [];
+    const currentIndex = configs.findIndex(c => c.provider === provider);
+    
+    if (currentIndex === -1) return;
+    
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= configs.length) return;
+    
+    // Criar nova ordem
+    const newOrder = configs.map(c => c.provider);
+    [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]];
+    
+    // Enviar nova ordem
+    await axios.post('/api/admin/api-keys/reorder', {
+      order: newOrder
+    }, {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    
+    showToast('✅ Ordem atualizada', 'success');
+    
+    // Recarregar modal
+    document.getElementById('modal-api-keys')?.remove();
+    gerenciarChavesAPI();
+  } catch (error) {
+    showToast('❌ Erro ao reordenar', 'error');
+  }
+};
 
 // ✅ NOVO: Ver visitas detalhadas (admin)
 window.verVisitasDetalhadas = async function() {
