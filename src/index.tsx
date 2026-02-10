@@ -7496,7 +7496,6 @@ app.post('/api/editais/processar-texto', async (c) => {
       }
       
       const secaoCargoTexto = linhas.slice(inicioSecaoCargo, fimSecaoCargo).join('\n')
-      
       textoSecaoCargo = [
         secaoGeraisTexto ? 'CONHECIMENTOS GERAIS\n' + secaoGeraisTexto : '',
         secaoComumTexto ? 'CONHECIMENTOS ESPECÍFICOS COMUNS\n' + secaoComumTexto : '',
@@ -7599,11 +7598,52 @@ app.post('/api/editais/processar-texto', async (c) => {
       
       console.log('\n🔧 Extração por padrão "Nome: conteúdo"...')
       
+      // Nomes conhecidos de disciplinas que SÃO reais (não subtópicos)
+      const nomesConhecidosDisciplinas = [
+        'LÍNGUA PORTUGUESA', 'LÍNGUA INGLESA', 'RACIOCÍNIO LÓGICO',
+        'MATEMÁTICA', 'ESTATÍSTICA', 'INFORMÁTICA', 'DIREITO',
+        'LEGISLAÇÃO', 'CONHECIMENTOS GERAIS', 'CONHECIMENTOS REGIONAIS',
+        'CONHECIMENTOS SOBRE O', 'CONHECIMENTOS ESPECÍFICOS',
+        'ADMINISTRAÇÃO', 'CONTABILIDADE', 'ECONOMIA', 'AUDITORIA',
+        'FLUÊNCIA EM DADOS', 'CIÊNCIA DE DADOS', 'COMÉRCIO',
+        'ÉTICA E LEGISLAÇÃO', 'SISTEMA ÚNICO', 'SAÚDE PÚBLICA',
+        'ENFERMAGEM', 'FARMACOLOGIA', 'BIOSSEGURANÇA'
+      ]
+      
+      // Padrões que indicam que algo é subtópico, NÃO disciplina
+      const padroesSubtopico = [
+        /^NOÇÕES\s+(BÁSICAS|DE|GERAIS)\b/i,
+        /^RECURSOS\s+(NA|EM|DE|DO)\b/i,
+        /^ALOCAÇÃO\s+DE/i,
+        /^PRINCÍPIOS\s+DE/i,
+        /^CONCEITOS?\s+(BÁSIC|DE|GERAL)/i,
+        /^(BASES|DADOS|TIPOS|MÉTODOS)\s+(LEGAIS|DE|PARA)/i,
+        /^PORTARIA\s/i,
+        /^LEI\s/i,
+        /^DECRETO\s/i,
+        /^(POLÍTICA|PROGRAMA)\s+NACIONAL/i,
+      ]
+      
       const linhasSecao = textoSecaoCargo.split('\n')
       let categoriaAtual = 'BÁSICOS'
       let pesoAtual = 1
       let disciplinaAtual: { nome: string, peso: number, categoria: string, textoCompleto: string } | null = null
       const disciplinasRaw: typeof disciplinaAtual[] = []
+      
+      // Função para verificar se um nome é disciplina real ou subtópico
+      const ehNomeDeDisciplina = (nome: string): boolean => {
+        const nomeUpper = nome.toUpperCase()
+        // Se é um nome conhecido, é disciplina
+        if (nomesConhecidosDisciplinas.some(nc => nomeUpper.startsWith(nc))) return true
+        // Se bate com padrão de subtópico, NÃO é disciplina
+        if (padroesSubtopico.some(p => p.test(nome))) return false
+        // Se o nome é muito longo (>60 chars) e contém muitas vírgulas, provavelmente é subtópico
+        if (nome.length > 60 && (nome.match(/,/g) || []).length >= 2) return false
+        // Se começa com letra minúscula, não é disciplina
+        if (/^[a-z]/.test(nome)) return false
+        // Default: se tem conteúdo, aceitar como disciplina
+        return true
+      }
       
       for (let i = 0; i < linhasSecao.length; i++) {
         const linha = linhasSecao[i].trim()
@@ -7624,67 +7664,82 @@ app.post('/api/editais/processar-texto', async (c) => {
           continue
         }
         
-        if (linha.length < 15) continue
+        if (linha.length < 4) continue
         if (/^(CARGOS|PARA TODOS|ANEXO)\s/i.test(linha)) continue
+        if (linhaUpper.includes('CARGOS DE ENSINO') && linha.length < 100) continue
+        
+        // Caso: "PARA TODOS OS CARGOS DE ENSINO SUPERIOR"
+        if (linhaUpper.includes('PARA TODOS OS CARGOS')) {
+          if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
+          disciplinaAtual = null
+          categoriaAtual = 'ESPECÍFICOS'
+          pesoAtual = 2
+          continue
+        }
+        
+        // Caso: nome de cargo sozinho na linha (ex: "Enfermeiro")
+        // Prioridade: se é o CARGO ALVO, sempre tratar como cargo
+        if (/^[A-ZÀ-Ú][a-zà-ú]+(\s+[-–]\s+[A-Za-zÀ-ú]+)?(\s+[A-Za-zÀ-ú\-]+)*\s*$/.test(linha) && linha.length < 60 && linha.length > 3) {
+          const linhaUpperTrim = linhaUpper.replace(/\s+/g, ' ').trim()
+          const ehCargoAlvo = variacoesCargo.some(v => linhaUpperTrim === v || linhaUpperTrim.startsWith(v + ' -') || linhaUpperTrim.startsWith(v + ' –'))
+          const ehOutroCargo = outrosCargosConhecidos.some(c => linhaUpperTrim === c || linhaUpperTrim.startsWith(c + ' ') || linhaUpperTrim.startsWith(c + ' -') || linhaUpperTrim.startsWith(c + ' –'))
+          
+          if (ehCargoAlvo || ehOutroCargo) {
+            if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
+            const nomeCargo = linha.trim().replace(/\s*[-–]\s+/g, ' - ')
+            if (ehCargoAlvo) {
+              // Cargo alvo: criar disciplina "Conhecimentos Específicos de X"
+              disciplinaAtual = { nome: `Conhecimentos Específicos de ${nomeCargo}`, peso: 2, categoria: 'ESPECÍFICOS', textoCompleto: '' }
+              console.log(`   📌 Cargo ALVO detectado: "${nomeCargo}" → disciplina única`)
+            } else {
+              // Outro cargo: ignorar (parar se vier depois do cargo alvo)
+              disciplinaAtual = null
+              console.log(`   📌 Outro cargo detectado: "${nomeCargo}" → ignorado`)
+            }
+            continue
+          }
+        }
         
         // Padrão de disciplina: "NomeDisciplina: conteúdo..."
-        const matchDisc = linha.match(/^([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú\s,\-–()\/e]+?):\s+(.+)/)
+        // MAS: se estamos dentro de um cargo alvo ("Conhecimentos Específicos de X"),
+        // tudo é conteúdo desse cargo, não criar nova disciplina
+        const dentroDeCargoEspecifico = disciplinaAtual?.nome.startsWith('Conhecimentos Específicos de ')
+        const matchDisc = !dentroDeCargoEspecifico ? linha.match(/^([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú\s,\-–()\/e]+?):\s+(.+)/) : null
         
         if (matchDisc) {
           const nomeCand = matchDisc[1].trim()
           const resto = matchDisc[2].trim()
           
-          // Disciplina real: não é número, começa com maiúscula, tem tamanho certo, conteúdo longo
-          const ehDisciplinaReal = 
-            /^[A-ZÀ-Ú]/.test(nomeCand) && 
-            nomeCand.length >= 4 && nomeCand.length <= 120 &&
-            resto.length > 30 && 
-            !/^\d/.test(nomeCand) &&
-            !/^(Conceito|Definição|Tipo|Classificação|Observação)\s*$/i.test(nomeCand)
+          // Verificar se é disciplina real
+          const temTamanhoOk = nomeCand.length >= 4 && nomeCand.length <= 120
+          const temConteudo = resto.length > 20
+          const ehReal = ehNomeDeDisciplina(nomeCand)
           
-          if (ehDisciplinaReal) {
+          if (temTamanhoOk && temConteudo && ehReal) {
             if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
             disciplinaAtual = { nome: nomeCand, peso: pesoAtual, categoria: categoriaAtual, textoCompleto: resto }
+            console.log(`   📘 Disciplina: "${nomeCand}" (${categoriaAtual}, peso ${pesoAtual})`)
+            continue
+          } else if (disciplinaAtual) {
+            // É subtópico - agregar ao disciplina atual
+            disciplinaAtual.textoCompleto += ' ' + linha
+            console.log(`   📎 Subtópico agregado: "${nomeCand}" → "${disciplinaAtual.nome}"`)
             continue
           }
         }
         
-        // Caso para editais de saúde: nome de cargo sozinho na linha
-        // Ex: "Enfermeiro" seguido por conteúdo sem ":" de disciplina
-        if (/^[A-ZÀ-Ú][a-zà-ú]+(\s+[A-Za-zÀ-ú\-]+)*\s*$/.test(linha) && linha.length < 60) {
-          const proxLinha = linhasSecao[i+1]?.trim() || ''
-          // Verificar se é nome de cargo (não nome de disciplina): próxima linha não tem ":" no início
-          if (proxLinha.length > 30 && !proxLinha.match(/^[A-ZÀ-Ú][^:]{3,30}:\s/)) {
-            if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
-            disciplinaAtual = { nome: `Conhecimentos Específicos de ${linha.trim()}`, peso: 2, categoria: 'ESPECÍFICOS', textoCompleto: '' }
-            continue
-          }
-        }
-        
-        // Caso para seções de edital de saúde: "PARA TODOS OS CARGOS DE ENSINO SUPERIOR"
-        if (linhaUpper.includes('PARA TODOS OS CARGOS')) {
-          if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
-          disciplinaAtual = null // Reset, a próxima disciplina será a de SUS
-          continue
-        }
-        
-        // Caso para "Conhecimentos sobre o SUS:" ou similar
-        if (linhaUpper.includes('CARGOS DE ENSINO') && linha.length < 100) {
-          continue // Ignorar cabeçalho, o conteúdo vem depois
-        }
-        
-        // Acumular conteúdo
+        // Acumular conteúdo na disciplina atual
         if (disciplinaAtual && linha.length > 10) {
           disciplinaAtual.textoCompleto += ' ' + linha
         }
       }
       if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
       
-      // Processar disciplinas brutas
+      // Processar disciplinas brutas → extrair tópicos
       for (const disc of disciplinasRaw) {
         if (!disc) continue
         const topicos = extrairTopicosDeTexto(disc.textoCompleto)
-        if (disc.textoCompleto.length > 30) {
+        if (disc.textoCompleto.length > 20) {
           disciplinasExtraidas.push({
             nome: disc.nome,
             peso: disc.peso,
@@ -7693,6 +7748,8 @@ app.post('/api/editais/processar-texto', async (c) => {
           })
         }
       }
+      
+      console.log(`   Total disciplinas brutas: ${disciplinasRaw.filter(d => d).length}, após filtragem: ${disciplinasExtraidas.length}`)
     }
     
     console.log(`\n📊 Extração programática: ${disciplinasExtraidas.length} disciplinas`)
