@@ -6336,28 +6336,31 @@ ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo princ
                    cargoUpper.includes('FISIOTERAPEUTA') || cargoUpper.includes('PSICÓLOGO')
     
     const prompt = ehSaude ? 
-`Extraia EXATAMENTE 5 DISCIPLINAS para o cargo ${cargoUpper}.
+`RETORNE EXATAMENTE ESTE JSON (ajustando apenas os tópicos do texto):
 
-ESTRUTURA OBRIGATÓRIA (não mude):
-1. "Língua Portuguesa" - peso 1, categoria BÁSICOS
-2. "Raciocínio Lógico-Matemático" - peso 1, categoria BÁSICOS
-3. "Conhecimentos Regionais" - peso 1, categoria BÁSICOS (História/Geografia local)
-4. "Legislação do SUS" - peso 2, categoria ESPECÍFICOS (Lei 8080, Lei 8142)
-5. "Conhecimentos Específicos de ${cargoUpper}" - peso 2, categoria ESPECÍFICOS
-
-REGRA: A seção específica do cargo (ex: "Enfermeiro" seguido de texto corrido) = 1 DISCIPLINA ÚNICA.
-Os itens dentro dessa seção são TÓPICOS, não disciplinas separadas.
-
-JSON (sem markdown):
 {"disciplinas":[
-{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Concordância"]},
-{"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica proposicional"]},
-{"nome":"Conhecimentos Regionais","peso":1,"categoria":"BÁSICOS","topicos":["História do Piauí"]},
-{"nome":"Legislação do SUS","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080/90","Lei 8142/90"]},
-{"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["Ética profissional","Técnicas de enfermagem"]}
+{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Acentuação","Concordância","Interpretação de texto"]},
+{"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica proposicional","Sequências","Porcentagem"]},
+{"nome":"Conhecimentos Regionais","peso":1,"categoria":"BÁSICOS","topicos":["História local","Geografia local"]},
+{"nome":"Legislação do SUS","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080/90","Lei 8142/90","Princípios do SUS"]},
+{"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["(TODOS os itens da seção específica do cargo vão aqui como tópicos)"]}
 ]}
 
-TEXTO:
+⚠️ REGRA ABSOLUTA: A seção do cargo "${cargoUpper}" no edital contém VÁRIOS TÓPICOS em texto corrido.
+Esses tópicos NÃO são disciplinas separadas - são todos TÓPICOS de UMA disciplina: "Conhecimentos Específicos de ${cargoUpper}".
+
+Por exemplo, se o edital diz:
+"Enfermeiro
+Ética e legislação: aspectos éticos... Código de Ética... Sistema Único de Saúde... Técnicas básicas..."
+
+Isso significa:
+- "Ética e legislação" → tópico
+- "Código de Ética" → tópico
+- "Sistema Único de Saúde" → tópico
+- "Técnicas básicas" → tópico
+Todos dentro de "Conhecimentos Específicos de ENFERMEIRO"
+
+TEXTO DO EDITAL:
 ${textoOtimizado}` 
 :
 // PROMPT PARA CONCURSOS FISCAIS
@@ -7282,28 +7285,31 @@ app.post('/api/editais/processar-texto', async (c) => {
     
     // ✅ v46c: PROMPT SUPER RESTRITIVO
     const prompt = ehConcursoSaude ? 
-`Extraia EXATAMENTE 5 DISCIPLINAS para o cargo ${cargoUpper}.
+`RETORNE EXATAMENTE ESTE JSON (ajustando apenas os tópicos do texto):
 
-ESTRUTURA OBRIGATÓRIA (não mude):
-1. "Língua Portuguesa" - peso 1, categoria BÁSICOS
-2. "Raciocínio Lógico-Matemático" - peso 1, categoria BÁSICOS
-3. "Conhecimentos Regionais" - peso 1, categoria BÁSICOS (História/Geografia local)
-4. "Legislação do SUS" - peso 2, categoria ESPECÍFICOS (Lei 8080, Lei 8142)
-5. "Conhecimentos Específicos de ${cargoUpper}" - peso 2, categoria ESPECÍFICOS
-
-REGRA: A seção específica do cargo (ex: "Enfermeiro" seguido de texto corrido) = 1 DISCIPLINA ÚNICA.
-Os itens dentro dessa seção são TÓPICOS, não disciplinas separadas.
-
-JSON (sem markdown):
 {"disciplinas":[
-{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Concordância"]},
-{"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica proposicional"]},
-{"nome":"Conhecimentos Regionais","peso":1,"categoria":"BÁSICOS","topicos":["História do Piauí"]},
-{"nome":"Legislação do SUS","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080/90","Lei 8142/90"]},
-{"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["Ética profissional","Técnicas de enfermagem"]}
+{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Acentuação","Concordância","Interpretação de texto"]},
+{"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica proposicional","Sequências","Porcentagem"]},
+{"nome":"Conhecimentos Regionais","peso":1,"categoria":"BÁSICOS","topicos":["História local","Geografia local"]},
+{"nome":"Legislação do SUS","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080/90","Lei 8142/90","Princípios do SUS"]},
+{"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["(TODOS os itens da seção específica do cargo vão aqui como tópicos)"]}
 ]}
 
-TEXTO:
+⚠️ REGRA ABSOLUTA: A seção do cargo "${cargoUpper}" no edital contém VÁRIOS TÓPICOS em texto corrido.
+Esses tópicos NÃO são disciplinas separadas - são todos TÓPICOS de UMA disciplina: "Conhecimentos Específicos de ${cargoUpper}".
+
+Por exemplo, se o edital diz:
+"Enfermeiro
+Ética e legislação: aspectos éticos... Código de Ética... Sistema Único de Saúde... Técnicas básicas..."
+
+Isso significa:
+- "Ética e legislação" → tópico
+- "Código de Ética" → tópico
+- "Sistema Único de Saúde" → tópico
+- "Técnicas básicas" → tópico
+Todos dentro de "Conhecimentos Específicos de ENFERMEIRO"
+
+TEXTO DO EDITAL:
 ${textoLimitado}` 
 :
 // PROMPT PARA CONCURSOS FISCAIS
