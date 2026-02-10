@@ -6356,15 +6356,34 @@ ${textoOtimizado}`
     let modeloUsado = ''
     let lastError = ''
     
-    // Ordem de APIs configurada pelo admin
-    const ordemAPIs = apiKeys.map(k => k.provider)
-    console.log(`📋 Ordem de fallback: ${ordemAPIs.join(' → ') || 'padrão (gemini → openai → groq)'}`)
+    // ✅ v39: CORREÇÃO ROBUSTA - Garantir que sempre haja providers disponíveis
+    let ordemAPIs = apiKeys.filter(k => k.api_key && k.api_key.length > 10).map(k => k.provider)
     
-    // Se não houver ordem definida, usar ordem padrão
+    // Log detalhado para debug
+    console.log(`🔑 Chaves encontradas no banco: ${apiKeys.length}`)
+    apiKeys.forEach(k => {
+      console.log(`   - ${k.provider}: ${k.api_key ? k.api_key.substring(0, 10) + '...' : 'VAZIA'}`)
+    })
+    
+    // Se não houver chaves válidas no banco, usar variáveis de ambiente
     if (ordemAPIs.length === 0) {
-      if (geminiKey) ordemAPIs.push('gemini')
-      if (openaiKey) ordemAPIs.push('openai')
-      if (groqKey) ordemAPIs.push('groq')
+      console.log('⚠️ Nenhuma chave válida no banco, usando variáveis de ambiente...')
+      if (geminiKey && geminiKey.length > 10) ordemAPIs.push('gemini')
+      if (openaiKey && openaiKey.length > 10) ordemAPIs.push('openai')
+      if (groqKey && groqKey.length > 10) ordemAPIs.push('groq')
+    }
+    
+    console.log(`📋 Ordem de fallback: ${ordemAPIs.join(' → ') || 'NENHUMA API DISPONÍVEL'}`)
+    
+    // Se ainda não houver APIs, retornar erro claro
+    if (ordemAPIs.length === 0) {
+      console.error('❌ ERRO CRÍTICO: Nenhuma chave de API disponível!')
+      return c.json({
+        error: 'Nenhuma chave de API configurada.',
+        errorType: 'NO_API_KEYS',
+        suggestion: 'Configure as chaves de API no painel de administração.',
+        canRetry: false
+      }, 500)
     }
     
     // Tentar cada API na ordem configurada
@@ -6403,10 +6422,14 @@ ${textoOtimizado}`
             const data = await response.json() as any
             textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
             
-            if (textoResposta && textoResposta.includes('disciplinas')) {
+            // ✅ v39: Aceitar qualquer resposta válida (não exigir palavra específica)
+            if (textoResposta && textoResposta.length > 50) {
               modeloUsado = modelo.nome
-              console.log(`✅ ${modelo.nome} OK!`)
+              console.log(`✅ ${modelo.nome} OK! (${textoResposta.length} chars)`)
               break
+            } else if (textoResposta) {
+              console.log(`⚠️ ${modelo.nome} respondeu mas muito curto: ${textoResposta.length} chars`)
+              textoResposta = '' // Resetar para tentar próximo modelo
             }
           } catch (err) {
             lastError = `${modelo.nome}: ${err}`
@@ -6445,9 +6468,13 @@ ${textoOtimizado}`
             const data = await response.json() as any
             textoResposta = data?.choices?.[0]?.message?.content || ''
             
-            if (textoResposta && textoResposta.includes('disciplinas')) {
+            // ✅ v39: Aceitar qualquer resposta válida
+            if (textoResposta && textoResposta.length > 50) {
               modeloUsado = 'gpt-4o-mini'
-              console.log(`✅ OpenAI GPT-4o-mini OK!`)
+              console.log(`✅ OpenAI GPT-4o-mini OK! (${textoResposta.length} chars)`)
+            } else if (textoResposta) {
+              console.log(`⚠️ OpenAI respondeu mas muito curto: ${textoResposta.length} chars`)
+              textoResposta = '' // Resetar para tentar próximo
             }
           }
         } catch (err) {
@@ -6493,9 +6520,13 @@ ${textoParaGroq}`
             const groqData = await groqResponse.json() as any
             textoResposta = groqData?.choices?.[0]?.message?.content || ''
             
-            if (textoResposta && textoResposta.includes('disciplinas')) {
+            // ✅ v39: Aceitar qualquer resposta válida
+            if (textoResposta && textoResposta.length > 50) {
               modeloUsado = 'groq-llama-3.3-70b'
-              console.log(`✅ GROQ OK!`)
+              console.log(`✅ GROQ OK! (${textoResposta.length} chars)`)
+            } else if (textoResposta) {
+              console.log(`⚠️ GROQ respondeu mas muito curto: ${textoResposta.length} chars`)
+              textoResposta = '' // Resetar
             }
           }
         } catch (err) {
@@ -7204,15 +7235,34 @@ ${textoLimitado}`
     let modeloUsado = ''
     let ultimoErro = ''
     
-    // Ordem de APIs configurada pelo admin
-    const ordemAPIs = apiKeys.map(k => k.provider)
-    console.log(`📋 Ordem de fallback: ${ordemAPIs.join(' → ') || 'padrão (gemini → openai → groq)'}`)
+    // ✅ v39: CORREÇÃO ROBUSTA - Garantir que sempre haja providers disponíveis
+    let ordemAPIs = apiKeys.filter(k => k.api_key && k.api_key.length > 10).map(k => k.provider)
     
-    // Se não houver ordem definida, usar ordem padrão
+    // Log detalhado para debug
+    console.log(`🔑 Chaves encontradas no banco: ${apiKeys.length}`)
+    apiKeys.forEach(k => {
+      console.log(`   - ${k.provider}: ${k.api_key ? k.api_key.substring(0, 10) + '...' : 'VAZIA'}`)
+    })
+    
+    // Se não houver chaves válidas no banco, usar variáveis de ambiente
     if (ordemAPIs.length === 0) {
-      if (geminiKey) ordemAPIs.push('gemini')
-      if (openaiKey) ordemAPIs.push('openai')
-      if (groqKey) ordemAPIs.push('groq')
+      console.log('⚠️ Nenhuma chave válida no banco, usando variáveis de ambiente...')
+      if (geminiKey && geminiKey.length > 10) ordemAPIs.push('gemini')
+      if (openaiKey && openaiKey.length > 10) ordemAPIs.push('openai')
+      if (groqKey && groqKey.length > 10) ordemAPIs.push('groq')
+    }
+    
+    console.log(`📋 Ordem de fallback: ${ordemAPIs.join(' → ') || 'NENHUMA API DISPONÍVEL'}`)
+    
+    // Se ainda não houver APIs, retornar erro claro
+    if (ordemAPIs.length === 0) {
+      console.error('❌ ERRO CRÍTICO: Nenhuma chave de API disponível!')
+      return c.json({
+        error: 'Nenhuma chave de API configurada.',
+        errorType: 'NO_API_KEYS',
+        suggestion: 'Configure as chaves de API no painel de administração.',
+        canRetry: false
+      }, 500)
     }
     
     // Tentar cada API na ordem configurada
@@ -7253,10 +7303,14 @@ ${textoLimitado}`
             const data = await response.json() as any
             textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
             
-            if (textoResposta && textoResposta.includes('disciplinas')) {
+            // ✅ v39: Aceitar qualquer resposta válida
+            if (textoResposta && textoResposta.length > 50) {
               modeloUsado = modelo.nome
-              console.log(`✅ ${modelo.nome} OK!`)
+              console.log(`✅ ${modelo.nome} OK! (${textoResposta.length} chars)`)
               break
+            } else if (textoResposta) {
+              console.log(`⚠️ ${modelo.nome} respondeu mas muito curto: ${textoResposta.length} chars`)
+              textoResposta = ''
             }
           } catch (err) {
             ultimoErro = `${modelo.nome}: ${err}`
@@ -7297,9 +7351,13 @@ ${textoLimitado}`
             const data = await response.json() as any
             textoResposta = data?.choices?.[0]?.message?.content || ''
             
-            if (textoResposta && textoResposta.includes('disciplinas')) {
+            // ✅ v39: Aceitar qualquer resposta válida
+            if (textoResposta && textoResposta.length > 50) {
               modeloUsado = 'gpt-4o-mini'
-              console.log(`✅ OpenAI GPT-4o-mini OK!`)
+              console.log(`✅ OpenAI GPT-4o-mini OK! (${textoResposta.length} chars)`)
+            } else if (textoResposta) {
+              console.log(`⚠️ OpenAI respondeu mas muito curto: ${textoResposta.length} chars`)
+              textoResposta = ''
             }
           }
         } catch (err) {
@@ -7347,9 +7405,13 @@ ${textoParaGroq}`
             const groqData = await groqResponse.json() as any
             textoResposta = groqData?.choices?.[0]?.message?.content || ''
             
-            if (textoResposta && textoResposta.includes('disciplinas')) {
+            // ✅ v39: Aceitar qualquer resposta válida
+            if (textoResposta && textoResposta.length > 50) {
               modeloUsado = 'groq-llama-3.3-70b'
-              console.log(`✅ GROQ OK!`)
+              console.log(`✅ GROQ OK! (${textoResposta.length} chars)`)
+            } else if (textoResposta) {
+              console.log(`⚠️ GROQ respondeu mas muito curto: ${textoResposta.length} chars`)
+              textoResposta = ''
             }
           }
         } catch (err) {
