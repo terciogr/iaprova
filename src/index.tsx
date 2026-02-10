@@ -6746,9 +6746,15 @@ ${textoParaGroq}`
     
     console.log(`✅ Resposta da IA (${modeloUsado}): ${textoResposta.length} caracteres`)
     
-    // Parsear JSON
-    const jsonMatch = textoResposta.match(/\{[\s\S]*\}/)
+    // Parsear JSON - v36: tratamento robusto de respostas markdown
+    let textoParaParse = textoResposta
+    
+    // Remover markdown code blocks se existirem
+    textoParaParse = textoParaParse.replace(/```json\n?/gi, '').replace(/```\n?/gi, '')
+    
+    const jsonMatch = textoParaParse.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
+      console.error('❌ Não encontrou JSON na resposta:', textoResposta.substring(0, 500))
       return c.json({
         error: 'Não foi possível extrair disciplinas do texto',
         suggestion: 'Verifique se o texto contém um conteúdo programático estruturado'
@@ -6756,11 +6762,28 @@ ${textoParaGroq}`
     }
     
     try {
-      const resultado = JSON.parse(
-        jsonMatch[0]
-          .replace(/[\x00-\x1F\x7F]/g, ' ')
-          .replace(/,\s*([}\]])/g, '$1')
-      )
+      // v36: Limpeza mais robusta do JSON
+      let jsonStr = jsonMatch[0]
+        .replace(/[\x00-\x1F\x7F]/g, ' ')  // Remove caracteres de controle
+        .replace(/,\s*([}\]])/g, '$1')      // Remove vírgulas extras antes de } ou ]
+        .replace(/\n/g, ' ')                 // Remove quebras de linha
+        .replace(/\r/g, '')                  // Remove carriage returns
+        .replace(/\t/g, ' ')                 // Remove tabs
+      
+      // Tentar fechar JSON truncado
+      let openBraces = 0, openBrackets = 0
+      for (const char of jsonStr) {
+        if (char === '{') openBraces++
+        if (char === '}') openBraces--
+        if (char === '[') openBrackets++
+        if (char === ']') openBrackets--
+      }
+      
+      // Fechar arrays/objetos abertos
+      for (let i = 0; i < openBrackets; i++) jsonStr += ']'
+      for (let i = 0; i < openBraces; i++) jsonStr += '}'
+      
+      const resultado = JSON.parse(jsonStr)
       
       if (!resultado?.disciplinas || resultado.disciplinas.length === 0) {
         return c.json({
@@ -6896,7 +6919,7 @@ ${textoParaGroq}`
         area_detectada: areaDetectada,
         observacoes: resultado.observacoes,
         modo: 'revisao',
-        message: `${resultado.disciplinas.length} disciplinas identificadas. Revise antes de confirmar.`
+        message: `${resultado.disciplinas.length} disciplinas identificadas. Você pode adicionar, editar ou remover disciplinas e tópicos a qualquer momento!`
       })
       
     } catch (parseError) {
