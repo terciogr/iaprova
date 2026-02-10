@@ -6302,93 +6302,20 @@ ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo princ
     console.log(`🎯 Cargo alvo: ${cargoUpper}`)
     
     // ════════════════════════════════════════════════════════════════
-    // ✅ v46: PRÉ-PROCESSAMENTO - EXTRAIR APENAS SEÇÕES DO CARGO
+    // ✅ v46c: PRÉ-PROCESSAMENTO SIMPLIFICADO
     // ════════════════════════════════════════════════════════════════
-    const extrairSecoesCargo = (texto: string, cargo: string): string => {
-      const lines = texto.split('\n')
-      const cargoNormalizado = cargo.toLowerCase().replace(/[^a-záàâãéèêíïóôõöúçñ]/gi, '')
-      
-      let secoes: string[] = []
-      let emSecaoGeral = false
-      let emSecaoCargo = false
-      let proximoCargoEncontrado = false
-      
-      // Lista de cargos para identificar início de seção de OUTRO cargo
-      const padraoCargo = /^(enfermeiro|médico|dentista|farmacêutico|nutricionista|fisioterapeuta|psicólogo|assistente social|auditor|analista|técnico|engenheiro|advogado|contador|administrador|assistente|secretário|agente|operador|motorista|vigilante|porteiro|zelador|auxiliar)/i
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i]
-        const lineLower = line.toLowerCase()
-        const lineNormalizado = lineLower.replace(/[^a-záàâãéèêíïóôõöúçñ]/gi, '')
-        
-        // Detectar seção CONHECIMENTOS GERAIS (para nível superior ou médio)
-        if (lineLower.includes('conhecimentos gerais') && 
-            (lineLower.includes('ensino superior') || lineLower.includes('nível superior') || 
-             lineLower.includes('ensino médio') || lineLower.includes('nível médio') ||
-             !lineLower.includes('específicos'))) {
-          emSecaoGeral = true
-          emSecaoCargo = false
-          proximoCargoEncontrado = false
-          secoes.push(`\n=== CONHECIMENTOS GERAIS ===\n`)
-          continue
-        }
-        
-        // Detectar seção CONHECIMENTOS ESPECÍFICOS COMUNS (para todos os cargos)
-        if (lineLower.includes('conhecimentos específicos') && 
-            (lineLower.includes('para todos') || lineLower.includes('comuns'))) {
-          emSecaoGeral = true
-          emSecaoCargo = false
-          proximoCargoEncontrado = false
-          secoes.push(`\n=== CONHECIMENTOS ESPECÍFICOS COMUNS ===\n`)
-          continue
-        }
-        
-        // Detectar início da seção do CARGO ESPECÍFICO
-        if ((lineNormalizado.includes(cargoNormalizado) || lineLower.includes(cargo.toLowerCase())) &&
-            !lineLower.includes('salário') && !lineLower.includes('vaga') && !lineLower.includes('vagas')) {
-          // Verificar se é uma linha de título (curta e sem dois pontos ou com apenas o nome do cargo)
-          if (line.trim().length < 100 || padraoCargo.test(line.trim())) {
-            emSecaoGeral = false
-            emSecaoCargo = true
-            proximoCargoEncontrado = false
-            secoes.push(`\n=== CONHECIMENTOS ESPECÍFICOS: ${cargo.toUpperCase()} ===\n`)
-            continue
-          }
-        }
-        
-        // Se estamos na seção do cargo, detectar próximo cargo (encerrar)
-        if (emSecaoCargo && !proximoCargoEncontrado) {
-          const match = line.trim().match(padraoCargo)
-          if (match) {
-            const outroCargoNome = match[1].toLowerCase()
-            if (outroCargoNome !== cargoNormalizado && line.trim().length < 80) {
-              // Encontrou outro cargo, parar de coletar
-              proximoCargoEncontrado = true
-              emSecaoCargo = false
-              console.log(`  ⚠️ Encontrou próximo cargo: ${line.trim().substring(0, 50)}...`)
-            }
-          }
-        }
-        
-        // Coletar linhas das seções relevantes
-        if (emSecaoGeral || emSecaoCargo) {
-          // Pular linhas muito longas que são tabelas
-          if (line.length < 500) {
-            secoes.push(line)
-          }
-        }
-      }
-      
-      const textoFiltrado = secoes.join('\n').trim()
-      console.log(`📋 Texto filtrado: ${textoFiltrado.length} caracteres (original: ${texto.length})`)
-      return textoFiltrado
+    // Encontrar apenas a seção de conteúdo programático
+    let textoParaIA = textoEdital
+    
+    // Localizar início do conteúdo programático
+    const inicioConteudo = textoEdital.search(/conhecimentos\s+gerais[\s\r\n]+cargos\s+de\s+ensino\s+superior/i)
+    if (inicioConteudo > 0) {
+      textoParaIA = textoEdital.substring(inicioConteudo)
+      console.log(`📄 Conteúdo programático encontrado na posição ${inicioConteudo}`)
     }
     
-    // Aplicar pré-processamento
-    const textoFiltrado = extrairSecoesCargo(textoEdital, cargoUpper)
-    
-    // Se o filtro funcionou, usar o texto filtrado; senão, usar o original (limitado)
-    const textoParaIA = textoFiltrado.length > 1000 ? textoFiltrado : textoEdital.substring(0, 45000)
+    // Limitar a 55000 caracteres
+    textoParaIA = textoParaIA.substring(0, 55000)
     console.log(`🤖 Enviando ${textoParaIA.length} caracteres para análise da IA`)
     
     // ✅ USAR PESOS JÁ EXTRAÍDOS DO QUADRO DE PROVAS
@@ -6397,37 +6324,54 @@ ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo princ
     
     console.log(`📝 Analisando edital para cargo: ${cargoUpper}`)
     
-    // Usar texto pré-processado
+    // Usar texto otimizado
     const textoOtimizado = textoParaIA.substring(0, 55000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
-    // ✅ v46b: PROMPT SUPER RESTRITIVO
-    const prompt = `EXTRAIA AS DISCIPLINAS DO CARGO "${cargoUpper}".
+    // ✅ v46c: PROMPT SUPER RESTRITIVO PARA SAÚDE
+    // Detectar se é concurso de saúde
+    const ehSaude = cargoUpper.includes('ENFERMEIRO') || cargoUpper.includes('MÉDICO') || 
+                   cargoUpper.includes('TÉCNICO') || cargoUpper.includes('DENTISTA') ||
+                   cargoUpper.includes('FARMACÊUTICO') || cargoUpper.includes('NUTRICIONISTA') ||
+                   cargoUpper.includes('FISIOTERAPEUTA') || cargoUpper.includes('PSICÓLOGO')
+    
+    const prompt = ehSaude ? 
+`Extraia EXATAMENTE 5 DISCIPLINAS para o cargo ${cargoUpper}.
 
-⚠️ REGRA CRÍTICA DE ESTRUTURA:
-Em editais de saúde, a seção específica do cargo (ex: "Enfermeiro") contém TODOS os tópicos técnicos em UM SÓ BLOCO DE TEXTO.
-Esse bloco inteiro = 1 ÚNICA DISCIPLINA chamada "Conhecimentos Específicos de ${cargoUpper}"
-Os itens dentro (ex: "Ética e legislação", "Sistema Único de Saúde", etc.) são TÓPICOS, não disciplinas separadas!
+ESTRUTURA OBRIGATÓRIA (não mude):
+1. "Língua Portuguesa" - peso 1, categoria BÁSICOS
+2. "Raciocínio Lógico-Matemático" - peso 1, categoria BÁSICOS
+3. "Conhecimentos Regionais" - peso 1, categoria BÁSICOS (História/Geografia local)
+4. "Legislação do SUS" - peso 2, categoria ESPECÍFICOS (Lei 8080, Lei 8142)
+5. "Conhecimentos Específicos de ${cargoUpper}" - peso 2, categoria ESPECÍFICOS
 
-DISCIPLINAS ESPERADAS PARA CONCURSO DE SAÚDE (${cargoUpper}):
-1. "Língua Portuguesa" (peso 1, categoria BÁSICOS)
-2. "Raciocínio Lógico-Matemático" (peso 1, categoria BÁSICOS)  
-3. "Conhecimentos Regionais" (peso 1, categoria BÁSICOS) - se existir
-4. "Conhecimentos sobre o SUS e Legislação" (peso 2, categoria ESPECÍFICOS)
-5. "Conhecimentos Específicos de ${cargoUpper}" (peso 2, categoria ESPECÍFICOS)
+REGRA: A seção específica do cargo (ex: "Enfermeiro" seguido de texto corrido) = 1 DISCIPLINA ÚNICA.
+Os itens dentro dessa seção são TÓPICOS, não disciplinas separadas.
 
-TOTAL MÁXIMO: 5-6 disciplinas para cargos de SAÚDE!
-
-⚠️ NÃO CRIAR disciplinas a partir de tópicos individuais do bloco específico do cargo!
-
-FORMATO JSON (sem markdown):
+JSON (sem markdown):
 {"disciplinas":[
-  {"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Acentuação"]},
-  {"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica proposicional"]},
-  {"nome":"Conhecimentos Regionais","peso":1,"categoria":"BÁSICOS","topicos":["História do Piauí"]},
-  {"nome":"Conhecimentos sobre o SUS e Legislação","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080/90","Lei 8142/90"]},
-  {"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["Ética profissional","Técnicas de enfermagem","Farmacologia"]}
+{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Concordância"]},
+{"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica proposicional"]},
+{"nome":"Conhecimentos Regionais","peso":1,"categoria":"BÁSICOS","topicos":["História do Piauí"]},
+{"nome":"Legislação do SUS","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080/90","Lei 8142/90"]},
+{"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["Ética profissional","Técnicas de enfermagem"]}
 ]}
+
+TEXTO:
+${textoOtimizado}` 
+:
+// PROMPT PARA CONCURSOS FISCAIS
+`Extraia as DISCIPLINAS do cargo ${cargoUpper}.
+
+ESTRUTURA PARA CONCURSOS FISCAIS:
+- Cada item com ":" é 1 disciplina separada
+- MÓDULO I (peso 1): Língua Portuguesa, Inglês, Raciocínio, Estatística, Economia, Administração, Auditoria, Contabilidade
+- MÓDULO II (peso 2): Direitos (Tributário, Constitucional, Administrativo, Previdenciário), Legislação Tributária/Aduaneira
+
+Total esperado: 15-18 disciplinas.
+
+JSON (sem markdown):
+{"disciplinas":[{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]},{"nome":"Direito Tributário","peso":2,"categoria":"ESPECÍFICOS","topicos":["CTN"]}]}
 
 TEXTO:
 ${textoOtimizado}`
@@ -7317,156 +7261,63 @@ app.post('/api/editais/processar-texto', async (c) => {
     const cargoUpper = cargo?.toUpperCase() || 'GERAL'
     console.log(`📝 Processando para cargo: ${cargoUpper}`)
     
-    // ════════════════════════════════════════════════════════════════
-    // ✅ v46: PRÉ-PROCESSAMENTO - EXTRAIR APENAS SEÇÕES DO CARGO
-    // ════════════════════════════════════════════════════════════════
-    const extrairSecoesCargo = (textoCompleto: string, cargoAlvo: string): string => {
-      const lines = textoCompleto.split('\n')
-      const cargoNormalizado = cargoAlvo.toLowerCase().replace(/[^a-záàâãéèêíïóôõöúçñ]/gi, '')
-      
-      let secoes: string[] = []
-      let emSecaoGeral = false
-      let emSecaoCargo = false
-      let proximoCargoEncontrado = false
-      
-      // Lista de cargos para identificar início de seção de OUTRO cargo
-      const padraoCargo = /^(enfermeiro|médico|dentista|farmacêutico|nutricionista|fisioterapeuta|psicólogo|assistente social|auditor|analista|técnico|engenheiro|advogado|contador|administrador|assistente|secretário|agente|operador|motorista|vigilante|porteiro|zelador|auxiliar|fonoaudiólogo|biólogo|veterinário|odontólogo|cirurgião)/i
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i]
-        const lineLower = line.toLowerCase()
-        const lineNormalizado = lineLower.replace(/[^a-záàâãéèêíïóôõöúçñ]/gi, '')
-        
-        // Detectar seção CONHECIMENTOS GERAIS (para nível superior ou médio)
-        if (lineLower.includes('conhecimentos gerais') && 
-            (lineLower.includes('ensino superior') || lineLower.includes('nível superior') || 
-             lineLower.includes('ensino médio') || lineLower.includes('nível médio') ||
-             !lineLower.includes('específicos'))) {
-          emSecaoGeral = true
-          emSecaoCargo = false
-          proximoCargoEncontrado = false
-          secoes.push(`\n=== CONHECIMENTOS GERAIS ===\n`)
-          continue
-        }
-        
-        // Detectar seção CONHECIMENTOS ESPECÍFICOS COMUNS (para todos os cargos)
-        if (lineLower.includes('conhecimentos específicos') && 
-            (lineLower.includes('para todos') || lineLower.includes('comuns'))) {
-          emSecaoGeral = true
-          emSecaoCargo = false
-          proximoCargoEncontrado = false
-          secoes.push(`\n=== CONHECIMENTOS ESPECÍFICOS COMUNS ===\n`)
-          continue
-        }
-        
-        // Detectar início da seção do CARGO ESPECÍFICO
-        if ((lineNormalizado.includes(cargoNormalizado) || lineLower.includes(cargoAlvo.toLowerCase())) &&
-            !lineLower.includes('salário') && !lineLower.includes('vaga') && !lineLower.includes('vagas') &&
-            !lineLower.includes('requisito') && !lineLower.includes('escolaridade')) {
-          // Verificar se é uma linha de título (curta)
-          if (line.trim().length < 100 || padraoCargo.test(line.trim())) {
-            emSecaoGeral = false
-            emSecaoCargo = true
-            proximoCargoEncontrado = false
-            secoes.push(`\n=== CONHECIMENTOS ESPECÍFICOS: ${cargoAlvo.toUpperCase()} ===\n`)
-            continue
-          }
-        }
-        
-        // Se estamos na seção do cargo, detectar próximo cargo (encerrar)
-        if (emSecaoCargo && !proximoCargoEncontrado) {
-          const match = line.trim().match(padraoCargo)
-          if (match) {
-            const outroCargoNome = match[1].toLowerCase()
-            if (outroCargoNome !== cargoNormalizado && line.trim().length < 80) {
-              proximoCargoEncontrado = true
-              emSecaoCargo = false
-              console.log(`  ⚠️ Encontrou próximo cargo: ${line.trim().substring(0, 50)}...`)
-            }
-          }
-        }
-        
-        // Coletar linhas das seções relevantes
-        if (emSecaoGeral || emSecaoCargo) {
-          if (line.length < 500) {
-            secoes.push(line)
-          }
-        }
-      }
-      
-      const textoFiltrado = secoes.join('\n').trim()
-      console.log(`📋 Texto filtrado: ${textoFiltrado.length} caracteres (original: ${textoCompleto.length})`)
-      return textoFiltrado
+    // Simplificar: ao invés de pré-processar linha a linha, apenas localizar o início do conteúdo programático
+    let textoParaIA = texto
+    
+    // Localizar início do conteúdo programático
+    const inicioConteudo = texto.search(/conhecimentos\s+gerais[\s\r\n]+cargos\s+de\s+ensino\s+superior/i)
+    if (inicioConteudo > 0) {
+      textoParaIA = texto.substring(inicioConteudo)
+      console.log(`📄 Conteúdo programático encontrado na posição ${inicioConteudo}`)
     }
     
-    // Aplicar pré-processamento
-    const textoFiltrado = extrairSecoesCargo(texto, cargoUpper)
-    
-    // Se o filtro funcionou, usar o texto filtrado; senão, usar o original (limitado)
-    const textoParaIA = textoFiltrado.length > 1000 ? textoFiltrado : texto.substring(0, 45000)
     const textoLimitado = textoParaIA.substring(0, 55000)
     console.log(`🤖 Enviando ${textoLimitado.length} caracteres para análise`)
     
     // Detectar tipo de concurso
     const ehConcursoSaude = areaDetectada === 'saude' || 
       cargoUpper.includes('ENFERMEIRO') || cargoUpper.includes('MÉDICO') || 
-      cargoUpper.includes('TÉCNICO EM ENFERMAGEM')
-    const ehConcursoFiscal = cargoUpper.includes('AUDITOR') || cargoUpper.includes('ANALISTA TRIBUTÁRIO') ||
-      cargoUpper.includes('FISCAL')
+      cargoUpper.includes('TÉCNICO EM ENFERMAGEM') || cargoUpper.includes('DENTISTA') ||
+      cargoUpper.includes('FARMACÊUTICO') || cargoUpper.includes('NUTRICIONISTA')
     
-    // ✅ v46b: PROMPT SUPER RESTRITIVO
-    const prompt = ehConcursoSaude ? `EXTRAIA AS DISCIPLINAS DO CARGO "${cargoUpper}".
+    // ✅ v46c: PROMPT SUPER RESTRITIVO
+    const prompt = ehConcursoSaude ? 
+`Extraia EXATAMENTE 5 DISCIPLINAS para o cargo ${cargoUpper}.
 
-⚠️ REGRA CRÍTICA DE ESTRUTURA:
-Em editais de saúde, a seção específica do cargo (ex: "Enfermeiro") contém TODOS os tópicos técnicos em UM SÓ BLOCO DE TEXTO.
-Esse bloco inteiro = 1 ÚNICA DISCIPLINA chamada "Conhecimentos Específicos de ${cargoUpper}"
-Os itens dentro (ex: "Ética e legislação", "Sistema Único de Saúde", etc.) são TÓPICOS, não disciplinas separadas!
+ESTRUTURA OBRIGATÓRIA (não mude):
+1. "Língua Portuguesa" - peso 1, categoria BÁSICOS
+2. "Raciocínio Lógico-Matemático" - peso 1, categoria BÁSICOS
+3. "Conhecimentos Regionais" - peso 1, categoria BÁSICOS (História/Geografia local)
+4. "Legislação do SUS" - peso 2, categoria ESPECÍFICOS (Lei 8080, Lei 8142)
+5. "Conhecimentos Específicos de ${cargoUpper}" - peso 2, categoria ESPECÍFICOS
 
-DISCIPLINAS ESPERADAS PARA CONCURSO DE SAÚDE (${cargoUpper}):
-1. "Língua Portuguesa" (peso 1, categoria BÁSICOS)
-2. "Raciocínio Lógico-Matemático" (peso 1, categoria BÁSICOS)  
-3. "Conhecimentos Regionais" (peso 1, categoria BÁSICOS) - se existir
-4. "Conhecimentos sobre o SUS e Legislação" (peso 2, categoria ESPECÍFICOS)
-5. "Conhecimentos Específicos de ${cargoUpper}" (peso 2, categoria ESPECÍFICOS)
+REGRA: A seção específica do cargo (ex: "Enfermeiro" seguido de texto corrido) = 1 DISCIPLINA ÚNICA.
+Os itens dentro dessa seção são TÓPICOS, não disciplinas separadas.
 
-TOTAL MÁXIMO: 5-6 disciplinas para cargos de SAÚDE!
-
-⚠️ NÃO CRIAR disciplinas a partir de tópicos individuais do bloco específico do cargo!
-
-FORMATO JSON (sem markdown):
+JSON (sem markdown):
 {"disciplinas":[
-  {"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Acentuação"]},
-  {"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica proposicional"]},
-  {"nome":"Conhecimentos Regionais","peso":1,"categoria":"BÁSICOS","topicos":["História do Piauí"]},
-  {"nome":"Conhecimentos sobre o SUS e Legislação","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080/90","Lei 8142/90"]},
-  {"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["Ética profissional","Técnicas de enfermagem","Farmacologia"]}
+{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Concordância"]},
+{"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica proposicional"]},
+{"nome":"Conhecimentos Regionais","peso":1,"categoria":"BÁSICOS","topicos":["História do Piauí"]},
+{"nome":"Legislação do SUS","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080/90","Lei 8142/90"]},
+{"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["Ética profissional","Técnicas de enfermagem"]}
 ]}
 
 TEXTO:
-${textoLimitado}` : 
-// PROMPT PARA CONCURSOS FISCAIS E OUTROS
-`EXTRAIA AS DISCIPLINAS DO CARGO "${cargoUpper}".
+${textoLimitado}` 
+:
+// PROMPT PARA CONCURSOS FISCAIS
+`Extraia as DISCIPLINAS do cargo ${cargoUpper}.
 
-ESTRUTURA TÍPICA DE CONCURSOS FISCAIS:
-Os editais organizam disciplinas em MÓDULOS separados, cada um com título próprio.
-CADA TÍTULO = 1 DISCIPLINA (ex: "Língua Portuguesa:", "Direito Tributário:", etc.)
+ESTRUTURA PARA CONCURSOS FISCAIS:
+- Cada item com ":" é 1 disciplina separada
+- MÓDULO I (peso 1): Língua Portuguesa, Inglês, Raciocínio, Estatística, Economia, Administração, Auditoria, Contabilidade
+- MÓDULO II (peso 2): Direitos (Tributário, Constitucional, Administrativo, Previdenciário), Legislação Tributária/Aduaneira
 
-DISCIPLINAS ESPERADAS (15-18 para fiscais):
-MÓDULO I - CONHECIMENTOS BÁSICOS:
-- Língua Portuguesa, Língua Inglesa, Raciocínio Lógico-Matemático
-- Estatística, Economia, Administração Geral, Administração Pública
-- Auditoria, Contabilidade Geral e Pública, Fluência em dados
+Total esperado: 15-18 disciplinas.
 
-MÓDULO II - CONHECIMENTOS ESPECÍFICOS:
-- Direito Administrativo, Direito Constitucional
-- Direito Tributário, Legislação Tributária
-- Direito Previdenciário, Comércio Internacional, Legislação Aduaneira
-
-FORMATO JSON (sem markdown):
-{"disciplinas":[
-  {"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Concordância"]},
-  {"nome":"Direito Tributário","peso":2,"categoria":"ESPECÍFICOS","topicos":["CTN","Impostos"]}
-]}
+JSON (sem markdown):
+{"disciplinas":[{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]},{"nome":"Direito Tributário","peso":2,"categoria":"ESPECÍFICOS","topicos":["CTN"]}]}
 
 TEXTO:
 ${textoLimitado}`
