@@ -6399,23 +6399,23 @@ TEXTO DO EDITAL:
 ${textoOtimizado}`
 
     // ════════════════════════════════════════════════════════════════
-    // ✅ v37 - SISTEMA DE FALLBACK MULTI-PROVIDER (ordem configurada pelo admin)
+    // ✅ v43 - SISTEMA ROBUSTO COM RETRY GLOBAL E FALLBACK COMPLETO
     // ════════════════════════════════════════════════════════════════
     
     let textoResposta = ''
     let modeloUsado = ''
     let lastError = ''
+    const errosAPI: string[] = []
     
-    // ✅ v39: CORREÇÃO ROBUSTA - Garantir que sempre haja providers disponíveis
+    // Construir lista de APIs disponíveis
     let ordemAPIs = apiKeys.filter(k => k.api_key && k.api_key.length > 10).map(k => k.provider)
     
-    // Log detalhado para debug
     console.log(`🔑 Chaves encontradas no banco: ${apiKeys.length}`)
     apiKeys.forEach(k => {
       console.log(`   - ${k.provider}: ${k.api_key ? k.api_key.substring(0, 10) + '...' : 'VAZIA'}`)
     })
     
-    // Se não houver chaves válidas no banco, usar variáveis de ambiente
+    // Fallback para variáveis de ambiente se necessário
     if (ordemAPIs.length === 0) {
       console.log('⚠️ Nenhuma chave válida no banco, usando variáveis de ambiente...')
       if (geminiKey && geminiKey.length > 10) ordemAPIs.push('gemini')
@@ -6425,7 +6425,6 @@ ${textoOtimizado}`
     
     console.log(`📋 Ordem de fallback: ${ordemAPIs.join(' → ') || 'NENHUMA API DISPONÍVEL'}`)
     
-    // Se ainda não houver APIs, retornar erro claro
     if (ordemAPIs.length === 0) {
       console.error('❌ ERRO CRÍTICO: Nenhuma chave de API disponível!')
       return c.json({
@@ -6436,12 +6435,14 @@ ${textoOtimizado}`
       }, 500)
     }
     
-    // Tentar cada API na ordem configurada
-    for (const provider of ordemAPIs) {
-      if (textoResposta) break
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v43: HELPER FUNCTION - Tenta todas as APIs uma vez
+    // ════════════════════════════════════════════════════════════════
+    const tentarTodasAPIs = async (tentativaGlobal: number): Promise<{sucesso: boolean, texto: string, modelo: string}> => {
+      console.log(`\n🔄 TENTATIVA GLOBAL ${tentativaGlobal + 1}/3...`)
       
-      if (provider === 'gemini' && geminiKey) {
-        // GEMINI - tentar múltiplos modelos
+      // Tentar GEMINI (múltiplos modelos)
+      if (ordemAPIs.includes('gemini') && geminiKey) {
         const modelosGemini = [
           { nome: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}` },
           { nome: 'gemini-1.5-flash-latest', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}` },
@@ -6450,67 +6451,46 @@ ${textoOtimizado}`
         
         for (const modelo of modelosGemini) {
           console.log(`🚀 Tentando ${modelo.nome}...`)
-          
-          // ✅ v41: Retry com backoff exponencial
-          let retryCount = 0
-          const maxRetries = 2
-          
-          while (retryCount <= maxRetries) {
-            try {
-              const response = await fetch(modelo.url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }],
-                  generationConfig: { temperature: 0, maxOutputTokens: 65536 }
-                })
+          try {
+            const response = await fetch(modelo.url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0, maxOutputTokens: 65536 }
               })
-              
-              if (response.status === 429) {
-                lastError = `${modelo.nome}: Rate limit`
-                retryCount++
-                if (retryCount <= maxRetries) {
-                  const waitTime = Math.pow(2, retryCount) * 1000 // 2s, 4s
-                  console.log(`⏳ ${modelo.nome}: Rate limit, aguardando ${waitTime/1000}s (tentativa ${retryCount}/${maxRetries})...`)
-                  await new Promise(r => setTimeout(r, waitTime))
-                  continue
-                }
-                break // Passou max retries
-              }
-              
-              if (!response.ok) {
-                ultimoErro = `${modelo.nome}: HTTP ${response.status}`
-                errosAPI.push(ultimoErro)
-                break
-              }
-              
-              const data = await response.json() as any
-              textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-              
-              // ✅ v39: Aceitar qualquer resposta válida (não exigir palavra específica)
-              if (textoResposta && textoResposta.length > 50) {
-                modeloUsado = modelo.nome
-                console.log(`✅ ${modelo.nome} OK! (${textoResposta.length} chars)`)
-                break
-              } else if (textoResposta) {
-                console.log(`⚠️ ${modelo.nome} respondeu mas muito curto: ${textoResposta.length} chars`)
-                textoResposta = '' // Resetar para tentar próximo modelo
-              }
-              break // Sucesso ou resposta curta, não fazer retry
-            } catch (err) {
-              lastError = `${modelo.nome}: ${err}`
-              break
+            })
+            
+            console.log(`📡 ${modelo.nome}: Status ${response.status}`)
+            
+            if (response.status === 429) {
+              errosAPI.push(`${modelo.nome}: Rate limit (tentativa ${tentativaGlobal + 1})`)
+              continue
             }
+            
+            if (!response.ok) {
+              errosAPI.push(`${modelo.nome}: HTTP ${response.status}`)
+              continue
+            }
+            
+            const data = await response.json() as any
+            const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            
+            if (texto && texto.length > 50) {
+              console.log(`✅ ${modelo.nome} OK! (${texto.length} chars)`)
+              return { sucesso: true, texto, modelo: modelo.nome }
+            } else if (texto) {
+              console.log(`⚠️ ${modelo.nome}: resposta curta (${texto.length} chars)`)
+            }
+          } catch (err) {
+            errosAPI.push(`${modelo.nome}: ${err}`)
           }
-          
-          if (textoResposta) break // Sucesso com este modelo
         }
       }
       
-      if (provider === 'openai' && openaiKey && !textoResposta) {
-        // OPENAI GPT - usar GPT-4o-mini (custo-benefício)
+      // Tentar OPENAI
+      if (ordemAPIs.includes('openai') && openaiKey) {
         console.log(`🚀 Tentando OpenAI GPT-4o-mini...`)
-        
         try {
           const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -6521,10 +6501,7 @@ ${textoOtimizado}`
             body: JSON.stringify({
               model: 'gpt-4o-mini',
               messages: [
-                { 
-                  role: 'system', 
-                  content: 'Você é um especialista em extrair informações de editais de concursos. Retorne APENAS JSON válido, sem markdown ou texto adicional.'
-                },
+                { role: 'system', content: 'Você é um especialista em extrair informações de editais de concursos. Retorne APENAS JSON válido, sem markdown ou texto adicional.' },
                 { role: 'user', content: prompt }
               ],
               temperature: 0,
@@ -6532,127 +6509,121 @@ ${textoOtimizado}`
             })
           })
           
+          console.log(`📡 OpenAI: Status ${response.status}`)
+          
           if (response.status === 429) {
-            lastError = 'OpenAI: Rate limit'
+            errosAPI.push(`OpenAI: Rate limit (tentativa ${tentativaGlobal + 1})`)
           } else if (response.ok) {
             const data = await response.json() as any
-            textoResposta = data?.choices?.[0]?.message?.content || ''
-            
-            // ✅ v39: Aceitar qualquer resposta válida
-            if (textoResposta && textoResposta.length > 50) {
-              modeloUsado = 'gpt-4o-mini'
-              console.log(`✅ OpenAI GPT-4o-mini OK! (${textoResposta.length} chars)`)
-            } else if (textoResposta) {
-              console.log(`⚠️ OpenAI respondeu mas muito curto: ${textoResposta.length} chars`)
-              textoResposta = '' // Resetar para tentar próximo
+            const texto = data?.choices?.[0]?.message?.content || ''
+            if (texto && texto.length > 50) {
+              console.log(`✅ OpenAI OK! (${texto.length} chars)`)
+              return { sucesso: true, texto, modelo: 'gpt-4o-mini' }
             }
+          } else {
+            errosAPI.push(`OpenAI: HTTP ${response.status}`)
           }
         } catch (err) {
-          lastError = `OpenAI: ${err}`
+          errosAPI.push(`OpenAI: ${err}`)
         }
       }
       
-      if (provider === 'groq' && groqKey && !textoResposta) {
-        // GROQ - texto reduzido (limite de contexto menor)
+      // Tentar GROQ
+      if (ordemAPIs.includes('groq') && groqKey) {
         console.log(`🚀 Tentando GROQ LLaMA...`)
-        
         const textoParaGroq = textoOtimizado.substring(0, 25000)
-        // ✅ v42: Prompt GROQ otimizado - NÃO incluir disciplinas de outros cargos
         const promptGroq = `Extraia APENAS as disciplinas do cargo "${cargoUpper}".
 
-REGRAS IMPORTANTES:
+REGRAS:
 1. INCLUA: Conhecimentos Gerais/Básicos do nível do cargo
-2. INCLUA: Conhecimentos Específicos comuns ao nível (ex: "Para todos os cargos de ensino superior")
+2. INCLUA: Conhecimentos Específicos comuns ao nível
 3. INCLUA: Conhecimentos Específicos DO CARGO "${cargoUpper}"
-4. NÃO INCLUA: Disciplinas de OUTROS cargos (se busca Enfermeiro, IGNORE Médico, Dentista, etc.)
-5. Concursos de saúde: 4-6 disciplinas. Concursos fiscais: 15-20 disciplinas.
+4. NÃO INCLUA: Disciplinas de OUTROS cargos
+5. Saúde: 4-6 disciplinas. Fiscais: 15-20 disciplinas.
 
-FORMATO JSON (sem markdown):
-{"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]}]}
-
-PESOS: 1=BÁSICOS, 2=ESPECÍFICOS
+FORMATO JSON: {"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]}]}
 
 TEXTO:
 ${textoParaGroq}`
         
-        // ✅ v41: Retry com backoff exponencial para GROQ
-        let retryCount = 0
-        const maxRetries = 2
-        
-        while (retryCount <= maxRetries) {
-          try {
-            const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${groqKey}`
-              },
-              body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
-                messages: [{ role: 'user', content: promptGroq }],
-                temperature: 0,
-                max_tokens: 8000
-              })
+        try {
+          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${groqKey}`
+            },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [{ role: 'user', content: promptGroq }],
+              temperature: 0,
+              max_tokens: 8000
             })
-            
-            if (groqResponse.status === 429) {
-              lastError = 'GROQ: Rate limit'
-              retryCount++
-              if (retryCount <= maxRetries) {
-                const waitTime = Math.pow(2, retryCount) * 1000
-                console.log(`⏳ GROQ: Rate limit, aguardando ${waitTime/1000}s (tentativa ${retryCount}/${maxRetries})...`)
-                await new Promise(r => setTimeout(r, waitTime))
-                continue
-              }
-              break
+          })
+          
+          console.log(`📡 GROQ: Status ${response.status}`)
+          
+          if (response.status === 429) {
+            errosAPI.push(`GROQ: Rate limit (tentativa ${tentativaGlobal + 1})`)
+          } else if (response.status === 413) {
+            errosAPI.push('GROQ: Payload muito grande')
+          } else if (response.ok) {
+            const data = await response.json() as any
+            const texto = data?.choices?.[0]?.message?.content || ''
+            if (texto && texto.length > 50) {
+              console.log(`✅ GROQ OK! (${texto.length} chars)`)
+              return { sucesso: true, texto, modelo: 'groq-llama-3.3-70b' }
             }
-            
-            if (groqResponse.status === 413) {
-              lastError = 'GROQ: Payload muito grande'
-              break
-            }
-            
-            if (groqResponse.ok) {
-              const groqData = await groqResponse.json() as any
-              textoResposta = groqData?.choices?.[0]?.message?.content || ''
-              
-              // ✅ v39: Aceitar qualquer resposta válida
-              if (textoResposta && textoResposta.length > 50) {
-                modeloUsado = 'groq-llama-3.3-70b'
-                console.log(`✅ GROQ OK! (${textoResposta.length} chars)`)
-              } else if (textoResposta) {
-                console.log(`⚠️ GROQ respondeu mas muito curto: ${textoResposta.length} chars`)
-                textoResposta = '' // Resetar
-              }
-            }
-            break
-          } catch (err) {
-            lastError = `GROQ: ${err}`
-            break
+          } else {
+            errosAPI.push(`GROQ: HTTP ${response.status}`)
           }
+        } catch (err) {
+          errosAPI.push(`GROQ: ${err}`)
         }
+      }
+      
+      return { sucesso: false, texto: '', modelo: '' }
+    }
+    
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v43: RETRY GLOBAL - Tenta até 3 rodadas com delays crescentes
+    // ════════════════════════════════════════════════════════════════
+    const MAX_GLOBAL_RETRIES = 3
+    const GLOBAL_DELAYS = [0, 5000, 15000] // 0s, 5s, 15s entre tentativas
+    
+    for (let globalRetry = 0; globalRetry < MAX_GLOBAL_RETRIES; globalRetry++) {
+      // Aplicar delay (exceto na primeira tentativa)
+      if (globalRetry > 0) {
+        const delay = GLOBAL_DELAYS[globalRetry]
+        console.log(`⏳ Aguardando ${delay/1000}s antes da próxima rodada...`)
+        await new Promise(r => setTimeout(r, delay))
+      }
+      
+      const resultado = await tentarTodasAPIs(globalRetry)
+      
+      if (resultado.sucesso) {
+        textoResposta = resultado.texto
+        modeloUsado = resultado.modelo
+        break
       }
     }
     
     // Se todas as APIs falharam
     if (!textoResposta || !modeloUsado) {
-      // ✅ v40: Log detalhado de falhas
-      console.error(`❌ Todos falharam: ${lastError}`)
+      console.error(`❌ Todas as ${MAX_GLOBAL_RETRIES} tentativas globais falharam. Erros: ${errosAPI.join('; ')}`)
       console.error(`   APIs tentadas: ${ordemAPIs.join(', ')}`)
-      console.error(`   Gemini key: ${geminiKey ? 'presente' : 'ausente'}`)
-      console.error(`   OpenAI key: ${openaiKey ? 'presente' : 'ausente'}`)
-      console.error(`   GROQ key: ${groqKey ? 'presente' : 'ausente'}`)
       
       await DB.prepare(`UPDATE editais SET status = 'erro' WHERE id = ?`).bind(editalId).run()
       
       return c.json({
-        error: 'API temporariamente indisponível.',
+        error: 'API temporariamente indisponível',
         errorType: 'AI_UNAVAILABLE',
-        suggestion: 'Aguarde 1-2 minutos e tente novamente, ou use "Colar Texto do Edital".',
+        suggestion: 'Todas as APIs estão com rate limit. Aguarde 2-3 minutos e tente novamente.',
         canRetry: true,
-        retryAfter: 60,
-        debug: lastError,
-        apisAttempted: ordemAPIs
+        retryAfter: 120,
+        debug: `${errosAPI.length} erros em ${MAX_GLOBAL_RETRIES} tentativas`,
+        apisAttempted: ordemAPIs,
+        errors: errosAPI.slice(-10)
       }, 503)
     }
     
@@ -7385,24 +7356,22 @@ TEXTO DO EDITAL:
 ${textoLimitado}`
 
     // ════════════════════════════════════════════════════════════════
-    // ✅ v37 - SISTEMA DE FALLBACK MULTI-PROVIDER (ordem configurada pelo admin)
+    // ✅ v43 - SISTEMA ROBUSTO COM RETRY GLOBAL E FALLBACK COMPLETO
     // ════════════════════════════════════════════════════════════════
     let textoResposta = ''
     let modeloUsado = ''
     let ultimoErro = ''
-    // ✅ v40c: Acumular todos os erros para debug
     const errosAPI: string[] = []
     
-    // ✅ v39: CORREÇÃO ROBUSTA - Garantir que sempre haja providers disponíveis
+    // Construir lista de APIs disponíveis
     let ordemAPIs = apiKeys.filter(k => k.api_key && k.api_key.length > 10).map(k => k.provider)
     
-    // Log detalhado para debug
     console.log(`🔑 Chaves encontradas no banco: ${apiKeys.length}`)
     apiKeys.forEach(k => {
       console.log(`   - ${k.provider}: ${k.api_key ? k.api_key.substring(0, 10) + '...' : 'VAZIA'}`)
     })
     
-    // Se não houver chaves válidas no banco, usar variáveis de ambiente
+    // Fallback para variáveis de ambiente se necessário
     if (ordemAPIs.length === 0) {
       console.log('⚠️ Nenhuma chave válida no banco, usando variáveis de ambiente...')
       if (geminiKey && geminiKey.length > 10) ordemAPIs.push('gemini')
@@ -7412,7 +7381,6 @@ ${textoLimitado}`
     
     console.log(`📋 Ordem de fallback: ${ordemAPIs.join(' → ') || 'NENHUMA API DISPONÍVEL'}`)
     
-    // Se ainda não houver APIs, retornar erro claro
     if (ordemAPIs.length === 0) {
       console.error('❌ ERRO CRÍTICO: Nenhuma chave de API disponível!')
       return c.json({
@@ -7423,12 +7391,14 @@ ${textoLimitado}`
       }, 500)
     }
     
-    // Tentar cada API na ordem configurada
-    for (const provider of ordemAPIs) {
-      if (textoResposta) break
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v43: HELPER FUNCTION - Tenta todas as APIs uma vez
+    // ════════════════════════════════════════════════════════════════
+    const tentarTodasAPIs = async (tentativaGlobal: number): Promise<{sucesso: boolean, texto: string, modelo: string}> => {
+      console.log(`\n🔄 TENTATIVA GLOBAL ${tentativaGlobal + 1}/3...`)
       
-      if (provider === 'gemini' && geminiKey) {
-        // GEMINI - tentar múltiplos modelos
+      // Tentar GEMINI (múltiplos modelos)
+      if (ordemAPIs.includes('gemini') && geminiKey && !textoResposta) {
         const modelosGemini = [
           { nome: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}` },
           { nome: 'gemini-1.5-flash-latest', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}` },
@@ -7437,71 +7407,46 @@ ${textoLimitado}`
         
         for (const modelo of modelosGemini) {
           console.log(`🚀 Tentando ${modelo.nome}...`)
-          
-          // ✅ v41: Retry com backoff exponencial
-          let retryCount = 0
-          const maxRetries = 2
-          
-          while (retryCount <= maxRetries) {
-            try {
-              const response = await fetch(modelo.url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }],
-                  generationConfig: { temperature: 0, maxOutputTokens: 65536 }
-                })
+          try {
+            const response = await fetch(modelo.url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0, maxOutputTokens: 65536 }
               })
-              
-              console.log(`📡 ${modelo.nome}: Status ${response.status}`)
-              
-              if (response.status === 429) {
-                ultimoErro = `${modelo.nome}: Rate limit`
-                errosAPI.push(ultimoErro)
-                retryCount++
-                if (retryCount <= maxRetries) {
-                  const waitTime = Math.pow(2, retryCount) * 1000
-                  console.log(`⏳ ${modelo.nome}: Rate limit, aguardando ${waitTime/1000}s (tentativa ${retryCount}/${maxRetries})...`)
-                  await new Promise(r => setTimeout(r, waitTime))
-                  continue
-                }
-                break
-              }
-              
-              if (!response.ok) {
-                ultimoErro = `${modelo.nome}: HTTP ${response.status}`
-                errosAPI.push(ultimoErro)
-                break
-              }
-              
-              const data = await response.json() as any
-              textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-              
-              // ✅ v39: Aceitar qualquer resposta válida
-              if (textoResposta && textoResposta.length > 50) {
-                modeloUsado = modelo.nome
-                console.log(`✅ ${modelo.nome} OK! (${textoResposta.length} chars)`)
-                break
-              } else if (textoResposta) {
-                console.log(`⚠️ ${modelo.nome} respondeu mas muito curto: ${textoResposta.length} chars`)
-                textoResposta = ''
-              }
-              break
-            } catch (err) {
-              ultimoErro = `${modelo.nome}: ${err}`
-              errosAPI.push(ultimoErro)
-              break
+            })
+            
+            console.log(`📡 ${modelo.nome}: Status ${response.status}`)
+            
+            if (response.status === 429) {
+              errosAPI.push(`${modelo.nome}: Rate limit (tentativa ${tentativaGlobal + 1})`)
+              continue // Próximo modelo
             }
+            
+            if (!response.ok) {
+              errosAPI.push(`${modelo.nome}: HTTP ${response.status}`)
+              continue
+            }
+            
+            const data = await response.json() as any
+            const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            
+            if (texto && texto.length > 50) {
+              console.log(`✅ ${modelo.nome} OK! (${texto.length} chars)`)
+              return { sucesso: true, texto, modelo: modelo.nome }
+            } else if (texto) {
+              console.log(`⚠️ ${modelo.nome}: resposta curta (${texto.length} chars)`)
+            }
+          } catch (err) {
+            errosAPI.push(`${modelo.nome}: ${err}`)
           }
-          
-          if (textoResposta) break
         }
       }
       
-      if (provider === 'openai' && openaiKey && !textoResposta) {
-        // OPENAI GPT - usar GPT-4o-mini (custo-benefício)
+      // Tentar OPENAI
+      if (ordemAPIs.includes('openai') && openaiKey && !textoResposta) {
         console.log(`🚀 Tentando OpenAI GPT-4o-mini...`)
-        
         try {
           const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -7512,10 +7457,7 @@ ${textoLimitado}`
             body: JSON.stringify({
               model: 'gpt-4o-mini',
               messages: [
-                { 
-                  role: 'system', 
-                  content: 'Você é um especialista em extrair informações de editais de concursos. Retorne APENAS JSON válido, sem markdown ou texto adicional.'
-                },
+                { role: 'system', content: 'Você é um especialista em extrair informações de editais de concursos. Retorne APENAS JSON válido, sem markdown ou texto adicional.' },
                 { role: 'user', content: prompt }
               ],
               temperature: 0,
@@ -7526,131 +7468,122 @@ ${textoLimitado}`
           console.log(`📡 OpenAI: Status ${response.status}`)
           
           if (response.status === 429) {
-            ultimoErro = 'OpenAI: Rate limit'
-            errosAPI.push(ultimoErro)
+            errosAPI.push(`OpenAI: Rate limit (tentativa ${tentativaGlobal + 1})`)
           } else if (response.ok) {
             const data = await response.json() as any
-            textoResposta = data?.choices?.[0]?.message?.content || ''
-            
-            // ✅ v39: Aceitar qualquer resposta válida
-            if (textoResposta && textoResposta.length > 50) {
-              modeloUsado = 'gpt-4o-mini'
-              console.log(`✅ OpenAI GPT-4o-mini OK! (${textoResposta.length} chars)`)
-            } else if (textoResposta) {
-              console.log(`⚠️ OpenAI respondeu mas muito curto: ${textoResposta.length} chars`)
-              textoResposta = ''
+            const texto = data?.choices?.[0]?.message?.content || ''
+            if (texto && texto.length > 50) {
+              console.log(`✅ OpenAI OK! (${texto.length} chars)`)
+              return { sucesso: true, texto, modelo: 'gpt-4o-mini' }
             }
+          } else {
+            errosAPI.push(`OpenAI: HTTP ${response.status}`)
           }
         } catch (err) {
-          ultimoErro = `OpenAI: ${err}`
-          errosAPI.push(ultimoErro)
+          errosAPI.push(`OpenAI: ${err}`)
         }
       }
       
-      if (provider === 'groq' && groqKey && !textoResposta) {
-        // GROQ - texto reduzido (limite de contexto menor)
+      // Tentar GROQ
+      if (ordemAPIs.includes('groq') && groqKey && !textoResposta) {
         console.log(`🚀 Tentando GROQ LLaMA...`)
-        
         const textoParaGroq = textoLimitado.substring(0, 25000)
-        // ✅ v42: Prompt GROQ otimizado - NÃO incluir disciplinas de outros cargos
         const promptGroq = `Extraia APENAS as disciplinas do cargo "${cargoUpper}".
 
-REGRAS IMPORTANTES:
+REGRAS:
 1. INCLUA: Conhecimentos Gerais/Básicos do nível do cargo
-2. INCLUA: Conhecimentos Específicos comuns ao nível (ex: "Para todos os cargos de ensino superior")
+2. INCLUA: Conhecimentos Específicos comuns ao nível
 3. INCLUA: Conhecimentos Específicos DO CARGO "${cargoUpper}"
-4. NÃO INCLUA: Disciplinas de OUTROS cargos (se busca Enfermeiro, IGNORE Médico, Dentista, etc.)
-5. Concursos de saúde: 4-6 disciplinas. Concursos fiscais: 15-20 disciplinas.
+4. NÃO INCLUA: Disciplinas de OUTROS cargos
+5. Saúde: 4-6 disciplinas. Fiscais: 15-20 disciplinas.
 
-FORMATO JSON (sem markdown):
-{"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]}]}
-
-PESOS: 1=BÁSICOS, 2=ESPECÍFICOS
+FORMATO JSON: {"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]}]}
 
 TEXTO:
 ${textoParaGroq}`
         
-        // ✅ v41: Retry com backoff exponencial para GROQ
-        let retryCount = 0
-        const maxRetries = 2
-        
-        while (retryCount <= maxRetries) {
-          try {
-            const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${groqKey}`
-              },
-              body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
-                messages: [{ role: 'user', content: promptGroq }],
-                temperature: 0,
-                max_tokens: 8000
-              })
+        try {
+          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${groqKey}`
+            },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [{ role: 'user', content: promptGroq }],
+              temperature: 0,
+              max_tokens: 8000
             })
-            
-            console.log(`📡 GROQ: Status ${groqResponse.status}`)
-            
-            if (groqResponse.status === 429) {
-              ultimoErro = 'GROQ: Rate limit'
-              errosAPI.push(ultimoErro)
-              retryCount++
-              if (retryCount <= maxRetries) {
-                const waitTime = Math.pow(2, retryCount) * 1000
-                console.log(`⏳ GROQ: Rate limit, aguardando ${waitTime/1000}s (tentativa ${retryCount}/${maxRetries})...`)
-                await new Promise(r => setTimeout(r, waitTime))
-                continue
-              }
-              break
+          })
+          
+          console.log(`📡 GROQ: Status ${response.status}`)
+          
+          if (response.status === 429) {
+            errosAPI.push(`GROQ: Rate limit (tentativa ${tentativaGlobal + 1})`)
+          } else if (response.status === 413) {
+            errosAPI.push('GROQ: Payload muito grande')
+          } else if (response.ok) {
+            const data = await response.json() as any
+            const texto = data?.choices?.[0]?.message?.content || ''
+            if (texto && texto.length > 50) {
+              console.log(`✅ GROQ OK! (${texto.length} chars)`)
+              return { sucesso: true, texto, modelo: 'groq-llama-3.3-70b' }
             }
-            
-            if (groqResponse.status === 413) {
-              ultimoErro = 'GROQ: Payload muito grande'
-              errosAPI.push(ultimoErro)
-              break
-            }
-            
-            if (groqResponse.ok) {
-              const groqData = await groqResponse.json() as any
-              textoResposta = groqData?.choices?.[0]?.message?.content || ''
-              
-              // ✅ v39: Aceitar qualquer resposta válida
-              if (textoResposta && textoResposta.length > 50) {
-                modeloUsado = 'groq-llama-3.3-70b'
-                console.log(`✅ GROQ OK! (${textoResposta.length} chars)`)
-              } else if (textoResposta) {
-                console.log(`⚠️ GROQ respondeu mas muito curto: ${textoResposta.length} chars`)
-                textoResposta = ''
-              }
-            }
-            break
-          } catch (err) {
-            ultimoErro = `GROQ: ${err}`
-            errosAPI.push(ultimoErro)
-            break
+          } else {
+            errosAPI.push(`GROQ: HTTP ${response.status}`)
           }
+        } catch (err) {
+          errosAPI.push(`GROQ: ${err}`)
         }
+      }
+      
+      return { sucesso: false, texto: '', modelo: '' }
+    }
+    
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v43: RETRY GLOBAL - Tenta até 3 rodadas com delays crescentes
+    // ════════════════════════════════════════════════════════════════
+    const MAX_GLOBAL_RETRIES = 3
+    const GLOBAL_DELAYS = [0, 5000, 15000] // 0s, 5s, 15s entre tentativas
+    
+    for (let globalRetry = 0; globalRetry < MAX_GLOBAL_RETRIES; globalRetry++) {
+      // Aplicar delay (exceto na primeira tentativa)
+      if (globalRetry > 0) {
+        const delay = GLOBAL_DELAYS[globalRetry]
+        console.log(`⏳ Aguardando ${delay/1000}s antes da próxima rodada...`)
+        await new Promise(r => setTimeout(r, delay))
+      }
+      
+      const resultado = await tentarTodasAPIs(globalRetry)
+      
+      if (resultado.sucesso) {
+        textoResposta = resultado.texto
+        modeloUsado = resultado.modelo
+        break
+      }
+      
+      // Se não conseguiu e ainda tem tentativas, verificar se vale tentar novamente
+      const todosRateLimit = errosAPI.every(e => e.includes('Rate limit'))
+      if (!todosRateLimit && globalRetry < MAX_GLOBAL_RETRIES - 1) {
+        console.log(`⚠️ Alguns erros não são rate limit, pode não adiantar tentar novamente`)
+        // Mas ainda vamos tentar, pois pode ter sido um erro temporário
       }
     }
     
     if (!textoResposta || !modeloUsado) {
-      // ✅ v40: Log detalhado de falhas
-      console.error(`❌ Todos os modelos falharam. Erros: ${errosAPI.join('; ')}`)
+      console.error(`❌ Todas as ${MAX_GLOBAL_RETRIES} tentativas globais falharam. Erros: ${errosAPI.join('; ')}`)
       console.error(`   APIs tentadas: ${ordemAPIs.join(', ')}`)
-      console.error(`   Gemini key: ${geminiKey ? 'presente' : 'ausente'}`)
-      console.error(`   OpenAI key: ${openaiKey ? 'presente' : 'ausente'}`)
-      console.error(`   GROQ key: ${groqKey ? 'presente' : 'ausente'}`)
       
       return c.json({
         error: 'API temporariamente indisponível',
         errorType: 'AI_UNAVAILABLE',
-        suggestion: 'Aguarde 1-2 minutos e tente novamente. Se persistir, verifique as chaves de API no painel admin.',
+        suggestion: 'Todas as APIs estão com rate limit. Aguarde 2-3 minutos e tente novamente.',
         canRetry: true,
-        retryAfter: 60,
-        debug: errosAPI.join('; '),
+        retryAfter: 120,
+        debug: `${errosAPI.length} erros em ${MAX_GLOBAL_RETRIES} tentativas`,
         apisAttempted: ordemAPIs,
-        errors: errosAPI
+        errors: errosAPI.slice(-10) // Últimos 10 erros
       }, 503)
     }
     
