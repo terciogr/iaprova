@@ -7711,6 +7711,77 @@ ${textoLimitado.substring(0, 40000)}`
     // Usar disciplinas com tópicos, ou as originais se a fase 2 falhou completamente
     const disciplinasFinais = disciplinasComTopicos.length > 0 ? disciplinasComTopicos : disciplinasExtraidas
     
+    // ═══════════════════════════════════════════════════════════════
+    // ✅ v45b: FASE 3 - RETRY PARA DISCIPLINAS SEM TÓPICOS
+    // ═══════════════════════════════════════════════════════════════
+    const disciplinasSemTopicos = disciplinasFinais.filter((d: any) => !d.topicos || d.topicos.length === 0)
+    
+    if (disciplinasSemTopicos.length > 0 && disciplinasSemTopicos.length < disciplinasFinais.length) {
+      console.log(`\n⚠️ ${disciplinasSemTopicos.length} disciplinas sem tópicos, tentando extrair novamente...`)
+      
+      // Aguardar 5 segundos antes de tentar novamente
+      await new Promise(r => setTimeout(r, 5000))
+      
+      const nomesSemTopicos = disciplinasSemTopicos.map((d: any) => d.nome).join(', ')
+      
+      const promptRetry = `Extraia os TÓPICOS DETALHADOS das seguintes disciplinas:
+
+DISCIPLINAS:
+${disciplinasSemTopicos.map((d: any, idx: number) => `${idx + 1}. ${d.nome}`).join('\n')}
+
+REGRAS:
+1. Extraia TODOS os tópicos listados no edital para cada disciplina
+2. Use os nomes EXATOS como aparecem no texto
+3. Entre 5 e 30 tópicos por disciplina
+
+FORMATO JSON:
+{"disciplinas":[{"nome":"Nome da Disciplina","topicos":["Tópico 1","Tópico 2"]}]}
+
+TEXTO:
+${textoLimitado.substring(0, 35000)}`
+
+      const resultadoRetry = await chamarAPI(promptRetry, 16000)
+      
+      if (resultadoRetry.sucesso) {
+        try {
+          let jsonStr = resultadoRetry.texto
+            .replace(/```json\n?/gi, '').replace(/```\n?/gi, '')
+            .replace(/[\x00-\x1F\x7F]/g, ' ')
+          
+          const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            let parsed = jsonMatch[0]
+            let braces = 0, brackets = 0
+            for (const c of parsed) {
+              if (c === '{') braces++
+              if (c === '}') braces--
+              if (c === '[') brackets++
+              if (c === ']') brackets--
+            }
+            for (let i = 0; i < brackets; i++) parsed += ']'
+            for (let i = 0; i < braces; i++) parsed += '}'
+            
+            const data = JSON.parse(parsed)
+            if (data.disciplinas) {
+              for (const discRetry of data.disciplinas) {
+                // Encontrar disciplina correspondente e atualizar tópicos
+                const idx = disciplinasFinais.findIndex((d: any) => 
+                  d.nome.toLowerCase().includes(discRetry.nome.toLowerCase()) ||
+                  discRetry.nome.toLowerCase().includes(d.nome.toLowerCase())
+                )
+                if (idx >= 0 && discRetry.topicos && discRetry.topicos.length > 0) {
+                  disciplinasFinais[idx].topicos = discRetry.topicos
+                  console.log(`  ✅ ${discRetry.nome}: ${discRetry.topicos.length} tópicos recuperados`)
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.log(`  ⚠️ Erro no retry: ${e}`)
+        }
+      }
+    }
+    
     console.log('\n' + '═'.repeat(60))
     console.log(`✅ EXTRAÇÃO COMPLETA: ${disciplinasFinais.length} disciplinas`)
     console.log('═'.repeat(60))
