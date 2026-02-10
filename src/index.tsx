@@ -6432,39 +6432,55 @@ ${textoOtimizado}`
         for (const modelo of modelosGemini) {
           console.log(`🚀 Tentando ${modelo.nome}...`)
           
-          try {
-            const response = await fetch(modelo.url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0, maxOutputTokens: 65536 }
+          // ✅ v41: Retry com backoff exponencial
+          let retryCount = 0
+          const maxRetries = 2
+          
+          while (retryCount <= maxRetries) {
+            try {
+              const response = await fetch(modelo.url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: { temperature: 0, maxOutputTokens: 65536 }
+                })
               })
-            })
-            
-            if (response.status === 429) {
-              lastError = `${modelo.nome}: Rate limit`
-              await new Promise(r => setTimeout(r, 2000))
-              continue
-            }
-            
-            if (!response.ok) continue
-            
-            const data = await response.json() as any
-            textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-            
-            // ✅ v39: Aceitar qualquer resposta válida (não exigir palavra específica)
-            if (textoResposta && textoResposta.length > 50) {
-              modeloUsado = modelo.nome
-              console.log(`✅ ${modelo.nome} OK! (${textoResposta.length} chars)`)
+              
+              if (response.status === 429) {
+                lastError = `${modelo.nome}: Rate limit`
+                retryCount++
+                if (retryCount <= maxRetries) {
+                  const waitTime = Math.pow(2, retryCount) * 1000 // 2s, 4s
+                  console.log(`⏳ ${modelo.nome}: Rate limit, aguardando ${waitTime/1000}s (tentativa ${retryCount}/${maxRetries})...`)
+                  await new Promise(r => setTimeout(r, waitTime))
+                  continue
+                }
+                break // Passou max retries
+              }
+              
+              if (!response.ok) break
+              
+              const data = await response.json() as any
+              textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+              
+              // ✅ v39: Aceitar qualquer resposta válida (não exigir palavra específica)
+              if (textoResposta && textoResposta.length > 50) {
+                modeloUsado = modelo.nome
+                console.log(`✅ ${modelo.nome} OK! (${textoResposta.length} chars)`)
+                break
+              } else if (textoResposta) {
+                console.log(`⚠️ ${modelo.nome} respondeu mas muito curto: ${textoResposta.length} chars`)
+                textoResposta = '' // Resetar para tentar próximo modelo
+              }
+              break // Sucesso ou resposta curta, não fazer retry
+            } catch (err) {
+              lastError = `${modelo.nome}: ${err}`
               break
-            } else if (textoResposta) {
-              console.log(`⚠️ ${modelo.nome} respondeu mas muito curto: ${textoResposta.length} chars`)
-              textoResposta = '' // Resetar para tentar próximo modelo
             }
-          } catch (err) {
-            lastError = `${modelo.nome}: ${err}`
           }
+          
+          if (textoResposta) break // Sucesso com este modelo
         }
       }
       
@@ -6537,38 +6553,61 @@ PESOS: 1=BÁSICOS, 2=ESPECÍFICOS
 TEXTO:
 ${textoParaGroq}`
         
-        try {
-          const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${groqKey}`
-            },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              messages: [{ role: 'user', content: promptGroq }],
-              temperature: 0,
-              max_tokens: 8000
+        // ✅ v41: Retry com backoff exponencial para GROQ
+        let retryCount = 0
+        const maxRetries = 2
+        
+        while (retryCount <= maxRetries) {
+          try {
+            const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${groqKey}`
+              },
+              body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                messages: [{ role: 'user', content: promptGroq }],
+                temperature: 0,
+                max_tokens: 8000
+              })
             })
-          })
-          
-          if (groqResponse.status === 429 || groqResponse.status === 413) {
-            lastError = `GROQ: ${groqResponse.status === 429 ? 'Rate limit' : 'Payload muito grande'}`
-          } else if (groqResponse.ok) {
-            const groqData = await groqResponse.json() as any
-            textoResposta = groqData?.choices?.[0]?.message?.content || ''
             
-            // ✅ v39: Aceitar qualquer resposta válida
-            if (textoResposta && textoResposta.length > 50) {
-              modeloUsado = 'groq-llama-3.3-70b'
-              console.log(`✅ GROQ OK! (${textoResposta.length} chars)`)
-            } else if (textoResposta) {
-              console.log(`⚠️ GROQ respondeu mas muito curto: ${textoResposta.length} chars`)
-              textoResposta = '' // Resetar
+            if (groqResponse.status === 429) {
+              lastError = 'GROQ: Rate limit'
+              retryCount++
+              if (retryCount <= maxRetries) {
+                const waitTime = Math.pow(2, retryCount) * 1000
+                console.log(`⏳ GROQ: Rate limit, aguardando ${waitTime/1000}s (tentativa ${retryCount}/${maxRetries})...`)
+                await new Promise(r => setTimeout(r, waitTime))
+                continue
+              }
+              break
             }
+            
+            if (groqResponse.status === 413) {
+              lastError = 'GROQ: Payload muito grande'
+              break
+            }
+            
+            if (groqResponse.ok) {
+              const groqData = await groqResponse.json() as any
+              textoResposta = groqData?.choices?.[0]?.message?.content || ''
+              
+              // ✅ v39: Aceitar qualquer resposta válida
+              if (textoResposta && textoResposta.length > 50) {
+                modeloUsado = 'groq-llama-3.3-70b'
+                console.log(`✅ GROQ OK! (${textoResposta.length} chars)`)
+              } else if (textoResposta) {
+                console.log(`⚠️ GROQ respondeu mas muito curto: ${textoResposta.length} chars`)
+                textoResposta = '' // Resetar
+              }
+            }
+            break
+          } catch (err) {
+            lastError = `GROQ: ${err}`
+            break
           }
-        } catch (err) {
-          lastError = `GROQ: ${err}`
         }
       }
     }
@@ -7359,43 +7398,59 @@ ${textoLimitado}`
         for (const modelo of modelosGemini) {
           console.log(`🚀 Tentando ${modelo.nome}...`)
           
-          try {
-            const response = await fetch(modelo.url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0, maxOutputTokens: 65536 }
+          // ✅ v41: Retry com backoff exponencial
+          let retryCount = 0
+          const maxRetries = 2
+          
+          while (retryCount <= maxRetries) {
+            try {
+              const response = await fetch(modelo.url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: { temperature: 0, maxOutputTokens: 65536 }
+                })
               })
-            })
-            
-            console.log(`📡 ${modelo.nome}: Status ${response.status}`)
-            
-            if (response.status === 429) {
-              ultimoErro = `${modelo.nome}: Rate limit`
-              errosAPI.push(ultimoErro)
-              await new Promise(r => setTimeout(r, 2000))
-              continue
-            }
-            
-            if (!response.ok) continue
-            
-            const data = await response.json() as any
-            textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-            
-            // ✅ v39: Aceitar qualquer resposta válida
-            if (textoResposta && textoResposta.length > 50) {
-              modeloUsado = modelo.nome
-              console.log(`✅ ${modelo.nome} OK! (${textoResposta.length} chars)`)
+              
+              console.log(`📡 ${modelo.nome}: Status ${response.status}`)
+              
+              if (response.status === 429) {
+                ultimoErro = `${modelo.nome}: Rate limit`
+                errosAPI.push(ultimoErro)
+                retryCount++
+                if (retryCount <= maxRetries) {
+                  const waitTime = Math.pow(2, retryCount) * 1000
+                  console.log(`⏳ ${modelo.nome}: Rate limit, aguardando ${waitTime/1000}s (tentativa ${retryCount}/${maxRetries})...`)
+                  await new Promise(r => setTimeout(r, waitTime))
+                  continue
+                }
+                break
+              }
+              
+              if (!response.ok) break
+              
+              const data = await response.json() as any
+              textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+              
+              // ✅ v39: Aceitar qualquer resposta válida
+              if (textoResposta && textoResposta.length > 50) {
+                modeloUsado = modelo.nome
+                console.log(`✅ ${modelo.nome} OK! (${textoResposta.length} chars)`)
+                break
+              } else if (textoResposta) {
+                console.log(`⚠️ ${modelo.nome} respondeu mas muito curto: ${textoResposta.length} chars`)
+                textoResposta = ''
+              }
               break
-            } else if (textoResposta) {
-              console.log(`⚠️ ${modelo.nome} respondeu mas muito curto: ${textoResposta.length} chars`)
-              textoResposta = ''
+            } catch (err) {
+              ultimoErro = `${modelo.nome}: ${err}`
+              errosAPI.push(ultimoErro)
+              break
             }
-          } catch (err) {
-            ultimoErro = `${modelo.nome}: ${err}`
-            errosAPI.push(ultimoErro)
           }
+          
+          if (textoResposta) break
         }
       }
       
@@ -7472,42 +7527,66 @@ PESOS: 1=BÁSICOS, 2=ESPECÍFICOS
 TEXTO:
 ${textoParaGroq}`
         
-        try {
-          const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${groqKey}`
-            },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              messages: [{ role: 'user', content: promptGroq }],
-              temperature: 0,
-              max_tokens: 8000
+        // ✅ v41: Retry com backoff exponencial para GROQ
+        let retryCount = 0
+        const maxRetries = 2
+        
+        while (retryCount <= maxRetries) {
+          try {
+            const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${groqKey}`
+              },
+              body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                messages: [{ role: 'user', content: promptGroq }],
+                temperature: 0,
+                max_tokens: 8000
+              })
             })
-          })
-          
-          console.log(`📡 GROQ: Status ${groqResponse.status}`)
-          
-          if (groqResponse.status === 429 || groqResponse.status === 413) {
-            ultimoErro = `GROQ: ${groqResponse.status === 429 ? 'Rate limit' : 'Payload muito grande'}`
-            errosAPI.push(ultimoErro)
-          } else if (groqResponse.ok) {
-            const groqData = await groqResponse.json() as any
-            textoResposta = groqData?.choices?.[0]?.message?.content || ''
             
-            // ✅ v39: Aceitar qualquer resposta válida
-            if (textoResposta && textoResposta.length > 50) {
-              modeloUsado = 'groq-llama-3.3-70b'
-              console.log(`✅ GROQ OK! (${textoResposta.length} chars)`)
-            } else if (textoResposta) {
-              console.log(`⚠️ GROQ respondeu mas muito curto: ${textoResposta.length} chars`)
-              textoResposta = ''
+            console.log(`📡 GROQ: Status ${groqResponse.status}`)
+            
+            if (groqResponse.status === 429) {
+              ultimoErro = 'GROQ: Rate limit'
+              errosAPI.push(ultimoErro)
+              retryCount++
+              if (retryCount <= maxRetries) {
+                const waitTime = Math.pow(2, retryCount) * 1000
+                console.log(`⏳ GROQ: Rate limit, aguardando ${waitTime/1000}s (tentativa ${retryCount}/${maxRetries})...`)
+                await new Promise(r => setTimeout(r, waitTime))
+                continue
+              }
+              break
             }
+            
+            if (groqResponse.status === 413) {
+              ultimoErro = 'GROQ: Payload muito grande'
+              errosAPI.push(ultimoErro)
+              break
+            }
+            
+            if (groqResponse.ok) {
+              const groqData = await groqResponse.json() as any
+              textoResposta = groqData?.choices?.[0]?.message?.content || ''
+              
+              // ✅ v39: Aceitar qualquer resposta válida
+              if (textoResposta && textoResposta.length > 50) {
+                modeloUsado = 'groq-llama-3.3-70b'
+                console.log(`✅ GROQ OK! (${textoResposta.length} chars)`)
+              } else if (textoResposta) {
+                console.log(`⚠️ GROQ respondeu mas muito curto: ${textoResposta.length} chars`)
+                textoResposta = ''
+              }
+            }
+            break
+          } catch (err) {
+            ultimoErro = `GROQ: ${err}`
+            errosAPI.push(ultimoErro)
+            break
           }
-        } catch (err) {
-          ultimoErro = `GROQ: ${err}`
-          errosAPI.push(ultimoErro)
         }
       }
     }
