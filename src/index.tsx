@@ -752,16 +752,45 @@ async function sendPasswordResetEmail(email: string, token: string, name: string
 
     console.log('🔐 Resposta do Resend:', response.status, response.statusText);
     
-    if (!response.ok) {
+    const success = response.ok;
+    
+    // ✅ CORREÇÃO v16: Registrar no histórico de emails
+    if (env?.DB) {
+      await logEmailSent(
+        env.DB,
+        email,
+        'password_reset',
+        '🔐 Redefinição de Senha - IAprova',
+        success ? 'sent' : 'failed',
+        undefined,
+        success ? undefined : await response.text()
+      )
+    }
+    
+    if (!success) {
       const errorText = await response.text();
       console.error('❌ Erro do Resend:', errorText);
     } else {
       console.log('✅ Email de reset enviado com sucesso!');
     }
 
-    return response.ok;
-  } catch (error) {
+    return success;
+  } catch (error: any) {
     console.error('Erro ao enviar email de reset:', error);
+    
+    // Registrar falha no histórico
+    if (env?.DB) {
+      await logEmailSent(
+        env.DB,
+        email,
+        'password_reset',
+        '🔐 Redefinição de Senha - IAprova',
+        'failed',
+        undefined,
+        error.message
+      )
+    }
+    
     return false;
   }
 }
@@ -980,7 +1009,23 @@ async function sendVerificationEmail(email: string, token: string, name: string,
 
     console.log('📧 Resposta do Resend:', response.status, response.statusText);
     
-    if (!response.ok) {
+    const success = response.ok;
+    
+    // ✅ CORREÇÃO v16: Registrar no histórico de emails (verificação)
+    // Nota: emails de verificação são filtrados no endpoint de histórico
+    if (env?.DB) {
+      await logEmailSent(
+        env.DB,
+        email,
+        'verification',
+        '✅ Confirme seu Email - IAprova',
+        success ? 'sent' : 'failed',
+        undefined,
+        success ? undefined : (response.status === 403 ? 'Resend em modo de teste' : 'Erro ao enviar')
+      )
+    }
+    
+    if (!success) {
       const errorText = await response.text();
       console.error('❌ Erro do Resend:', errorText);
       
@@ -994,8 +1039,22 @@ async function sendVerificationEmail(email: string, token: string, name: string,
     const responseData = await response.json();
     console.log('✅ Email enviado com sucesso! ID:', responseData.id);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao enviar email:', error);
+    
+    // Registrar falha no histórico
+    if (env?.DB) {
+      await logEmailSent(
+        env.DB,
+        email,
+        'verification',
+        '✅ Confirme seu Email - IAprova',
+        'failed',
+        undefined,
+        error.message
+      )
+    }
+    
     return false;
   }
 }
@@ -1215,16 +1274,45 @@ async function sendWelcomeEmail(email: string, name: string, env?: any): Promise
 
     console.log('🎉 Resposta do Resend (Welcome):', response.status, response.statusText);
     
-    if (!response.ok) {
+    const success = response.ok;
+    
+    // ✅ CORREÇÃO v16: Registrar no histórico de emails
+    if (env?.DB) {
+      await logEmailSent(
+        env.DB,
+        email,
+        'welcome',
+        '🎉 Bem-vindo ao IAprova!',
+        success ? 'sent' : 'failed',
+        undefined,
+        success ? undefined : await response.text()
+      )
+    }
+    
+    if (!success) {
       const errorText = await response.text();
       console.error('❌ Erro do Resend (Welcome):', errorText);
     } else {
       console.log('✅ Email de boas-vindas enviado com sucesso!');
     }
 
-    return response.ok;
-  } catch (error) {
+    return success;
+  } catch (error: any) {
     console.error('Erro ao enviar email de boas-vindas:', error);
+    
+    // Registrar falha no histórico
+    if (env?.DB) {
+      await logEmailSent(
+        env.DB,
+        email,
+        'welcome',
+        '🎉 Bem-vindo ao IAprova!',
+        'failed',
+        undefined,
+        error.message
+      )
+    }
+    
     return false;
   }
 }
@@ -2713,44 +2801,73 @@ app.get('/api/admin/dashboard', async (c) => {
     // Metas concluídas
     const completedMetas = await DB.prepare('SELECT COUNT(*) as count FROM metas_diarias WHERE concluida = 1').first() as any
     
-    // Total de emails enviados (se tabela existir)
-    let emailStats = { total: 0, verification: 0, welcome: 0, password_reset: 0, resend: 0 }
+    // Total de emails enviados - usar tabela email_history (não email_logs)
+    let emailStats = { total: 0, verification: 0, welcome: 0, password_reset: 0, resend: 0, payment: 0 }
     try {
-      const totalEmails = await DB.prepare('SELECT COUNT(*) as count FROM email_logs').first() as any
-      const verificationEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_logs WHERE email_type = 'verification'").first() as any
-      const welcomeEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_logs WHERE email_type = 'welcome'").first() as any
-      const resetEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_logs WHERE email_type = 'password_reset'").first() as any
-      const resendEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_logs WHERE email_type = 'resend_verification'").first() as any
+      // Criar tabela se não existir
+      await DB.prepare(`
+        CREATE TABLE IF NOT EXISTS email_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER,
+          email_to TEXT NOT NULL,
+          email_type TEXT NOT NULL,
+          subject TEXT,
+          status TEXT DEFAULT 'sent',
+          error_message TEXT,
+          metadata TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+      
+      const totalEmails = await DB.prepare('SELECT COUNT(*) as count FROM email_history').first() as any
+      const verificationEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_history WHERE email_type = 'verification'").first() as any
+      const welcomeEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_history WHERE email_type = 'welcome'").first() as any
+      const resetEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_history WHERE email_type = 'password_reset'").first() as any
+      const resendEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_history WHERE email_type = 'resend_verification'").first() as any
+      const paymentEmails = await DB.prepare("SELECT COUNT(*) as count FROM email_history WHERE email_type = 'payment_confirmation'").first() as any
       
       emailStats = {
         total: totalEmails?.count || 0,
         verification: verificationEmails?.count || 0,
         welcome: welcomeEmails?.count || 0,
         password_reset: resetEmails?.count || 0,
-        resend: resendEmails?.count || 0
+        resend: resendEmails?.count || 0,
+        payment: paymentEmails?.count || 0
       }
     } catch (e) {
-      console.log('⚠️ Tabela email_logs não existe ainda')
+      console.log('⚠️ Erro ao buscar email_history:', e)
     }
     
-    // Assinaturas (se tabela existir)
-    let subscriptionStats = { total: 0, active: 0, pending: 0, cancelled: 0, revenue: 0 }
+    // Assinaturas - buscar da tabela users (campos subscription_status, payment_id, etc.)
+    let subscriptionStats = { total: 0, active: 0, pending: 0, cancelled: 0, revenue: 0, trial: 0 }
     try {
-      const totalSubs = await DB.prepare('SELECT COUNT(*) as count FROM user_subscriptions').first() as any
-      const activeSubs = await DB.prepare("SELECT COUNT(*) as count FROM user_subscriptions WHERE status = 'active'").first() as any
-      const pendingSubs = await DB.prepare("SELECT COUNT(*) as count FROM user_subscriptions WHERE status = 'pending'").first() as any
-      const cancelledSubs = await DB.prepare("SELECT COUNT(*) as count FROM user_subscriptions WHERE status = 'cancelled'").first() as any
-      const revenue = await DB.prepare("SELECT COALESCE(SUM(amount_paid), 0) as total FROM user_subscriptions WHERE status = 'active'").first() as any
+      // Contar assinaturas ativas (subscription_status = 'active')
+      const activeSubs = await DB.prepare("SELECT COUNT(*) as count FROM users WHERE subscription_status = 'active'").first() as any
+      
+      // Contar usuários em trial
+      const trialSubs = await DB.prepare("SELECT COUNT(*) as count FROM users WHERE subscription_status = 'trial'").first() as any
+      
+      // Contar usuários premium (is_premium = 1)
+      const premiumTotal = await DB.prepare("SELECT COUNT(*) as count FROM users WHERE is_premium = 1").first() as any
+      
+      // Calcular receita baseada nos planos
+      const mensalCount = await DB.prepare("SELECT COUNT(*) as count FROM users WHERE subscription_plan = 'mensal' AND subscription_status = 'active'").first() as any
+      const anualCount = await DB.prepare("SELECT COUNT(*) as count FROM users WHERE subscription_plan = 'anual' AND subscription_status = 'active'").first() as any
+      
+      const receitaMensal = (mensalCount?.count || 0) * 29.90
+      const receitaAnual = (anualCount?.count || 0) * 249.90
+      const receitaTotal = receitaMensal + receitaAnual
       
       subscriptionStats = {
-        total: totalSubs?.count || 0,
+        total: premiumTotal?.count || 0,
         active: activeSubs?.count || 0,
-        pending: pendingSubs?.count || 0,
-        cancelled: cancelledSubs?.count || 0,
-        revenue: revenue?.total || 0
+        pending: 0, // Não temos esse status
+        cancelled: 0, // Não temos esse status
+        revenue: receitaTotal,
+        trial: trialSubs?.count || 0
       }
     } catch (e) {
-      console.log('⚠️ Tabela user_subscriptions não existe ainda')
+      console.log('⚠️ Erro ao buscar assinaturas:', e)
     }
     
     // Estatísticas de feedback de conteúdo (se tabela existir)
@@ -4483,6 +4600,18 @@ app.post('/api/resend-verification', async (c) => {
     const emailSent = await sendVerificationEmail(email, newToken, user.name, c.env)
     const APP_URL = c.env?.APP_URL || 'https://iaprova.app'
     const verificationUrl = `${APP_URL}/verificar-email?token=${newToken}`
+    
+    // ✅ CORREÇÃO v16: Registrar reenvio específico no histórico
+    if (emailSent) {
+      await logEmailSent(
+        DB,
+        email,
+        'resend_verification',
+        '🔄 Reenvio - Confirme seu Email - IAprova',
+        'sent',
+        user.id
+      )
+    }
     
     // SEMPRE retornar o token para permitir verificação manual
     return c.json({ 

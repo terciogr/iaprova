@@ -13751,6 +13751,10 @@ window.abrirPainelAdmin = async function() {
                   <span class="${themes[currentTheme].textSecondary}">Reenvios</span>
                   <span class="font-bold ${themes[currentTheme].text}">${stats.emails.resend}</span>
                 </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-credit-card mr-1 text-green-500"></i>Pagamentos</span>
+                  <span class="font-bold text-green-600">${stats.emails.payment || 0}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -13783,26 +13787,30 @@ window.abrirPainelAdmin = async function() {
             
             <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
               <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
-                <i class="fas fa-credit-card text-yellow-500"></i>
-                Assinaturas (Em breve)
+                <i class="fas fa-credit-card text-green-500"></i>
+                Assinaturas Premium
               </h3>
               <div class="space-y-3">
                 <div class="flex justify-between items-center">
-                  <span class="${themes[currentTheme].textSecondary}">Assinaturas ativas</span>
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-crown mr-1 text-yellow-500"></i>Total Premium</span>
+                  <span class="font-bold text-yellow-600">${stats.subscriptions.total}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-check-circle mr-1 text-green-500"></i>Ativos</span>
                   <span class="font-bold text-green-600">${stats.subscriptions.active}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                  <span class="${themes[currentTheme].textSecondary}">Pendentes</span>
-                  <span class="font-bold text-yellow-600">${stats.subscriptions.pending}</span>
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-hourglass-half mr-1 text-blue-500"></i>Em Trial</span>
+                  <span class="font-bold text-blue-600">${stats.subscriptions.trial || 0}</span>
                 </div>
-                <div class="flex justify-between items-center">
-                  <span class="${themes[currentTheme].textSecondary}">Receita total</span>
-                  <span class="font-bold text-green-600">R$ ${stats.subscriptions.revenue.toFixed(2)}</span>
+                <div class="flex justify-between items-center pt-2 border-t ${themes[currentTheme].border}">
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-dollar-sign mr-1 text-green-500"></i>Receita estimada</span>
+                  <span class="font-bold text-green-600">R$ ${(stats.subscriptions.revenue || 0).toFixed(2)}</span>
                 </div>
               </div>
-              <p class="text-xs ${themes[currentTheme].textMuted} mt-3 italic">
-                <i class="fas fa-info-circle mr-1"></i>Sistema de pagamentos será configurado em breve
-              </p>
+              <button onclick="verFinanceiro()" class="mt-4 w-full py-2 px-4 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition text-sm font-medium">
+                <i class="fas fa-chart-bar mr-1"></i>Ver Detalhes Financeiros
+              </button>
             </div>
           </div>
           
