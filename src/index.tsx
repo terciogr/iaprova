@@ -6327,54 +6327,73 @@ INSTRUÇÕES:
     const textoOtimizado = textoParaIA.substring(0, 65000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
-    // ✅ v40: PROMPT COMPLETAMENTE REFORMULADO PARA PRECISÃO POR CARGO
-    const prompt = `Você é um especialista em análise de editais de concursos públicos.
+    // ✅ v42: PROMPT ULTRA-PRECISO PARA EXTRAÇÃO POR CARGO
+    const prompt = `Você é um especialista em análise de editais de concursos públicos brasileiros.
 
-TAREFA: Extrair TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO do CARGO ESPECÍFICO abaixo.
+TAREFA: Extrair APENAS as disciplinas do cargo "${cargoUpper}" do conteúdo programático.
 
-═══════════════════════════════════════════════════════════════
+════════════════════════════════════════════════════════════════
 CARGO ALVO: ${cargoUpper}
-═══════════════════════════════════════════════════════════════
+════════════════════════════════════════════════════════════════
 
-INSTRUÇÕES CRÍTICAS (SIGA RIGOROSAMENTE):
+REGRAS CRÍTICAS DE EXTRAÇÃO:
 
-1. IDENTIFICAÇÃO DO CARGO:
-   - Localize no texto a seção do cargo "${cargoUpper}" ou similar
-   - Procure por marcadores como "${cargoUpper}", "MÓDULO I", "MÓDULO II"
-   - Se o cargo for "AUDITOR-FISCAL" ou "AUDITOR", procure pela seção do AUDITOR
-   - Se for "ANALISTA-TRIBUTÁRIO" ou "ANALISTA", procure pela seção do ANALISTA
-   - IGNORE completamente as seções de OUTROS CARGOS
-
-2. ESTRUTURA TÍPICA DE EDITAIS:
-   - MÓDULO I = CONHECIMENTOS BÁSICOS (peso 1) - disciplinas gerais
-   - MÓDULO II = CONHECIMENTOS ESPECÍFICOS (peso 2) - disciplinas técnicas
+1. ESTRUTURA TÍPICA DE EDITAIS BRASILEIROS:
+   Os editais geralmente têm esta estrutura para CADA CARGO:
    
-3. EXTRAÇÃO DE DISCIPLINAS:
-   - Cada disciplina é identificada por "Nome da Disciplina:" seguido de tópicos
-   - Disciplinas são SEPARADAS - NÃO agrupe múltiplas em uma só
-   - Exemplo: "Legislação Tributária:", "Comércio Internacional:", "Legislação Aduaneira:" são TRÊS disciplinas diferentes
+   a) CONHECIMENTOS GERAIS/BÁSICOS (peso 1):
+      - Língua Portuguesa
+      - Raciocínio Lógico / Matemática
+      - Informática (às vezes)
+      - Conhecimentos Gerais/Regionais
    
-4. DISCIPLINAS COMUNS (para referência):
-   BÁSICAS (peso 1): Língua Portuguesa, Língua Inglesa, Raciocínio Lógico-Matemático, Estatística, Economia, Administração Geral, Administração Pública, Auditoria, Contabilidade, Fluência em dados, Ciência de dados
-   ESPECÍFICAS (peso 2): Direito Administrativo, Direito Constitucional, Direito Previdenciário, Direito Tributário, Legislação Tributária, Comércio Internacional, Legislação Aduaneira
+   b) CONHECIMENTOS ESPECÍFICOS COMUNS (peso 2):
+      - Seção "Para todos os cargos de ensino superior/médio"
+      - Exemplo: Legislação do SUS, Noções de Informática
+   
+   c) CONHECIMENTOS ESPECÍFICOS DO CARGO (peso 2):
+      - Seção que começa com o NOME DO CARGO (ex: "Enfermeiro", "Auditor-Fiscal")
+      - Contém os tópicos técnicos específicos daquele cargo
 
-5. REGRAS DE EXCLUSÃO:
-   - NÃO inclua disciplinas de outros cargos (ex: se for Auditor, não inclua disciplinas exclusivas do Analista)
-   - NÃO invente disciplinas que não estão no texto
-   - NÃO agrupe disciplinas diferentes
+2. COMO IDENTIFICAR AS DISCIPLINAS DO CARGO "${cargoUpper}":
+   - INCLUA: "CONHECIMENTOS GERAIS" que se aplicam ao nível do cargo
+   - INCLUA: "CONHECIMENTOS ESPECÍFICOS PARA TODOS OS CARGOS" do mesmo nível
+   - INCLUA: Seção específica do cargo "${cargoUpper}"
+   - NÃO INCLUA: Disciplinas de OUTROS CARGOS (ex: se busca Enfermeiro, IGNORE Médico, Dentista, Biomédico, etc.)
 
-6. QUANTIDADE ESPERADA:
-   - Editais grandes (Receita Federal, INSS, etc): 15-20 disciplinas
-   - Editais médios: 8-15 disciplinas
-   - EXTRAIA TODAS sem exceção
+3. DISCIPLINAS SÃO SEPARADAS:
+   - "Língua Portuguesa:" = 1 disciplina
+   - "Raciocínio Lógico:" = 1 disciplina separada
+   - "Conhecimentos sobre o SUS:" = 1 disciplina separada
+   - Se houver seção com nome do cargo, criar disciplina "Conhecimentos Específicos de [Cargo]"
 
-FORMATO DE RESPOSTA (JSON válido, sem markdown):
-{"disciplinas":[{"nome":"Nome Exato da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1","tópico 2","tópico 3"]}]}
+4. QUANTIDADE ESPERADA POR TIPO DE CONCURSO:
+   - Concursos de SAÚDE (Enfermeiro, Técnico): 4-6 disciplinas
+   - Concursos FISCAIS (Auditor, Analista Tributário): 15-20 disciplinas
+   - Concursos ADMINISTRATIVOS: 6-12 disciplinas
+   - Concursos de SEGURANÇA: 8-15 disciplinas
 
-Onde:
-- peso: 1 para BÁSICOS/GERAIS, 2 para ESPECÍFICOS
-- categoria: "BÁSICOS" ou "ESPECÍFICOS"
-- topicos: 5-10 principais tópicos resumidos
+5. EXEMPLOS CORRETOS:
+
+   Para cargo "ENFERMEIRO" em concurso de saúde:
+   [
+     {"nome": "Língua Portuguesa", "peso": 1, "categoria": "BÁSICOS"},
+     {"nome": "Raciocínio Lógico-Matemático", "peso": 1, "categoria": "BÁSICOS"},
+     {"nome": "Conhecimentos Regionais", "peso": 1, "categoria": "BÁSICOS"},
+     {"nome": "Conhecimentos sobre o SUS e Legislação", "peso": 2, "categoria": "ESPECÍFICOS"},
+     {"nome": "Conhecimentos Específicos de Enfermagem", "peso": 2, "categoria": "ESPECÍFICOS"}
+   ]
+
+   Para cargo "AUDITOR-FISCAL":
+   [
+     {"nome": "Língua Portuguesa", "peso": 1},
+     {"nome": "Língua Inglesa", "peso": 1},
+     {"nome": "Raciocínio Lógico-Matemático", "peso": 1},
+     ... (mais ~15 disciplinas específicas do Auditor)
+   ]
+
+FORMATO DE RESPOSTA (JSON válido, sem markdown, sem texto antes ou depois):
+{"disciplinas":[{"nome":"Nome da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1","tópico 2"]}]}
 
 TEXTO DO EDITAL:
 ${textoOtimizado}`
@@ -6538,19 +6557,18 @@ ${textoOtimizado}`
         console.log(`🚀 Tentando GROQ LLaMA...`)
         
         const textoParaGroq = textoOtimizado.substring(0, 25000)
-        // ✅ v40: Prompt GROQ otimizado para precisão por cargo
-        const promptGroq = `Extraia TODAS as disciplinas do CONTEÚDO PROGRAMÁTICO para o cargo específico.
+        // ✅ v42: Prompt GROQ otimizado - NÃO incluir disciplinas de outros cargos
+        const promptGroq = `Extraia APENAS as disciplinas do cargo "${cargoUpper}".
 
-CARGO ALVO: ${cargoUpper}
-
-REGRAS:
-1. Extraia APENAS disciplinas do cargo "${cargoUpper}"
-2. IGNORE seções de outros cargos
-3. Separe cada disciplina individualmente (não agrupe)
-4. Exemplo: "Legislação Tributária", "Comércio Internacional", "Legislação Aduaneira" são 3 disciplinas SEPARADAS
+REGRAS IMPORTANTES:
+1. INCLUA: Conhecimentos Gerais/Básicos do nível do cargo
+2. INCLUA: Conhecimentos Específicos comuns ao nível (ex: "Para todos os cargos de ensino superior")
+3. INCLUA: Conhecimentos Específicos DO CARGO "${cargoUpper}"
+4. NÃO INCLUA: Disciplinas de OUTROS cargos (se busca Enfermeiro, IGNORE Médico, Dentista, etc.)
+5. Concursos de saúde: 4-6 disciplinas. Concursos fiscais: 15-20 disciplinas.
 
 FORMATO JSON (sem markdown):
-{"disciplinas":[{"nome":"Nome Exato","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1","tópico 2"]}]}
+{"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]}]}
 
 PESOS: 1=BÁSICOS, 2=ESPECÍFICOS
 
@@ -7291,59 +7309,77 @@ app.post('/api/editais/processar-texto', async (c) => {
     const openaiKey = openaiKeyFromDB || c.env.OPENAI_API_KEY || ''
     const groqKey = groqKeyFromDB || c.env.GROQ_API_KEY || ''
     
-    // ✅ v40: CORREÇÃO ROBUSTA - Extração precisa por cargo
+    // ✅ v42: PROMPT ULTRA-PRECISO PARA EXTRAÇÃO POR CARGO
     const textoLimitado = texto.substring(0, 65000)
     const cargoUpper = cargo?.toUpperCase() || 'GERAL'
     console.log(`📝 Processando ${textoLimitado.length} caracteres para cargo: ${cargoUpper}`)
     
-    // ✅ v40: PROMPT COMPLETAMENTE REFORMULADO PARA PRECISÃO POR CARGO
-    const prompt = `Você é um especialista em análise de editais de concursos públicos.
+    const prompt = `Você é um especialista em análise de editais de concursos públicos brasileiros.
 
-TAREFA: Extrair TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO do CARGO ESPECÍFICO abaixo.
+TAREFA: Extrair APENAS as disciplinas do cargo "${cargoUpper}" do conteúdo programático.
 
-═══════════════════════════════════════════════════════════════
+════════════════════════════════════════════════════════════════
 CARGO ALVO: ${cargoUpper}
-═══════════════════════════════════════════════════════════════
+════════════════════════════════════════════════════════════════
 
-INSTRUÇÕES CRÍTICAS (SIGA RIGOROSAMENTE):
+REGRAS CRÍTICAS DE EXTRAÇÃO:
 
-1. IDENTIFICAÇÃO DO CARGO:
-   - Localize no texto a seção do cargo "${cargoUpper}" ou similar
-   - Procure por marcadores como "${cargoUpper}", "MÓDULO I", "MÓDULO II"
-   - Se o cargo for "AUDITOR-FISCAL" ou "AUDITOR", procure pela seção do AUDITOR
-   - Se for "ANALISTA-TRIBUTÁRIO" ou "ANALISTA", procure pela seção do ANALISTA
-   - IGNORE completamente as seções de OUTROS CARGOS
-
-2. ESTRUTURA TÍPICA DE EDITAIS:
-   - MÓDULO I = CONHECIMENTOS BÁSICOS (peso 1) - disciplinas gerais
-   - MÓDULO II = CONHECIMENTOS ESPECÍFICOS (peso 2) - disciplinas técnicas
+1. ESTRUTURA TÍPICA DE EDITAIS BRASILEIROS:
+   Os editais geralmente têm esta estrutura para CADA CARGO:
    
-3. EXTRAÇÃO DE DISCIPLINAS:
-   - Cada disciplina é identificada por "Nome da Disciplina:" seguido de tópicos
-   - Disciplinas são SEPARADAS - NÃO agrupe múltiplas em uma só
-   - Exemplo: "Legislação Tributária:", "Comércio Internacional:", "Legislação Aduaneira:" são TRÊS disciplinas diferentes
+   a) CONHECIMENTOS GERAIS/BÁSICOS (peso 1):
+      - Língua Portuguesa
+      - Raciocínio Lógico / Matemática
+      - Informática (às vezes)
+      - Conhecimentos Gerais/Regionais
    
-4. DISCIPLINAS COMUNS (para referência):
-   BÁSICAS (peso 1): Língua Portuguesa, Língua Inglesa, Raciocínio Lógico-Matemático, Estatística, Economia, Administração Geral, Administração Pública, Auditoria, Contabilidade, Fluência em dados, Ciência de dados
-   ESPECÍFICAS (peso 2): Direito Administrativo, Direito Constitucional, Direito Previdenciário, Direito Tributário, Legislação Tributária, Comércio Internacional, Legislação Aduaneira
+   b) CONHECIMENTOS ESPECÍFICOS COMUNS (peso 2):
+      - Seção "Para todos os cargos de ensino superior/médio"
+      - Exemplo: Legislação do SUS, Noções de Informática
+   
+   c) CONHECIMENTOS ESPECÍFICOS DO CARGO (peso 2):
+      - Seção que começa com o NOME DO CARGO (ex: "Enfermeiro", "Auditor-Fiscal")
+      - Contém os tópicos técnicos específicos daquele cargo
 
-5. REGRAS DE EXCLUSÃO:
-   - NÃO inclua disciplinas de outros cargos (ex: se for Auditor, não inclua disciplinas exclusivas do Analista)
-   - NÃO invente disciplinas que não estão no texto
-   - NÃO agrupe disciplinas diferentes
+2. COMO IDENTIFICAR AS DISCIPLINAS DO CARGO "${cargoUpper}":
+   - INCLUA: "CONHECIMENTOS GERAIS" que se aplicam ao nível do cargo
+   - INCLUA: "CONHECIMENTOS ESPECÍFICOS PARA TODOS OS CARGOS" do mesmo nível
+   - INCLUA: Seção específica do cargo "${cargoUpper}"
+   - NÃO INCLUA: Disciplinas de OUTROS CARGOS (ex: se busca Enfermeiro, IGNORE Médico, Dentista, Biomédico, etc.)
 
-6. QUANTIDADE ESPERADA:
-   - Editais grandes (Receita Federal, INSS, etc): 15-20 disciplinas
-   - Editais médios: 8-15 disciplinas
-   - EXTRAIA TODAS sem exceção
+3. DISCIPLINAS SÃO SEPARADAS:
+   - "Língua Portuguesa:" = 1 disciplina
+   - "Raciocínio Lógico:" = 1 disciplina separada
+   - "Conhecimentos sobre o SUS:" = 1 disciplina separada
+   - Se houver seção com nome do cargo, criar disciplina "Conhecimentos Específicos de [Cargo]"
 
-FORMATO DE RESPOSTA (JSON válido, sem markdown):
-{"disciplinas":[{"nome":"Nome Exato da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1","tópico 2","tópico 3"]}]}
+4. QUANTIDADE ESPERADA POR TIPO DE CONCURSO:
+   - Concursos de SAÚDE (Enfermeiro, Técnico): 4-6 disciplinas
+   - Concursos FISCAIS (Auditor, Analista Tributário): 15-20 disciplinas
+   - Concursos ADMINISTRATIVOS: 6-12 disciplinas
+   - Concursos de SEGURANÇA: 8-15 disciplinas
 
-Onde:
-- peso: 1 para BÁSICOS/GERAIS, 2 para ESPECÍFICOS
-- categoria: "BÁSICOS" ou "ESPECÍFICOS"
-- topicos: 5-10 principais tópicos resumidos
+5. EXEMPLOS CORRETOS:
+
+   Para cargo "ENFERMEIRO" em concurso de saúde:
+   [
+     {"nome": "Língua Portuguesa", "peso": 1, "categoria": "BÁSICOS"},
+     {"nome": "Raciocínio Lógico-Matemático", "peso": 1, "categoria": "BÁSICOS"},
+     {"nome": "Conhecimentos Regionais", "peso": 1, "categoria": "BÁSICOS"},
+     {"nome": "Conhecimentos sobre o SUS e Legislação", "peso": 2, "categoria": "ESPECÍFICOS"},
+     {"nome": "Conhecimentos Específicos de Enfermagem", "peso": 2, "categoria": "ESPECÍFICOS"}
+   ]
+
+   Para cargo "AUDITOR-FISCAL":
+   [
+     {"nome": "Língua Portuguesa", "peso": 1},
+     {"nome": "Língua Inglesa", "peso": 1},
+     {"nome": "Raciocínio Lógico-Matemático", "peso": 1},
+     ... (mais ~15 disciplinas específicas do Auditor)
+   ]
+
+FORMATO DE RESPOSTA (JSON válido, sem markdown, sem texto antes ou depois):
+{"disciplinas":[{"nome":"Nome da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1","tópico 2"]}]}
 
 TEXTO DO EDITAL:
 ${textoLimitado}`
@@ -7516,19 +7552,18 @@ ${textoLimitado}`
         console.log(`🚀 Tentando GROQ LLaMA...`)
         
         const textoParaGroq = textoLimitado.substring(0, 25000)
-        // ✅ v40: Prompt GROQ otimizado para precisão por cargo
-        const promptGroq = `Extraia TODAS as disciplinas do CONTEÚDO PROGRAMÁTICO para o cargo específico.
+        // ✅ v42: Prompt GROQ otimizado - NÃO incluir disciplinas de outros cargos
+        const promptGroq = `Extraia APENAS as disciplinas do cargo "${cargoUpper}".
 
-CARGO ALVO: ${cargoUpper}
-
-REGRAS:
-1. Extraia APENAS disciplinas do cargo "${cargoUpper}"
-2. IGNORE seções de outros cargos
-3. Separe cada disciplina individualmente (não agrupe)
-4. Exemplo: "Legislação Tributária", "Comércio Internacional", "Legislação Aduaneira" são 3 disciplinas SEPARADAS
+REGRAS IMPORTANTES:
+1. INCLUA: Conhecimentos Gerais/Básicos do nível do cargo
+2. INCLUA: Conhecimentos Específicos comuns ao nível (ex: "Para todos os cargos de ensino superior")
+3. INCLUA: Conhecimentos Específicos DO CARGO "${cargoUpper}"
+4. NÃO INCLUA: Disciplinas de OUTROS cargos (se busca Enfermeiro, IGNORE Médico, Dentista, etc.)
+5. Concursos de saúde: 4-6 disciplinas. Concursos fiscais: 15-20 disciplinas.
 
 FORMATO JSON (sem markdown):
-{"disciplinas":[{"nome":"Nome Exato","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1","tópico 2"]}]}
+{"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]}]}
 
 PESOS: 1=BÁSICOS, 2=ESPECÍFICOS
 
