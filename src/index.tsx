@@ -5817,26 +5817,28 @@ INSTRUÇÕES:
     const textoOtimizado = textoParaIA.substring(0, 55000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
-    // PROMPT v35 - Extração COMPLETA e OBRIGATÓRIA de todas as disciplinas
+    // PROMPT v35c - Extração COMPLETA com instrução para separar disciplinas
     const prompt = `EXTRAIA TODAS AS DISCIPLINAS E TODOS OS TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
 
 CARGO: ${cargoDesejado?.toUpperCase() || 'GERAL'}
 
 REGRAS OBRIGATÓRIAS:
-1. MÓDULO I / CONHECIMENTOS BÁSICOS/GERAIS: Extrair TODAS (Português, Inglês, Raciocínio, Estatística, Economia, Administração, Auditoria, Contabilidade, etc.)
-2. MÓDULO II / CONHECIMENTOS ESPECÍFICOS: Extrair TODAS (Direitos, Legislações, Comércio Internacional, etc.)
-3. NÃO OMITA NENHUMA disciplina - editais grandes têm 15-20 disciplinas
-4. COPIE TÓPICOS EXATAMENTE como aparecem no edital - NÃO RESUMA
+1. Cada disciplina no edital começa com NOME DA DISCIPLINA: (com dois pontos). Extraia TODAS.
+2. MÓDULO I = CONHECIMENTOS BÁSICOS: Português, Inglês, Raciocínio, Estatística, Economia, Administração, Auditoria, Contabilidade
+3. MÓDULO II = CONHECIMENTOS ESPECÍFICOS: Direitos (Administrativo, Constitucional, Tributário, Previdenciário), Legislação Tributária, Comércio Internacional, Legislação Aduaneira
+4. NÃO AGRUPE disciplinas diferentes (ex: "Legislação Tributária" é separada de "Direito Tributário")
+5. Editais grandes têm 15-20 disciplinas - NÃO OMITA NENHUMA
+6. COPIE os tópicos EXATAMENTE como no edital
 
-FORMATO JSON OBRIGATÓRIO:
+FORMATO JSON:
 {"disciplinas":[
-{"nome":"Língua Portuguesa","peso":1,"categoria":"CONHECIMENTOS BÁSICOS","topicos":["tópico 1","tópico 2"]},
-{"nome":"Direito Tributário","peso":2,"categoria":"CONHECIMENTOS ESPECÍFICOS","topicos":["tópico 1","tópico 2"]}
+{"nome":"Nome","peso":1,"categoria":"CONHECIMENTOS BÁSICOS","topicos":["tópico"]},
+{"nome":"Nome","peso":2,"categoria":"CONHECIMENTOS ESPECÍFICOS","topicos":["tópico"]}
 ]}
 
 PESOS: 1=Básicos/Gerais, 2=Específicos
 
-TEXTO DO EDITAL:
+TEXTO:
 ${textoOtimizado}`
 
     // ════════════════════════════════════════════════════════════════
@@ -6607,24 +6609,24 @@ app.post('/api/editais/processar-texto', async (c) => {
 CARGO: ${cargo?.toUpperCase() || 'GERAL'}
 
 REGRAS OBRIGATÓRIAS:
-1. MÓDULO I / CONHECIMENTOS BÁSICOS/GERAIS: Extrair TODAS (Português, Inglês, Raciocínio, Estatística, Economia, Administração, Auditoria, Contabilidade, etc.)
-2. MÓDULO II / CONHECIMENTOS ESPECÍFICOS: Extrair TODAS (Direitos, Legislações, Comércio Internacional, etc.)
-3. NÃO OMITA NENHUMA disciplina - editais grandes têm 15-20 disciplinas
-4. COPIE TÓPICOS EXATAMENTE como aparecem no edital - NÃO RESUMA
+1. Cada disciplina no edital começa com NOME DA DISCIPLINA: (com dois pontos). Extraia TODAS.
+2. MÓDULO I = CONHECIMENTOS BÁSICOS: Português, Inglês, Raciocínio, Estatística, Economia, Administração, Auditoria, Contabilidade
+3. MÓDULO II = CONHECIMENTOS ESPECÍFICOS: Direitos (Administrativo, Constitucional, Tributário, Previdenciário), Legislação Tributária, Comércio Internacional, Legislação Aduaneira
+4. NÃO AGRUPE disciplinas diferentes (ex: "Legislação Tributária" é separada de "Direito Tributário")
+5. Editais grandes têm 15-20 disciplinas - NÃO OMITA NENHUMA
+6. COPIE os tópicos EXATAMENTE como no edital
 
-FORMATO JSON OBRIGATÓRIO:
-{
-  "disciplinas": [
-    {"nome": "Língua Portuguesa", "peso": 1, "categoria": "CONHECIMENTOS BÁSICOS", "topicos": ["tópico 1", "tópico 2"]},
-    {"nome": "Direito Tributário", "peso": 2, "categoria": "CONHECIMENTOS ESPECÍFICOS", "topicos": ["tópico 1", "tópico 2"]}
-  ],
-  "cargo_detectado": "cargo identificado",
-  "observacoes": "observações"
-}
+FORMATO JSON:
+{"disciplinas":[
+{"nome":"Nome da Disciplina","peso":1,"categoria":"CONHECIMENTOS BÁSICOS","topicos":["tópico 1","tópico 2"]},
+{"nome":"Nome da Disciplina","peso":2,"categoria":"CONHECIMENTOS ESPECÍFICOS","topicos":["tópico 1"]}
+],
+"cargo_detectado":"cargo",
+"observacoes":"obs"}
 
 PESOS: 1=Básicos/Gerais, 2=Específicos
 
-TEXTO DO EDITAL:
+TEXTO:
 ${textoLimitado}`
 
     // ✅ CORREÇÃO v33 - SISTEMA DE FALLBACK COM GROQ
