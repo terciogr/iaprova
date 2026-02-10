@@ -7311,6 +7311,8 @@ ${textoLimitado}`
     let textoResposta = ''
     let modeloUsado = ''
     let ultimoErro = ''
+    // ✅ v40c: Acumular todos os erros para debug
+    const errosAPI: string[] = []
     
     // ✅ v39: CORREÇÃO ROBUSTA - Garantir que sempre haja providers disponíveis
     let ordemAPIs = apiKeys.filter(k => k.api_key && k.api_key.length > 10).map(k => k.provider)
@@ -7371,6 +7373,7 @@ ${textoLimitado}`
             
             if (response.status === 429) {
               ultimoErro = `${modelo.nome}: Rate limit`
+              errosAPI.push(ultimoErro)
               await new Promise(r => setTimeout(r, 2000))
               continue
             }
@@ -7391,6 +7394,7 @@ ${textoLimitado}`
             }
           } catch (err) {
             ultimoErro = `${modelo.nome}: ${err}`
+            errosAPI.push(ultimoErro)
           }
         }
       }
@@ -7424,6 +7428,7 @@ ${textoLimitado}`
           
           if (response.status === 429) {
             ultimoErro = 'OpenAI: Rate limit'
+            errosAPI.push(ultimoErro)
           } else if (response.ok) {
             const data = await response.json() as any
             textoResposta = data?.choices?.[0]?.message?.content || ''
@@ -7439,6 +7444,7 @@ ${textoLimitado}`
           }
         } catch (err) {
           ultimoErro = `OpenAI: ${err}`
+          errosAPI.push(ultimoErro)
         }
       }
       
@@ -7485,6 +7491,7 @@ ${textoParaGroq}`
           
           if (groqResponse.status === 429 || groqResponse.status === 413) {
             ultimoErro = `GROQ: ${groqResponse.status === 429 ? 'Rate limit' : 'Payload muito grande'}`
+            errosAPI.push(ultimoErro)
           } else if (groqResponse.ok) {
             const groqData = await groqResponse.json() as any
             textoResposta = groqData?.choices?.[0]?.message?.content || ''
@@ -7500,13 +7507,14 @@ ${textoParaGroq}`
           }
         } catch (err) {
           ultimoErro = `GROQ: ${err}`
+          errosAPI.push(ultimoErro)
         }
       }
     }
     
     if (!textoResposta || !modeloUsado) {
       // ✅ v40: Log detalhado de falhas
-      console.error(`❌ Todos os modelos falharam. Último erro: ${ultimoErro}`)
+      console.error(`❌ Todos os modelos falharam. Erros: ${errosAPI.join('; ')}`)
       console.error(`   APIs tentadas: ${ordemAPIs.join(', ')}`)
       console.error(`   Gemini key: ${geminiKey ? 'presente' : 'ausente'}`)
       console.error(`   OpenAI key: ${openaiKey ? 'presente' : 'ausente'}`)
@@ -7518,8 +7526,9 @@ ${textoParaGroq}`
         suggestion: 'Aguarde 1-2 minutos e tente novamente. Se persistir, verifique as chaves de API no painel admin.',
         canRetry: true,
         retryAfter: 60,
-        debug: ultimoErro,
-        apisAttempted: ordemAPIs
+        debug: errosAPI.join('; '),
+        apisAttempted: ordemAPIs,
+        errors: errosAPI
       }, 503)
     }
     
