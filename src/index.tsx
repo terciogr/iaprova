@@ -11068,50 +11068,102 @@ app.delete('/api/planos/:plano_id', async (c) => {
     console.log(`🗑️ Iniciando exclusão do plano ${plano_id}...`)
     
     // Desabilitar FKs temporariamente para evitar erros de constraint
-    await DB.prepare('PRAGMA foreign_keys = OFF').run()
+    try {
+      await DB.prepare('PRAGMA foreign_keys = OFF').run()
+    } catch (e) {
+      console.log('⚠️ PRAGMA foreign_keys não suportado em D1')
+    }
     
     try {
       // Exclusão em cascata manual (ordem correta para respeitar FKs)
+      // ✅ CORREÇÃO v18: Adicionar try-catch individual para tabelas que podem não existir
       
       // 1. Deletar conteúdos gerados (referência em metas_diarias via meta_id OU user_id do plano)
       console.log('🗑️ Deletando conteúdos vinculados ao plano...')
-      // Deletar conteúdos vinculados a metas deste plano
-      const conteudosMetasResult = await DB.prepare(`
-        DELETE FROM conteudo_estudo 
-        WHERE meta_id IN (SELECT id FROM metas_diarias WHERE plano_id = ?)
-      `).bind(plano_id).run()
-      console.log(`  ✓ ${conteudosMetasResult.meta.changes} conteúdos de metas deletados`)
+      try {
+        const conteudosMetasResult = await DB.prepare(`
+          DELETE FROM conteudo_estudo 
+          WHERE meta_id IN (SELECT id FROM metas_diarias WHERE plano_id = ?)
+        `).bind(plano_id).run()
+        console.log(`  ✓ ${conteudosMetasResult.meta?.changes || 0} conteúdos de metas deletados`)
+      } catch (e: any) {
+        console.log(`  ⚠️ Tabela conteudo_estudo: ${e.message}`)
+      }
+      
+      // 1.5 Deletar materiais_salvos vinculados ao plano (via disciplina ou topico)
+      console.log('🗑️ Deletando materiais salvos do plano...')
+      try {
+        const materiaisResult = await DB.prepare(`
+          DELETE FROM materiais_salvos 
+          WHERE topico_id IN (SELECT id FROM topicos_edital WHERE plano_id = ?)
+        `).bind(plano_id).run()
+        console.log(`  ✓ ${materiaisResult.meta?.changes || 0} materiais salvos deletados`)
+      } catch (e: any) {
+        console.log(`  ⚠️ Tabela materiais_salvos: ${e.message}`)
+      }
       
       // 2. Deletar metas semanais (novo sistema)
       console.log('🗑️ Deletando metas semanais...')
-      // Primeiro deletar metas_semana que referenciam semanas_estudo
-      const metasSemanaisResult = await DB.prepare(`
-        DELETE FROM metas_semana 
-        WHERE semana_id IN (SELECT id FROM semanas_estudo WHERE plano_id = ?)
-      `).bind(plano_id).run()
-      console.log(`  ✓ ${metasSemanaisResult.meta.changes} metas semanais deletadas`)
+      try {
+        const metasSemanaisResult = await DB.prepare(`
+          DELETE FROM metas_semana 
+          WHERE semana_id IN (SELECT id FROM semanas_estudo WHERE plano_id = ?)
+        `).bind(plano_id).run()
+        console.log(`  ✓ ${metasSemanaisResult.meta?.changes || 0} metas semanais deletadas`)
+      } catch (e: any) {
+        console.log(`  ⚠️ Tabela metas_semana: ${e.message}`)
+      }
       
       // Depois deletar as semanas
-      const semanasResult = await DB.prepare('DELETE FROM semanas_estudo WHERE plano_id = ?').bind(plano_id).run()
-      console.log(`  ✓ ${semanasResult.meta.changes} semanas deletadas`)
+      try {
+        const semanasResult = await DB.prepare('DELETE FROM semanas_estudo WHERE plano_id = ?').bind(plano_id).run()
+        console.log(`  ✓ ${semanasResult.meta?.changes || 0} semanas deletadas`)
+      } catch (e: any) {
+        console.log(`  ⚠️ Tabela semanas_estudo: ${e.message}`)
+      }
       
       // 3. Deletar metas diárias
       console.log('🗑️ Deletando metas diárias...')
-      const metasResult = await DB.prepare('DELETE FROM metas_diarias WHERE plano_id = ?').bind(plano_id).run()
-      console.log(`  ✓ ${metasResult.meta.changes} metas deletadas`)
+      try {
+        const metasResult = await DB.prepare('DELETE FROM metas_diarias WHERE plano_id = ?').bind(plano_id).run()
+        console.log(`  ✓ ${metasResult.meta?.changes || 0} metas deletadas`)
+      } catch (e: any) {
+        console.log(`  ⚠️ Tabela metas_diarias: ${e.message}`)
+      }
       
       // 4. Deletar ciclos
       console.log('🗑️ Deletando ciclos de estudo...')
-      const ciclosResult = await DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id = ?').bind(plano_id).run()
-      console.log(`  ✓ ${ciclosResult.meta.changes} ciclos deletados`)
+      try {
+        const ciclosResult = await DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id = ?').bind(plano_id).run()
+        console.log(`  ✓ ${ciclosResult.meta?.changes || 0} ciclos deletados`)
+      } catch (e: any) {
+        console.log(`  ⚠️ Tabela ciclos_estudo: ${e.message}`)
+      }
       
-      // 5. ✅ NOVO: Deletar tópicos e progresso vinculados ao plano
+      // 5. Deletar tópicos e progresso vinculados ao plano
       console.log('🗑️ Deletando tópicos e progresso do plano...')
-      const progressoResult = await DB.prepare('DELETE FROM user_topicos_progresso WHERE plano_id = ?').bind(plano_id).run()
-      console.log(`  ✓ ${progressoResult.meta.changes} registros de progresso deletados`)
+      try {
+        const progressoResult = await DB.prepare('DELETE FROM user_topicos_progresso WHERE plano_id = ?').bind(plano_id).run()
+        console.log(`  ✓ ${progressoResult.meta?.changes || 0} registros de progresso deletados`)
+      } catch (e: any) {
+        console.log(`  ⚠️ Tabela user_topicos_progresso: ${e.message}`)
+      }
       
-      const topicosResult = await DB.prepare('DELETE FROM topicos_edital WHERE plano_id = ?').bind(plano_id).run()
-      console.log(`  ✓ ${topicosResult.meta.changes} tópicos do plano deletados`)
+      try {
+        const topicosResult = await DB.prepare('DELETE FROM topicos_edital WHERE plano_id = ?').bind(plano_id).run()
+        console.log(`  ✓ ${topicosResult.meta?.changes || 0} tópicos do plano deletados`)
+      } catch (e: any) {
+        console.log(`  ⚠️ Tabela topicos_edital: ${e.message}`)
+      }
+      
+      // 5.5 Deletar disciplinas do plano (se existir a relação)
+      console.log('🗑️ Deletando disciplinas do plano...')
+      try {
+        const disciplinasResult = await DB.prepare('DELETE FROM disciplinas WHERE plano_id = ?').bind(plano_id).run()
+        console.log(`  ✓ ${disciplinasResult.meta?.changes || 0} disciplinas deletadas`)
+      } catch (e: any) {
+        console.log(`  ⚠️ Tabela disciplinas: ${e.message}`)
+      }
       
       // 6. Deletar o plano
       console.log('🗑️ Deletando plano...')
@@ -11119,7 +11171,11 @@ app.delete('/api/planos/:plano_id', async (c) => {
       console.log(`✅ Plano ${plano_id} deletado com sucesso!`)
     } finally {
       // Reabilitar FKs
-      await DB.prepare('PRAGMA foreign_keys = ON').run()
+      try {
+        await DB.prepare('PRAGMA foreign_keys = ON').run()
+      } catch (e) {
+        // Ignorar se não suportado
+      }
     }
     
     // 6. Se o plano deletado era o ativo, ativar o mais recente
