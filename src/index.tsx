@@ -5813,31 +5813,28 @@ INSTRUÇÕES:
     // ✅ CORREÇÃO v35 - CAPTURAR ABSOLUTAMENTE TODAS AS DISCIPLINAS
     console.log(`📝 Analisando edital para cargo: ${cargoDesejado || 'NÃO ESPECIFICADO'}`)
     
-    // v35: Aumentar para 55k caracteres para capturar TODOS os módulos
     // v35d: Aumentar para 65k para capturar TODAS as disciplinas
     const textoOtimizado = textoParaIA.substring(0, 65000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
-    // PROMPT v35c - Extração COMPLETA com instrução para separar disciplinas
-    const prompt = `EXTRAIA TODAS AS DISCIPLINAS E TODOS OS TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
+    // PROMPT v36 - Extração COMPLETA de TODAS as disciplinas
+    const prompt = `EXTRAIA ABSOLUTAMENTE TODAS AS DISCIPLINAS do CONTEÚDO PROGRAMÁTICO.
 
 CARGO: ${cargoDesejado?.toUpperCase() || 'GERAL'}
 
-REGRAS OBRIGATÓRIAS:
-1. Cada disciplina no edital começa com NOME DA DISCIPLINA: (com dois pontos). Extraia TODAS.
-2. MÓDULO I = CONHECIMENTOS BÁSICOS: Português, Inglês, Raciocínio, Estatística, Economia, Administração, Auditoria, Contabilidade
-3. MÓDULO II = CONHECIMENTOS ESPECÍFICOS: Direitos (Administrativo, Constitucional, Tributário, Previdenciário), Legislação Tributária, Comércio Internacional, Legislação Aduaneira
-4. NÃO AGRUPE disciplinas diferentes (ex: "Legislação Tributária" é separada de "Direito Tributário")
-5. Editais grandes têm 15-20 disciplinas - NÃO OMITA NENHUMA
-6. COPIE os tópicos EXATAMENTE como no edital
+INSTRUÇÕES CRÍTICAS:
+1. Procure por padrões "Nome da Disciplina:" (nome seguido de dois pontos)
+2. CADA disciplina é SEPARADA - não agrupe disciplinas diferentes
+3. Disciplinas típicas incluem:
+   - BÁSICAS: Língua Portuguesa, Língua Inglesa, Raciocínio Lógico-Matemático, Estatística, Economia e Finanças Públicas, Administração Geral, Administração Pública, Auditoria, Contabilidade Geral e Pública, Fluência em dados, Ciência de dados
+   - ESPECÍFICAS: Direito Administrativo, Direito Constitucional, Direito Previdenciário, Direito Tributário, Legislação Tributária, Comércio Internacional, Legislação Aduaneira
+4. Editais grandes têm 15-20 disciplinas - EXTRAIA TODAS, não pare antes
+5. Copie os tópicos EXATAMENTE como aparecem
 
-FORMATO JSON:
-{"disciplinas":[
-{"nome":"Nome","peso":1,"categoria":"CONHECIMENTOS BÁSICOS","topicos":["tópico"]},
-{"nome":"Nome","peso":2,"categoria":"CONHECIMENTOS ESPECÍFICOS","topicos":["tópico"]}
-]}
+JSON (retorne APENAS o JSON, sem texto adicional):
+{"disciplinas":[{"nome":"Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]}]}
 
-PESOS: 1=Básicos/Gerais, 2=Específicos
+PESOS: 1=Básicos, 2=Específicos
 
 TEXTO:
 ${textoOtimizado}`
@@ -6605,27 +6602,23 @@ app.post('/api/editais/processar-texto', async (c) => {
     const textoLimitado = texto.substring(0, 65000)
     console.log(`📝 Processando ${textoLimitado.length} caracteres`)
     
-    const prompt = `EXTRAIA TODAS AS DISCIPLINAS E TODOS OS TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
+    const prompt = `EXTRAIA ABSOLUTAMENTE TODAS AS DISCIPLINAS do CONTEÚDO PROGRAMÁTICO.
 
 CARGO: ${cargo?.toUpperCase() || 'GERAL'}
 
-REGRAS OBRIGATÓRIAS:
-1. Cada disciplina no edital começa com NOME DA DISCIPLINA: (com dois pontos). Extraia TODAS.
-2. MÓDULO I = CONHECIMENTOS BÁSICOS: Português, Inglês, Raciocínio, Estatística, Economia, Administração, Auditoria, Contabilidade
-3. MÓDULO II = CONHECIMENTOS ESPECÍFICOS: Direitos (Administrativo, Constitucional, Tributário, Previdenciário), Legislação Tributária, Comércio Internacional, Legislação Aduaneira
-4. NÃO AGRUPE disciplinas diferentes (ex: "Legislação Tributária" é separada de "Direito Tributário")
-5. Editais grandes têm 15-20 disciplinas - NÃO OMITA NENHUMA
-6. COPIE os tópicos EXATAMENTE como no edital
+INSTRUÇÕES CRÍTICAS:
+1. Procure por padrões "Nome da Disciplina:" (nome seguido de dois pontos)
+2. CADA disciplina é SEPARADA - não agrupe disciplinas diferentes
+3. Disciplinas típicas incluem:
+   - BÁSICAS: Língua Portuguesa, Língua Inglesa, Raciocínio Lógico-Matemático, Estatística, Economia e Finanças Públicas, Administração Geral, Administração Pública, Auditoria, Contabilidade Geral e Pública, Fluência em dados, Ciência de dados
+   - ESPECÍFICAS: Direito Administrativo, Direito Constitucional, Direito Previdenciário, Direito Tributário, Legislação Tributária, Comércio Internacional, Legislação Aduaneira
+4. Editais grandes têm 15-20 disciplinas - EXTRAIA TODAS, não pare antes
+5. Copie os tópicos EXATAMENTE como aparecem
 
-FORMATO JSON:
-{"disciplinas":[
-{"nome":"Nome da Disciplina","peso":1,"categoria":"CONHECIMENTOS BÁSICOS","topicos":["tópico 1","tópico 2"]},
-{"nome":"Nome da Disciplina","peso":2,"categoria":"CONHECIMENTOS ESPECÍFICOS","topicos":["tópico 1"]}
-],
-"cargo_detectado":"cargo",
-"observacoes":"obs"}
+JSON (retorne APENAS o JSON, sem texto adicional):
+{"disciplinas":[{"nome":"Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]}]}
 
-PESOS: 1=Básicos/Gerais, 2=Específicos
+PESOS: 1=Básicos, 2=Específicos
 
 TEXTO:
 ${textoLimitado}`

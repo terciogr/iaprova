@@ -4614,9 +4614,9 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
                   Pesos encontrados: CG=${quadroProvas.peso_conhecimentos_gerais}, CE=${quadroProvas.peso_conhecimentos_especificos}
                 </div>
               ` : `
-                <div class="mt-2 p-3 bg-orange-500 bg-opacity-90 rounded text-white text-xs sm:text-sm">
-                  <i class="fas fa-exclamation-triangle mr-1"></i>
-                  <strong>Atenção:</strong> Revise as disciplinas, pesos e tópicos conforme o edital oficial!
+                <div class="mt-2 p-2 bg-blue-400 bg-opacity-30 rounded text-white text-xs sm:text-sm">
+                  <i class="fas fa-lightbulb mr-1"></i>
+                  <strong>Dica:</strong> Você pode adicionar, editar ou remover disciplinas e tópicos a qualquer momento!
                 </div>
               `}
             </div>
