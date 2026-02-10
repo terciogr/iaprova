@@ -6575,7 +6575,12 @@ ${textoParaGroq}`
     
     // Se todas as APIs falharam
     if (!textoResposta || !modeloUsado) {
+      // ✅ v40: Log detalhado de falhas
       console.error(`❌ Todos falharam: ${lastError}`)
+      console.error(`   APIs tentadas: ${ordemAPIs.join(', ')}`)
+      console.error(`   Gemini key: ${geminiKey ? 'presente' : 'ausente'}`)
+      console.error(`   OpenAI key: ${openaiKey ? 'presente' : 'ausente'}`)
+      console.error(`   GROQ key: ${groqKey ? 'presente' : 'ausente'}`)
       
       await DB.prepare(`UPDATE editais SET status = 'erro' WHERE id = ?`).bind(editalId).run()
       
@@ -6584,7 +6589,9 @@ ${textoParaGroq}`
         errorType: 'AI_UNAVAILABLE',
         suggestion: 'Aguarde 1-2 minutos e tente novamente, ou use "Colar Texto do Edital".',
         canRetry: true,
-        retryAfter: 60
+        retryAfter: 60,
+        debug: lastError,
+        apisAttempted: ordemAPIs
       }, 503)
     }
     
@@ -7498,14 +7505,21 @@ ${textoParaGroq}`
     }
     
     if (!textoResposta || !modeloUsado) {
+      // ✅ v40: Log detalhado de falhas
       console.error(`❌ Todos os modelos falharam. Último erro: ${ultimoErro}`)
+      console.error(`   APIs tentadas: ${ordemAPIs.join(', ')}`)
+      console.error(`   Gemini key: ${geminiKey ? 'presente' : 'ausente'}`)
+      console.error(`   OpenAI key: ${openaiKey ? 'presente' : 'ausente'}`)
+      console.error(`   GROQ key: ${groqKey ? 'presente' : 'ausente'}`)
+      
       return c.json({
         error: 'API temporariamente indisponível',
         errorType: 'AI_UNAVAILABLE',
-        suggestion: 'Aguarde 1-2 minutos e tente novamente',
+        suggestion: 'Aguarde 1-2 minutos e tente novamente. Se persistir, verifique as chaves de API no painel admin.',
         canRetry: true,
         retryAfter: 60,
-        debug: ultimoErro
+        debug: ultimoErro,
+        apisAttempted: ordemAPIs
       }, 503)
     }
     
