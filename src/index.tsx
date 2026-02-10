@@ -5810,11 +5810,11 @@ INSTRUÇÕES:
     const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
     const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
     
-    // ✅ CORREÇÃO v34 - Capturar TODAS as disciplinas
+    // ✅ CORREÇÃO v34b - Capturar TODAS as disciplinas
     console.log(`📝 Analisando edital para cargo: ${cargoDesejado || 'NÃO ESPECIFICADO'}`)
     
-    // v34: Aumentado para 40k para capturar todas as disciplinas
-    const textoOtimizado = textoParaIA.substring(0, 40000)
+    // v34b: Balanceado para 30k (evitar timeout)
+    const textoOtimizado = textoParaIA.substring(0, 30000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
     // PROMPT v34 - Captura TODAS as disciplinas (básicas + específicas)
@@ -6586,8 +6586,8 @@ app.post('/api/editais/processar-texto', async (c) => {
     // Chamar Gemini para extrair disciplinas
     const geminiKey = c.env.GEMINI_API_KEY || 'SUA_CHAVE_GEMINI_AQUI'
     
-    // ✅ CORREÇÃO v34: Aumentado para 40k para capturar TODAS as disciplinas
-    const textoLimitado = texto.substring(0, 40000)
+    // ✅ CORREÇÃO v34b: Balanceado para 30k (evitar timeout)
+    const textoLimitado = texto.substring(0, 30000)
     console.log(`📝 Processando ${textoLimitado.length} caracteres`)
     
     const prompt = `Extraia TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO deste edital.
