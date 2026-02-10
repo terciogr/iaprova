@@ -5810,15 +5810,15 @@ INSTRUÇÕES:
     const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
     const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
     
-    // ✅ CORREÇÃO v29 - MODELO RÁPIDO + TEXTO REDUZIDO
-    // Cloudflare Workers tem limite de 100s - usar modelo mais rápido
+    // ✅ CORREÇÃO v30 - SISTEMA DE FALLBACK COM MÚLTIPLAS IAs
+    // Cloudflare Workers tem limite de 100s - usar modelos rápidos com fallback
     console.log(`📝 Analisando edital para cargo: ${cargoDesejado || 'NÃO ESPECIFICADO'}`)
     
-    // OTIMIZAÇÃO v29: Usar 25k caracteres com modelo rápido
+    // OTIMIZAÇÃO v30: Usar 25k caracteres com sistema de fallback
     const textoOtimizado = textoParaIA.substring(0, 25000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
-    // PROMPT v29 - Direto e eficiente
+    // PROMPT v30 - Compacto e eficiente para todas as IAs
     const prompt = `Extraia disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
 
 CARGO: ${cargoDesejado?.toUpperCase() || 'GERAL'}
@@ -5831,80 +5831,108 @@ REGRAS: peso 1=Básicos, peso 2=Específicos. Use nomes EXATOS. Inclua TODOS os 
 TEXTO:
 ${textoOtimizado}`
 
-    // CHAMADA ÚNICA À API - Usando modelo RÁPIDO gemini-2.0-flash
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
+    // ════════════════════════════════════════════════════════════════
+    // SISTEMA DE FALLBACK: Tenta múltiplas APIs até uma funcionar
+    // ════════════════════════════════════════════════════════════════
+    
     let textoResposta = ''
+    let modeloUsado = ''
     let lastError = ''
     
-    console.log('🚀 Enviando para Gemini (chamada única, sem retry)...')
-    
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
+    // Lista de modelos para tentar (em ordem de preferência)
+    const modelos = [
+      { 
+        nome: 'gemini-2.0-flash',
+        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0,
-            maxOutputTokens: 65536
-          }
-        })
-      })
+        body: (p: string) => JSON.stringify({
+          contents: [{ parts: [{ text: p }] }],
+          generationConfig: { temperature: 0, maxOutputTokens: 65536 }
+        }),
+        extractResponse: (data: any) => data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      },
+      { 
+        nome: 'gemini-1.5-flash',
+        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+        headers: { 'Content-Type': 'application/json' },
+        body: (p: string) => JSON.stringify({
+          contents: [{ parts: [{ text: p }] }],
+          generationConfig: { temperature: 0, maxOutputTokens: 65536 }
+        }),
+        extractResponse: (data: any) => data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      },
+      { 
+        nome: 'gemini-2.0-flash-lite',
+        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`,
+        headers: { 'Content-Type': 'application/json' },
+        body: (p: string) => JSON.stringify({
+          contents: [{ parts: [{ text: p }] }],
+          generationConfig: { temperature: 0, maxOutputTokens: 32768 }
+        }),
+        extractResponse: (data: any) => data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      }
+    ]
+    
+    // Tentar cada modelo até um funcionar
+    for (const modelo of modelos) {
+      console.log(`🚀 Tentando ${modelo.nome}...`)
       
-      if (!response.ok) {
-        const errorText = await response.text()
-        lastError = `HTTP ${response.status}`
-        console.error(`❌ Erro Gemini: ${response.status}`)
+      try {
+        const response = await fetch(modelo.url, {
+          method: 'POST',
+          headers: modelo.headers,
+          body: modelo.body(prompt)
+        })
         
         if (response.status === 429) {
-          return c.json({
-            error: 'API temporariamente sobrecarregada.',
-            errorType: 'RATE_LIMIT',
-            suggestion: 'A API está processando muitas requisições. Tente novamente em alguns minutos ou use "Colar Texto do Edital".',
-            canRetry: true
-          }, 429)
+          console.warn(`⚠️ ${modelo.nome}: Rate limit (429), tentando próximo modelo...`)
+          lastError = `${modelo.nome}: Rate limit exceeded`
+          // Aguardar 2 segundos antes de tentar próximo modelo
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          continue
         }
-        throw new Error(lastError)
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.warn(`⚠️ ${modelo.nome}: Erro ${response.status}`)
+          lastError = `${modelo.nome}: HTTP ${response.status}`
+          continue
+        }
+        
+        const data = await response.json() as any
+        textoResposta = modelo.extractResponse(data)
+        
+        if (textoResposta && textoResposta.includes('"nome"')) {
+          modeloUsado = modelo.nome
+          console.log(`✅ ${modelo.nome} respondeu com sucesso! (${textoResposta.length} chars)`)
+          break
+        } else {
+          console.warn(`⚠️ ${modelo.nome}: Resposta vazia ou inválida`)
+          lastError = `${modelo.nome}: Resposta inválida`
+        }
+        
+      } catch (fetchError) {
+        lastError = `${modelo.nome}: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
+        console.error(`❌ ${modelo.nome}:`, lastError)
       }
-      
-      const data = await response.json() as any
-      textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      
-      if (!textoResposta) {
-        throw new Error('Resposta vazia da IA')
-      }
-      
-      console.log(`✅ Resposta: ${textoResposta.length} caracteres`)
-      
-    } catch (fetchError) {
-      lastError = fetchError instanceof Error ? fetchError.message : String(fetchError)
-      console.error(`❌ Erro:`, lastError)
+    }
+    
+    // Se nenhum modelo funcionou, retornar erro
+    if (!textoResposta || !modeloUsado) {
+      console.error(`❌ Todos os modelos falharam. Último erro: ${lastError}`)
       
       await DB.prepare(`UPDATE editais SET status = 'erro' WHERE id = ?`).bind(editalId).run()
       
       return c.json({
-        error: 'Erro ao processar edital.',
-        errorType: 'AI_ERROR',
-        suggestion: 'Use a opção "Colar Texto do Edital" para colar apenas o conteúdo programático.',
-        canRetry: true
-      }, 500)
+        error: 'API temporariamente indisponível.',
+        errorType: 'AI_UNAVAILABLE',
+        suggestion: 'Todas as APIs estão sobrecarregadas. Aguarde 1-2 minutos e tente novamente, ou use "Colar Texto do Edital".',
+        canRetry: true,
+        retryAfter: 60
+      }, 503)
     }
     
-    // Verificar se tem disciplinas na resposta
-    if (!textoResposta.includes('"disciplinas"')) {
-      console.error('❌ Resposta não contém disciplinas')
-      
-      await DB.prepare(`UPDATE editais SET status = 'erro' WHERE id = ?`).bind(editalId).run()
-      
-      return c.json({
-        error: 'Não foi possível extrair disciplinas.',
-        errorType: 'EXTRACTION_FAILED',
-        suggestion: 'O arquivo pode ser muito grande. Use "Colar Texto do Edital" e cole apenas a seção de Conteúdo Programático.',
-        canRetry: true
-      }, 400)
-    }
-    
-    console.log('✅ Processamento concluído com sucesso!')
+    console.log(`✅ Processamento concluído com ${modeloUsado}!`)
     
     // ════════════════════════════════════════════════════════════════
     // ✅ SISTEMA ULTRA-ROBUSTO DE PARSING DE RESPOSTA DA IA
