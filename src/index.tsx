@@ -6319,33 +6319,64 @@ INSTRUÇÕES:
     const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
     const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
     
-    // ✅ CORREÇÃO v35 - CAPTURAR ABSOLUTAMENTE TODAS AS DISCIPLINAS
-    console.log(`📝 Analisando edital para cargo: ${cargoDesejado || 'NÃO ESPECIFICADO'}`)
+    // ✅ v40: CORREÇÃO ROBUSTA - Extração precisa por cargo
+    const cargoUpper = cargoDesejado?.toUpperCase() || 'GERAL'
+    console.log(`📝 Analisando edital para cargo: ${cargoUpper}`)
     
     // v35d: Aumentar para 65k para capturar TODAS as disciplinas
     const textoOtimizado = textoParaIA.substring(0, 65000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
-    // PROMPT v36 - Extração COMPLETA de TODAS as disciplinas
-    const prompt = `EXTRAIA ABSOLUTAMENTE TODAS AS DISCIPLINAS do CONTEÚDO PROGRAMÁTICO.
+    // ✅ v40: PROMPT COMPLETAMENTE REFORMULADO PARA PRECISÃO POR CARGO
+    const prompt = `Você é um especialista em análise de editais de concursos públicos.
 
-CARGO: ${cargoDesejado?.toUpperCase() || 'GERAL'}
+TAREFA: Extrair TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO do CARGO ESPECÍFICO abaixo.
 
-INSTRUÇÕES CRÍTICAS:
-1. Procure por padrões "Nome da Disciplina:" (nome seguido de dois pontos)
-2. CADA disciplina é SEPARADA - não agrupe disciplinas diferentes
-3. Disciplinas típicas incluem:
-   - BÁSICAS: Língua Portuguesa, Língua Inglesa, Raciocínio Lógico-Matemático, Estatística, Economia e Finanças Públicas, Administração Geral, Administração Pública, Auditoria, Contabilidade Geral e Pública, Fluência em dados, Ciência de dados
-   - ESPECÍFICAS: Direito Administrativo, Direito Constitucional, Direito Previdenciário, Direito Tributário, Legislação Tributária, Comércio Internacional, Legislação Aduaneira
-4. Editais grandes têm 15-20 disciplinas - EXTRAIA TODAS, não pare antes
-5. Para CADA disciplina, inclua os 5-10 PRINCIPAIS tópicos (resumidos)
+═══════════════════════════════════════════════════════════════
+CARGO ALVO: ${cargoUpper}
+═══════════════════════════════════════════════════════════════
 
-JSON (retorne APENAS o JSON, sem texto adicional):
-{"disciplinas":[{"nome":"Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico resumido"]}]}
+INSTRUÇÕES CRÍTICAS (SIGA RIGOROSAMENTE):
 
-PESOS: 1=Básicos, 2=Específicos
+1. IDENTIFICAÇÃO DO CARGO:
+   - Localize no texto a seção do cargo "${cargoUpper}" ou similar
+   - Procure por marcadores como "${cargoUpper}", "MÓDULO I", "MÓDULO II"
+   - Se o cargo for "AUDITOR-FISCAL" ou "AUDITOR", procure pela seção do AUDITOR
+   - Se for "ANALISTA-TRIBUTÁRIO" ou "ANALISTA", procure pela seção do ANALISTA
+   - IGNORE completamente as seções de OUTROS CARGOS
 
-TEXTO:
+2. ESTRUTURA TÍPICA DE EDITAIS:
+   - MÓDULO I = CONHECIMENTOS BÁSICOS (peso 1) - disciplinas gerais
+   - MÓDULO II = CONHECIMENTOS ESPECÍFICOS (peso 2) - disciplinas técnicas
+   
+3. EXTRAÇÃO DE DISCIPLINAS:
+   - Cada disciplina é identificada por "Nome da Disciplina:" seguido de tópicos
+   - Disciplinas são SEPARADAS - NÃO agrupe múltiplas em uma só
+   - Exemplo: "Legislação Tributária:", "Comércio Internacional:", "Legislação Aduaneira:" são TRÊS disciplinas diferentes
+   
+4. DISCIPLINAS COMUNS (para referência):
+   BÁSICAS (peso 1): Língua Portuguesa, Língua Inglesa, Raciocínio Lógico-Matemático, Estatística, Economia, Administração Geral, Administração Pública, Auditoria, Contabilidade, Fluência em dados, Ciência de dados
+   ESPECÍFICAS (peso 2): Direito Administrativo, Direito Constitucional, Direito Previdenciário, Direito Tributário, Legislação Tributária, Comércio Internacional, Legislação Aduaneira
+
+5. REGRAS DE EXCLUSÃO:
+   - NÃO inclua disciplinas de outros cargos (ex: se for Auditor, não inclua disciplinas exclusivas do Analista)
+   - NÃO invente disciplinas que não estão no texto
+   - NÃO agrupe disciplinas diferentes
+
+6. QUANTIDADE ESPERADA:
+   - Editais grandes (Receita Federal, INSS, etc): 15-20 disciplinas
+   - Editais médios: 8-15 disciplinas
+   - EXTRAIA TODAS sem exceção
+
+FORMATO DE RESPOSTA (JSON válido, sem markdown):
+{"disciplinas":[{"nome":"Nome Exato da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1","tópico 2","tópico 3"]}]}
+
+Onde:
+- peso: 1 para BÁSICOS/GERAIS, 2 para ESPECÍFICOS
+- categoria: "BÁSICOS" ou "ESPECÍFICOS"
+- topicos: 5-10 principais tópicos resumidos
+
+TEXTO DO EDITAL:
 ${textoOtimizado}`
 
     // ════════════════════════════════════════════════════════════════
@@ -6487,14 +6518,21 @@ ${textoOtimizado}`
         console.log(`🚀 Tentando GROQ LLaMA...`)
         
         const textoParaGroq = textoOtimizado.substring(0, 25000)
-        const promptGroq = `EXTRAIA TODAS AS DISCIPLINAS E TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
+        // ✅ v40: Prompt GROQ otimizado para precisão por cargo
+        const promptGroq = `Extraia TODAS as disciplinas do CONTEÚDO PROGRAMÁTICO para o cargo específico.
 
-CARGO: ${cargoDesejado?.toUpperCase() || 'GERAL'}
+CARGO ALVO: ${cargoUpper}
 
-FORMATO JSON:
-{"disciplinas":[{"nome":"Disciplina","peso":1,"categoria":"CONHECIMENTOS BÁSICOS","topicos":["tópico"]}]}
+REGRAS:
+1. Extraia APENAS disciplinas do cargo "${cargoUpper}"
+2. IGNORE seções de outros cargos
+3. Separe cada disciplina individualmente (não agrupe)
+4. Exemplo: "Legislação Tributária", "Comércio Internacional", "Legislação Aduaneira" são 3 disciplinas SEPARADAS
 
-PESOS: 1=Básicos, 2=Específicos
+FORMATO JSON (sem markdown):
+{"disciplinas":[{"nome":"Nome Exato","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1","tópico 2"]}]}
+
+PESOS: 1=BÁSICOS, 2=ESPECÍFICOS
 
 TEXTO:
 ${textoParaGroq}`
@@ -7203,29 +7241,61 @@ app.post('/api/editais/processar-texto', async (c) => {
     const openaiKey = openaiKeyFromDB || c.env.OPENAI_API_KEY || ''
     const groqKey = groqKeyFromDB || c.env.GROQ_API_KEY || ''
     
-    // ✅ CORREÇÃO v35d: Aumentado para 65k para capturar TODAS as disciplinas
+    // ✅ v40: CORREÇÃO ROBUSTA - Extração precisa por cargo
     const textoLimitado = texto.substring(0, 65000)
-    console.log(`📝 Processando ${textoLimitado.length} caracteres`)
+    const cargoUpper = cargo?.toUpperCase() || 'GERAL'
+    console.log(`📝 Processando ${textoLimitado.length} caracteres para cargo: ${cargoUpper}`)
     
-    const prompt = `EXTRAIA ABSOLUTAMENTE TODAS AS DISCIPLINAS do CONTEÚDO PROGRAMÁTICO.
+    // ✅ v40: PROMPT COMPLETAMENTE REFORMULADO PARA PRECISÃO POR CARGO
+    const prompt = `Você é um especialista em análise de editais de concursos públicos.
 
-CARGO: ${cargo?.toUpperCase() || 'GERAL'}
+TAREFA: Extrair TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO do CARGO ESPECÍFICO abaixo.
 
-INSTRUÇÕES CRÍTICAS:
-1. Procure por padrões "Nome da Disciplina:" (nome seguido de dois pontos)
-2. CADA disciplina é SEPARADA - não agrupe disciplinas diferentes
-3. Disciplinas típicas incluem:
-   - BÁSICAS: Língua Portuguesa, Língua Inglesa, Raciocínio Lógico-Matemático, Estatística, Economia e Finanças Públicas, Administração Geral, Administração Pública, Auditoria, Contabilidade Geral e Pública, Fluência em dados, Ciência de dados
-   - ESPECÍFICAS: Direito Administrativo, Direito Constitucional, Direito Previdenciário, Direito Tributário, Legislação Tributária, Comércio Internacional, Legislação Aduaneira
-4. Editais grandes têm 15-20 disciplinas - EXTRAIA TODAS, não pare antes
-5. Para CADA disciplina, inclua os 5-10 PRINCIPAIS tópicos (resumidos)
+═══════════════════════════════════════════════════════════════
+CARGO ALVO: ${cargoUpper}
+═══════════════════════════════════════════════════════════════
 
-JSON (retorne APENAS o JSON, sem texto adicional):
-{"disciplinas":[{"nome":"Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico resumido 1","tópico 2"]}]}
+INSTRUÇÕES CRÍTICAS (SIGA RIGOROSAMENTE):
 
-PESOS: 1=Básicos, 2=Específicos
+1. IDENTIFICAÇÃO DO CARGO:
+   - Localize no texto a seção do cargo "${cargoUpper}" ou similar
+   - Procure por marcadores como "${cargoUpper}", "MÓDULO I", "MÓDULO II"
+   - Se o cargo for "AUDITOR-FISCAL" ou "AUDITOR", procure pela seção do AUDITOR
+   - Se for "ANALISTA-TRIBUTÁRIO" ou "ANALISTA", procure pela seção do ANALISTA
+   - IGNORE completamente as seções de OUTROS CARGOS
 
-TEXTO:
+2. ESTRUTURA TÍPICA DE EDITAIS:
+   - MÓDULO I = CONHECIMENTOS BÁSICOS (peso 1) - disciplinas gerais
+   - MÓDULO II = CONHECIMENTOS ESPECÍFICOS (peso 2) - disciplinas técnicas
+   
+3. EXTRAÇÃO DE DISCIPLINAS:
+   - Cada disciplina é identificada por "Nome da Disciplina:" seguido de tópicos
+   - Disciplinas são SEPARADAS - NÃO agrupe múltiplas em uma só
+   - Exemplo: "Legislação Tributária:", "Comércio Internacional:", "Legislação Aduaneira:" são TRÊS disciplinas diferentes
+   
+4. DISCIPLINAS COMUNS (para referência):
+   BÁSICAS (peso 1): Língua Portuguesa, Língua Inglesa, Raciocínio Lógico-Matemático, Estatística, Economia, Administração Geral, Administração Pública, Auditoria, Contabilidade, Fluência em dados, Ciência de dados
+   ESPECÍFICAS (peso 2): Direito Administrativo, Direito Constitucional, Direito Previdenciário, Direito Tributário, Legislação Tributária, Comércio Internacional, Legislação Aduaneira
+
+5. REGRAS DE EXCLUSÃO:
+   - NÃO inclua disciplinas de outros cargos (ex: se for Auditor, não inclua disciplinas exclusivas do Analista)
+   - NÃO invente disciplinas que não estão no texto
+   - NÃO agrupe disciplinas diferentes
+
+6. QUANTIDADE ESPERADA:
+   - Editais grandes (Receita Federal, INSS, etc): 15-20 disciplinas
+   - Editais médios: 8-15 disciplinas
+   - EXTRAIA TODAS sem exceção
+
+FORMATO DE RESPOSTA (JSON válido, sem markdown):
+{"disciplinas":[{"nome":"Nome Exato da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1","tópico 2","tópico 3"]}]}
+
+Onde:
+- peso: 1 para BÁSICOS/GERAIS, 2 para ESPECÍFICOS
+- categoria: "BÁSICOS" ou "ESPECÍFICOS"
+- topicos: 5-10 principais tópicos resumidos
+
+TEXTO DO EDITAL:
 ${textoLimitado}`
 
     // ════════════════════════════════════════════════════════════════
@@ -7370,14 +7440,21 @@ ${textoLimitado}`
         console.log(`🚀 Tentando GROQ LLaMA...`)
         
         const textoParaGroq = textoLimitado.substring(0, 25000)
-        const promptGroq = `EXTRAIA TODAS AS DISCIPLINAS E TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
+        // ✅ v40: Prompt GROQ otimizado para precisão por cargo
+        const promptGroq = `Extraia TODAS as disciplinas do CONTEÚDO PROGRAMÁTICO para o cargo específico.
 
-CARGO: ${cargo?.toUpperCase() || 'GERAL'}
+CARGO ALVO: ${cargoUpper}
 
-FORMATO JSON:
-{"disciplinas":[{"nome":"Disciplina","peso":1,"categoria":"CONHECIMENTOS BÁSICOS","topicos":["tópico"]}]}
+REGRAS:
+1. Extraia APENAS disciplinas do cargo "${cargoUpper}"
+2. IGNORE seções de outros cargos
+3. Separe cada disciplina individualmente (não agrupe)
+4. Exemplo: "Legislação Tributária", "Comércio Internacional", "Legislação Aduaneira" são 3 disciplinas SEPARADAS
 
-PESOS: 1=Básicos, 2=Específicos
+FORMATO JSON (sem markdown):
+{"disciplinas":[{"nome":"Nome Exato","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1","tópico 2"]}]}
+
+PESOS: 1=BÁSICOS, 2=ESPECÍFICOS
 
 TEXTO:
 ${textoParaGroq}`
