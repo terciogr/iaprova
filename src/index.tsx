@@ -5810,80 +5810,50 @@ INSTRUÇÕES:
     const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
     const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
     
-    // ✅ PROMPT SIMPLIFICADO E DIRETO - VERSÃO MELHORADA
-    // Detectar área do cargo para filtrar disciplinas corretamente
-    const cargoLower = cargoDesejado?.toLowerCase() || ''
-    const areaDetectada = 
-      (cargoLower.includes('enfermeiro') || cargoLower.includes('enfermagem') || cargoLower.includes('saúde') || cargoLower.includes('saude')) ? 'SAÚDE/ENFERMAGEM' :
-      (cargoLower.includes('direito') || cargoLower.includes('advogado') || cargoLower.includes('jurídico')) ? 'DIREITO/JURÍDICO' :
-      (cargoLower.includes('contador') || cargoLower.includes('contábil')) ? 'CONTABILIDADE' :
-      (cargoLower.includes('admin') || cargoLower.includes('gestão')) ? 'ADMINISTRAÇÃO' :
-      (cargoLower.includes('professor') || cargoLower.includes('educação')) ? 'EDUCAÇÃO' :
-      (cargoLower.includes('técnico') || cargoLower.includes('assistente')) ? 'NÍVEL TÉCNICO/MÉDIO' :
-      'GERAL'
+    // ✅ CORREÇÃO v24 - PROMPT 100% BASEADO NO EDITAL (SEM DISCIPLINAS PRÉ-DEFINIDAS)
+    console.log(`📝 Analisando edital para cargo: ${cargoDesejado || 'NÃO ESPECIFICADO'}`)
     
-    console.log(`🎯 Área detectada do cargo: ${areaDetectada}`)
-    
-    // ✅ PROMPT APRIMORADO - Extração precisa de disciplinas
-    const prompt = `VOCÊ É UM ESPECIALISTA EM ANÁLISE DE EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
+    // Prompt que FORÇA a IA a ler o documento e extrair APENAS o que está escrito
+    const prompt = `VOCÊ É UM ANALISADOR ESPECIALIZADO EM EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
 
-TAREFA: Extrair TODAS as disciplinas e seus tópicos do CONTEÚDO PROGRAMÁTICO para o cargo especificado.
+═══════════════════════════════════════════════════════════════════════════════
+⚠️ REGRA ABSOLUTA: EXTRAIA SOMENTE O QUE ESTÁ ESCRITO NO TEXTO ABAIXO
+═══════════════════════════════════════════════════════════════════════════════
 
-CARGO DO CANDIDATO: ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO'}
-ÁREA: ${areaDetectada}
-PESOS DETECTADOS: CG=${pesoCG}, CE=${pesoCE}
+CARGO DO CANDIDATO: ${cargoDesejado?.toUpperCase() || 'TODOS OS CARGOS'}
 
 ${instrucaoCargo}
 
-INSTRUÇÕES DETALHADAS:
+INSTRUÇÕES OBRIGATÓRIAS:
 
-1. ESTRUTURA DO CONTEÚDO PROGRAMÁTICO:
-   - CONHECIMENTOS GERAIS (peso ${pesoCG}): Língua Portuguesa, Raciocínio Lógico, Informática, etc.
-   - CONHECIMENTOS ESPECÍFICOS (peso ${pesoCE}): Disciplinas técnicas da área
+1. LEIA O TEXTO COMPLETO DO EDITAL ABAIXO
+2. ENCONTRE A SEÇÃO "CONTEÚDO PROGRAMÁTICO" OU "CONHECIMENTOS"
+3. EXTRAIA **EXATAMENTE** AS DISCIPLINAS E TÓPICOS COMO APARECEM NO TEXTO
+4. USE OS NOMES **EXATOS** DAS DISCIPLINAS (não renomeie, não simplifique)
+5. INCLUA **TODOS** OS TÓPICOS DE CADA DISCIPLINA
 
-2. DISCIPLINAS ESPERADAS POR ÁREA:
-${areaDetectada === 'SAÚDE/ENFERMAGEM' || areaDetectada === 'SAÚDE - NÍVEL TÉCNICO' ? `
-   CONHECIMENTOS GERAIS:
-   - Língua Portuguesa (peso ${pesoCG})
-   - Raciocínio Lógico (peso ${pesoCG})
-   - Informática (peso ${pesoCG}) - se houver
-   - Conhecimentos Regionais/Atualidades (peso ${pesoCG}) - se houver
-   
-   CONHECIMENTOS ESPECÍFICOS:
-   - Legislação do SUS (peso ${pesoCE}) - Leis 8080/90, 8142/90, etc.
-   - Enfermagem/Saúde Pública (peso ${pesoCE}) - técnicas, procedimentos, saúde coletiva
-   - Ética e Legislação Profissional (peso ${pesoCE}) - se separado` :
-areaDetectada === 'DIREITO/JURÍDICO' ? `
-   CONHECIMENTOS GERAIS:
-   - Língua Portuguesa (peso ${pesoCG})
-   - Raciocínio Lógico (peso ${pesoCG})
-   
-   CONHECIMENTOS ESPECÍFICOS:
-   - Direito Constitucional (peso ${pesoCE})
-   - Direito Administrativo (peso ${pesoCE})
-   - Direito Civil (peso ${pesoCE})
-   - Direito Penal (peso ${pesoCE})` : `
-   CONHECIMENTOS GERAIS:
-   - Língua Portuguesa (peso ${pesoCG})
-   - Matemática/Raciocínio Lógico (peso ${pesoCG})
-   - Informática (peso ${pesoCG})
-   
-   CONHECIMENTOS ESPECÍFICOS:
-   - Disciplinas técnicas da área (peso ${pesoCE})`}
+REGRAS DE PESO:
+- Conhecimentos Básicos/Gerais = peso ${pesoCG}
+- Conhecimentos Específicos = peso ${pesoCE}
 
-3. REGRAS IMPORTANTES:
-   - NÃO invente disciplinas - use apenas o que está no edital
-   - Use os NOMES EXATOS como aparecem no conteúdo programático
-   - Inclua entre 4 a 8 disciplinas
-   - Cada disciplina deve ter seus tópicos completos
+⛔ PROIBIÇÕES:
+- NÃO invente disciplinas que não estão no texto
+- NÃO adicione tópicos que não estão listados
+- NÃO use disciplinas genéricas como "Conhecimentos Gerais" se não estiverem no edital
+- NÃO presuma disciplinas baseado no cargo (ex: NÃO adicione "Enfermagem" só porque o cargo é enfermeiro)
 
-4. FORMATO DE RESPOSTA (APENAS JSON, sem explicações):
+✅ OBRIGATÓRIO:
+- Extraia TODAS as disciplinas do conteúdo programático (pode ser 5, 10, 15, 20+ disciplinas)
+- Copie os tópicos EXATAMENTE como aparecem
+- Se houver subdivisões (ex: "Direito Tributário: 1. Sistema Tributário Nacional..."), use como tópicos
+
+FORMATO DA RESPOSTA (APENAS JSON):
 {
   "disciplinas": [
     {
-      "nome": "Nome Exato da Disciplina",
-      "peso": ${pesoCG},
-      "topicos": ["Tópico 1 completo", "Tópico 2 completo"]
+      "nome": "Nome EXATO da Disciplina conforme o edital",
+      "peso": 1,
+      "topicos": ["Tópico 1 conforme edital", "Tópico 2 conforme edital"]
     }
   ]
 }
@@ -6151,137 +6121,9 @@ ${textoParaIA}`
       }
     }
     
-    // Estratégia 3: Se ainda não tem resultado, criar disciplinas padrão baseadas no cargo
-    if (!resultado || !resultado.disciplinas || resultado.disciplinas.length === 0) {
-      console.log('🔄 Usando disciplinas padrão baseadas no cargo...')
-      
-      const cargoNorm = cargoDesejado.toLowerCase()
-      let disciplinasPadrao: any[] = []
-      
-      // Disciplinas básicas para qualquer concurso (tópicos completos)
-      disciplinasPadrao = [
-        { 
-          nome: 'Língua Portuguesa', 
-          peso: 1, 
-          topicos: [
-            'Ortografia oficial',
-            'Acentuação gráfica',
-            'Pontuação',
-            'Morfossintaxe',
-            'Classes de palavras',
-            'Pronomes: emprego, formas de tratamento e colocação',
-            'Tempos e modos verbais',
-            'Vozes do verbo',
-            'Concordância nominal e verbal',
-            'Regência nominal e verbal',
-            'Frase, oração e período',
-            'Processos de coordenação e subordinação',
-            'Compreensão e interpretação de texto',
-            'Gêneros textuais',
-            'Figuras de linguagem'
-          ] 
-        },
-        { 
-          nome: 'Raciocínio Lógico-Matemático', 
-          peso: 1, 
-          topicos: [
-            'Estrutura lógica de relações',
-            'Raciocínio verbal',
-            'Raciocínio matemático',
-            'Raciocínio sequencial',
-            'Orientação espacial e temporal',
-            'Formação de conceitos',
-            'Discriminação de elementos',
-            'Noções de aritmética',
-            'Proporcionalidade e porcentagem',
-            'Regra de três simples',
-            'Cálculos de porcentagem, acréscimos e descontos'
-          ] 
-        },
-      ]
-      
-      // Adicionar disciplinas específicas por área
-      if (cargoNorm.includes('enfermeiro') || cargoNorm.includes('saúde') || cargoNorm.includes('saude')) {
-        // ✅ CONHECIMENTOS REGIONAIS DO PIAUÍ (típico de concursos estaduais)
-        disciplinasPadrao.push({
-          nome: 'Conhecimentos Regionais do Estado do Piauí',
-          peso: 1,
-          topicos: ['História do Piauí', 'Geografia do Piauí', 'Cultura piauiense', 'Economia do Piauí', 'Política do Piauí']
-        })
-        
-        // ✅ SUS E LEGISLAÇÃO DE SAÚDE
-        disciplinasPadrao.push({
-          nome: 'Sistema Único de Saúde (SUS) e Legislação',
-          peso: 2,
-          topicos: [
-            'Princípios e Diretrizes do SUS (Universalidade, Equidade, Integralidade)',
-            'Constituição Federal - Artigos 196 a 200',
-            'Lei Orgânica da Saúde - Lei nº 8.080/1990',
-            'Lei nº 8.142/1990 - Participação da comunidade',
-            'Decreto nº 7508/2011',
-            'Lei Complementar nº 141/2012',
-            'PNAB 2017 - Portaria nº 2.436/2017',
-            'PNAE - Portaria GM/MS nº 1.604/2023',
-            'Política Nacional de Humanização (HumanizaSUS)'
-          ]
-        })
-        
-        // ✅ CONHECIMENTOS ESPECÍFICOS DE ENFERMAGEM
-        disciplinasPadrao.push({
-          nome: 'Conhecimentos Específicos de Enfermagem',
-          peso: 3,
-          topicos: [
-            'Código de Ética dos Profissionais de Enfermagem',
-            'Legislação Profissional - Cofen/Coren',
-            'Sistematização da Assistência de Enfermagem (SAE)',
-            'Técnicas básicas de enfermagem',
-            'Processamento de material: descontaminação, limpeza, desinfecção, esterilização',
-            'Noções de farmacologia',
-            'Cálculo e administração de medicamentos',
-            'Biossegurança em saúde',
-            'Segurança do paciente e saúde laboral',
-            'Prevenção e controle de infecção (IRAS)',
-            'Programa Nacional de Imunizações (PNI)',
-            'Assistência de enfermagem em doenças transmissíveis',
-            'Assistência de enfermagem em urgência/emergência e trauma',
-            'Suporte Básico de Vida (SBV)',
-            'Assistência de enfermagem em saúde mental',
-            'Assistência de enfermagem na saúde da mulher',
-            'Assistência de enfermagem na saúde do homem',
-            'Assistência de enfermagem na saúde do idoso',
-            'Enfermagem na saúde do trabalhador',
-            'PCMSO - NR-7',
-            'Noções de Epidemiologia',
-            'Educação em saúde'
-          ]
-        })
-      } else if (cargoNorm.includes('fiscal') || cargoNorm.includes('tributário') || cargoNorm.includes('tributario')) {
-        disciplinasPadrao.push(
-          { nome: 'Direito Tributário', peso: 3, topicos: ['Sistema Tributário Nacional', 'Impostos', 'Obrigação Tributária'] },
-          { nome: 'Contabilidade', peso: 2, topicos: ['Contabilidade Geral', 'Demonstrações Contábeis'] }
-        )
-      } else if (cargoNorm.includes('policial') || cargoNorm.includes('polícia') || cargoNorm.includes('policia')) {
-        disciplinasPadrao.push(
-          { nome: 'Direito Penal', peso: 3, topicos: ['Crimes e penas', 'Código Penal'] },
-          { nome: 'Direito Processual Penal', peso: 3, topicos: ['Inquérito policial', 'Processo penal'] },
-          { nome: 'Direito Constitucional', peso: 2, topicos: ['Direitos e garantias fundamentais'] }
-        )
-      } else if (cargoNorm.includes('administrativo') || cargoNorm.includes('técnico')) {
-        disciplinasPadrao.push(
-          { nome: 'Direito Administrativo', peso: 2, topicos: ['Atos administrativos', 'Licitações', 'Contratos'] },
-          { nome: 'Informática', peso: 1, topicos: ['MS Office', 'Internet', 'Segurança da informação'] }
-        )
-      } else {
-        // Genérico
-        disciplinasPadrao.push(
-          { nome: 'Conhecimentos Gerais', peso: 1, topicos: ['Atualidades', 'História', 'Geografia'] },
-          { nome: 'Conhecimentos Específicos', peso: 3, topicos: ['Conteúdo específico do cargo'] }
-        )
-      }
-      
-      resultado = { disciplinas: disciplinasPadrao, info_peso: {} }
-      console.log(`✅ Criadas ${disciplinasPadrao.length} disciplinas padrão para cargo: ${cargoDesejado}`)
-    }
+    // ✅ CORREÇÃO v24 - REMOVIDO FALLBACK DE DISCIPLINAS PADRÃO
+    // Se a IA não conseguiu extrair, retornar erro claro ao usuário
+    // NÃO criar disciplinas genéricas/padrão que não estão no edital
     
     // Validar se temos resultado agora
     if (!resultado || !resultado.disciplinas || resultado.disciplinas.length === 0) {
