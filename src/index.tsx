@@ -6401,29 +6401,35 @@ ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo princ
     const textoOtimizado = textoParaIA.substring(0, 55000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
-    // ✅ v46: PROMPT SIMPLIFICADO E RESTRITIVO
-    const prompt = `EXTRAIA AS DISCIPLINAS DO EDITAL PARA O CARGO: ${cargoUpper}
+    // ✅ v46b: PROMPT SUPER RESTRITIVO
+    const prompt = `EXTRAIA AS DISCIPLINAS DO CARGO "${cargoUpper}".
 
-REGRAS OBRIGATÓRIAS:
-1. Extraia APENAS do texto fornecido (já filtrado para o cargo)
-2. CONHECIMENTOS GERAIS (peso 1): Língua Portuguesa, Raciocínio Lógico, etc.
-3. CONHECIMENTOS ESPECÍFICOS COMUNS (peso 2): SUS, Legislação comum ao nível
-4. CONHECIMENTOS DO CARGO (peso 2): Tópicos específicos do ${cargoUpper}
+⚠️ REGRA CRÍTICA DE ESTRUTURA:
+Em editais de saúde, a seção específica do cargo (ex: "Enfermeiro") contém TODOS os tópicos técnicos em UM SÓ BLOCO DE TEXTO.
+Esse bloco inteiro = 1 ÚNICA DISCIPLINA chamada "Conhecimentos Específicos de ${cargoUpper}"
+Os itens dentro (ex: "Ética e legislação", "Sistema Único de Saúde", etc.) são TÓPICOS, não disciplinas separadas!
 
-LIMITES DE DISCIPLINAS (RESPEITE):
-- Concursos SAÚDE (Enfermeiro, Técnico): MÁXIMO 6 disciplinas
-- Concursos FISCAIS (Auditor, Analista): 15-18 disciplinas
-- Concursos ADMINISTRATIVOS: 6-12 disciplinas
+DISCIPLINAS ESPERADAS PARA CONCURSO DE SAÚDE (${cargoUpper}):
+1. "Língua Portuguesa" (peso 1, categoria BÁSICOS)
+2. "Raciocínio Lógico-Matemático" (peso 1, categoria BÁSICOS)  
+3. "Conhecimentos Regionais" (peso 1, categoria BÁSICOS) - se existir
+4. "Conhecimentos sobre o SUS e Legislação" (peso 2, categoria ESPECÍFICOS)
+5. "Conhecimentos Específicos de ${cargoUpper}" (peso 2, categoria ESPECÍFICOS)
 
-IMPORTANTE:
-- Uma seção com conteúdo extenso do cargo = 1 disciplina ("Conhecimentos Específicos de ${cargoUpper}")
-- NÃO crie múltiplas disciplinas de tópicos que são de UMA SÓ seção
-- Cada item "Nome:" no início de linha = 1 disciplina separada
+TOTAL MÁXIMO: 5-6 disciplinas para cargos de SAÚDE!
 
-FORMATO JSON (sem markdown, sem texto antes/depois):
-{"disciplinas":[{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1"]},{"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["tópico específico"]}]}
+⚠️ NÃO CRIAR disciplinas a partir de tópicos individuais do bloco específico do cargo!
 
-TEXTO FILTRADO DO EDITAL:
+FORMATO JSON (sem markdown):
+{"disciplinas":[
+  {"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Acentuação"]},
+  {"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica proposicional"]},
+  {"nome":"Conhecimentos Regionais","peso":1,"categoria":"BÁSICOS","topicos":["História do Piauí"]},
+  {"nome":"Conhecimentos sobre o SUS e Legislação","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080/90","Lei 8142/90"]},
+  {"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["Ética profissional","Técnicas de enfermagem","Farmacologia"]}
+]}
+
+TEXTO:
 ${textoOtimizado}`
 
     // ════════════════════════════════════════════════════════════════
@@ -7401,29 +7407,68 @@ app.post('/api/editais/processar-texto', async (c) => {
     const textoLimitado = textoParaIA.substring(0, 55000)
     console.log(`🤖 Enviando ${textoLimitado.length} caracteres para análise`)
     
-    // ✅ v46: PROMPT SIMPLIFICADO E RESTRITIVO
-    const prompt = `EXTRAIA AS DISCIPLINAS DO EDITAL PARA O CARGO: ${cargoUpper}
+    // Detectar tipo de concurso
+    const ehConcursoSaude = areaDetectada === 'saude' || 
+      cargoUpper.includes('ENFERMEIRO') || cargoUpper.includes('MÉDICO') || 
+      cargoUpper.includes('TÉCNICO EM ENFERMAGEM')
+    const ehConcursoFiscal = cargoUpper.includes('AUDITOR') || cargoUpper.includes('ANALISTA TRIBUTÁRIO') ||
+      cargoUpper.includes('FISCAL')
+    
+    // ✅ v46b: PROMPT SUPER RESTRITIVO
+    const prompt = ehConcursoSaude ? `EXTRAIA AS DISCIPLINAS DO CARGO "${cargoUpper}".
 
-REGRAS OBRIGATÓRIAS:
-1. Extraia APENAS do texto fornecido (já filtrado para o cargo)
-2. CONHECIMENTOS GERAIS (peso 1): Língua Portuguesa, Raciocínio Lógico, etc.
-3. CONHECIMENTOS ESPECÍFICOS COMUNS (peso 2): SUS, Legislação comum ao nível
-4. CONHECIMENTOS DO CARGO (peso 2): Tópicos específicos do ${cargoUpper}
+⚠️ REGRA CRÍTICA DE ESTRUTURA:
+Em editais de saúde, a seção específica do cargo (ex: "Enfermeiro") contém TODOS os tópicos técnicos em UM SÓ BLOCO DE TEXTO.
+Esse bloco inteiro = 1 ÚNICA DISCIPLINA chamada "Conhecimentos Específicos de ${cargoUpper}"
+Os itens dentro (ex: "Ética e legislação", "Sistema Único de Saúde", etc.) são TÓPICOS, não disciplinas separadas!
 
-LIMITES DE DISCIPLINAS (RESPEITE):
-- Concursos SAÚDE (Enfermeiro, Técnico): MÁXIMO 6 disciplinas
-- Concursos FISCAIS (Auditor, Analista): 15-18 disciplinas
-- Concursos ADMINISTRATIVOS: 6-12 disciplinas
+DISCIPLINAS ESPERADAS PARA CONCURSO DE SAÚDE (${cargoUpper}):
+1. "Língua Portuguesa" (peso 1, categoria BÁSICOS)
+2. "Raciocínio Lógico-Matemático" (peso 1, categoria BÁSICOS)  
+3. "Conhecimentos Regionais" (peso 1, categoria BÁSICOS) - se existir
+4. "Conhecimentos sobre o SUS e Legislação" (peso 2, categoria ESPECÍFICOS)
+5. "Conhecimentos Específicos de ${cargoUpper}" (peso 2, categoria ESPECÍFICOS)
 
-IMPORTANTE:
-- Uma seção com conteúdo extenso do cargo = 1 disciplina ("Conhecimentos Específicos de ${cargoUpper}")
-- NÃO crie múltiplas disciplinas de tópicos que são de UMA SÓ seção
-- Cada item "Nome:" no início de linha = 1 disciplina separada
+TOTAL MÁXIMO: 5-6 disciplinas para cargos de SAÚDE!
 
-FORMATO JSON (sem markdown, sem texto antes/depois):
-{"disciplinas":[{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1"]},{"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["tópico específico"]}]}
+⚠️ NÃO CRIAR disciplinas a partir de tópicos individuais do bloco específico do cargo!
 
-TEXTO FILTRADO DO EDITAL:
+FORMATO JSON (sem markdown):
+{"disciplinas":[
+  {"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Acentuação"]},
+  {"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica proposicional"]},
+  {"nome":"Conhecimentos Regionais","peso":1,"categoria":"BÁSICOS","topicos":["História do Piauí"]},
+  {"nome":"Conhecimentos sobre o SUS e Legislação","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080/90","Lei 8142/90"]},
+  {"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["Ética profissional","Técnicas de enfermagem","Farmacologia"]}
+]}
+
+TEXTO:
+${textoLimitado}` : 
+// PROMPT PARA CONCURSOS FISCAIS E OUTROS
+`EXTRAIA AS DISCIPLINAS DO CARGO "${cargoUpper}".
+
+ESTRUTURA TÍPICA DE CONCURSOS FISCAIS:
+Os editais organizam disciplinas em MÓDULOS separados, cada um com título próprio.
+CADA TÍTULO = 1 DISCIPLINA (ex: "Língua Portuguesa:", "Direito Tributário:", etc.)
+
+DISCIPLINAS ESPERADAS (15-18 para fiscais):
+MÓDULO I - CONHECIMENTOS BÁSICOS:
+- Língua Portuguesa, Língua Inglesa, Raciocínio Lógico-Matemático
+- Estatística, Economia, Administração Geral, Administração Pública
+- Auditoria, Contabilidade Geral e Pública, Fluência em dados
+
+MÓDULO II - CONHECIMENTOS ESPECÍFICOS:
+- Direito Administrativo, Direito Constitucional
+- Direito Tributário, Legislação Tributária
+- Direito Previdenciário, Comércio Internacional, Legislação Aduaneira
+
+FORMATO JSON (sem markdown):
+{"disciplinas":[
+  {"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Concordância"]},
+  {"nome":"Direito Tributário","peso":2,"categoria":"ESPECÍFICOS","topicos":["CTN","Impostos"]}
+]}
+
+TEXTO:
 ${textoLimitado}`
 
     // ════════════════════════════════════════════════════════════════
