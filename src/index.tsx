@@ -7581,315 +7581,173 @@ ${textoLimitado}`
     console.log(`📝 Usando prompt para: ${ehConcursoSaude ? 'SAÚDE' : 'FISCAL/ADMINISTRATIVO'}`)
 
     // ════════════════════════════════════════════════════════════════
-    // ✅ v45 - EXTRAÇÃO EM DUAS FASES (DISCIPLINAS + TÓPICOS DETALHADOS)
+    // ✅ v50: EXTRAÇÃO HÍBRIDA - PROGRAMÁTICA (SAÚDE) + IA (FISCAL)
     // ════════════════════════════════════════════════════════════════
     
-    // Construir lista de APIs disponíveis
-    let ordemAPIs = apiKeys.filter(k => k.api_key && k.api_key.length > 10).map(k => k.provider)
+    let disciplinasExtraidas: any[] = []
     
-    console.log(`🔑 Chaves encontradas no banco: ${apiKeys.length}`)
-    apiKeys.forEach(k => {
-      console.log(`   - ${k.provider}: ${k.api_key ? k.api_key.substring(0, 10) + '...' : 'VAZIA'}`)
-    })
-    
-    // Fallback para variáveis de ambiente se necessário
-    if (ordemAPIs.length === 0) {
-      console.log('⚠️ Nenhuma chave válida no banco, usando variáveis de ambiente...')
-      if (geminiKey && geminiKey.length > 10) ordemAPIs.push('gemini')
-      if (openaiKey && openaiKey.length > 10) ordemAPIs.push('openai')
-      if (groqKey && groqKey.length > 10) ordemAPIs.push('groq')
-    }
-    
-    console.log(`📋 Ordem de fallback: ${ordemAPIs.join(' → ') || 'NENHUMA API DISPONÍVEL'}`)
-    
-    if (ordemAPIs.length === 0) {
-      console.error('❌ ERRO CRÍTICO: Nenhuma chave de API disponível!')
-      return c.json({
-        error: 'Nenhuma chave de API configurada.',
-        errorType: 'NO_API_KEYS',
-        suggestion: 'Configure as chaves de API no painel de administração.',
-        canRetry: false
-      }, 500)
-    }
-    
-    // ════════════════════════════════════════════════════════════════
-    // ✅ v45: HELPER - Chamar API com retry
-    // ════════════════════════════════════════════════════════════════
-    const chamarAPI = async (promptTexto: string, maxTokens: number = 16000): Promise<{sucesso: boolean, texto: string, modelo: string, erro?: string}> => {
-      const erros: string[] = []
+    // Para concursos de SAÚDE: extração programática (estrutura previsível)
+    if (ehConcursoSaude && (secaoGeral.length > 100 || secaoComum.length > 100 || secaoCargo.length > 100)) {
+      console.log('\n🔧 Modo PROGRAMÁTICO: Extraindo disciplinas diretamente do texto...')
       
-      // Tentar Gemini
-      if (geminiKey) {
-        const modelos = ['gemini-2.0-flash', 'gemini-1.5-flash-latest']
-        for (const modelo of modelos) {
+      // Função auxiliar para extrair tópicos de uma seção
+      const extrairTopicos = (textoSecao: string): string[] => {
+        const topicos: string[] = []
+        // Dividir por pontos finais seguidos de maiúscula ou ponto e vírgula
+        const partes = textoSecao.split(/[.;]\s*(?=[A-ZÀ-Ú]|\d)/)
+        for (const parte of partes) {
+          const topico = parte.trim().replace(/[.;:]+$/, '').trim()
+          if (topico.length > 10 && topico.length < 200) {
+            topicos.push(topico)
+          }
+        }
+        return topicos.slice(0, 30) // Limitar
+      }
+      
+      // 1. Extrair disciplinas de CONHECIMENTOS GERAIS
+      if (secaoGeral.length > 100) {
+        // Procurar padrões como "Língua portuguesa:" ou "Raciocínio lógico:"
+        const disciplinasGerais = secaoGeral.match(/([A-ZÀ-Ú][^:]+):\s*([^.]+(?:\.[^.]+)*)/gi) || []
+        
+        for (const match of disciplinasGerais) {
+          const partes = match.split(':')
+          if (partes.length >= 2) {
+            const nome = partes[0].trim()
+            const conteudo = partes.slice(1).join(':').trim()
+            
+            // Ignorar linhas que são cabeçalhos
+            if (!nome.toLowerCase().includes('conhecimentos') && 
+                !nome.toLowerCase().includes('cargos') &&
+                nome.length > 5 && nome.length < 100) {
+              const topicos = extrairTopicos(conteudo)
+              disciplinasExtraidas.push({
+                nome: nome,
+                peso: 1,
+                categoria: 'BÁSICOS',
+                topicos: topicos
+              })
+              console.log(`   ✓ Básica: "${nome}" (${topicos.length} tópicos)`)
+            }
+          }
+        }
+      }
+      
+      // 2. Extrair disciplina de CONHECIMENTOS COMUNS (SUS)
+      if (secaoComum.length > 100) {
+        const topicosComuns = extrairTopicos(secaoComum)
+        if (topicosComuns.length > 0) {
+          disciplinasExtraidas.push({
+            nome: 'Conhecimentos sobre o SUS e Legislação',
+            peso: 2,
+            categoria: 'ESPECÍFICOS',
+            topicos: topicosComuns
+          })
+          console.log(`   ✓ Comuns: "Conhecimentos sobre o SUS e Legislação" (${topicosComuns.length} tópicos)`)
+        }
+      }
+      
+      // 3. Extrair disciplina ESPECÍFICA DO CARGO
+      if (secaoCargo.length > 100) {
+        const topicosCargo = extrairTopicos(secaoCargo)
+        disciplinasExtraidas.push({
+          nome: `Conhecimentos Específicos de ${cargoUpper}`,
+          peso: 2,
+          categoria: 'ESPECÍFICOS',
+          topicos: topicosCargo
+        })
+        console.log(`   ✓ Específica: "Conhecimentos Específicos de ${cargoUpper}" (${topicosCargo.length} tópicos)`)
+      }
+      
+      console.log(`\n✅ Extração programática: ${disciplinasExtraidas.length} disciplinas`)
+    }
+    
+    // Se extração programática não conseguiu extrair disciplinas suficientes, usar IA
+    if (disciplinasExtraidas.length < 3) {
+      console.log('\n🤖 Extração programática insuficiente, usando IA...')
+      
+      // Construir lista de APIs disponíveis
+      const ordemAPIs = apiKeys.filter(k => k.api_key && k.api_key.length > 10).map(k => k.provider)
+      
+      // Fallback para variáveis de ambiente se necessário
+      if (ordemAPIs.length === 0) {
+        if (geminiKey && geminiKey.length > 10) ordemAPIs.push('gemini')
+        if (openaiKey && openaiKey.length > 10) ordemAPIs.push('openai')
+        if (groqKey && groqKey.length > 10) ordemAPIs.push('groq')
+      }
+      
+      if (ordemAPIs.length === 0) {
+        return c.json({
+          error: 'Nenhuma chave de API configurada.',
+          errorType: 'NO_API_KEYS',
+          canRetry: false
+        }, 500)
+      }
+      
+      // Helper para chamar API
+      const chamarAPI = async (promptTexto: string): Promise<string> => {
+        // Tentar Gemini
+        if (geminiKey) {
           try {
-            console.log(`  🚀 Tentando ${modelo}...`)
             const response = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${geminiKey}`,
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   contents: [{ parts: [{ text: promptTexto }] }],
-                  generationConfig: { temperature: 0, maxOutputTokens: maxTokens }
+                  generationConfig: { temperature: 0, maxOutputTokens: 8000 }
                 })
               }
             )
-            
-            if (response.status === 429) {
-              erros.push(`${modelo}: Rate limit`)
-              await new Promise(r => setTimeout(r, 2000))
-              continue
-            }
-            
             if (response.ok) {
               const data = await response.json() as any
-              const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-              if (texto && texto.length > 30) {
-                console.log(`  ✅ ${modelo} OK (${texto.length} chars)`)
-                return { sucesso: true, texto, modelo }
-              }
+              return data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
             }
-          } catch (err) {
-            erros.push(`${modelo}: ${err}`)
-          }
+          } catch (e) { /* ignorar */ }
         }
+        return ''
       }
       
-      // Tentar OpenAI
-      if (openaiKey) {
+      // Tentar extração via IA
+      const resultado = await chamarAPI(promptExtracao)
+      if (resultado) {
         try {
-          console.log(`  🚀 Tentando OpenAI...`)
-          const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${openaiKey}`
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini',
-              messages: [
-                { role: 'system', content: 'Extraia informações de editais. Retorne APENAS JSON válido.' },
-                { role: 'user', content: promptTexto }
-              ],
-              temperature: 0,
-              max_tokens: Math.min(maxTokens, 16000)
-            })
-          })
-          
-          if (response.ok) {
-            const data = await response.json() as any
-            const texto = data?.choices?.[0]?.message?.content || ''
-            if (texto && texto.length > 30) {
-              console.log(`  ✅ OpenAI OK (${texto.length} chars)`)
-              return { sucesso: true, texto, modelo: 'gpt-4o-mini' }
-            }
-          }
-        } catch (err) {
-          erros.push(`OpenAI: ${err}`)
-        }
-      }
-      
-      // Tentar GROQ
-      if (groqKey) {
-        try {
-          console.log(`  🚀 Tentando GROQ...`)
-          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${groqKey}`
-            },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              messages: [{ role: 'user', content: promptTexto.substring(0, 25000) }],
-              temperature: 0,
-              max_tokens: 8000
-            })
-          })
-          
-          if (response.ok) {
-            const data = await response.json() as any
-            const texto = data?.choices?.[0]?.message?.content || ''
-            if (texto && texto.length > 30) {
-              console.log(`  ✅ GROQ OK (${texto.length} chars)`)
-              return { sucesso: true, texto, modelo: 'groq-llama' }
-            }
-          }
-        } catch (err) {
-          erros.push(`GROQ: ${err}`)
-        }
-      }
-      
-      return { sucesso: false, texto: '', modelo: '', erro: erros.join('; ') }
-    }
-    
-    // ════════════════════════════════════════════════════════════════
-    // ✅ v48: EXTRAIR DISCIPLINAS COM PROMPT ESPECÍFICO POR ÁREA
-    // ════════════════════════════════════════════════════════════════
-    console.log('\n' + '═'.repeat(60))
-    console.log(`📚 EXTRAINDO DISCIPLINAS (área: ${ehConcursoSaude ? 'SAÚDE' : 'FISCAL/ADMIN'})`)
-    console.log('═'.repeat(60))
-
-    let disciplinasExtraidas: any[] = []
-    
-    // Tentar até 3 vezes com delays
-    for (let tentativa = 0; tentativa < 3; tentativa++) {
-      if (tentativa > 0) {
-        console.log(`⏳ Aguardando ${tentativa * 5}s antes de tentar novamente...`)
-        await new Promise(r => setTimeout(r, tentativa * 5000))
-      }
-      
-      const resultado = await chamarAPI(promptExtracao, 8000)
-      
-      if (resultado.sucesso) {
-        try {
-          // Limpar e parsear JSON
-          let jsonStr = resultado.texto
-            .replace(/```json\n?/gi, '').replace(/```\n?/gi, '')
-            .replace(/[\x00-\x1F\x7F]/g, ' ')
-          
+          const jsonStr = resultado.replace(/```json\n?/gi, '').replace(/```\n?/gi, '')
           const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
           if (jsonMatch) {
-            let parsed = jsonMatch[0]
-            // Fechar JSON incompleto
-            let braces = 0, brackets = 0
-            for (const c of parsed) {
-              if (c === '{') braces++
-              if (c === '}') braces--
-              if (c === '[') brackets++
-              if (c === ']') brackets--
-            }
-            for (let i = 0; i < brackets; i++) parsed += ']'
-            for (let i = 0; i < braces; i++) parsed += '}'
-            
-            const data = JSON.parse(parsed)
+            const data = JSON.parse(jsonMatch[0])
             if (data.disciplinas && data.disciplinas.length > 0) {
               disciplinasExtraidas = data.disciplinas
-              console.log(`✅ Extração completa: ${disciplinasExtraidas.length} disciplinas encontradas`)
-              
-              // Validar quantidade para concursos de saúde
-              if (ehConcursoSaude && disciplinasExtraidas.length > 8) {
-                console.log(`⚠️ Muitas disciplinas para concurso de saúde (${disciplinasExtraidas.length}), pode haver erro`)
-              }
-              break
+              console.log(`✅ IA extraiu: ${disciplinasExtraidas.length} disciplinas`)
             }
           }
         } catch (e) {
-          console.log(`⚠️ Erro ao parsear JSON: ${e}`)
+          console.log(`⚠️ Erro ao parsear JSON da IA: ${e}`)
         }
       }
     }
     
+    // Verificar se conseguimos extrair alguma disciplina
     if (disciplinasExtraidas.length === 0) {
       return c.json({
         error: 'Não foi possível extrair disciplinas do edital',
         errorType: 'EXTRACTION_FAILED',
-        suggestion: 'Verifique se o texto contém o conteúdo programático completo',
         canRetry: true
       }, 400)
     }
     
     // ════════════════════════════════════════════════════════════════
-    // ✅ v46: FASE 2 - EXTRAIR TÓPICOS EM UMA ÚNICA CHAMADA
+    // ✅ v50: RESULTADO FINAL
     // ════════════════════════════════════════════════════════════════
     console.log('\n' + '═'.repeat(60))
-    console.log('📋 FASE 2: Extraindo tópicos detalhados de todas as disciplinas...')
+    console.log(`✅ EXTRAÇÃO COMPLETA: ${disciplinasExtraidas.length} disciplinas`)
     console.log('═'.repeat(60))
+    disciplinasExtraidas.forEach((d: any, i: number) => {
+      console.log(`   ${i+1}. ${d.nome} (peso: ${d.peso}, tópicos: ${d.topicos?.length || 0})`)
+    })
     
-    const disciplinasComTopicos: any[] = []
+    const resultado = { disciplinas: disciplinasExtraidas }
     
-    // Aguardar 2 segundos entre as fases para evitar rate limit
-    await new Promise(r => setTimeout(r, 2000))
-    
-    const promptFase2 = `Extraia os TÓPICOS DETALHADOS de TODAS as disciplinas do edital para o cargo "${cargoUpper}".
-    
-DISCIPLINAS ENCONTRADAS:
-${disciplinasExtraidas.map((d: any, idx: number) => `${idx + 1}. ${d.nome}`).join('\n')}
-
-REGRAS:
-1. Para CADA disciplina, extraia os tópicos/assuntos listados no edital
-2. Use os nomes como aparecem no texto
-3. Inclua entre 3 e 15 tópicos por disciplina
-4. Se não encontrar tópicos para uma disciplina, deixe array vazio
-
-FORMATO JSON (sem markdown):
-{"disciplinas":[{"nome":"Nome da Disciplina","topicos":["Tópico 1","Tópico 2"]}]}
-
-TEXTO DO EDITAL:
-${textoLimitado.substring(0, 55000)}`
-
-    const resultadoFase2 = await chamarAPI(promptFase2, 32000)
-    
-    if (resultadoFase2.sucesso) {
-      try {
-        let jsonStr = resultadoFase2.texto
-          .replace(/```json\n?/gi, '').replace(/```\n?/gi, '')
-          .replace(/[\x00-\x1F\x7F]/g, ' ')
-        
-        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-          let parsed = jsonMatch[0]
-          let braces = 0, brackets = 0
-          for (const c of parsed) {
-            if (c === '{') braces++
-            if (c === '}') braces--
-            if (c === '[') brackets++
-            if (c === ']') brackets--
-          }
-          for (let i = 0; i < brackets; i++) parsed += ']'
-          for (let i = 0; i < braces; i++) parsed += '}'
-          
-          const data = JSON.parse(parsed)
-          if (data.disciplinas) {
-            for (const disc of data.disciplinas) {
-              // Encontrar disciplina original para manter categoria e peso
-              const original = disciplinasExtraidas.find((d: any) => 
-                d.nome.toLowerCase().includes(disc.nome.toLowerCase()) ||
-                disc.nome.toLowerCase().includes(d.nome.toLowerCase())
-              )
-              
-              disciplinasComTopicos.push({
-                nome: disc.nome || original?.nome,
-                categoria: original?.categoria || 'ESPECÍFICOS',
-                peso: original?.peso || 2,
-                topicos: disc.topicos || []
-              })
-              
-              console.log(`  ✅ ${disc.nome}: ${(disc.topicos || []).length} tópicos`)
-            }
-          }
-        }
-      } catch (e) {
-        console.log(`  ⚠️ Erro ao parsear tópicos: ${e}`)
-      }
-    }
-    
-    // Se fase 2 falhou ou não extraiu tópicos, usar disciplinas originais
-    if (disciplinasComTopicos.length === 0) {
-      console.log('⚠️ Fase 2 falhou, usando disciplinas sem tópicos detalhados')
-      for (const d of disciplinasExtraidas) {
-        disciplinasComTopicos.push({
-          nome: d.nome,
-          categoria: d.categoria || 'ESPECÍFICOS',
-          peso: d.peso || 2,
-          topicos: []
-        })
-      }
-    }
-    
-    // Usar disciplinas com tópicos
-    const disciplinasFinais = disciplinasComTopicos
-    
-    console.log('\n' + '═'.repeat(60))
-    console.log(`✅ EXTRAÇÃO COMPLETA: ${disciplinasFinais.length} disciplinas`)
-    console.log('═'.repeat(60))
-    
-    // Verificar se conseguimos tópicos
-    const totalTopicos = disciplinasFinais.reduce((acc: number, d: any) => acc + (d.topicos?.length || 0), 0)
-    console.log(`📊 Total de tópicos extraídos: ${totalTopicos}`)
-    
-    const resultado = { disciplinas: disciplinasFinais }
     
     // ✅ SALVAR EDITAL E DISCIPLINAS NO BANCO DE DADOS
     console.log(`\n✅ ${resultado.disciplinas.length} disciplinas prontas para salvar`)
