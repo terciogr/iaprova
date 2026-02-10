@@ -7286,26 +7286,37 @@ app.post('/api/editais/processar-texto', async (c) => {
     console.log(`📄 Total de linhas no edital: ${linhas.length}`)
     
     // Função MELHORADA para encontrar seção de Conhecimentos Gerais
-    // Precisa encontrar a linha com conteúdo programático, não tabelas de vagas
+    // Precisa encontrar a seção do nível correto (superior ou médio)
     const encontrarSecaoConhecimentosGerais = (): string => {
       let conteudo: string[] = []
       let encontrouCabecalho = false
+      
+      // Determinar nível do cargo
+      const ehNivelSuperior = ['enfermeiro', 'médico', 'farmacêutico', 'fisioterapeuta', 
+        'nutricionista', 'psicólogo', 'fonoaudiólogo', 'dentista', 'assistente social',
+        'engenheiro', 'arquiteto', 'contador', 'advogado', 'analista', 'auditor']
+        .some(c => cargoLower.includes(c))
+      
+      const nivelBuscado = ehNivelSuperior ? 'superior' : 'médio'
+      console.log(`🎯 Buscando Conhecimentos Gerais para nível: ${nivelBuscado.toUpperCase()}`)
       
       for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i].trim()
         const linhaLower = linha.toLowerCase()
         
-        // Buscar linha "CONHECIMENTOS GERAIS" seguida por "CARGOS DE ENSINO"
+        // Buscar linha "CONHECIMENTOS GERAIS" seguida por "CARGOS DE ENSINO [NÍVEL]"
         if (!encontrouCabecalho) {
           if (linhaLower.includes('conhecimentos gerais') && 
               !linhaLower.includes('questões') && 
-              linha.length < 100) { // Evitar linhas longas (provavelmente tabelas)
-            // Verificar se a próxima linha contém "cargos de ensino"
+              linha.length < 100) {
+            // Verificar se a próxima linha contém o nível correto
             const proximaLinha = linhas[i+1]?.trim().toLowerCase() || ''
-            if (proximaLinha.includes('cargos de ensino') || 
-                proximaLinha.includes('nível superior') ||
-                proximaLinha.includes('nível médio')) {
+            const nivelCorreto = proximaLinha.includes(nivelBuscado) && 
+              (proximaLinha.includes('cargos de ensino') || proximaLinha.includes('nível'))
+            
+            if (nivelCorreto) {
               console.log(`   ✓ Encontrado cabeçalho na linha ${i+1}: "${linha}"`)
+              console.log(`     Próxima linha: "${linhas[i+1]?.trim()}"`)
               encontrouCabecalho = true
               conteudo.push(linha)
               continue
@@ -7339,14 +7350,22 @@ app.post('/api/editais/processar-texto', async (c) => {
       let conteudo: string[] = []
       let encontrouCabecalho = false
       
+      // Determinar nível do cargo
+      const ehNivelSuperior = ['enfermeiro', 'médico', 'farmacêutico', 'fisioterapeuta', 
+        'nutricionista', 'psicólogo', 'fonoaudiólogo', 'dentista', 'assistente social',
+        'engenheiro', 'arquiteto', 'contador', 'advogado', 'analista', 'auditor']
+        .some(c => cargoLower.includes(c))
+      
+      const nivelBuscado = ehNivelSuperior ? 'superior' : 'médio'
+      
       for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i].trim()
         const linhaLower = linha.toLowerCase()
         
-        // Buscar "PARA TODOS OS CARGOS DE ENSINO SUPERIOR"
+        // Buscar "PARA TODOS OS CARGOS DE ENSINO [NÍVEL]"
         if (!encontrouCabecalho) {
           if (linhaLower.includes('para todos os cargos') && 
-              (linhaLower.includes('ensino') || linhaLower.includes('nível'))) {
+              linhaLower.includes(nivelBuscado)) {
             console.log(`   ✓ Encontrado 'PARA TODOS OS CARGOS' na linha ${i+1}: "${linha}"`)
             encontrouCabecalho = true
             conteudo.push(linha)
