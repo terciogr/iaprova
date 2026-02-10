@@ -225,6 +225,18 @@ O sistema inclui um módulo de administração exclusivo para gestão da platafo
 
 ## 🔄 Últimas Atualizações
 
+### v2.2.0 (Fevereiro 2026 - CORREÇÃO v22)
+- ✅ **Google Analytics GA4**: Tag G-94LLLJN9HM inserida em todos os arquivos HTML
+- ✅ **Outra Banca Personalizada**: Campo para especificar banca não listada
+- ✅ **Página de Conversão**: `/obrigado-premium` para tracking de Google Ads
+- ✅ **Correção Exclusão de Planos**: Resolvido erro FOREIGN KEY constraint
+  - Identificado: `user_topicos_progresso.topico_id` → `topicos_edital.id`
+  - Ordem correta de exclusão implementada (filhas antes de mães)
+
+### v2.1.0 (Fevereiro 2026)
+- ✅ **Histórico de Emails**: Todos os tipos de email agora logados
+- ✅ **Painel Financeiro**: Seção de assinaturas premium no admin
+
 ### v2.0.0 (Fevereiro 2025)
 - ✅ **Módulo Admin**: Painel completo de administração
 - ✅ **Controle de Planos**: Admin pode atribuir planos a usuários
