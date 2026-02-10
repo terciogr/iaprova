@@ -7601,186 +7601,95 @@ ${textoLimitado.substring(0, 50000)}`
     }
     
     // ════════════════════════════════════════════════════════════════
-    // ✅ v45: FASE 2 - EXTRAIR TÓPICOS DE CADA DISCIPLINA
+    // ✅ v46: FASE 2 - EXTRAIR TÓPICOS EM UMA ÚNICA CHAMADA
     // ════════════════════════════════════════════════════════════════
     console.log('\n' + '═'.repeat(60))
-    console.log('📋 FASE 2: Extraindo tópicos detalhados de cada disciplina...')
+    console.log('📋 FASE 2: Extraindo tópicos detalhados de todas as disciplinas...')
     console.log('═'.repeat(60))
     
     const disciplinasComTopicos: any[] = []
     
-    // Processar em lotes de 5 disciplinas para evitar rate limits
-    const BATCH_SIZE = 5
-    for (let i = 0; i < disciplinasExtraidas.length; i += BATCH_SIZE) {
-      const lote = disciplinasExtraidas.slice(i, i + BATCH_SIZE)
-      const nomesLote = lote.map((d: any) => d.nome).join(', ')
-      
-      console.log(`\n📦 Processando lote ${Math.floor(i/BATCH_SIZE) + 1}: ${nomesLote}`)
-      
-      // Delay entre lotes (exceto o primeiro)
-      if (i > 0) {
-        console.log(`⏳ Aguardando 3s entre lotes...`)
-        await new Promise(r => setTimeout(r, 3000))
-      }
-      
-      const promptFase2 = `Extraia os TÓPICOS DETALHADOS das seguintes disciplinas do edital.
-      
-DISCIPLINAS PARA EXTRAIR TÓPICOS:
-${lote.map((d: any, idx: number) => `${idx + 1}. ${d.nome}`).join('\n')}
+    // Aguardar 2 segundos entre as fases para evitar rate limit
+    await new Promise(r => setTimeout(r, 2000))
+    
+    const promptFase2 = `Extraia os TÓPICOS DETALHADOS de TODAS as disciplinas do edital para o cargo "${cargoUpper}".
+    
+DISCIPLINAS ENCONTRADAS:
+${disciplinasExtraidas.map((d: any, idx: number) => `${idx + 1}. ${d.nome}`).join('\n')}
 
 REGRAS:
-1. Para CADA disciplina, extraia TODOS os tópicos/assuntos listados no edital
-2. Use os nomes EXATOS dos tópicos como aparecem no edital
-3. Inclua entre 5 e 20 tópicos por disciplina (o que estiver no edital)
-4. NÃO invente tópicos - use apenas o que está no texto
+1. Para CADA disciplina, extraia os tópicos/assuntos listados no edital
+2. Use os nomes como aparecem no texto
+3. Inclua entre 3 e 15 tópicos por disciplina
+4. Se não encontrar tópicos para uma disciplina, deixe array vazio
 
-FORMATO JSON:
-{"disciplinas":[{"nome":"Nome da Disciplina","topicos":["Tópico 1","Tópico 2","Tópico 3"]}]}
-
-TEXTO DO EDITAL:
-${textoLimitado.substring(0, 40000)}`
-
-      const resultado = await chamarAPI(promptFase2, 16000)
-      
-      if (resultado.sucesso) {
-        try {
-          let jsonStr = resultado.texto
-            .replace(/```json\n?/gi, '').replace(/```\n?/gi, '')
-            .replace(/[\x00-\x1F\x7F]/g, ' ')
-          
-          const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
-          if (jsonMatch) {
-            let parsed = jsonMatch[0]
-            // Fechar JSON incompleto
-            let braces = 0, brackets = 0
-            for (const c of parsed) {
-              if (c === '{') braces++
-              if (c === '}') braces--
-              if (c === '[') brackets++
-              if (c === ']') brackets--
-            }
-            for (let i = 0; i < brackets; i++) parsed += ']'
-            for (let i = 0; i < braces; i++) parsed += '}'
-            
-            const data = JSON.parse(parsed)
-            if (data.disciplinas) {
-              for (const disc of data.disciplinas) {
-                // Encontrar a disciplina original para manter categoria e peso
-                const original = lote.find((d: any) => 
-                  d.nome.toLowerCase().includes(disc.nome.toLowerCase()) ||
-                  disc.nome.toLowerCase().includes(d.nome.toLowerCase())
-                )
-                
-                disciplinasComTopicos.push({
-                  nome: disc.nome || original?.nome,
-                  categoria: original?.categoria || 'ESPECÍFICOS',
-                  peso: original?.peso || 2,
-                  topicos: disc.topicos || []
-                })
-                
-                console.log(`  ✅ ${disc.nome}: ${(disc.topicos || []).length} tópicos`)
-              }
-            }
-          }
-        } catch (e) {
-          console.log(`  ⚠️ Erro ao parsear tópicos do lote: ${e}`)
-          // Adicionar disciplinas sem tópicos
-          for (const d of lote) {
-            disciplinasComTopicos.push({
-              nome: d.nome,
-              categoria: d.categoria || 'ESPECÍFICOS',
-              peso: d.peso || 2,
-              topicos: []
-            })
-          }
-        }
-      } else {
-        // Se falhou, adicionar disciplinas sem tópicos
-        console.log(`  ⚠️ Falha no lote, adicionando sem tópicos`)
-        for (const d of lote) {
-          disciplinasComTopicos.push({
-            nome: d.nome,
-            categoria: d.categoria || 'ESPECÍFICOS',
-            peso: d.peso || 2,
-            topicos: []
-          })
-        }
-      }
-    }
-    
-    // Usar disciplinas com tópicos, ou as originais se a fase 2 falhou completamente
-    const disciplinasFinais = disciplinasComTopicos.length > 0 ? disciplinasComTopicos : disciplinasExtraidas
-    
-    // ═══════════════════════════════════════════════════════════════
-    // ✅ v45b: FASE 3 - RETRY PARA DISCIPLINAS SEM TÓPICOS
-    // ═══════════════════════════════════════════════════════════════
-    const disciplinasSemTopicos = disciplinasFinais.filter((d: any) => !d.topicos || d.topicos.length === 0)
-    
-    if (disciplinasSemTopicos.length > 0 && disciplinasSemTopicos.length < disciplinasFinais.length) {
-      console.log(`\n⚠️ ${disciplinasSemTopicos.length} disciplinas sem tópicos, tentando extrair novamente...`)
-      
-      // Aguardar 5 segundos antes de tentar novamente
-      await new Promise(r => setTimeout(r, 5000))
-      
-      const nomesSemTopicos = disciplinasSemTopicos.map((d: any) => d.nome).join(', ')
-      
-      const promptRetry = `Extraia os TÓPICOS DETALHADOS das seguintes disciplinas:
-
-DISCIPLINAS:
-${disciplinasSemTopicos.map((d: any, idx: number) => `${idx + 1}. ${d.nome}`).join('\n')}
-
-REGRAS:
-1. Extraia TODOS os tópicos listados no edital para cada disciplina
-2. Use os nomes EXATOS como aparecem no texto
-3. Entre 5 e 30 tópicos por disciplina
-
-FORMATO JSON:
+FORMATO JSON (sem markdown):
 {"disciplinas":[{"nome":"Nome da Disciplina","topicos":["Tópico 1","Tópico 2"]}]}
 
-TEXTO:
-${textoLimitado.substring(0, 35000)}`
+TEXTO DO EDITAL:
+${textoLimitado.substring(0, 55000)}`
 
-      const resultadoRetry = await chamarAPI(promptRetry, 16000)
-      
-      if (resultadoRetry.sucesso) {
-        try {
-          let jsonStr = resultadoRetry.texto
-            .replace(/```json\n?/gi, '').replace(/```\n?/gi, '')
-            .replace(/[\x00-\x1F\x7F]/g, ' ')
+    const resultadoFase2 = await chamarAPI(promptFase2, 32000)
+    
+    if (resultadoFase2.sucesso) {
+      try {
+        let jsonStr = resultadoFase2.texto
+          .replace(/```json\n?/gi, '').replace(/```\n?/gi, '')
+          .replace(/[\x00-\x1F\x7F]/g, ' ')
+        
+        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          let parsed = jsonMatch[0]
+          let braces = 0, brackets = 0
+          for (const c of parsed) {
+            if (c === '{') braces++
+            if (c === '}') braces--
+            if (c === '[') brackets++
+            if (c === ']') brackets--
+          }
+          for (let i = 0; i < brackets; i++) parsed += ']'
+          for (let i = 0; i < braces; i++) parsed += '}'
           
-          const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
-          if (jsonMatch) {
-            let parsed = jsonMatch[0]
-            let braces = 0, brackets = 0
-            for (const c of parsed) {
-              if (c === '{') braces++
-              if (c === '}') braces--
-              if (c === '[') brackets++
-              if (c === ']') brackets--
-            }
-            for (let i = 0; i < brackets; i++) parsed += ']'
-            for (let i = 0; i < braces; i++) parsed += '}'
-            
-            const data = JSON.parse(parsed)
-            if (data.disciplinas) {
-              for (const discRetry of data.disciplinas) {
-                // Encontrar disciplina correspondente e atualizar tópicos
-                const idx = disciplinasFinais.findIndex((d: any) => 
-                  d.nome.toLowerCase().includes(discRetry.nome.toLowerCase()) ||
-                  discRetry.nome.toLowerCase().includes(d.nome.toLowerCase())
-                )
-                if (idx >= 0 && discRetry.topicos && discRetry.topicos.length > 0) {
-                  disciplinasFinais[idx].topicos = discRetry.topicos
-                  console.log(`  ✅ ${discRetry.nome}: ${discRetry.topicos.length} tópicos recuperados`)
-                }
-              }
+          const data = JSON.parse(parsed)
+          if (data.disciplinas) {
+            for (const disc of data.disciplinas) {
+              // Encontrar disciplina original para manter categoria e peso
+              const original = disciplinasExtraidas.find((d: any) => 
+                d.nome.toLowerCase().includes(disc.nome.toLowerCase()) ||
+                disc.nome.toLowerCase().includes(d.nome.toLowerCase())
+              )
+              
+              disciplinasComTopicos.push({
+                nome: disc.nome || original?.nome,
+                categoria: original?.categoria || 'ESPECÍFICOS',
+                peso: original?.peso || 2,
+                topicos: disc.topicos || []
+              })
+              
+              console.log(`  ✅ ${disc.nome}: ${(disc.topicos || []).length} tópicos`)
             }
           }
-        } catch (e) {
-          console.log(`  ⚠️ Erro no retry: ${e}`)
         }
+      } catch (e) {
+        console.log(`  ⚠️ Erro ao parsear tópicos: ${e}`)
       }
     }
+    
+    // Se fase 2 falhou ou não extraiu tópicos, usar disciplinas originais
+    if (disciplinasComTopicos.length === 0) {
+      console.log('⚠️ Fase 2 falhou, usando disciplinas sem tópicos detalhados')
+      for (const d of disciplinasExtraidas) {
+        disciplinasComTopicos.push({
+          nome: d.nome,
+          categoria: d.categoria || 'ESPECÍFICOS',
+          peso: d.peso || 2,
+          topicos: []
+        })
+      }
+    }
+    
+    // Usar disciplinas com tópicos
+    const disciplinasFinais = disciplinasComTopicos
     
     console.log('\n' + '═'.repeat(60))
     console.log(`✅ EXTRAÇÃO COMPLETA: ${disciplinasFinais.length} disciplinas`)
