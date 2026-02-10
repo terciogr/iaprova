@@ -5829,10 +5829,10 @@ INSTRUÇÕES CRÍTICAS:
    - BÁSICAS: Língua Portuguesa, Língua Inglesa, Raciocínio Lógico-Matemático, Estatística, Economia e Finanças Públicas, Administração Geral, Administração Pública, Auditoria, Contabilidade Geral e Pública, Fluência em dados, Ciência de dados
    - ESPECÍFICAS: Direito Administrativo, Direito Constitucional, Direito Previdenciário, Direito Tributário, Legislação Tributária, Comércio Internacional, Legislação Aduaneira
 4. Editais grandes têm 15-20 disciplinas - EXTRAIA TODAS, não pare antes
-5. Copie os tópicos EXATAMENTE como aparecem
+5. Para CADA disciplina, inclua os 5-10 PRINCIPAIS tópicos (resumidos)
 
 JSON (retorne APENAS o JSON, sem texto adicional):
-{"disciplinas":[{"nome":"Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]}]}
+{"disciplinas":[{"nome":"Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico resumido"]}]}
 
 PESOS: 1=Básicos, 2=Específicos
 
@@ -6613,10 +6613,10 @@ INSTRUÇÕES CRÍTICAS:
    - BÁSICAS: Língua Portuguesa, Língua Inglesa, Raciocínio Lógico-Matemático, Estatística, Economia e Finanças Públicas, Administração Geral, Administração Pública, Auditoria, Contabilidade Geral e Pública, Fluência em dados, Ciência de dados
    - ESPECÍFICAS: Direito Administrativo, Direito Constitucional, Direito Previdenciário, Direito Tributário, Legislação Tributária, Comércio Internacional, Legislação Aduaneira
 4. Editais grandes têm 15-20 disciplinas - EXTRAIA TODAS, não pare antes
-5. Copie os tópicos EXATAMENTE como aparecem
+5. Para CADA disciplina, inclua os 5-10 PRINCIPAIS tópicos (resumidos)
 
 JSON (retorne APENAS o JSON, sem texto adicional):
-{"disciplinas":[{"nome":"Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]}]}
+{"disciplinas":[{"nome":"Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico resumido 1","tópico 2"]}]}
 
 PESOS: 1=Básicos, 2=Específicos
 
