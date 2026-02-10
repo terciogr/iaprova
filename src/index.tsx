@@ -7265,115 +7265,230 @@ app.post('/api/editais/processar-texto', async (c) => {
     console.log(`📝 Processando para cargo: ${cargoUpper}`)
     
     // ════════════════════════════════════════════════════════════════
-    // ✅ v47: EXTRAÇÃO EM 2 CHAMADAS SEPARADAS
+    // ✅ v48: EXTRAÇÃO DETERMINÍSTICA POR SEÇÕES
     // ════════════════════════════════════════════════════════════════
     
-    // Função para extrair seções específicas do texto
-    const extrairSecao = (textoCompleto: string, inicioPattern: RegExp, fimPattern: RegExp | null): string => {
-      const match = textoCompleto.match(inicioPattern)
-      if (!match) return ''
+    // Lista de cargos conhecidos para delimitar seções
+    const CARGOS_CONHECIDOS = [
+      'Assistente Social', 'Enfermeiro', 'Médico', 'Farmacêutico', 'Fisioterapeuta',
+      'Nutricionista', 'Psicólogo', 'Fonoaudiólogo', 'Dentista', 'Cirurgião',
+      'Biólogo', 'Veterinário', 'Técnico', 'Analista', 'Auditor', 'Contador',
+      'Advogado', 'Engenheiro', 'Arquiteto', 'Administrador', 'Economista',
+      'Agente', 'Oficial', 'Escrivão', 'Delegado', 'Perito', 'Professor'
+    ]
+    
+    // Converter texto para linhas para análise precisa
+    const linhas = texto.split(/\r?\n/)
+    console.log(`📄 Total de linhas no edital: ${linhas.length}`)
+    
+    // Função para encontrar seção por padrão
+    const encontrarSecao = (padraoInicio: RegExp, padroesFim: RegExp[]): string => {
+      let iniciou = false
+      let conteudo: string[] = []
       
-      const inicio = textoCompleto.indexOf(match[0])
-      if (inicio === -1) return ''
-      
-      let textoSecao = textoCompleto.substring(inicio)
-      
-      if (fimPattern) {
-        const fimMatch = textoSecao.substring(100).match(fimPattern) // Pular o início
-        if (fimMatch) {
-          const fimIndex = textoSecao.indexOf(fimMatch[0], 100)
-          if (fimIndex > 0) {
-            textoSecao = textoSecao.substring(0, fimIndex)
+      for (let i = 0; i < linhas.length; i++) {
+        const linha = linhas[i].trim()
+        
+        if (!iniciou && padraoInicio.test(linha)) {
+          iniciou = true
+          conteudo.push(linha)
+          continue
+        }
+        
+        if (iniciou) {
+          // Verificar se chegou ao fim da seção
+          const terminouSecao = padroesFim.some(p => p.test(linha))
+          if (terminouSecao) break
+          
+          // Pular linhas muito curtas ou numéricas (provavelmente paginação)
+          if (linha.length > 5 && !/^\d+$/.test(linha)) {
+            conteudo.push(linha)
           }
         }
+        
+        // Limitar tamanho
+        if (conteudo.length > 50) break
       }
       
-      return textoSecao.substring(0, 15000) // Limitar tamanho
+      return conteudo.join('\n')
     }
     
-    // Extrair seções relevantes do edital
-    // 1. Conhecimentos Gerais (nível superior)
-    const secaoGeral = extrairSecao(
-      texto,
-      /conhecimentos\s+gerais[\s\r\n]+cargos\s+de\s+ensino\s+superior/i,
-      /conhecimentos\s+específicos/i
-    )
-    console.log(`📖 Seção Conhecimentos Gerais: ${secaoGeral.length} chars`)
+    // Função para encontrar seção específica do cargo
+    const encontrarSecaoCargo = (cargoAlvo: string): string => {
+      const cargoNormalizado = cargoAlvo.trim().toLowerCase()
+      const primeiraPalavra = cargoNormalizado.split(/\s+/)[0]
+      let iniciou = false
+      let conteudo: string[] = []
+      
+      console.log(`🔍 Buscando cargo: "${cargoAlvo}" (palavra-chave: "${primeiraPalavra}")`)
+      
+      for (let i = 0; i < linhas.length; i++) {
+        const linha = linhas[i].trim()
+        const linhaLower = linha.toLowerCase()
+        
+        // Procurar linha que começa com o nome do cargo
+        // Ex: "Enfermeiro" ou "Enfermeiro - Clínico"
+        if (!iniciou) {
+          const linhaSemNum = linha.replace(/^\d+\s*/, '').trim()
+          const inicioCargoExato = new RegExp(`^${primeiraPalavra}(\\s|$|\\s*-)`, 'i')
+          
+          if (inicioCargoExato.test(linhaSemNum)) {
+            // Verificar se é na seção de conhecimentos específicos (não em tabela de vagas)
+            const contextoPrevio = linhas.slice(Math.max(0, i-15), i).join(' ').toLowerCase()
+            if (contextoPrevio.includes('conhecimentos específicos') || 
+                contextoPrevio.includes('cargos de ensino') ||
+                i > linhas.length * 0.5) { // Segunda metade do documento
+              console.log(`   ✓ Encontrado cargo na linha ${i+1}: "${linha.substring(0, 50)}..."`)
+              iniciou = true
+              conteudo.push(linha)
+              continue
+            }
+          }
+        }
+        
+        if (iniciou) {
+          // Verificar se chegou a outro cargo
+          const outroCargoEncontrado = CARGOS_CONHECIDOS.some(c => {
+            if (c.toLowerCase() === cargoNormalizado) return false
+            const pattern = new RegExp(`^${c}(\\s|$|\\s*-)`, 'i')
+            return pattern.test(linha.replace(/^\d+\s*/, '').trim())
+          })
+          
+          if (outroCargoEncontrado && conteudo.length > 3) {
+            console.log(`   ✓ Fim da seção na linha ${i+1} (próximo cargo: "${linha.substring(0, 30)}...")`)
+            break
+          }
+          
+          // Adicionar linha se tiver conteúdo relevante
+          if (linha.length > 10 && !/^\d+$/.test(linha)) {
+            conteudo.push(linha)
+          }
+        }
+        
+        // Limitar tamanho
+        if (conteudo.length > 80) break
+      }
+      
+      console.log(`   📝 Seção do cargo: ${conteudo.length} linhas extraídas`)
+      return conteudo.join('\n')
+    }
     
-    // 2. Conhecimentos Específicos Comuns (para todos os cargos)
-    const secaoComum = extrairSecao(
-      texto,
-      /conhecimentos\s+específicos[\s\r\n]+para\s+todos/i,
-      /conhecimentos\s+específicos[\s\r\n]+cargos/i
+    // EXTRAIR AS 3 SEÇÕES NECESSÁRIAS
+    
+    // 1. Conhecimentos Gerais (para nível superior/médio)
+    const secaoGeral = encontrarSecao(
+      /conhecimentos\s+gerais/i,
+      [/conhecimentos\s+específicos/i]
     )
-    console.log(`📖 Seção Conhecimentos Comuns: ${secaoComum.length} chars`)
+    console.log(`📖 Seção Conhecimentos Gerais: ${secaoGeral.length} chars, ${secaoGeral.split('\n').length} linhas`)
+    
+    // 2. Conhecimentos Específicos Comuns (para todos os cargos do nível)
+    const secaoComum = encontrarSecao(
+      /para\s+todos\s+os\s+cargos/i,
+      [/conhecimentos\s+específicos[\s\r\n]+cargos/i, /^(Assistente|Enfermeiro|Médico|Farmacêutico)/i]
+    )
+    console.log(`📖 Seção Conhecimentos Comuns: ${secaoComum.length} chars, ${secaoComum.split('\n').length} linhas`)
     
     // 3. Seção específica do cargo
-    const cargoPattern = new RegExp(`^${cargoUpper.split(' ')[0]}[\\s\\r\\n]`, 'im')
-    const proximoCargoPattern = /^(Engenheiro|Médico|Farmacêutico|Fisioterapeuta|Psicólogo|Assistente|Nutricionista|Fonoaudiólogo|Dentista|Cirurgião|Biólogo|Veterinário|Técnico|Analista|Auditor|Contador|Advogado)/im
-    
-    let secaoCargo = ''
-    const cargoMatch = texto.match(cargoPattern)
-    if (cargoMatch) {
-      const inicioIdx = texto.indexOf(cargoMatch[0])
-      if (inicioIdx > 0) {
-        let textoAposCargo = texto.substring(inicioIdx)
-        // Encontrar próximo cargo para delimitar
-        const proximoMatch = textoAposCargo.substring(50).match(proximoCargoPattern)
-        if (proximoMatch) {
-          const fimIdx = textoAposCargo.indexOf(proximoMatch[0], 50)
-          if (fimIdx > 0) {
-            secaoCargo = textoAposCargo.substring(0, fimIdx)
-          }
-        }
-        if (!secaoCargo) {
-          secaoCargo = textoAposCargo.substring(0, 10000)
-        }
-      }
-    }
+    const secaoCargo = encontrarSecaoCargo(cargoUpper)
     console.log(`📖 Seção Cargo ${cargoUpper}: ${secaoCargo.length} chars`)
     
     // Montar texto filtrado apenas com as seções relevantes
     const textoFiltrado = `
-=== CONHECIMENTOS GERAIS (NÍVEL SUPERIOR) ===
-${secaoGeral}
+=== CONHECIMENTOS GERAIS ===
+${secaoGeral || '(Seção não encontrada no edital)'}
 
-=== CONHECIMENTOS ESPECÍFICOS COMUNS (PARA TODOS OS CARGOS) ===
-${secaoComum}
+=== CONHECIMENTOS ESPECÍFICOS COMUNS (PARA TODOS OS CARGOS DO NÍVEL) ===
+${secaoComum || '(Seção não encontrada no edital)'}
 
 === CONHECIMENTOS ESPECÍFICOS DO CARGO: ${cargoUpper} ===
-${secaoCargo}
+${secaoCargo || '(Seção não encontrada no edital)'}
 `.trim()
 
     console.log(`📋 Texto filtrado total: ${textoFiltrado.length} chars`)
     
-    // Se não conseguiu extrair nada, usar texto original
-    const textoParaIA = textoFiltrado.length > 500 ? textoFiltrado : texto.substring(0, 45000)
-    const textoLimitado = textoParaIA.substring(0, 50000)
+    // Se não conseguiu extrair seções, usar texto original (mas limitado)
+    const usarTextoFiltrado = secaoGeral.length > 100 || secaoComum.length > 100 || secaoCargo.length > 100
+    const textoParaIA = usarTextoFiltrado ? textoFiltrado : texto.substring(0, 35000)
+    const textoLimitado = textoParaIA.substring(0, 40000)
     
-    // ✅ v47: PROMPT LIMPO SEM DADOS PRÉ-CARREGADOS
-    const prompt = `Analise o texto do edital abaixo e extraia as DISCIPLINAS para o cargo "${cargoUpper}".
+    console.log(`🤖 Enviando para IA: ${textoLimitado.length} chars (filtrado: ${usarTextoFiltrado})`)
+    
+    // ✅ v48: PROMPT ESPECÍFICO POR ÁREA
+    // Para SAÚDE: estrutura clara com 4-6 disciplinas
+    // Para FISCAL: estrutura modular com 15-20 disciplinas
+    
+    const ehConcursoSaude = areaDetectada === 'saude' || 
+      ['enfermeiro', 'médico', 'farmacêutico', 'fisioterapeuta', 'nutricionista', 'dentista', 'psicólogo']
+        .some(c => cargoLower.includes(c))
+    
+    let promptExtracao: string
+    
+    if (ehConcursoSaude) {
+      promptExtracao = `TAREFA: Extrair EXATAMENTE as disciplinas para o cargo "${cargoUpper}" do edital.
 
-INSTRUÇÕES:
-1. Identifique CADA DISCIPLINA separada no texto (ex: "Língua Portuguesa:", "Raciocínio Lógico:")
-2. Para CONHECIMENTOS GERAIS: cada título seguido de ":" é UMA disciplina (peso 1)
-3. Para CONHECIMENTOS ESPECÍFICOS COMUNS: geralmente é UMA disciplina sobre SUS/Legislação (peso 2)
-4. Para SEÇÃO DO CARGO: é UMA disciplina chamada "Conhecimentos Específicos de ${cargoUpper}" (peso 2)
-   - Os itens listados dentro dessa seção são TÓPICOS dessa disciplina, NÃO disciplinas separadas
+ESTRUTURA TÍPICA DE EDITAIS DE SAÚDE:
+1. CONHECIMENTOS GERAIS (peso 1):
+   - "Língua portuguesa:" → 1 disciplina
+   - "Raciocínio lógico-matemático:" → 1 disciplina  
+   - "Conhecimentos Regionais:" → 1 disciplina (se houver)
 
-REGRAS IMPORTANTES:
-- NÃO inclua disciplinas de outros cargos
-- NÃO crie múltiplas disciplinas a partir de tópicos de uma mesma seção
-- Total esperado: 4-6 disciplinas para cargos de saúde, 15-18 para fiscais
+2. CONHECIMENTOS ESPECÍFICOS COMUNS (peso 2):
+   - "Conhecimentos sobre o Sistema Único de Saúde (SUS):" → 1 disciplina
 
-FORMATO DE SAÍDA (JSON puro, sem markdown):
+3. CONHECIMENTOS ESPECÍFICOS DO CARGO (peso 2):
+   - Seção com nome do cargo (ex: "Enfermeiro") → 1 disciplina
+   - IMPORTANTE: Todo o conteúdo após o nome do cargo é TÓPICO, não disciplina separada
+
+REGRAS CRÍTICAS:
+- Cada título seguido de ":" é UMA disciplina
+- O conteúdo DEPOIS do título são os TÓPICOS dessa disciplina
+- A seção do cargo inteira ("${cargoUpper}") vira UMA ÚNICA disciplina chamada "Conhecimentos Específicos de ${cargoUpper}"
+- NÃO criar disciplinas de "Ética", "Farmacologia", etc. separadamente - são TÓPICOS
+
+TOTAL ESPERADO: 4-6 disciplinas
+
+FORMATO JSON (sem markdown):
 {"disciplinas":[
-  {"nome":"Nome da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico1","tópico2"]},
-  {"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["tópico1","tópico2"]}
+  {"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Acentuação","Pontuação"]},
+  {"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica","Raciocínio"]},
+  {"nome":"Conhecimentos Regionais do Estado do Piauí","peso":1,"categoria":"BÁSICOS","topicos":["História","Geografia"]},
+  {"nome":"Conhecimentos sobre o SUS e Legislação","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080","Lei 8142"]},
+  {"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["Ética","Farmacologia","Biossegurança"]}
 ]}
 
 TEXTO DO EDITAL:
 ${textoLimitado}`
+    } else {
+      promptExtracao = `TAREFA: Extrair TODAS as disciplinas para o cargo "${cargoUpper}" do edital.
+
+ESTRUTURA TÍPICA DE EDITAIS FISCAIS/ADMINISTRATIVOS:
+1. MÓDULO I - CONHECIMENTOS BÁSICOS (peso 1):
+   - Língua Portuguesa, Inglês, Raciocínio Lógico, Estatística, etc.
+   - Cada título é UMA disciplina separada
+
+2. MÓDULO II - CONHECIMENTOS ESPECÍFICOS (peso 2):
+   - Direito Tributário, Direito Constitucional, Contabilidade, etc.
+   - Cada título é UMA disciplina separada
+
+REGRAS:
+- Cada título/matéria do edital = 1 disciplina
+- Subtópicos dentro de cada matéria = tópicos da disciplina
+- NÃO inclua disciplinas de outros cargos
+
+TOTAL ESPERADO: 15-20 disciplinas
+
+FORMATO JSON (sem markdown):
+{"disciplinas":[
+  {"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Interpretação","Gramática"]},
+  {"nome":"Direito Tributário","peso":2,"categoria":"ESPECÍFICOS","topicos":["CTN","Impostos"]}
+]}
+
+TEXTO DO EDITAL:
+${textoLimitado}`
+    }
+    
+    console.log(`📝 Usando prompt para: ${ehConcursoSaude ? 'SAÚDE' : 'FISCAL/ADMINISTRATIVO'}`)
 
     // ════════════════════════════════════════════════════════════════
     // ✅ v45 - EXTRAÇÃO EM DUAS FASES (DISCIPLINAS + TÓPICOS DETALHADOS)
@@ -7520,31 +7635,11 @@ ${textoLimitado}`
     }
     
     // ════════════════════════════════════════════════════════════════
-    // ✅ v45: FASE 1 - EXTRAIR LISTA DE DISCIPLINAS (BÁSICOS + ESPECÍFICOS)
+    // ✅ v48: EXTRAIR DISCIPLINAS COM PROMPT ESPECÍFICO POR ÁREA
     // ════════════════════════════════════════════════════════════════
     console.log('\n' + '═'.repeat(60))
-    console.log('📚 FASE 1: Extraindo lista de TODAS as disciplinas...')
+    console.log(`📚 EXTRAINDO DISCIPLINAS (área: ${ehConcursoSaude ? 'SAÚDE' : 'FISCAL/ADMIN'})`)
     console.log('═'.repeat(60))
-    
-    const promptFase1 = `Analise este edital de concurso e liste TODAS as disciplinas do cargo "${cargoUpper}".
-
-REGRAS IMPORTANTES:
-1. Liste APENAS disciplinas do cargo "${cargoUpper}" (ignore outros cargos)
-2. Inclua CONHECIMENTOS BÁSICOS/GERAIS (Português, Raciocínio Lógico, etc.)
-3. Inclua CONHECIMENTOS ESPECÍFICOS COMUNS (para todos do nível)
-4. Inclua CONHECIMENTOS ESPECÍFICOS DO CARGO
-5. Cada disciplina separada (ex: "Administração Geral" e "Administração Pública" = 2 disciplinas)
-
-QUANTIDADE ESPERADA:
-- Concursos de SAÚDE: 4-7 disciplinas
-- Concursos FISCAIS (Auditor, Analista): 15-20 disciplinas  
-- Concursos ADMINISTRATIVOS: 6-12 disciplinas
-
-FORMATO JSON (sem markdown):
-{"disciplinas":[{"nome":"Nome Exato da Disciplina","categoria":"BÁSICOS ou ESPECÍFICOS","peso":1}]}
-
-TEXTO DO EDITAL:
-${textoLimitado.substring(0, 50000)}`
 
     let disciplinasExtraidas: any[] = []
     
@@ -7555,7 +7650,7 @@ ${textoLimitado.substring(0, 50000)}`
         await new Promise(r => setTimeout(r, tentativa * 5000))
       }
       
-      const resultado = await chamarAPI(promptFase1, 8000)
+      const resultado = await chamarAPI(promptExtracao, 8000)
       
       if (resultado.sucesso) {
         try {
@@ -7581,12 +7676,17 @@ ${textoLimitado.substring(0, 50000)}`
             const data = JSON.parse(parsed)
             if (data.disciplinas && data.disciplinas.length > 0) {
               disciplinasExtraidas = data.disciplinas
-              console.log(`✅ FASE 1 completa: ${disciplinasExtraidas.length} disciplinas encontradas`)
+              console.log(`✅ Extração completa: ${disciplinasExtraidas.length} disciplinas encontradas`)
+              
+              // Validar quantidade para concursos de saúde
+              if (ehConcursoSaude && disciplinasExtraidas.length > 8) {
+                console.log(`⚠️ Muitas disciplinas para concurso de saúde (${disciplinasExtraidas.length}), pode haver erro`)
+              }
               break
             }
           }
         } catch (e) {
-          console.log(`⚠️ Erro ao parsear JSON da fase 1: ${e}`)
+          console.log(`⚠️ Erro ao parsear JSON: ${e}`)
         }
       }
     }
