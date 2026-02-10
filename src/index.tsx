@@ -7346,11 +7346,10 @@ app.post('/api/editais/processar-texto', async (c) => {
     }
     
     // Função para encontrar seção "PARA TODOS OS CARGOS" (SUS/Legislação comum)
-    // IMPORTANTE: Precisa estar DEPOIS de "CONHECIMENTOS ESPECÍFICOS" no edital
+    // IMPORTANTE: Só buscar depois da segunda metade do documento para evitar tabelas
     const encontrarSecaoTodosCargos = (): string => {
       let conteudo: string[] = []
       let encontrouCabecalho = false
-      let passouConhecimentosEspecificos = false
       
       // Determinar nível do cargo
       const ehNivelSuperior = ['enfermeiro', 'médico', 'farmacêutico', 'fisioterapeuta', 
@@ -7360,23 +7359,18 @@ app.post('/api/editais/processar-texto', async (c) => {
       
       const nivelBuscado = ehNivelSuperior ? 'superior' : 'médio'
       
-      for (let i = 0; i < linhas.length; i++) {
+      // Começar a buscar apenas na segunda metade do documento
+      const inicioDoConteudo = Math.floor(linhas.length * 0.5)
+      console.log(`   🔍 Buscando 'PARA TODOS OS CARGOS' a partir da linha ${inicioDoConteudo}`)
+      
+      for (let i = inicioDoConteudo; i < linhas.length; i++) {
         const linha = linhas[i].trim()
         const linhaLower = linha.toLowerCase()
         
-        // Primeiro, precisa passar pela seção de "CONHECIMENTOS ESPECÍFICOS"
-        if (!passouConhecimentosEspecificos) {
-          if (linhaLower.includes('conhecimentos específicos') && linha.length < 100) {
-            passouConhecimentosEspecificos = true
-            console.log(`   ✓ Passou por 'CONHECIMENTOS ESPECÍFICOS' na linha ${i+1}`)
-          }
-          continue
-        }
-        
-        // Agora sim, buscar "PARA TODOS OS CARGOS DE ENSINO [NÍVEL]"
+        // Buscar "PARA TODOS OS CARGOS DE ENSINO [NÍVEL]"
         if (!encontrouCabecalho) {
           if (linhaLower.includes('para todos os cargos') && linhaLower.includes(nivelBuscado)) {
-            console.log(`   ✓ Encontrado 'PARA TODOS OS CARGOS' na linha ${i+1}: "${linha}"`)
+            console.log(`   ✓ Encontrado 'PARA TODOS OS CARGOS' na linha ${i+1}: "${linha.substring(0, 60)}..."`)
             encontrouCabecalho = true
             conteudo.push(linha)
             continue
@@ -7384,7 +7378,7 @@ app.post('/api/editais/processar-texto', async (c) => {
         }
         
         if (encontrouCabecalho) {
-          // Terminar ao encontrar próxima seção de "CONHECIMENTOS ESPECÍFICOS" ou nome de cargo
+          // Terminar ao encontrar próxima seção ou nome de cargo
           if ((linhaLower.includes('conhecimentos específicos') && 
                linhaLower.includes('cargos')) ||
               CARGOS_CONHECIDOS.some(c => linha.toLowerCase().startsWith(c.toLowerCase()))) {
@@ -7404,15 +7398,18 @@ app.post('/api/editais/processar-texto', async (c) => {
     }
     
     // Função para encontrar seção específica do cargo
+    // IMPORTANTE: Só buscar depois da segunda metade do documento
     const encontrarSecaoCargo = (cargoAlvo: string): string => {
       const cargoNormalizado = cargoAlvo.trim().toLowerCase()
       const primeiraPalavra = cargoNormalizado.split(/\s+/)[0]
       let iniciou = false
       let conteudo: string[] = []
       
-      console.log(`🔍 Buscando cargo: "${cargoAlvo}" (palavra-chave: "${primeiraPalavra}")`)
+      // Começar a buscar apenas na segunda metade do documento (onde está o conteúdo programático)
+      const inicioDoConteudo = Math.floor(linhas.length * 0.5)
+      console.log(`🔍 Buscando cargo: "${cargoAlvo}" a partir da linha ${inicioDoConteudo}`)
       
-      for (let i = 0; i < linhas.length; i++) {
+      for (let i = inicioDoConteudo; i < linhas.length; i++) {
         const linha = linhas[i].trim()
         
         // Procurar linha que começa com o nome do cargo
@@ -7422,16 +7419,10 @@ app.post('/api/editais/processar-texto', async (c) => {
           const inicioCargoExato = new RegExp(`^${primeiraPalavra}(\\s|$|\\s*-)`, 'i')
           
           if (inicioCargoExato.test(linhaSemNum)) {
-            // Verificar se é na seção de conhecimentos específicos (não em tabela de vagas)
-            const contextoPrevio = linhas.slice(Math.max(0, i-15), i).join(' ').toLowerCase()
-            if (contextoPrevio.includes('conhecimentos específicos') || 
-                contextoPrevio.includes('cargos de ensino') ||
-                i > linhas.length * 0.5) { // Segunda metade do documento
-              console.log(`   ✓ Encontrado cargo na linha ${i+1}: "${linha.substring(0, 50)}..."`)
-              iniciou = true
-              conteudo.push(linha)
-              continue
-            }
+            console.log(`   ✓ Encontrado cargo na linha ${i+1}: "${linha.substring(0, 50)}..."`)
+            iniciou = true
+            conteudo.push(linha)
+            continue
           }
         }
         
@@ -7444,7 +7435,7 @@ app.post('/api/editais/processar-texto', async (c) => {
           })
           
           if (outroCargoEncontrado && conteudo.length > 3) {
-            console.log(`   ✓ Fim da seção na linha ${i+1} (próximo cargo: "${linha.substring(0, 30)}...")`)
+            console.log(`   ✓ Fim da seção na linha ${i+1} (próximo cargo)`)
             break
           }
           
@@ -7588,7 +7579,7 @@ ${textoLimitado}`
     
     // Para concursos de SAÚDE: extração programática (estrutura previsível)
     if (ehConcursoSaude && (secaoGeral.length > 100 || secaoComum.length > 100 || secaoCargo.length > 100)) {
-      console.log('\n🔧 Modo PROGRAMÁTICO: Extraindo disciplinas diretamente do texto...')
+      console.log('\n🔧 Modo PROGRAMÁTICO: Extraindo disciplinas para concurso de SAÚDE...')
       
       // Função auxiliar para extrair tópicos de uma seção
       const extrairTopicos = (textoSecao: string): string[] => {
@@ -7597,57 +7588,78 @@ ${textoLimitado}`
         const partes = textoSecao.split(/[.;]\s*(?=[A-ZÀ-Ú]|\d)/)
         for (const parte of partes) {
           const topico = parte.trim().replace(/[.;:]+$/, '').trim()
-          if (topico.length > 10 && topico.length < 200) {
+          if (topico.length > 10 && topico.length < 250) {
             topicos.push(topico)
           }
         }
-        return topicos.slice(0, 30) // Limitar
+        return topicos.slice(0, 40) // Limitar
       }
       
-      // 1. Extrair disciplinas de CONHECIMENTOS GERAIS
+      // 1. Extrair disciplinas de CONHECIMENTOS GERAIS usando padrão "Nome:"
       if (secaoGeral.length > 100) {
-        // Procurar padrões como "Língua portuguesa:" ou "Raciocínio lógico:"
-        const disciplinasGerais = secaoGeral.match(/([A-ZÀ-Ú][^:]+):\s*([^.]+(?:\.[^.]+)*)/gi) || []
+        console.log('   📖 Processando seção de Conhecimentos Gerais...')
         
-        for (const match of disciplinasGerais) {
-          const partes = match.split(':')
-          if (partes.length >= 2) {
-            const nome = partes[0].trim()
-            const conteudo = partes.slice(1).join(':').trim()
-            
-            // Ignorar linhas que são cabeçalhos
-            if (!nome.toLowerCase().includes('conhecimentos') && 
-                !nome.toLowerCase().includes('cargos') &&
-                nome.length > 5 && nome.length < 100) {
-              const topicos = extrairTopicos(conteudo)
-              disciplinasExtraidas.push({
-                nome: nome,
-                peso: 1,
-                categoria: 'BÁSICOS',
-                topicos: topicos
-              })
-              console.log(`   ✓ Básica: "${nome}" (${topicos.length} tópicos)`)
-            }
-          }
+        // Padrões específicos para disciplinas de editais de saúde
+        const padroesDiscGerais = [
+          /Língua\s+portuguesa:\s*([^]*?)(?=Raciocínio|Conhecimentos\s+Regionais|$)/gi,
+          /Raciocínio\s+lógico[^:]*:\s*([^]*?)(?=Noções|Conhecimentos\s+Regionais|Conhecimentos\s+Específicos|$)/gi,
+          /Noções\s+básicas\s+de\s+aritmética[^:]*:\s*([^]*?)(?=Conhecimentos\s+Regionais|Conhecimentos\s+Específicos|$)/gi,
+          /Conhecimentos\s+Regionais[^:]*:\s*([^]*?)(?=Conhecimentos\s+Específicos|$)/gi
+        ]
+        
+        // Extrair Língua Portuguesa
+        const matchPortugues = secaoGeral.match(/Língua\s+portuguesa:\s*([^]*?)(?=Raciocínio|$)/i)
+        if (matchPortugues) {
+          disciplinasExtraidas.push({
+            nome: 'Língua Portuguesa',
+            peso: 1,
+            categoria: 'BÁSICOS',
+            topicos: extrairTopicos(matchPortugues[0])
+          })
+          console.log(`   ✓ Língua Portuguesa`)
+        }
+        
+        // Extrair Raciocínio Lógico
+        const matchRaciocinio = secaoGeral.match(/Raciocínio\s+lógico[^:]*:\s*([^]*?)(?=Noções|Conhecimentos|$)/i)
+        if (matchRaciocinio) {
+          disciplinasExtraidas.push({
+            nome: 'Raciocínio Lógico-Matemático',
+            peso: 1,
+            categoria: 'BÁSICOS',
+            topicos: extrairTopicos(matchRaciocinio[0])
+          })
+          console.log(`   ✓ Raciocínio Lógico-Matemático`)
+        }
+        
+        // Extrair Conhecimentos Regionais (se houver)
+        const matchRegionais = secaoGeral.match(/Conhecimentos\s+Regionais[^:]*:\s*([^]*?)(?=Conhecimentos\s+Específicos|$)/i)
+        if (matchRegionais) {
+          disciplinasExtraidas.push({
+            nome: 'Conhecimentos Regionais',
+            peso: 1,
+            categoria: 'BÁSICOS',
+            topicos: extrairTopicos(matchRegionais[0])
+          })
+          console.log(`   ✓ Conhecimentos Regionais`)
         }
       }
       
       // 2. Extrair disciplina de CONHECIMENTOS COMUNS (SUS)
-      if (secaoComum.length > 100) {
+      if (secaoComum.length > 50) {
+        console.log('   📖 Processando seção de SUS/Legislação...')
         const topicosComuns = extrairTopicos(secaoComum)
-        if (topicosComuns.length > 0) {
-          disciplinasExtraidas.push({
-            nome: 'Conhecimentos sobre o SUS e Legislação',
-            peso: 2,
-            categoria: 'ESPECÍFICOS',
-            topicos: topicosComuns
-          })
-          console.log(`   ✓ Comuns: "Conhecimentos sobre o SUS e Legislação" (${topicosComuns.length} tópicos)`)
-        }
+        disciplinasExtraidas.push({
+          nome: 'Conhecimentos sobre o SUS e Legislação',
+          peso: 2,
+          categoria: 'ESPECÍFICOS',
+          topicos: topicosComuns
+        })
+        console.log(`   ✓ Conhecimentos sobre o SUS e Legislação (${topicosComuns.length} tópicos)`)
       }
       
       // 3. Extrair disciplina ESPECÍFICA DO CARGO
-      if (secaoCargo.length > 100) {
+      if (secaoCargo.length > 50) {
+        console.log('   📖 Processando seção específica do cargo...')
         const topicosCargo = extrairTopicos(secaoCargo)
         disciplinasExtraidas.push({
           nome: `Conhecimentos Específicos de ${cargoUpper}`,
@@ -7655,7 +7667,7 @@ ${textoLimitado}`
           categoria: 'ESPECÍFICOS',
           topicos: topicosCargo
         })
-        console.log(`   ✓ Específica: "Conhecimentos Específicos de ${cargoUpper}" (${topicosCargo.length} tópicos)`)
+        console.log(`   ✓ Conhecimentos Específicos de ${cargoUpper} (${topicosCargo.length} tópicos)`)
       }
       
       console.log(`\n✅ Extração programática: ${disciplinasExtraidas.length} disciplinas`)
