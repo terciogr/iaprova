@@ -6591,10 +6591,11 @@ REGRAS: peso 1=Básicos, peso 2=Específicos. Nomes EXATOS. TODOS os tópicos.
 TEXTO:
 ${textoLimitado}`
 
-    // ✅ CORREÇÃO v30 - SISTEMA DE FALLBACK PARA processar-texto
+    // ✅ CORREÇÃO v32 - SISTEMA DE FALLBACK ROBUSTO
     // Tenta múltiplos modelos até um funcionar
     let textoResposta = ''
     let modeloUsado = ''
+    let ultimoErro = ''
     
     const modelos = [
       { 
@@ -6611,6 +6612,8 @@ ${textoLimitado}`
       }
     ]
     
+    console.log(`🔑 Chave API: ${geminiKey?.substring(0,10)}...`)
+    
     for (const modelo of modelos) {
       console.log(`🚀 [processar-texto] Tentando ${modelo.nome}...`)
       
@@ -6620,41 +6623,55 @@ ${textoLimitado}`
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 65536 }
+            generationConfig: { temperature: 0, maxOutputTokens: 32768 }
           })
         })
         
+        console.log(`📡 ${modelo.nome}: Status ${response.status}`)
+        
         if (response.status === 429) {
-          console.warn(`⚠️ ${modelo.nome}: Rate limit (429)`)
-          await new Promise(r => setTimeout(r, 2000))
+          ultimoErro = `${modelo.nome}: Rate limit (429)`
+          console.warn(`⚠️ ${ultimoErro}`)
+          await new Promise(r => setTimeout(r, 3000))
           continue
         }
         
         if (!response.ok) {
-          console.warn(`⚠️ ${modelo.nome}: Erro ${response.status}`)
+          const errText = await response.text()
+          ultimoErro = `${modelo.nome}: HTTP ${response.status} - ${errText.substring(0, 100)}`
+          console.warn(`⚠️ ${ultimoErro}`)
           continue
         }
         
         const data = await response.json() as any
         textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
         
-        if (textoResposta && textoResposta.includes('"nome"')) {
+        console.log(`📝 ${modelo.nome}: Resposta ${textoResposta.length} chars`)
+        
+        // Validação mais flexível - aceita se tem "disciplinas" ou "nome" no JSON
+        if (textoResposta && (textoResposta.includes('disciplinas') || textoResposta.includes('"nome"'))) {
           modeloUsado = modelo.nome
           console.log(`✅ ${modelo.nome} respondeu com sucesso!`)
           break
+        } else {
+          ultimoErro = `${modelo.nome}: Resposta não contém disciplinas`
+          console.warn(`⚠️ ${ultimoErro}`)
         }
       } catch (err) {
-        console.error(`❌ ${modelo.nome}:`, err)
+        ultimoErro = `${modelo.nome}: ${err}`
+        console.error(`❌ ${ultimoErro}`)
       }
     }
     
     if (!textoResposta || !modeloUsado) {
+      console.error(`❌ Todos os modelos falharam. Último erro: ${ultimoErro}`)
       return c.json({
         error: 'API temporariamente indisponível',
         errorType: 'AI_UNAVAILABLE',
         suggestion: 'Aguarde 1-2 minutos e tente novamente',
         canRetry: true,
-        retryAfter: 60
+        retryAfter: 60,
+        debug: ultimoErro
       }, 503)
     }
     
