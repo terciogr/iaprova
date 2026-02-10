@@ -5810,23 +5810,34 @@ INSTRUÇÕES:
     const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
     const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
     
-    // ✅ CORREÇÃO v31 - SISTEMA DE FALLBACK COM MÚLTIPLAS IAs
-    // Cloudflare Workers tem limite de 100s - usar texto reduzido
+    // ✅ CORREÇÃO v34 - Capturar TODAS as disciplinas
     console.log(`📝 Analisando edital para cargo: ${cargoDesejado || 'NÃO ESPECIFICADO'}`)
     
-    // OTIMIZAÇÃO v31: Usar 15k caracteres para processar mais rápido
-    const textoOtimizado = textoParaIA.substring(0, 15000)
+    // v34: Aumentado para 40k para capturar todas as disciplinas
+    const textoOtimizado = textoParaIA.substring(0, 40000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
-    // PROMPT v31 - Compacto e eficiente para todas as IAs
-    const prompt = `Extraia disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
+    // PROMPT v34 - Captura TODAS as disciplinas (básicas + específicas)
+    const prompt = `Extraia TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
 
 CARGO: ${cargoDesejado?.toUpperCase() || 'GERAL'}
 
-RETORNE JSON:
-{"disciplinas":[{"nome":"DISCIPLINA","peso":1,"topicos":["tópico 1","tópico 2"]}]}
+IMPORTANTE:
+1. Extraia TODAS as disciplinas de CONHECIMENTOS BÁSICOS/GERAIS
+2. Extraia TODAS as disciplinas de CONHECIMENTOS ESPECÍFICOS
+3. Se houver MÓDULO I e MÓDULO II, extraia de AMBOS
+4. Editais grandes podem ter 15+ disciplinas - NÃO OMITA nenhuma
 
-REGRAS: peso 1=Básicos, peso 2=Específicos. Use nomes EXATOS. Inclua TODOS os tópicos.
+RETORNE JSON:
+{
+  "disciplinas": [
+    {"nome": "DISCIPLINA", "peso": 1, "categoria": "CONHECIMENTOS BÁSICOS", "topicos": ["tópico"]},
+    {"nome": "DISCIPLINA", "peso": 2, "categoria": "CONHECIMENTOS ESPECÍFICOS", "topicos": ["tópico"]}
+  ]
+}
+
+peso 1 = Básicos (Português, Inglês, Raciocínio, etc.)
+peso 2 = Específicos (Direitos, Legislações, técnicas)
 
 TEXTO:
 ${textoOtimizado}`
@@ -6575,20 +6586,36 @@ app.post('/api/editais/processar-texto', async (c) => {
     // Chamar Gemini para extrair disciplinas
     const geminiKey = c.env.GEMINI_API_KEY || 'SUA_CHAVE_GEMINI_AQUI'
     
-    // ✅ CORREÇÃO v31: Texto reduzido para 15k para evitar timeout
-    const textoLimitado = texto.substring(0, 15000)
+    // ✅ CORREÇÃO v34: Aumentado para 40k para capturar TODAS as disciplinas
+    const textoLimitado = texto.substring(0, 40000)
     console.log(`📝 Processando ${textoLimitado.length} caracteres`)
     
-    const prompt = `Extraia disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
+    const prompt = `Extraia TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO deste edital.
 
-CARGO: ${cargo?.toUpperCase() || 'GERAL'}
+CARGO DO CANDIDATO: ${cargo?.toUpperCase() || 'GERAL'}
 
-RETORNE JSON:
-{"disciplinas":[{"nome":"DISCIPLINA","peso":1,"categoria":"CONHECIMENTOS BÁSICOS","topicos":["tópico"]}],"cargo_detectado":"cargo","observacoes":"obs"}
+IMPORTANTE:
+1. Extraia TODAS as disciplinas de CONHECIMENTOS BÁSICOS/GERAIS (comuns a todos os cargos)
+2. Extraia TODAS as disciplinas de CONHECIMENTOS ESPECÍFICOS do cargo
+3. Se houver MÓDULO I e MÓDULO II, extraia disciplinas de AMBOS
+4. NÃO OMITA nenhuma disciplina - editais grandes podem ter 15+ disciplinas
+5. Inclua TODOS os tópicos de cada disciplina
 
-REGRAS: peso 1=Básicos, peso 2=Específicos. Nomes EXATOS. TODOS os tópicos.
+RETORNE APENAS JSON válido:
+{
+  "disciplinas": [
+    {"nome": "NOME EXATO DA DISCIPLINA", "peso": 1, "categoria": "CONHECIMENTOS BÁSICOS", "topicos": ["tópico 1", "tópico 2"]},
+    {"nome": "OUTRA DISCIPLINA", "peso": 2, "categoria": "CONHECIMENTOS ESPECÍFICOS", "topicos": ["tópico 1"]}
+  ],
+  "cargo_detectado": "cargo identificado",
+  "observacoes": "observações"
+}
 
-TEXTO:
+REGRAS DE PESO:
+- peso: 1 = CONHECIMENTOS BÁSICOS/GERAIS (Português, Inglês, Raciocínio Lógico, Informática, etc.)
+- peso: 2 = CONHECIMENTOS ESPECÍFICOS (Direitos, Legislações, matérias técnicas do cargo)
+
+TEXTO DO EDITAL:
 ${textoLimitado}`
 
     // ✅ CORREÇÃO v33 - SISTEMA DE FALLBACK COM GROQ

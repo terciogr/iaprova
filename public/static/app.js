@@ -4526,6 +4526,47 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
     const renderModal = () => {
       const modalContainer = getModalContainer();
       
+      // ✅ v34: Separar disciplinas em Básicas e Específicas
+      const disciplinasBasicas = disciplinasEditadas.filter(d => 
+        d.peso === 1 || 
+        d.categoria?.toLowerCase().includes('básico') || 
+        d.categoria?.toLowerCase().includes('geral') ||
+        d.categoria?.toLowerCase().includes('comum')
+      );
+      const disciplinasEspecificas = disciplinasEditadas.filter(d => 
+        d.peso === 2 || 
+        d.categoria?.toLowerCase().includes('específico') ||
+        d.categoria?.toLowerCase().includes('especifico')
+      );
+      
+      // Se não conseguiu separar, colocar todas como básicas
+      const temSeparacao = disciplinasEspecificas.length > 0;
+      
+      const renderAccordeon = (titulo, icone, disciplinas, tipo, corGradient) => {
+        if (disciplinas.length === 0) return '';
+        
+        return `
+          <div class="mb-4">
+            <button onclick="toggleAccordeonDisciplinas('${tipo}')" 
+                    class="w-full flex items-center justify-between p-3 ${corGradient} text-white rounded-lg hover:opacity-90 transition">
+              <div class="flex items-center gap-2">
+                <i class="${icone}"></i>
+                <span class="font-semibold text-sm sm:text-base">${titulo}</span>
+                <span class="bg-white/20 px-2 py-0.5 rounded-full text-xs">${disciplinas.length}</span>
+              </div>
+              <i class="fas fa-chevron-down transition-transform" id="iconAccordeon${tipo}"></i>
+            </button>
+            <div id="accordeon${tipo}" class="mt-2 space-y-2">
+              ${disciplinas.map((d, i) => {
+                // Encontrar o índice real no array principal
+                const realIndex = disciplinasEditadas.findIndex(de => de === d);
+                return renderDisciplinaItem(d, realIndex);
+              }).join('')}
+            </div>
+          </div>
+        `;
+      };
+      
       const modalHtml = `
         <div id="modalRevisaoDisciplinas" class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div class="${themes[currentTheme].card} rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
@@ -4538,7 +4579,7 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
                     <span class="truncate">Revisar Disciplinas</span>
                   </h2>
                   <p class="text-blue-100 text-xs sm:text-sm mt-1">
-                    ⚠️ Revise as disciplinas, pesos e tópicos de acordo com o edital. Ajuste se necessário!
+                    📚 ${disciplinasEditadas.length} disciplinas encontradas. Revise e ajuste conforme o edital!
                   </p>
                 </div>
                 <button onclick="fecharModalRevisao()" class="text-white hover:text-gray-200 ml-2 p-1">
@@ -4554,14 +4595,19 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
               ` : `
                 <div class="mt-2 p-3 bg-orange-500 bg-opacity-90 rounded text-white text-xs sm:text-sm">
                   <i class="fas fa-exclamation-triangle mr-1"></i>
-                  <strong>Atenção:</strong> Revise as disciplinas, pesos e tópicos conforme o edital oficial e ajuste se necessário antes de confirmar!
+                  <strong>Atenção:</strong> Revise as disciplinas, pesos e tópicos conforme o edital oficial!
                 </div>
               `}
             </div>
             
-            <!-- Lista de disciplinas -->
+            <!-- Lista de disciplinas com acordeons -->
             <div class="p-3 sm:p-4 overflow-y-auto flex-1" id="listaDisciplinasRevisao">
-              ${disciplinasEditadas.map((d, i) => renderDisciplinaItem(d, i)).join('')}
+              ${temSeparacao ? `
+                ${renderAccordeon('Conhecimentos Básicos/Gerais', 'fas fa-book', disciplinasBasicas, 'basicos', 'bg-gradient-to-r from-blue-500 to-blue-600')}
+                ${renderAccordeon('Conhecimentos Específicos', 'fas fa-gavel', disciplinasEspecificas, 'especificos', 'bg-gradient-to-r from-purple-500 to-purple-600')}
+              ` : `
+                ${disciplinasEditadas.map((d, i) => renderDisciplinaItem(d, i)).join('')}
+              `}
             </div>
             
             <!-- Footer com botões - RESPONSIVO -->
@@ -4591,6 +4637,19 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
       `;
       
       modalContainer.innerHTML = modalHtml;
+      
+      // ✅ Adicionar função para toggle do acordeon
+      window.toggleAccordeonDisciplinas = (tipo) => {
+        const accordeon = document.getElementById(`accordeon${tipo}`);
+        const icon = document.getElementById(`iconAccordeon${tipo}`);
+        if (accordeon.classList.contains('hidden')) {
+          accordeon.classList.remove('hidden');
+          icon.style.transform = 'rotate(0deg)';
+        } else {
+          accordeon.classList.add('hidden');
+          icon.style.transform = 'rotate(-90deg)';
+        }
+      };
     };
     
     // Funções de edição
