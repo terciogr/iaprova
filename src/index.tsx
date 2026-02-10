@@ -6575,99 +6575,87 @@ app.post('/api/editais/processar-texto', async (c) => {
     // Chamar Gemini para extrair disciplinas
     const geminiKey = c.env.GEMINI_API_KEY || 'SUA_CHAVE_GEMINI_AQUI'
     
-    // ✅ CORREÇÃO v23: Prompt melhorado para extração REAL de disciplinas do texto
-    const prompt = `VOCÊ É UM ESPECIALISTA EM ANÁLISE DE EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
+    // ✅ CORREÇÃO v30: Prompt compacto para extração rápida
+    const prompt = `Extraia disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
 
-=== SUA TAREFA ===
-Analise o TEXTO DO EDITAL abaixo e extraia TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
+CARGO: ${cargo?.toUpperCase() || 'GERAL'}
 
-=== CARGO INFORMADO PELO CANDIDATO ===
-${cargo?.toUpperCase() || 'NÃO ESPECIFICADO'}
+RETORNE JSON:
+{"disciplinas":[{"nome":"DISCIPLINA","peso":1,"categoria":"CONHECIMENTOS BÁSICOS","topicos":["tópico"]}],"cargo_detectado":"cargo","observacoes":"obs"}
 
-=== INSTRUÇÕES CRÍTICAS ===
-1. LEIA O TEXTO COMPLETO - identifique TODAS as disciplinas mencionadas
-2. Para cada disciplina, extraia TODOS os tópicos/subitens listados
-3. Use os NOMES EXATOS das disciplinas como aparecem no texto
-4. NÃO INVENTE disciplinas ou tópicos - extraia APENAS o que está escrito
-5. Se houver divisão entre "CONHECIMENTOS BÁSICOS" e "CONHECIMENTOS ESPECÍFICOS", mantenha essa organização
+REGRAS: peso 1=Básicos, peso 2=Específicos. Nomes EXATOS. TODOS os tópicos.
 
-=== COMO IDENTIFICAR DISCIPLINAS ===
-- Procure por títulos como: "Língua Portuguesa:", "Direito Constitucional:", "Raciocínio Lógico:", etc.
-- Cada disciplina geralmente é seguida por seus tópicos numerados ou em lista
-- Podem estar organizadas em "MÓDULO I", "MÓDULO II" ou "CONHECIMENTOS GERAIS/ESPECÍFICOS"
+TEXTO:
+${texto.substring(0, 25000)}`
 
-=== FORMATO DE RESPOSTA (APENAS JSON) ===
-{
-  "disciplinas": [
-    {
-      "nome": "Nome EXATO da Disciplina como aparece no texto",
-      "peso": 1,
-      "categoria": "CONHECIMENTOS BÁSICOS ou CONHECIMENTOS ESPECÍFICOS",
-      "topicos": ["Tópico 1 exato do texto", "Tópico 2 exato", "..."]
-    }
-  ],
-  "cargo_detectado": "Nome do cargo identificado no texto",
-  "observacoes": "Observações relevantes"
-}
-
-=== REGRAS DE PESO ===
-- peso: 1 → Conhecimentos Básicos/Gerais (Português, Raciocínio Lógico, Inglês, Informática)
-- peso: 2 → Conhecimentos Específicos do cargo (Direitos, Legislação, área técnica)
-
-=== IMPORTANTE ===
-- EXTRAIA TODAS AS DISCIPLINAS (geralmente 8 a 15+ em editais completos)
-- Cada disciplina deve ter TODOS os seus tópicos reais do texto
-- NÃO resuma os tópicos - copie-os como estão no texto
-- Se encontrar mais de 20 disciplinas, inclua todas
-
-=== TEXTO DO EDITAL PARA ANÁLISE ===
-${texto.substring(0, 80000)}`
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 65536  // ✅ Aumentado para comportar mais disciplinas
-          }
+    // ✅ CORREÇÃO v30 - SISTEMA DE FALLBACK PARA processar-texto
+    // Tenta múltiplos modelos até um funcionar
+    let textoResposta = ''
+    let modeloUsado = ''
+    
+    const modelos = [
+      { 
+        nome: 'gemini-2.0-flash',
+        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
+      },
+      { 
+        nome: 'gemini-1.5-flash',
+        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`
+      },
+      { 
+        nome: 'gemini-2.0-flash-lite',
+        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`
+      }
+    ]
+    
+    for (const modelo of modelos) {
+      console.log(`🚀 [processar-texto] Tentando ${modelo.nome}...`)
+      
+      try {
+        const response = await fetch(modelo.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0, maxOutputTokens: 65536 }
+          })
         })
+        
+        if (response.status === 429) {
+          console.warn(`⚠️ ${modelo.nome}: Rate limit (429)`)
+          await new Promise(r => setTimeout(r, 2000))
+          continue
+        }
+        
+        if (!response.ok) {
+          console.warn(`⚠️ ${modelo.nome}: Erro ${response.status}`)
+          continue
+        }
+        
+        const data = await response.json() as any
+        textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        
+        if (textoResposta && textoResposta.includes('"nome"')) {
+          modeloUsado = modelo.nome
+          console.log(`✅ ${modelo.nome} respondeu com sucesso!`)
+          break
+        }
+      } catch (err) {
+        console.error(`❌ ${modelo.nome}:`, err)
       }
-    )
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`❌ Erro Gemini: ${response.status}`)
-      
-      if (response.status === 429) {
-        return c.json({
-          error: 'API temporariamente sobrecarregada',
-          errorType: 'RATE_LIMIT',
-          suggestion: 'Aguarde 30 segundos e tente novamente',
-          canRetry: true
-        }, 429)
-      }
-      
-      return c.json({
-        error: 'Erro ao processar texto com IA',
-        details: errorText.substring(0, 200)
-      }, 500)
     }
     
-    const data = await response.json() as any
-    const textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text
-    
-    if (!textoResposta) {
+    if (!textoResposta || !modeloUsado) {
       return c.json({
-        error: 'Resposta vazia da IA',
-        suggestion: 'Tente novamente ou verifique se o texto contém conteúdo programático válido'
-      }, 500)
+        error: 'API temporariamente indisponível',
+        errorType: 'AI_UNAVAILABLE',
+        suggestion: 'Aguarde 1-2 minutos e tente novamente',
+        canRetry: true,
+        retryAfter: 60
+      }, 503)
     }
     
-    console.log(`✅ Resposta da IA: ${textoResposta.length} caracteres`)
+    console.log(`✅ Resposta da IA (${modeloUsado}): ${textoResposta.length} caracteres`)
     
     // Parsear JSON
     const jsonMatch = textoResposta.match(/\{[\s\S]*\}/)
