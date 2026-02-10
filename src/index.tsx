@@ -5810,55 +5810,27 @@ INSTRUÇÕES:
     const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
     const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
     
-    // ✅ CORREÇÃO v27 - EXTRAÇÃO COMPLETA COM TÓPICOS
-    // Cloudflare Workers tem limite de ~100s - usar 50k caracteres (balanceado)
+    // ✅ CORREÇÃO v28 - BALANCEADO: Extração completa dentro do limite de 100s
+    // Cloudflare Workers tem limite de 100s - usar 35k caracteres (otimizado)
     console.log(`📝 Analisando edital para cargo: ${cargoDesejado || 'NÃO ESPECIFICADO'}`)
     
-    // OTIMIZAÇÃO v27: Usar 50k caracteres (suficiente para editais grandes)
-    const textoOtimizado = textoParaIA.substring(0, 50000)
+    // OTIMIZAÇÃO v28: Usar 35k caracteres (balanceado para ficar <100s)
+    const textoOtimizado = textoParaIA.substring(0, 35000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
-    // PROMPT DETALHADO v27 - Exige disciplinas E tópicos COMPLETOS
-    const prompt = `Você é um especialista em análise de editais de concursos públicos.
+    // PROMPT v28 - Direto e eficiente, mas exige tópicos completos
+    const prompt = `Extraia disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO para o cargo "${cargoDesejado?.toUpperCase() || 'GERAL'}".
 
-TAREFA: Extrair TODAS as disciplinas e TODOS os tópicos do Conteúdo Programático.
+REGRAS:
+- Nomes EXATOS das disciplinas como no edital
+- TODOS os tópicos de cada disciplina (não resumir)
+- peso: 1 = Conhecimentos Básicos/Gerais
+- peso: 2 = Conhecimentos Específicos
 
-CARGO DO CANDIDATO: ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO'}
+RESPONDA APENAS EM JSON:
+{"disciplinas":[{"nome":"NOME EXATO","peso":1,"topicos":["Tópico completo 1","Tópico completo 2"]}]}
 
-INSTRUÇÕES CRÍTICAS:
-1. Leia TODO o texto do edital abaixo
-2. Localize a seção "CONTEÚDO PROGRAMÁTICO" ou "CONHECIMENTOS"
-3. Extraia CADA disciplina com seu nome EXATO como aparece no edital
-4. Para CADA disciplina, extraia TODOS os tópicos/itens listados
-5. NÃO resuma, NÃO omita, NÃO invente tópicos
-6. Mantenha a redação EXATA dos tópicos do edital
-
-CLASSIFICAÇÃO DE PESOS:
-- peso: 1 → Conhecimentos BÁSICOS/GERAIS (Português, Raciocínio Lógico, Informática, etc.)
-- peso: 2 → Conhecimentos ESPECÍFICOS (matérias técnicas do cargo)
-
-FORMATO DE RESPOSTA (JSON válido):
-{
-  "disciplinas": [
-    {
-      "nome": "NOME EXATO DA DISCIPLINA COMO NO EDITAL",
-      "peso": 1,
-      "topicos": [
-        "Tópico 1 completo como no edital",
-        "Tópico 2 completo como no edital",
-        "Tópico 3 completo como no edital"
-      ]
-    }
-  ]
-}
-
-REGRAS OBRIGATÓRIAS:
-- Cada disciplina DEVE ter entre 1 e 30 tópicos (conforme o edital)
-- Nomes das disciplinas em MAIÚSCULAS se assim estiverem no edital
-- Se houver subdivisões (ex: "1.1", "1.2"), inclua como tópicos separados
-- INCLUA TODOS os tópicos, mesmo que sejam muitos
-
-TEXTO DO EDITAL PARA ANÁLISE:
+EDITAL:
 ${textoOtimizado}`
 
     // CHAMADA ÚNICA À API (sem retry para evitar timeout)
@@ -5875,7 +5847,7 @@ ${textoOtimizado}`
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.1,
+            temperature: 0,
             maxOutputTokens: 65536
           }
         })
