@@ -7462,6 +7462,12 @@ ${secaoCargo || '(Seção não encontrada no edital)'}
 
     console.log(`📋 Texto filtrado total: ${textoFiltrado.length} chars`)
     
+    // Log das seções extraídas para debug
+    console.log(`\n📝 SEÇÕES EXTRAÍDAS:`)
+    console.log(`   Gerais: "${secaoGeral.substring(0, 200)}..."`)
+    console.log(`   Comuns: "${secaoComum.substring(0, 200)}..."`)
+    console.log(`   Cargo: "${secaoCargo.substring(0, 200)}..."`)
+    
     // Se não conseguiu extrair seções, usar texto original (mas limitado)
     const usarTextoFiltrado = secaoGeral.length > 100 || secaoComum.length > 100 || secaoCargo.length > 100
     const textoParaIA = usarTextoFiltrado ? textoFiltrado : texto.substring(0, 35000)
