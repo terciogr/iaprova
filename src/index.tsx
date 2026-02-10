@@ -6367,32 +6367,42 @@ REGRAS CRÍTICAS DE EXTRAÇÃO:
    - "Conhecimentos sobre o SUS:" = 1 disciplina separada
    - Se houver seção com nome do cargo, criar disciplina "Conhecimentos Específicos de [Cargo]"
 
-4. QUANTIDADE ESPERADA POR TIPO DE CONCURSO:
-   - Concursos de SAÚDE (Enfermeiro, Técnico): 4-6 disciplinas
+4. QUANTIDADE ESPERADA - EXTRAIA TODAS:
+   - Concursos de SAÚDE (Enfermeiro, Técnico): 4-7 disciplinas
    - Concursos FISCAIS (Auditor, Analista Tributário): 15-20 disciplinas
    - Concursos ADMINISTRATIVOS: 6-12 disciplinas
    - Concursos de SEGURANÇA: 8-15 disciplinas
+   
+   ⚠️ ATENÇÃO: NÃO PARE antes de extrair TODAS as disciplinas!
 
-5. EXEMPLOS CORRETOS:
+5. DISCIPLINAS TÍPICAS DE CONCURSOS FISCAIS (ex: Auditor, Analista Tributário):
+   MÓDULO I - CONHECIMENTOS BÁSICOS (peso 1):
+   - Língua Portuguesa
+   - Língua Inglesa
+   - Raciocínio Lógico-Matemático
+   - Estatística
+   - Economia e Finanças Públicas
+   - Administração Geral
+   - Administração Pública
+   - Auditoria
+   - Contabilidade Geral e Pública
+   - Fluência em dados / Ciência de dados
+   
+   MÓDULO II - CONHECIMENTOS ESPECÍFICOS (peso 2):
+   - Direito Administrativo
+   - Direito Constitucional
+   - Direito Previdenciário
+   - Direito Tributário
+   - Legislação Tributária
+   - Comércio Internacional
+   - Legislação Aduaneira
 
-   Para cargo "ENFERMEIRO" em concurso de saúde:
-   [
-     {"nome": "Língua Portuguesa", "peso": 1, "categoria": "BÁSICOS"},
-     {"nome": "Raciocínio Lógico-Matemático", "peso": 1, "categoria": "BÁSICOS"},
-     {"nome": "Conhecimentos Regionais", "peso": 1, "categoria": "BÁSICOS"},
-     {"nome": "Conhecimentos sobre o SUS e Legislação", "peso": 2, "categoria": "ESPECÍFICOS"},
-     {"nome": "Conhecimentos Específicos de Enfermagem", "peso": 2, "categoria": "ESPECÍFICOS"}
-   ]
+6. CADA DISCIPLINA SEPARADA:
+   - Se o texto tiver "Administração Geral:" e "Administração Pública:" = 2 disciplinas
+   - Se o texto tiver "Contabilidade Geral e Pública:" = 1 disciplina
+   - Se o texto tiver "Fluência em dados:" e "Ciência de dados:" = 2 disciplinas
 
-   Para cargo "AUDITOR-FISCAL":
-   [
-     {"nome": "Língua Portuguesa", "peso": 1},
-     {"nome": "Língua Inglesa", "peso": 1},
-     {"nome": "Raciocínio Lógico-Matemático", "peso": 1},
-     ... (mais ~15 disciplinas específicas do Auditor)
-   ]
-
-FORMATO DE RESPOSTA (JSON válido, sem markdown, sem texto antes ou depois):
+FORMATO DE RESPOSTA (JSON válido, sem markdown):
 {"disciplinas":[{"nome":"Nome da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1","tópico 2"]}]}
 
 TEXTO DO EDITAL:
@@ -7324,32 +7334,42 @@ REGRAS CRÍTICAS DE EXTRAÇÃO:
    - "Conhecimentos sobre o SUS:" = 1 disciplina separada
    - Se houver seção com nome do cargo, criar disciplina "Conhecimentos Específicos de [Cargo]"
 
-4. QUANTIDADE ESPERADA POR TIPO DE CONCURSO:
-   - Concursos de SAÚDE (Enfermeiro, Técnico): 4-6 disciplinas
+4. QUANTIDADE ESPERADA - EXTRAIA TODAS:
+   - Concursos de SAÚDE (Enfermeiro, Técnico): 4-7 disciplinas
    - Concursos FISCAIS (Auditor, Analista Tributário): 15-20 disciplinas
    - Concursos ADMINISTRATIVOS: 6-12 disciplinas
    - Concursos de SEGURANÇA: 8-15 disciplinas
+   
+   ⚠️ ATENÇÃO: NÃO PARE antes de extrair TODAS as disciplinas!
 
-5. EXEMPLOS CORRETOS:
+5. DISCIPLINAS TÍPICAS DE CONCURSOS FISCAIS (ex: Auditor, Analista Tributário):
+   MÓDULO I - CONHECIMENTOS BÁSICOS (peso 1):
+   - Língua Portuguesa
+   - Língua Inglesa
+   - Raciocínio Lógico-Matemático
+   - Estatística
+   - Economia e Finanças Públicas
+   - Administração Geral
+   - Administração Pública
+   - Auditoria
+   - Contabilidade Geral e Pública
+   - Fluência em dados / Ciência de dados
+   
+   MÓDULO II - CONHECIMENTOS ESPECÍFICOS (peso 2):
+   - Direito Administrativo
+   - Direito Constitucional
+   - Direito Previdenciário
+   - Direito Tributário
+   - Legislação Tributária
+   - Comércio Internacional
+   - Legislação Aduaneira
 
-   Para cargo "ENFERMEIRO" em concurso de saúde:
-   [
-     {"nome": "Língua Portuguesa", "peso": 1, "categoria": "BÁSICOS"},
-     {"nome": "Raciocínio Lógico-Matemático", "peso": 1, "categoria": "BÁSICOS"},
-     {"nome": "Conhecimentos Regionais", "peso": 1, "categoria": "BÁSICOS"},
-     {"nome": "Conhecimentos sobre o SUS e Legislação", "peso": 2, "categoria": "ESPECÍFICOS"},
-     {"nome": "Conhecimentos Específicos de Enfermagem", "peso": 2, "categoria": "ESPECÍFICOS"}
-   ]
+6. CADA DISCIPLINA SEPARADA:
+   - Se o texto tiver "Administração Geral:" e "Administração Pública:" = 2 disciplinas
+   - Se o texto tiver "Contabilidade Geral e Pública:" = 1 disciplina
+   - Se o texto tiver "Fluência em dados:" e "Ciência de dados:" = 2 disciplinas
 
-   Para cargo "AUDITOR-FISCAL":
-   [
-     {"nome": "Língua Portuguesa", "peso": 1},
-     {"nome": "Língua Inglesa", "peso": 1},
-     {"nome": "Raciocínio Lógico-Matemático", "peso": 1},
-     ... (mais ~15 disciplinas específicas do Auditor)
-   ]
-
-FORMATO DE RESPOSTA (JSON válido, sem markdown, sem texto antes ou depois):
+FORMATO DE RESPOSTA (JSON válido, sem markdown):
 {"disciplinas":[{"nome":"Nome da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["tópico 1","tópico 2"]}]}
 
 TEXTO DO EDITAL:
