@@ -3523,7 +3523,7 @@ async function processarTextoEditalColado(texto) {
         
         <div class="flex items-center justify-center gap-2 text-xs text-gray-500">
           <i class="fas fa-bolt text-yellow-500"></i>
-          <span>Processamento rápido (~10 segundos)</span>
+          <span>Aguarde a IA analisar o conteúdo...</span>
         </div>
         
         <button onclick="cancelarCountdownENavegar('step1')" 
@@ -3629,9 +3629,8 @@ async function processarEditalAntesDeStep2() {
     console.log('⏱️ Countdown cancelado - iniciando novo processamento');
   }
   
-  // Detectar se tem PDFs
-  // Apenas TXT e XLSX (processamento rápido)
-  const tempoEstimado = '10-30 segundos';
+  // ✅ CORREÇÃO v26: Mensagem amigável sem tempo específico
+  const tempoEstimado = 'aguarde enquanto a IA analisa';
   
   // Estado atual do processamento
   let etapaAtual = 1;
@@ -3664,7 +3663,7 @@ async function processarEditalAntesDeStep2() {
               ${etapaAtual === 5 ? '✅ Processamento Concluído!' : 'Processando Edital...'}
             </h3>
             <p class="${themes[currentTheme].textSecondary} text-sm">
-              Tempo estimado: ${tempoEstimado}
+              Por favor, ${tempoEstimado}. Não feche o navegador.
             </p>
           </div>
           
@@ -3852,7 +3851,7 @@ async function processarEditalAntesDeStep2() {
                 Tempo limite excedido
               </h3>
               <p class="text-gray-600 mb-4 text-sm">
-                O PDF é muito grande para processar automaticamente. O servidor demorou mais de 100 segundos e a conexão foi encerrada.
+                O arquivo é muito grande para processar automaticamente. Use a opção "Colar Texto do Edital" para colar apenas a seção de Conteúdo Programático.
               </p>
               
               <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
@@ -4908,7 +4907,7 @@ Enfermagem: Técnicas de enfermagem, biossegurança..."
             
             <div class="flex items-center justify-between text-xs text-gray-500 mt-2 mb-4">
               <span id="contadorTextoArea">0 caracteres</span>
-              <span class="text-green-600"><i class="fas fa-bolt mr-1"></i>~10 segundos de processamento</span>
+              <span class="text-green-600"><i class="fas fa-bolt mr-1"></i>Processamento rápido com IA</span>
             </div>
             
             <div class="flex gap-3">
@@ -9881,7 +9880,7 @@ function mostrarLoadingRegeneracao(topico, tipo, feedback, extensao = 'longo') {
         <!-- Tempo estimado -->
         <p class="text-xs text-gray-400 mt-4">
           <i class="fas fa-clock mr-1"></i>
-          Isso pode levar até 30 segundos
+          Aguarde a IA processar...
         </p>
       </div>
     </div>
