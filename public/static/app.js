@@ -4526,21 +4526,42 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
     const renderModal = () => {
       const modalContainer = getModalContainer();
       
-      // ✅ v34: Separar disciplinas em Básicas e Específicas
-      const disciplinasBasicas = disciplinasEditadas.filter(d => 
-        d.peso === 1 || 
-        d.categoria?.toLowerCase().includes('básico') || 
-        d.categoria?.toLowerCase().includes('geral') ||
-        d.categoria?.toLowerCase().includes('comum')
-      );
-      const disciplinasEspecificas = disciplinasEditadas.filter(d => 
-        d.peso === 2 || 
-        d.categoria?.toLowerCase().includes('específico') ||
-        d.categoria?.toLowerCase().includes('especifico')
-      );
+      // ✅ v35: Melhor separação de disciplinas em Básicas e Específicas
+      const disciplinasBasicas = disciplinasEditadas.filter(d => {
+        const peso = parseInt(d.peso) || 1;
+        const cat = (d.categoria || '').toLowerCase();
+        // Peso 1 OU categoria indica básico/geral/comum
+        return peso === 1 || 
+               cat.includes('básico') || 
+               cat.includes('basico') ||
+               cat.includes('geral') ||
+               cat.includes('comum') ||
+               cat.includes('módulo i') ||
+               cat.includes('modulo i');
+      });
+      
+      const disciplinasEspecificas = disciplinasEditadas.filter(d => {
+        const peso = parseInt(d.peso) || 1;
+        const cat = (d.categoria || '').toLowerCase();
+        // Peso 2+ OU categoria indica específico
+        return peso >= 2 || 
+               cat.includes('específico') || 
+               cat.includes('especifico') ||
+               cat.includes('módulo ii') ||
+               cat.includes('modulo ii');
+      });
+      
+      // v35: Se houve sobreposição (disciplina em ambos), corrigir
+      // Priorizar específicos se peso >= 2
+      const idsEspecificos = new Set(disciplinasEspecificas.map(d => d.nome));
+      const basicosFiltrados = disciplinasBasicas.filter(d => {
+        const peso = parseInt(d.peso) || 1;
+        // Se está em específicos E tem peso >= 2, remover dos básicos
+        return !(idsEspecificos.has(d.nome) && peso >= 2);
+      });
       
       // Se não conseguiu separar, colocar todas como básicas
-      const temSeparacao = disciplinasEspecificas.length > 0;
+      const temSeparacao = disciplinasEspecificas.length > 0 && basicosFiltrados.length > 0;
       
       const renderAccordeon = (titulo, icone, disciplinas, tipo, corGradient) => {
         if (disciplinas.length === 0) return '';
@@ -4603,8 +4624,8 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
             <!-- Lista de disciplinas com acordeons -->
             <div class="p-3 sm:p-4 overflow-y-auto flex-1" id="listaDisciplinasRevisao">
               ${temSeparacao ? `
-                ${renderAccordeon('Conhecimentos Básicos/Gerais', 'fas fa-book', disciplinasBasicas, 'basicos', 'bg-gradient-to-r from-blue-500 to-blue-600')}
-                ${renderAccordeon('Conhecimentos Específicos', 'fas fa-gavel', disciplinasEspecificas, 'especificos', 'bg-gradient-to-r from-purple-500 to-purple-600')}
+                ${renderAccordeon('📘 Conhecimentos Básicos/Gerais', 'fas fa-book', basicosFiltrados, 'basicos', 'bg-gradient-to-r from-blue-500 to-blue-600')}
+                ${renderAccordeon('📕 Conhecimentos Específicos', 'fas fa-gavel', disciplinasEspecificas, 'especificos', 'bg-gradient-to-r from-purple-500 to-purple-600')}
               ` : `
                 ${disciplinasEditadas.map((d, i) => renderDisciplinaItem(d, i)).join('')}
               `}

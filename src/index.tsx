@@ -5810,36 +5810,33 @@ INSTRUÇÕES:
     const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
     const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
     
-    // ✅ CORREÇÃO v34b - Capturar TODAS as disciplinas
+    // ✅ CORREÇÃO v35 - CAPTURAR ABSOLUTAMENTE TODAS AS DISCIPLINAS
     console.log(`📝 Analisando edital para cargo: ${cargoDesejado || 'NÃO ESPECIFICADO'}`)
     
-    // v34b: Balanceado para 30k (evitar timeout)
-    const textoOtimizado = textoParaIA.substring(0, 30000)
+    // v35: Aumentar para 55k caracteres para capturar TODOS os módulos
+    const textoOtimizado = textoParaIA.substring(0, 55000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
-    // PROMPT v34 - Captura TODAS as disciplinas (básicas + específicas)
-    const prompt = `Extraia TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
+    // PROMPT v35 - Extração COMPLETA e OBRIGATÓRIA de todas as disciplinas
+    const prompt = `EXTRAIA TODAS AS DISCIPLINAS E TODOS OS TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
 
 CARGO: ${cargoDesejado?.toUpperCase() || 'GERAL'}
 
-IMPORTANTE:
-1. Extraia TODAS as disciplinas de CONHECIMENTOS BÁSICOS/GERAIS
-2. Extraia TODAS as disciplinas de CONHECIMENTOS ESPECÍFICOS
-3. Se houver MÓDULO I e MÓDULO II, extraia de AMBOS
-4. Editais grandes podem ter 15+ disciplinas - NÃO OMITA nenhuma
+REGRAS OBRIGATÓRIAS:
+1. MÓDULO I / CONHECIMENTOS BÁSICOS/GERAIS: Extrair TODAS (Português, Inglês, Raciocínio, Estatística, Economia, Administração, Auditoria, Contabilidade, etc.)
+2. MÓDULO II / CONHECIMENTOS ESPECÍFICOS: Extrair TODAS (Direitos, Legislações, Comércio Internacional, etc.)
+3. NÃO OMITA NENHUMA disciplina - editais grandes têm 15-20 disciplinas
+4. COPIE TÓPICOS EXATAMENTE como aparecem no edital - NÃO RESUMA
 
-RETORNE JSON:
-{
-  "disciplinas": [
-    {"nome": "DISCIPLINA", "peso": 1, "categoria": "CONHECIMENTOS BÁSICOS", "topicos": ["tópico"]},
-    {"nome": "DISCIPLINA", "peso": 2, "categoria": "CONHECIMENTOS ESPECÍFICOS", "topicos": ["tópico"]}
-  ]
-}
+FORMATO JSON OBRIGATÓRIO:
+{"disciplinas":[
+{"nome":"Língua Portuguesa","peso":1,"categoria":"CONHECIMENTOS BÁSICOS","topicos":["tópico 1","tópico 2"]},
+{"nome":"Direito Tributário","peso":2,"categoria":"CONHECIMENTOS ESPECÍFICOS","topicos":["tópico 1","tópico 2"]}
+]}
 
-peso 1 = Básicos (Português, Inglês, Raciocínio, etc.)
-peso 2 = Específicos (Direitos, Legislações, técnicas)
+PESOS: 1=Básicos/Gerais, 2=Específicos
 
-TEXTO:
+TEXTO DO EDITAL:
 ${textoOtimizado}`
 
     // ════════════════════════════════════════════════════════════════
@@ -5853,10 +5850,11 @@ ${textoOtimizado}`
     // Chave do Groq (fallback)
     const groqKey = c.env.GROQ_API_KEY || ''
     
-    // ETAPA 1: Tentar modelos Gemini
+    // ETAPA 1: Tentar modelos Gemini (v35 - usar mais modelos + maior output)
     const modelosGemini = [
       { nome: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}` },
-      { nome: 'gemini-1.5-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}` }
+      { nome: 'gemini-1.5-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}` },
+      { nome: 'gemini-2.0-flash-lite', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}` }
     ]
     
     for (const modelo of modelosGemini) {
@@ -5868,7 +5866,7 @@ ${textoOtimizado}`
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 32768 }
+            generationConfig: { temperature: 0, maxOutputTokens: 65536 }  // v35: aumentado para mais disciplinas/tópicos
           })
         })
         
@@ -6586,34 +6584,31 @@ app.post('/api/editais/processar-texto', async (c) => {
     // Chamar Gemini para extrair disciplinas
     const geminiKey = c.env.GEMINI_API_KEY || 'SUA_CHAVE_GEMINI_AQUI'
     
-    // ✅ CORREÇÃO v34b: Balanceado para 30k (evitar timeout)
-    const textoLimitado = texto.substring(0, 30000)
+    // ✅ CORREÇÃO v35: Aumentado para 55k (capturar TODAS as disciplinas)
+    const textoLimitado = texto.substring(0, 55000)
     console.log(`📝 Processando ${textoLimitado.length} caracteres`)
     
-    const prompt = `Extraia TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO deste edital.
+    const prompt = `EXTRAIA TODAS AS DISCIPLINAS E TODOS OS TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
 
-CARGO DO CANDIDATO: ${cargo?.toUpperCase() || 'GERAL'}
+CARGO: ${cargo?.toUpperCase() || 'GERAL'}
 
-IMPORTANTE:
-1. Extraia TODAS as disciplinas de CONHECIMENTOS BÁSICOS/GERAIS (comuns a todos os cargos)
-2. Extraia TODAS as disciplinas de CONHECIMENTOS ESPECÍFICOS do cargo
-3. Se houver MÓDULO I e MÓDULO II, extraia disciplinas de AMBOS
-4. NÃO OMITA nenhuma disciplina - editais grandes podem ter 15+ disciplinas
-5. Inclua TODOS os tópicos de cada disciplina
+REGRAS OBRIGATÓRIAS:
+1. MÓDULO I / CONHECIMENTOS BÁSICOS/GERAIS: Extrair TODAS (Português, Inglês, Raciocínio, Estatística, Economia, Administração, Auditoria, Contabilidade, etc.)
+2. MÓDULO II / CONHECIMENTOS ESPECÍFICOS: Extrair TODAS (Direitos, Legislações, Comércio Internacional, etc.)
+3. NÃO OMITA NENHUMA disciplina - editais grandes têm 15-20 disciplinas
+4. COPIE TÓPICOS EXATAMENTE como aparecem no edital - NÃO RESUMA
 
-RETORNE APENAS JSON válido:
+FORMATO JSON OBRIGATÓRIO:
 {
   "disciplinas": [
-    {"nome": "NOME EXATO DA DISCIPLINA", "peso": 1, "categoria": "CONHECIMENTOS BÁSICOS", "topicos": ["tópico 1", "tópico 2"]},
-    {"nome": "OUTRA DISCIPLINA", "peso": 2, "categoria": "CONHECIMENTOS ESPECÍFICOS", "topicos": ["tópico 1"]}
+    {"nome": "Língua Portuguesa", "peso": 1, "categoria": "CONHECIMENTOS BÁSICOS", "topicos": ["tópico 1", "tópico 2"]},
+    {"nome": "Direito Tributário", "peso": 2, "categoria": "CONHECIMENTOS ESPECÍFICOS", "topicos": ["tópico 1", "tópico 2"]}
   ],
   "cargo_detectado": "cargo identificado",
   "observacoes": "observações"
 }
 
-REGRAS DE PESO:
-- peso: 1 = CONHECIMENTOS BÁSICOS/GERAIS (Português, Inglês, Raciocínio Lógico, Informática, etc.)
-- peso: 2 = CONHECIMENTOS ESPECÍFICOS (Direitos, Legislações, matérias técnicas do cargo)
+PESOS: 1=Básicos/Gerais, 2=Específicos
 
 TEXTO DO EDITAL:
 ${textoLimitado}`
@@ -6630,10 +6625,11 @@ ${textoLimitado}`
     console.log(`🔑 Gemini: ${geminiKey?.substring(0,10)}...`)
     console.log(`🔑 Groq: ${groqKey ? groqKey.substring(0,10) + '...' : 'NÃO CONFIGURADA'}`)
     
-    // ETAPA 1: Tentar modelos Gemini
+    // ETAPA 1: Tentar modelos Gemini (v35 - usar mais modelos + maior output)
     const modelosGemini = [
       { nome: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}` },
-      { nome: 'gemini-1.5-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}` }
+      { nome: 'gemini-1.5-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}` },
+      { nome: 'gemini-2.0-flash-lite', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}` }
     ]
     
     for (const modelo of modelosGemini) {
@@ -6645,7 +6641,7 @@ ${textoLimitado}`
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 32768 }
+            generationConfig: { temperature: 0, maxOutputTokens: 65536 }  // v35: aumentado
           })
         })
         
