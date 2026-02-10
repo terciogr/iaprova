@@ -7376,12 +7376,8 @@ TEXTO DO EDITAL:
 ${textoLimitado}`
 
     // ════════════════════════════════════════════════════════════════
-    // ✅ v43 - SISTEMA ROBUSTO COM RETRY GLOBAL E FALLBACK COMPLETO
+    // ✅ v45 - EXTRAÇÃO EM DUAS FASES (DISCIPLINAS + TÓPICOS DETALHADOS)
     // ════════════════════════════════════════════════════════════════
-    let textoResposta = ''
-    let modeloUsado = ''
-    let ultimoErro = ''
-    const errosAPI: string[] = []
     
     // Construir lista de APIs disponíveis
     let ordemAPIs = apiKeys.filter(k => k.api_key && k.api_key.length > 10).map(k => k.provider)
@@ -7412,62 +7408,53 @@ ${textoLimitado}`
     }
     
     // ════════════════════════════════════════════════════════════════
-    // ✅ v43: HELPER FUNCTION - Tenta todas as APIs uma vez
+    // ✅ v45: HELPER - Chamar API com retry
     // ════════════════════════════════════════════════════════════════
-    const tentarTodasAPIs = async (tentativaGlobal: number): Promise<{sucesso: boolean, texto: string, modelo: string}> => {
-      console.log(`\n🔄 TENTATIVA GLOBAL ${tentativaGlobal + 1}/3...`)
+    const chamarAPI = async (promptTexto: string, maxTokens: number = 16000): Promise<{sucesso: boolean, texto: string, modelo: string, erro?: string}> => {
+      const erros: string[] = []
       
-      // Tentar GEMINI (múltiplos modelos)
-      if (ordemAPIs.includes('gemini') && geminiKey && !textoResposta) {
-        const modelosGemini = [
-          { nome: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}` },
-          { nome: 'gemini-1.5-flash-latest', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}` },
-          { nome: 'gemini-2.0-flash-lite', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}` }
-        ]
-        
-        for (const modelo of modelosGemini) {
-          console.log(`🚀 Tentando ${modelo.nome}...`)
+      // Tentar Gemini
+      if (geminiKey) {
+        const modelos = ['gemini-2.0-flash', 'gemini-1.5-flash-latest']
+        for (const modelo of modelos) {
           try {
-            const response = await fetch(modelo.url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0, maxOutputTokens: 65536 }
-              })
-            })
-            
-            console.log(`📡 ${modelo.nome}: Status ${response.status}`)
+            console.log(`  🚀 Tentando ${modelo}...`)
+            const response = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${geminiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: promptTexto }] }],
+                  generationConfig: { temperature: 0, maxOutputTokens: maxTokens }
+                })
+              }
+            )
             
             if (response.status === 429) {
-              errosAPI.push(`${modelo.nome}: Rate limit (tentativa ${tentativaGlobal + 1})`)
-              continue // Próximo modelo
-            }
-            
-            if (!response.ok) {
-              errosAPI.push(`${modelo.nome}: HTTP ${response.status}`)
+              erros.push(`${modelo}: Rate limit`)
+              await new Promise(r => setTimeout(r, 2000))
               continue
             }
             
-            const data = await response.json() as any
-            const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-            
-            if (texto && texto.length > 50) {
-              console.log(`✅ ${modelo.nome} OK! (${texto.length} chars)`)
-              return { sucesso: true, texto, modelo: modelo.nome }
-            } else if (texto) {
-              console.log(`⚠️ ${modelo.nome}: resposta curta (${texto.length} chars)`)
+            if (response.ok) {
+              const data = await response.json() as any
+              const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+              if (texto && texto.length > 30) {
+                console.log(`  ✅ ${modelo} OK (${texto.length} chars)`)
+                return { sucesso: true, texto, modelo }
+              }
             }
           } catch (err) {
-            errosAPI.push(`${modelo.nome}: ${err}`)
+            erros.push(`${modelo}: ${err}`)
           }
         }
       }
       
-      // Tentar OPENAI
-      if (ordemAPIs.includes('openai') && openaiKey && !textoResposta) {
-        console.log(`🚀 Tentando OpenAI GPT-4o-mini...`)
+      // Tentar OpenAI
+      if (openaiKey) {
         try {
+          console.log(`  🚀 Tentando OpenAI...`)
           const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -7477,52 +7464,31 @@ ${textoLimitado}`
             body: JSON.stringify({
               model: 'gpt-4o-mini',
               messages: [
-                { role: 'system', content: 'Você é um especialista em extrair informações de editais de concursos. Retorne APENAS JSON válido, sem markdown ou texto adicional.' },
-                { role: 'user', content: prompt }
+                { role: 'system', content: 'Extraia informações de editais. Retorne APENAS JSON válido.' },
+                { role: 'user', content: promptTexto }
               ],
               temperature: 0,
-              max_tokens: 16000
+              max_tokens: Math.min(maxTokens, 16000)
             })
           })
           
-          console.log(`📡 OpenAI: Status ${response.status}`)
-          
-          if (response.status === 429) {
-            errosAPI.push(`OpenAI: Rate limit (tentativa ${tentativaGlobal + 1})`)
-          } else if (response.ok) {
+          if (response.ok) {
             const data = await response.json() as any
             const texto = data?.choices?.[0]?.message?.content || ''
-            if (texto && texto.length > 50) {
-              console.log(`✅ OpenAI OK! (${texto.length} chars)`)
+            if (texto && texto.length > 30) {
+              console.log(`  ✅ OpenAI OK (${texto.length} chars)`)
               return { sucesso: true, texto, modelo: 'gpt-4o-mini' }
             }
-          } else {
-            errosAPI.push(`OpenAI: HTTP ${response.status}`)
           }
         } catch (err) {
-          errosAPI.push(`OpenAI: ${err}`)
+          erros.push(`OpenAI: ${err}`)
         }
       }
       
       // Tentar GROQ
-      if (ordemAPIs.includes('groq') && groqKey && !textoResposta) {
-        console.log(`🚀 Tentando GROQ LLaMA...`)
-        const textoParaGroq = textoLimitado.substring(0, 25000)
-        const promptGroq = `Extraia APENAS as disciplinas do cargo "${cargoUpper}".
-
-REGRAS:
-1. INCLUA: Conhecimentos Gerais/Básicos do nível do cargo
-2. INCLUA: Conhecimentos Específicos comuns ao nível
-3. INCLUA: Conhecimentos Específicos DO CARGO "${cargoUpper}"
-4. NÃO INCLUA: Disciplinas de OUTROS cargos
-5. Saúde: 4-6 disciplinas. Fiscais: 15-20 disciplinas.
-
-FORMATO JSON: {"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]}]}
-
-TEXTO:
-${textoParaGroq}`
-        
+      if (groqKey) {
         try {
+          console.log(`  🚀 Tentando GROQ...`)
           const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -7531,267 +7497,358 @@ ${textoParaGroq}`
             },
             body: JSON.stringify({
               model: 'llama-3.3-70b-versatile',
-              messages: [{ role: 'user', content: promptGroq }],
+              messages: [{ role: 'user', content: promptTexto.substring(0, 25000) }],
               temperature: 0,
               max_tokens: 8000
             })
           })
           
-          console.log(`📡 GROQ: Status ${response.status}`)
-          
-          if (response.status === 429) {
-            errosAPI.push(`GROQ: Rate limit (tentativa ${tentativaGlobal + 1})`)
-          } else if (response.status === 413) {
-            errosAPI.push('GROQ: Payload muito grande')
-          } else if (response.ok) {
+          if (response.ok) {
             const data = await response.json() as any
             const texto = data?.choices?.[0]?.message?.content || ''
-            if (texto && texto.length > 50) {
-              console.log(`✅ GROQ OK! (${texto.length} chars)`)
-              return { sucesso: true, texto, modelo: 'groq-llama-3.3-70b' }
+            if (texto && texto.length > 30) {
+              console.log(`  ✅ GROQ OK (${texto.length} chars)`)
+              return { sucesso: true, texto, modelo: 'groq-llama' }
             }
-          } else {
-            errosAPI.push(`GROQ: HTTP ${response.status}`)
           }
         } catch (err) {
-          errosAPI.push(`GROQ: ${err}`)
+          erros.push(`GROQ: ${err}`)
         }
       }
       
-      return { sucesso: false, texto: '', modelo: '' }
+      return { sucesso: false, texto: '', modelo: '', erro: erros.join('; ') }
     }
     
     // ════════════════════════════════════════════════════════════════
-    // ✅ v43: RETRY GLOBAL - Tenta até 3 rodadas com delays crescentes
+    // ✅ v45: FASE 1 - EXTRAIR LISTA DE DISCIPLINAS (BÁSICOS + ESPECÍFICOS)
     // ════════════════════════════════════════════════════════════════
-    const MAX_GLOBAL_RETRIES = 3
-    const GLOBAL_DELAYS = [0, 5000, 15000] // 0s, 5s, 15s entre tentativas
+    console.log('\n' + '═'.repeat(60))
+    console.log('📚 FASE 1: Extraindo lista de TODAS as disciplinas...')
+    console.log('═'.repeat(60))
     
-    for (let globalRetry = 0; globalRetry < MAX_GLOBAL_RETRIES; globalRetry++) {
-      // Aplicar delay (exceto na primeira tentativa)
-      if (globalRetry > 0) {
-        const delay = GLOBAL_DELAYS[globalRetry]
-        console.log(`⏳ Aguardando ${delay/1000}s antes da próxima rodada...`)
-        await new Promise(r => setTimeout(r, delay))
+    const promptFase1 = `Analise este edital de concurso e liste TODAS as disciplinas do cargo "${cargoUpper}".
+
+REGRAS IMPORTANTES:
+1. Liste APENAS disciplinas do cargo "${cargoUpper}" (ignore outros cargos)
+2. Inclua CONHECIMENTOS BÁSICOS/GERAIS (Português, Raciocínio Lógico, etc.)
+3. Inclua CONHECIMENTOS ESPECÍFICOS COMUNS (para todos do nível)
+4. Inclua CONHECIMENTOS ESPECÍFICOS DO CARGO
+5. Cada disciplina separada (ex: "Administração Geral" e "Administração Pública" = 2 disciplinas)
+
+QUANTIDADE ESPERADA:
+- Concursos de SAÚDE: 4-7 disciplinas
+- Concursos FISCAIS (Auditor, Analista): 15-20 disciplinas  
+- Concursos ADMINISTRATIVOS: 6-12 disciplinas
+
+FORMATO JSON (sem markdown):
+{"disciplinas":[{"nome":"Nome Exato da Disciplina","categoria":"BÁSICOS ou ESPECÍFICOS","peso":1}]}
+
+TEXTO DO EDITAL:
+${textoLimitado.substring(0, 50000)}`
+
+    let disciplinasExtraidas: any[] = []
+    
+    // Tentar até 3 vezes com delays
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
+      if (tentativa > 0) {
+        console.log(`⏳ Aguardando ${tentativa * 5}s antes de tentar novamente...`)
+        await new Promise(r => setTimeout(r, tentativa * 5000))
       }
       
-      const resultado = await tentarTodasAPIs(globalRetry)
+      const resultado = await chamarAPI(promptFase1, 8000)
       
       if (resultado.sucesso) {
-        textoResposta = resultado.texto
-        modeloUsado = resultado.modelo
-        break
-      }
-      
-      // Se não conseguiu e ainda tem tentativas, verificar se vale tentar novamente
-      const todosRateLimit = errosAPI.every(e => e.includes('Rate limit'))
-      if (!todosRateLimit && globalRetry < MAX_GLOBAL_RETRIES - 1) {
-        console.log(`⚠️ Alguns erros não são rate limit, pode não adiantar tentar novamente`)
-        // Mas ainda vamos tentar, pois pode ter sido um erro temporário
+        try {
+          // Limpar e parsear JSON
+          let jsonStr = resultado.texto
+            .replace(/```json\n?/gi, '').replace(/```\n?/gi, '')
+            .replace(/[\x00-\x1F\x7F]/g, ' ')
+          
+          const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            let parsed = jsonMatch[0]
+            // Fechar JSON incompleto
+            let braces = 0, brackets = 0
+            for (const c of parsed) {
+              if (c === '{') braces++
+              if (c === '}') braces--
+              if (c === '[') brackets++
+              if (c === ']') brackets--
+            }
+            for (let i = 0; i < brackets; i++) parsed += ']'
+            for (let i = 0; i < braces; i++) parsed += '}'
+            
+            const data = JSON.parse(parsed)
+            if (data.disciplinas && data.disciplinas.length > 0) {
+              disciplinasExtraidas = data.disciplinas
+              console.log(`✅ FASE 1 completa: ${disciplinasExtraidas.length} disciplinas encontradas`)
+              break
+            }
+          }
+        } catch (e) {
+          console.log(`⚠️ Erro ao parsear JSON da fase 1: ${e}`)
+        }
       }
     }
     
-    if (!textoResposta || !modeloUsado) {
-      console.error(`❌ Todas as ${MAX_GLOBAL_RETRIES} tentativas globais falharam. Erros: ${errosAPI.join('; ')}`)
-      console.error(`   APIs tentadas: ${ordemAPIs.join(', ')}`)
-      
+    if (disciplinasExtraidas.length === 0) {
       return c.json({
-        error: 'API temporariamente indisponível',
-        errorType: 'AI_UNAVAILABLE',
-        suggestion: 'Todas as APIs estão com rate limit. Aguarde 2-3 minutos e tente novamente.',
-        canRetry: true,
-        retryAfter: 120,
-        debug: `${errosAPI.length} erros em ${MAX_GLOBAL_RETRIES} tentativas`,
-        apisAttempted: ordemAPIs,
-        errors: errosAPI.slice(-10) // Últimos 10 erros
-      }, 503)
-    }
-    
-    console.log(`✅ Resposta da IA (${modeloUsado}): ${textoResposta.length} caracteres`)
-    
-    // Parsear JSON - v36: tratamento robusto de respostas markdown
-    let textoParaParse = textoResposta
-    
-    // Remover markdown code blocks se existirem
-    textoParaParse = textoParaParse.replace(/```json\n?/gi, '').replace(/```\n?/gi, '')
-    
-    const jsonMatch = textoParaParse.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      console.error('❌ Não encontrou JSON na resposta:', textoResposta.substring(0, 500))
-      return c.json({
-        error: 'Não foi possível extrair disciplinas do texto',
-        suggestion: 'Verifique se o texto contém um conteúdo programático estruturado'
+        error: 'Não foi possível extrair disciplinas do edital',
+        errorType: 'EXTRACTION_FAILED',
+        suggestion: 'Verifique se o texto contém o conteúdo programático completo',
+        canRetry: true
       }, 400)
     }
     
-    try {
-      // v36: Limpeza mais robusta do JSON
-      let jsonStr = jsonMatch[0]
-        .replace(/[\x00-\x1F\x7F]/g, ' ')  // Remove caracteres de controle
-        .replace(/,\s*([}\]])/g, '$1')      // Remove vírgulas extras antes de } ou ]
-        .replace(/\n/g, ' ')                 // Remove quebras de linha
-        .replace(/\r/g, '')                  // Remove carriage returns
-        .replace(/\t/g, ' ')                 // Remove tabs
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v45: FASE 2 - EXTRAIR TÓPICOS DE CADA DISCIPLINA
+    // ════════════════════════════════════════════════════════════════
+    console.log('\n' + '═'.repeat(60))
+    console.log('📋 FASE 2: Extraindo tópicos detalhados de cada disciplina...')
+    console.log('═'.repeat(60))
+    
+    const disciplinasComTopicos: any[] = []
+    
+    // Processar em lotes de 5 disciplinas para evitar rate limits
+    const BATCH_SIZE = 5
+    for (let i = 0; i < disciplinasExtraidas.length; i += BATCH_SIZE) {
+      const lote = disciplinasExtraidas.slice(i, i + BATCH_SIZE)
+      const nomesLote = lote.map((d: any) => d.nome).join(', ')
       
-      // Tentar fechar JSON truncado
-      let openBraces = 0, openBrackets = 0
-      for (const char of jsonStr) {
-        if (char === '{') openBraces++
-        if (char === '}') openBraces--
-        if (char === '[') openBrackets++
-        if (char === ']') openBrackets--
+      console.log(`\n📦 Processando lote ${Math.floor(i/BATCH_SIZE) + 1}: ${nomesLote}`)
+      
+      // Delay entre lotes (exceto o primeiro)
+      if (i > 0) {
+        console.log(`⏳ Aguardando 3s entre lotes...`)
+        await new Promise(r => setTimeout(r, 3000))
       }
       
-      // Fechar arrays/objetos abertos
-      for (let i = 0; i < openBrackets; i++) jsonStr += ']'
-      for (let i = 0; i < openBraces; i++) jsonStr += '}'
+      const promptFase2 = `Extraia os TÓPICOS DETALHADOS das seguintes disciplinas do edital.
       
-      const resultado = JSON.parse(jsonStr)
+DISCIPLINAS PARA EXTRAIR TÓPICOS:
+${lote.map((d: any, idx: number) => `${idx + 1}. ${d.nome}`).join('\n')}
+
+REGRAS:
+1. Para CADA disciplina, extraia TODOS os tópicos/assuntos listados no edital
+2. Use os nomes EXATOS dos tópicos como aparecem no edital
+3. Inclua entre 5 e 20 tópicos por disciplina (o que estiver no edital)
+4. NÃO invente tópicos - use apenas o que está no texto
+
+FORMATO JSON:
+{"disciplinas":[{"nome":"Nome da Disciplina","topicos":["Tópico 1","Tópico 2","Tópico 3"]}]}
+
+TEXTO DO EDITAL:
+${textoLimitado.substring(0, 40000)}`
+
+      const resultado = await chamarAPI(promptFase2, 16000)
       
-      if (!resultado?.disciplinas || resultado.disciplinas.length === 0) {
-        return c.json({
-          error: 'Nenhuma disciplina identificada no texto',
-          suggestion: 'Cole o conteúdo programático completo, incluindo as disciplinas e seus tópicos'
-        }, 400)
-      }
-      
-      console.log(`✅ ${resultado.disciplinas.length} disciplinas extraídas do texto colado`)
-      
-      // ✅ SALVAR EDITAL E DISCIPLINAS NO BANCO DE DADOS
-      // Criar edital
-      const editalResult = await DB.prepare(`
-        INSERT INTO editais (user_id, nome_concurso, texto_completo, status)
-        VALUES (?, ?, ?, 'processado')
-      `).bind(
-        user_id,
-        concurso_nome || resultado.concurso_detectado || 'Edital via texto',
-        texto.substring(0, 10000) // Limitar o texto salvo
-      ).run()
-      
-      const editalId = editalResult.meta.last_row_id
-      console.log(`📁 Edital criado com ID ${editalId}`)
-      
-      // Salvar disciplinas e tópicos
-      const disciplinasComIds = []
-      
-      for (let i = 0; i < resultado.disciplinas.length; i++) {
-        const disc = resultado.disciplinas[i]
-        
-        // Verificar/criar disciplina na tabela principal
-        let disciplina_id_real = null
-        const discExistente = await DB.prepare(`
-          SELECT id FROM disciplinas WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?))
-        `).bind(disc.nome).first() as any
-        
-        if (discExistente) {
-          disciplina_id_real = discExistente.id
-          console.log(`  ℹ️ Disciplina "${disc.nome}" já existe (ID ${disciplina_id_real})`)
-        } else {
-          const novaDiscResult = await DB.prepare(`
-            INSERT INTO disciplinas (nome, area, descricao)
-            VALUES (?, ?, ?)
-          `).bind(disc.nome, areaDetectada, 'Disciplina extraída do edital').run()
-          disciplina_id_real = novaDiscResult.meta.last_row_id
-          console.log(`  ✅ Disciplina "${disc.nome}" criada (ID ${disciplina_id_real})`)
-        }
-        
-        // Inserir em edital_disciplinas
-        const discResult = await DB.prepare(`
-          INSERT INTO edital_disciplinas (edital_id, nome, ordem, disciplina_id, peso)
-          VALUES (?, ?, ?, ?, ?)
-        `).bind(editalId, disc.nome, i + 1, disciplina_id_real, disc.peso || 1).run()
-        
-        const edital_disciplina_id = discResult.meta.last_row_id
-        
-        // Inserir tópicos (evitando duplicatas)
-        const topicosComIds = []
-        if (disc.topicos && disc.topicos.length > 0) {
-          // ✅ DEDUPLICAR tópicos antes de salvar (IA às vezes retorna duplicados)
-          const topicosUnicos = [...new Set(
-            disc.topicos
-              .map((t: any) => typeof t === 'string' ? t.trim() : t.nome?.trim())
-              .filter((t: string) => t && t.length > 0)
-          )]
+      if (resultado.sucesso) {
+        try {
+          let jsonStr = resultado.texto
+            .replace(/```json\n?/gi, '').replace(/```\n?/gi, '')
+            .replace(/[\x00-\x1F\x7F]/g, ' ')
           
-          console.log(`  📋 ${disc.nome}: ${disc.topicos.length} tópicos recebidos, ${topicosUnicos.length} únicos`)
-          
-          for (let j = 0; j < topicosUnicos.length; j++) {
-            const topicoNome = topicosUnicos[j]
-            
-            // 1. Verificar/inserir em edital_topicos
-            const topicoExistenteEdital = await DB.prepare(`
-              SELECT id FROM edital_topicos 
-              WHERE edital_disciplina_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
-            `).bind(edital_disciplina_id, topicoNome).first() as any
-            
-            let topicoId
-            if (topicoExistenteEdital) {
-              topicoId = topicoExistenteEdital.id
-            } else {
-              const topicoResult = await DB.prepare(`
-                INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem)
-                VALUES (?, ?, ?)
-              `).bind(edital_disciplina_id, topicoNome, j + 1).run()
-              topicoId = topicoResult.meta.last_row_id
+          const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            let parsed = jsonMatch[0]
+            // Fechar JSON incompleto
+            let braces = 0, brackets = 0
+            for (const c of parsed) {
+              if (c === '{') braces++
+              if (c === '}') braces--
+              if (c === '[') brackets++
+              if (c === ']') brackets--
             }
+            for (let i = 0; i < brackets; i++) parsed += ']'
+            for (let i = 0; i < braces; i++) parsed += '}'
             
-            // 2. ✅ TAMBÉM salvar em topicos_edital (para metas semanais e progresso)
-            const topicoExistenteUser = await DB.prepare(`
-              SELECT id FROM topicos_edital 
-              WHERE disciplina_id = ? AND user_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
-            `).bind(disciplina_id_real, user_id, topicoNome).first()
-            
-            if (!topicoExistenteUser) {
-              const pesoTopico = disc.peso || 1
-              await DB.prepare(`
-                INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
-                VALUES (?, ?, ?, ?, ?, ?)
-              `).bind(disciplina_id_real, topicoNome, 'Conteúdo Programático', j + 1, pesoTopico, user_id).run()
+            const data = JSON.parse(parsed)
+            if (data.disciplinas) {
+              for (const disc of data.disciplinas) {
+                // Encontrar a disciplina original para manter categoria e peso
+                const original = lote.find((d: any) => 
+                  d.nome.toLowerCase().includes(disc.nome.toLowerCase()) ||
+                  disc.nome.toLowerCase().includes(d.nome.toLowerCase())
+                )
+                
+                disciplinasComTopicos.push({
+                  nome: disc.nome || original?.nome,
+                  categoria: original?.categoria || 'ESPECÍFICOS',
+                  peso: original?.peso || 2,
+                  topicos: disc.topicos || []
+                })
+                
+                console.log(`  ✅ ${disc.nome}: ${(disc.topicos || []).length} tópicos`)
+              }
             }
-            
-            topicosComIds.push({
-              id: topicoId,
-              nome: topicoNome
+          }
+        } catch (e) {
+          console.log(`  ⚠️ Erro ao parsear tópicos do lote: ${e}`)
+          // Adicionar disciplinas sem tópicos
+          for (const d of lote) {
+            disciplinasComTopicos.push({
+              nome: d.nome,
+              categoria: d.categoria || 'ESPECÍFICOS',
+              peso: d.peso || 2,
+              topicos: []
             })
           }
         }
-        
-        // Guardar disciplina com IDs reais
-        disciplinasComIds.push({
-          id: edital_disciplina_id,
-          disciplina_id_real: disciplina_id_real,
-          nome: disc.nome,
-          peso: disc.peso || 1,
-          tipo: disc.tipo || 'geral',
-          total_topicos: disc.topicos?.length || 0,
-          topicos: topicosComIds
-        })
-        
-        console.log(`  ✅ ${disc.nome}: ${topicosComIds.length} tópicos salvos`)
+      } else {
+        // Se falhou, adicionar disciplinas sem tópicos
+        console.log(`  ⚠️ Falha no lote, adicionando sem tópicos`)
+        for (const d of lote) {
+          disciplinasComTopicos.push({
+            nome: d.nome,
+            categoria: d.categoria || 'ESPECÍFICOS',
+            peso: d.peso || 2,
+            topicos: []
+          })
+        }
+      }
+    }
+    
+    // Usar disciplinas com tópicos, ou as originais se a fase 2 falhou completamente
+    const disciplinasFinais = disciplinasComTopicos.length > 0 ? disciplinasComTopicos : disciplinasExtraidas
+    
+    console.log('\n' + '═'.repeat(60))
+    console.log(`✅ EXTRAÇÃO COMPLETA: ${disciplinasFinais.length} disciplinas`)
+    console.log('═'.repeat(60))
+    
+    // Verificar se conseguimos tópicos
+    const totalTopicos = disciplinasFinais.reduce((acc: number, d: any) => acc + (d.topicos?.length || 0), 0)
+    console.log(`📊 Total de tópicos extraídos: ${totalTopicos}`)
+    
+    const resultado = { disciplinas: disciplinasFinais }
+    
+    // ✅ SALVAR EDITAL E DISCIPLINAS NO BANCO DE DADOS
+    console.log(`\n✅ ${resultado.disciplinas.length} disciplinas prontas para salvar`)
+    
+    // Criar edital
+    const editalResult = await DB.prepare(`
+      INSERT INTO editais (user_id, nome_concurso, texto_completo, status)
+      VALUES (?, ?, ?, 'processado')
+    `).bind(
+      user_id,
+      concurso_nome || 'Edital via texto',
+      texto.substring(0, 10000)
+    ).run()
+    
+    const editalId = editalResult.meta.last_row_id
+    console.log(`📁 Edital criado com ID ${editalId}`)
+    
+    // Salvar disciplinas e tópicos
+    const disciplinasComIds = []
+    
+    for (let i = 0; i < resultado.disciplinas.length; i++) {
+      const disc = resultado.disciplinas[i]
+      
+      // Verificar/criar disciplina na tabela principal
+      let disciplina_id_real = null
+      const discExistente = await DB.prepare(`
+        SELECT id FROM disciplinas WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?))
+      `).bind(disc.nome).first() as any
+      
+      if (discExistente) {
+        disciplina_id_real = discExistente.id
+        console.log(`  ℹ️ Disciplina "${disc.nome}" já existe (ID ${disciplina_id_real})`)
+      } else {
+        const novaDiscResult = await DB.prepare(`
+          INSERT INTO disciplinas (nome, area, descricao)
+          VALUES (?, ?, ?)
+        `).bind(disc.nome, areaDetectada, 'Disciplina extraída do edital').run()
+        disciplina_id_real = novaDiscResult.meta.last_row_id
+        console.log(`  ✅ Disciplina "${disc.nome}" criada (ID ${disciplina_id_real})`)
       }
       
-      console.log(`✅ Edital ${editalId} processado com ${disciplinasComIds.length} disciplinas`)
+      // Inserir em edital_disciplinas
+      const discResult = await DB.prepare(`
+        INSERT INTO edital_disciplinas (edital_id, nome, ordem, disciplina_id, peso)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(editalId, disc.nome, i + 1, disciplina_id_real, disc.peso || 1).run()
       
-      // Retornar disciplinas com IDs reais do banco
-      return c.json({
-        success: true,
-        edital_id: editalId,
-        disciplinas: disciplinasComIds,
-        total: disciplinasComIds.length,
-        concurso_detectado: resultado.concurso_detectado || concurso_nome,
-        area_detectada: areaDetectada,
-        observacoes: resultado.observacoes,
-        modo: 'revisao',
-        message: `${resultado.disciplinas.length} disciplinas identificadas. Você pode adicionar, editar ou remover disciplinas e tópicos a qualquer momento!`
+      const edital_disciplina_id = discResult.meta.last_row_id
+      
+      // Inserir tópicos (evitando duplicatas)
+      const topicosComIds = []
+      if (disc.topicos && disc.topicos.length > 0) {
+        // ✅ DEDUPLICAR tópicos antes de salvar (IA às vezes retorna duplicados)
+        const topicosUnicos = [...new Set(
+          disc.topicos
+            .map((t: any) => typeof t === 'string' ? t.trim() : t.nome?.trim())
+            .filter((t: string) => t && t.length > 0)
+        )]
+        
+        console.log(`  📋 ${disc.nome}: ${disc.topicos.length} tópicos recebidos, ${topicosUnicos.length} únicos`)
+        
+        for (let j = 0; j < topicosUnicos.length; j++) {
+          const topicoNome = topicosUnicos[j]
+          
+          // 1. Verificar/inserir em edital_topicos
+          const topicoExistenteEdital = await DB.prepare(`
+            SELECT id FROM edital_topicos 
+            WHERE edital_disciplina_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
+          `).bind(edital_disciplina_id, topicoNome).first() as any
+          
+          let topicoId
+          if (topicoExistenteEdital) {
+            topicoId = topicoExistenteEdital.id
+          } else {
+            const topicoResult = await DB.prepare(`
+              INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem)
+              VALUES (?, ?, ?)
+            `).bind(edital_disciplina_id, topicoNome, j + 1).run()
+            topicoId = topicoResult.meta.last_row_id
+          }
+          
+          // 2. ✅ TAMBÉM salvar em topicos_edital (para metas semanais e progresso)
+          const topicoExistenteUser = await DB.prepare(`
+            SELECT id FROM topicos_edital 
+            WHERE disciplina_id = ? AND user_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
+          `).bind(disciplina_id_real, user_id, topicoNome).first()
+          
+          if (!topicoExistenteUser) {
+            const pesoTopico = disc.peso || 1
+            await DB.prepare(`
+              INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
+              VALUES (?, ?, ?, ?, ?, ?)
+            `).bind(disciplina_id_real, topicoNome, 'Conteúdo Programático', j + 1, pesoTopico, user_id).run()
+          }
+          
+          topicosComIds.push({
+            id: topicoId,
+            nome: topicoNome
+          })
+        }
+      }
+      
+      // Guardar disciplina com IDs reais
+      disciplinasComIds.push({
+        id: edital_disciplina_id,
+        disciplina_id_real: disciplina_id_real,
+        nome: disc.nome,
+        peso: disc.peso || 1,
+        tipo: disc.tipo || 'geral',
+        total_topicos: disc.topicos?.length || 0,
+        topicos: topicosComIds
       })
       
-    } catch (parseError) {
-      console.error('❌ Erro ao parsear JSON:', parseError)
-      return c.json({
-        error: 'Erro ao interpretar resposta da IA',
-        suggestion: 'Tente novamente ou cole um texto mais estruturado'
-      }, 500)
+      console.log(`  ✅ ${disc.nome}: ${topicosComIds.length} tópicos salvos`)
     }
+    
+    console.log(`✅ Edital ${editalId} processado com ${disciplinasComIds.length} disciplinas`)
+    
+    // Retornar disciplinas com IDs reais do banco
+    return c.json({
+      success: true,
+      edital_id: editalId,
+      disciplinas: disciplinasComIds,
+      total: disciplinasComIds.length,
+      concurso_detectado: concurso_nome,
+      area_detectada: areaDetectada,
+      modo: 'revisao',
+      message: `${resultado.disciplinas.length} disciplinas identificadas. Você pode adicionar, editar ou remover disciplinas e tópicos a qualquer momento!`
+    })
     
   } catch (error) {
     console.error('❌ Erro ao processar texto de edital:', error)
