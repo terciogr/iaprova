@@ -11067,103 +11067,59 @@ app.delete('/api/planos/:plano_id', async (c) => {
     
     console.log(`🗑️ Iniciando exclusão do plano ${plano_id}...`)
     
-    // ✅ CORREÇÃO v19: Exclusão completa respeitando FKs (D1 não suporta PRAGMA foreign_keys = OFF)
-    // Ordem de exclusão baseada nas dependências das tabelas
+    // ✅ CORREÇÃO v20: Exclusão completa respeitando FKs (D1 não suporta PRAGMA foreign_keys = OFF)
+    // Ordem de exclusão baseada nas dependências das tabelas - deletar filhas antes de pais
     
     try {
       console.log(`🗑️ Iniciando exclusão completa do plano ${plano_id}...`)
       
-      // 1. conteudo_estudo (referencia metas_diarias.id via meta_id)
-      try {
-        await DB.prepare(`DELETE FROM conteudo_estudo WHERE meta_id IN (SELECT id FROM metas_diarias WHERE plano_id = ?)`).bind(plano_id).run()
-        console.log('  ✓ conteudo_estudo')
-      } catch (e: any) { console.log(`  ⚠️ conteudo_estudo: ${e.message?.substring(0, 50)}`) }
+      // PASSO 1: Limpar todas as tabelas que podem ter referência ao plano ou suas dependências
+      const tabelasParaLimpar = [
+        // Conteúdos e materiais (referenciam metas/topicos)
+        { nome: 'conteudo_estudo', query: `DELETE FROM conteudo_estudo WHERE meta_id IN (SELECT id FROM metas_diarias WHERE plano_id = ?)` },
+        { nome: 'conteudo_topicos', query: `DELETE FROM conteudo_topicos WHERE topico_id IN (SELECT id FROM topicos_edital WHERE plano_id = ?)` },
+        { nome: 'materiais_salvos', query: `DELETE FROM materiais_salvos WHERE topico_id IN (SELECT id FROM topicos_edital WHERE plano_id = ?)` },
+        
+        // Progresso e histórico
+        { nome: 'user_topicos_progresso', query: `DELETE FROM user_topicos_progresso WHERE plano_id = ?` },
+        { nome: 'historico_estudos', query: `DELETE FROM historico_estudos WHERE plano_id = ?` },
+        { nome: 'exercicios_resultados', query: `DELETE FROM exercicios_resultados WHERE meta_id IN (SELECT id FROM metas_diarias WHERE plano_id = ?)` },
+        { nome: 'simulados_historico', query: `DELETE FROM simulados_historico WHERE plano_id = ?` },
+        
+        // Revisões e flashcards (podem estar vinculados às disciplinas do plano)
+        { nome: 'flashcards', query: `DELETE FROM flashcards WHERE user_id = (SELECT user_id FROM planos_estudo WHERE id = ?)` },
+        { nome: 'revisoes', query: `DELETE FROM revisoes WHERE user_id = (SELECT user_id FROM planos_estudo WHERE id = ?)` },
+        
+        // Metas semanais (dependem de semanas)
+        { nome: 'metas_semana', query: `DELETE FROM metas_semana WHERE semana_id IN (SELECT id FROM semanas_estudo WHERE plano_id = ?)` },
+        
+        // Semanas (dependem do plano)
+        { nome: 'semanas_estudo', query: `DELETE FROM semanas_estudo WHERE plano_id = ?` },
+        
+        // IMPORTANTE: metas_diarias ANTES de ciclos_estudo (metas referenciam ciclos via ciclo_id)
+        { nome: 'metas_diarias', query: `DELETE FROM metas_diarias WHERE plano_id = ?` },
+        
+        // Ciclos (dependem do plano)
+        { nome: 'ciclos_estudo', query: `DELETE FROM ciclos_estudo WHERE plano_id = ?` },
+        
+        // Tópicos do edital (dependem do plano)
+        { nome: 'topicos_edital', query: `DELETE FROM topicos_edital WHERE plano_id = ?` },
+        
+        // Edital_topicos e disciplinas do edital (podem ter relação indireta)
+        { nome: 'edital_topicos_via_interview', query: `DELETE FROM edital_topicos WHERE edital_disciplina_id IN (SELECT ed.id FROM edital_disciplinas ed JOIN editais e ON ed.edital_id = e.id JOIN interviews i ON e.user_id = i.user_id JOIN planos_estudo p ON i.id = p.interview_id WHERE p.id = ?)` },
+      ]
       
-      // 2. conteudo_topicos (pode referenciar tópicos do plano)
-      try {
-        await DB.prepare(`DELETE FROM conteudo_topicos WHERE topico_id IN (SELECT id FROM topicos_edital WHERE plano_id = ?)`).bind(plano_id).run()
-        console.log('  ✓ conteudo_topicos')
-      } catch (e: any) { console.log(`  ⚠️ conteudo_topicos: ${e.message?.substring(0, 50)}`) }
+      for (const tabela of tabelasParaLimpar) {
+        try {
+          await DB.prepare(tabela.query).bind(plano_id).run()
+          console.log(`  ✓ ${tabela.nome}`)
+        } catch (e: any) {
+          // Ignorar erros (tabela pode não existir ou não ter dados)
+          console.log(`  ⚠️ ${tabela.nome}: ${e.message?.substring(0, 40) || 'erro'}`)
+        }
+      }
       
-      // 3. materiais_salvos (pode ter topico_id)
-      try {
-        await DB.prepare(`DELETE FROM materiais_salvos WHERE topico_id IN (SELECT id FROM topicos_edital WHERE plano_id = ?)`).bind(plano_id).run()
-        console.log('  ✓ materiais_salvos (por topico)')
-      } catch (e: any) { console.log(`  ⚠️ materiais_salvos: ${e.message?.substring(0, 50)}`) }
-      
-      // 4. progresso_materiais (pode ter relação)
-      try {
-        await DB.prepare(`DELETE FROM progresso_materiais WHERE material_id IN (SELECT id FROM materiais_salvos WHERE topico_id IN (SELECT id FROM topicos_edital WHERE plano_id = ?))`).bind(plano_id).run()
-        console.log('  ✓ progresso_materiais')
-      } catch (e: any) { console.log(`  ⚠️ progresso_materiais: ${e.message?.substring(0, 50)}`) }
-      
-      // 5. user_topicos_progresso (referencia topicos_edital e plano)
-      try {
-        await DB.prepare(`DELETE FROM user_topicos_progresso WHERE plano_id = ?`).bind(plano_id).run()
-        console.log('  ✓ user_topicos_progresso')
-      } catch (e: any) { console.log(`  ⚠️ user_topicos_progresso: ${e.message?.substring(0, 50)}`) }
-      
-      // 6. historico_estudos (pode ter relação com metas ou plano)
-      try {
-        await DB.prepare(`DELETE FROM historico_estudos WHERE plano_id = ?`).bind(plano_id).run()
-        console.log('  ✓ historico_estudos')
-      } catch (e: any) { console.log(`  ⚠️ historico_estudos: ${e.message?.substring(0, 50)}`) }
-      
-      // 7. exercicios_resultados (pode ter meta_id)
-      try {
-        await DB.prepare(`DELETE FROM exercicios_resultados WHERE meta_id IN (SELECT id FROM metas_diarias WHERE plano_id = ?)`).bind(plano_id).run()
-        console.log('  ✓ exercicios_resultados')
-      } catch (e: any) { console.log(`  ⚠️ exercicios_resultados: ${e.message?.substring(0, 50)}`) }
-      
-      // 8. simulados_historico (pode ter relação)
-      try {
-        await DB.prepare(`DELETE FROM simulados_historico WHERE plano_id = ?`).bind(plano_id).run()
-        console.log('  ✓ simulados_historico')
-      } catch (e: any) { console.log(`  ⚠️ simulados_historico: ${e.message?.substring(0, 50)}`) }
-      
-      // 9. flashcards (pode ter relação com disciplinas do plano)
-      try {
-        await DB.prepare(`DELETE FROM flashcards WHERE disciplina_id IN (SELECT disciplina_id FROM ciclos_estudo WHERE plano_id = ?)`).bind(plano_id).run()
-        console.log('  ✓ flashcards')
-      } catch (e: any) { console.log(`  ⚠️ flashcards: ${e.message?.substring(0, 50)}`) }
-      
-      // 10. revisoes (pode ter disciplina_id)
-      try {
-        await DB.prepare(`DELETE FROM revisoes WHERE disciplina_id IN (SELECT disciplina_id FROM ciclos_estudo WHERE plano_id = ?)`).bind(plano_id).run()
-        console.log('  ✓ revisoes')
-      } catch (e: any) { console.log(`  ⚠️ revisoes: ${e.message?.substring(0, 50)}`) }
-      
-      // 11. metas_semana (referencia semanas_estudo.id)
-      try {
-        await DB.prepare(`DELETE FROM metas_semana WHERE semana_id IN (SELECT id FROM semanas_estudo WHERE plano_id = ?)`).bind(plano_id).run()
-        console.log('  ✓ metas_semana')
-      } catch (e: any) { console.log(`  ⚠️ metas_semana: ${e.message?.substring(0, 50)}`) }
-      
-      // 12. semanas_estudo (referencia plano_id)
-      try {
-        await DB.prepare(`DELETE FROM semanas_estudo WHERE plano_id = ?`).bind(plano_id).run()
-        console.log('  ✓ semanas_estudo')
-      } catch (e: any) { console.log(`  ⚠️ semanas_estudo: ${e.message?.substring(0, 50)}`) }
-      
-      // 13. metas_diarias (referencia ciclos_estudo.id E plano_id)
-      try {
-        await DB.prepare(`DELETE FROM metas_diarias WHERE plano_id = ?`).bind(plano_id).run()
-        console.log('  ✓ metas_diarias')
-      } catch (e: any) { console.log(`  ⚠️ metas_diarias: ${e.message?.substring(0, 50)}`) }
-      
-      // 14. ciclos_estudo (referencia plano_id E disciplina_id)
-      try {
-        await DB.prepare(`DELETE FROM ciclos_estudo WHERE plano_id = ?`).bind(plano_id).run()
-        console.log('  ✓ ciclos_estudo')
-      } catch (e: any) { console.log(`  ⚠️ ciclos_estudo: ${e.message?.substring(0, 50)}`) }
-      
-      // 15. topicos_edital (referencia plano_id)
-      try {
-        await DB.prepare(`DELETE FROM topicos_edital WHERE plano_id = ?`).bind(plano_id).run()
-        console.log('  ✓ topicos_edital')
-      } catch (e: any) { console.log(`  ⚠️ topicos_edital: ${e.message?.substring(0, 50)}`) }
-      
-      // 16. FINALMENTE: Deletar o plano
+      // PASSO 2: FINALMENTE deletar o plano
       console.log('🗑️ Deletando plano...')
       await DB.prepare('DELETE FROM planos_estudo WHERE id = ?').bind(plano_id).run()
       console.log(`✅ Plano ${plano_id} deletado com sucesso!`)
