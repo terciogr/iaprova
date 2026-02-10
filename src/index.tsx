@@ -7265,7 +7265,7 @@ app.post('/api/editais/processar-texto', async (c) => {
     console.log(`📝 Processando para cargo: ${cargoUpper}`)
     
     // ════════════════════════════════════════════════════════════════
-    // ✅ v48: EXTRAÇÃO DETERMINÍSTICA POR SEÇÕES
+    // ✅ v48b: EXTRAÇÃO DETERMINÍSTICA POR SEÇÕES (MELHORADA)
     // ════════════════════════════════════════════════════════════════
     
     // Lista de cargos conhecidos para delimitar seções
@@ -7281,33 +7281,90 @@ app.post('/api/editais/processar-texto', async (c) => {
     const linhas = texto.split(/\r?\n/)
     console.log(`📄 Total de linhas no edital: ${linhas.length}`)
     
-    // Função para encontrar seção por padrão
-    const encontrarSecao = (padraoInicio: RegExp, padroesFim: RegExp[]): string => {
-      let iniciou = false
+    // Função MELHORADA para encontrar seção de Conhecimentos Gerais
+    // Precisa encontrar a linha com conteúdo programático, não tabelas de vagas
+    const encontrarSecaoConhecimentosGerais = (): string => {
       let conteudo: string[] = []
+      let encontrouCabecalho = false
       
       for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i].trim()
+        const linhaLower = linha.toLowerCase()
         
-        if (!iniciou && padraoInicio.test(linha)) {
-          iniciou = true
-          conteudo.push(linha)
-          continue
+        // Buscar linha "CONHECIMENTOS GERAIS" seguida por "CARGOS DE ENSINO"
+        if (!encontrouCabecalho) {
+          if (linhaLower.includes('conhecimentos gerais') && 
+              !linhaLower.includes('questões') && 
+              linha.length < 100) { // Evitar linhas longas (provavelmente tabelas)
+            // Verificar se a próxima linha contém "cargos de ensino"
+            const proximaLinha = linhas[i+1]?.trim().toLowerCase() || ''
+            if (proximaLinha.includes('cargos de ensino') || 
+                proximaLinha.includes('nível superior') ||
+                proximaLinha.includes('nível médio')) {
+              console.log(`   ✓ Encontrado cabeçalho na linha ${i+1}: "${linha}"`)
+              encontrouCabecalho = true
+              conteudo.push(linha)
+              continue
+            }
+          }
         }
         
-        if (iniciou) {
-          // Verificar se chegou ao fim da seção
-          const terminouSecao = padroesFim.some(p => p.test(linha))
-          if (terminouSecao) break
+        if (encontrouCabecalho) {
+          // Terminar ao encontrar "CONHECIMENTOS ESPECÍFICOS"
+          if (linhaLower.includes('conhecimentos específicos')) {
+            console.log(`   ✓ Fim da seção na linha ${i+1}`)
+            break
+          }
           
-          // Pular linhas muito curtas ou numéricas (provavelmente paginação)
-          if (linha.length > 5 && !/^\d+$/.test(linha)) {
+          // Adicionar linhas com conteúdo relevante (disciplinas e tópicos)
+          // Uma disciplina típica tem ":" seguido de conteúdo
+          if (linha.length > 20 && !linha.match(/^\d+$/)) {
             conteudo.push(linha)
           }
         }
         
-        // Limitar tamanho
-        if (conteudo.length > 50) break
+        // Limitar para não pegar demais
+        if (conteudo.length > 30) break
+      }
+      
+      return conteudo.join('\n')
+    }
+    
+    // Função para encontrar seção "PARA TODOS OS CARGOS" (SUS/Legislação comum)
+    const encontrarSecaoTodosCargos = (): string => {
+      let conteudo: string[] = []
+      let encontrouCabecalho = false
+      
+      for (let i = 0; i < linhas.length; i++) {
+        const linha = linhas[i].trim()
+        const linhaLower = linha.toLowerCase()
+        
+        // Buscar "PARA TODOS OS CARGOS DE ENSINO SUPERIOR"
+        if (!encontrouCabecalho) {
+          if (linhaLower.includes('para todos os cargos') && 
+              (linhaLower.includes('ensino') || linhaLower.includes('nível'))) {
+            console.log(`   ✓ Encontrado 'PARA TODOS OS CARGOS' na linha ${i+1}: "${linha}"`)
+            encontrouCabecalho = true
+            conteudo.push(linha)
+            continue
+          }
+        }
+        
+        if (encontrouCabecalho) {
+          // Terminar ao encontrar próxima seção ou nome de cargo
+          if ((linhaLower.includes('conhecimentos específicos') && 
+               linhaLower.includes('cargos')) ||
+              CARGOS_CONHECIDOS.some(c => linha.toLowerCase().startsWith(c.toLowerCase()))) {
+            console.log(`   ✓ Fim da seção na linha ${i+1}`)
+            break
+          }
+          
+          if (linha.length > 15 && !linha.match(/^\d+$/)) {
+            conteudo.push(linha)
+          }
+        }
+        
+        if (conteudo.length > 20) break
       }
       
       return conteudo.join('\n')
@@ -7324,7 +7381,6 @@ app.post('/api/editais/processar-texto', async (c) => {
       
       for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i].trim()
-        const linhaLower = linha.toLowerCase()
         
         // Procurar linha que começa com o nome do cargo
         // Ex: "Enfermeiro" ou "Enfermeiro - Clínico"
@@ -7374,19 +7430,14 @@ app.post('/api/editais/processar-texto', async (c) => {
     }
     
     // EXTRAIR AS 3 SEÇÕES NECESSÁRIAS
+    console.log('\n📋 Extraindo seções do edital...')
     
-    // 1. Conhecimentos Gerais (para nível superior/médio)
-    const secaoGeral = encontrarSecao(
-      /conhecimentos\s+gerais/i,
-      [/conhecimentos\s+específicos/i]
-    )
+    // 1. Conhecimentos Gerais (usando função melhorada)
+    const secaoGeral = encontrarSecaoConhecimentosGerais()
     console.log(`📖 Seção Conhecimentos Gerais: ${secaoGeral.length} chars, ${secaoGeral.split('\n').length} linhas`)
     
     // 2. Conhecimentos Específicos Comuns (para todos os cargos do nível)
-    const secaoComum = encontrarSecao(
-      /para\s+todos\s+os\s+cargos/i,
-      [/conhecimentos\s+específicos[\s\r\n]+cargos/i, /^(Assistente|Enfermeiro|Médico|Farmacêutico)/i]
-    )
+    const secaoComum = encontrarSecaoTodosCargos()
     console.log(`📖 Seção Conhecimentos Comuns: ${secaoComum.length} chars, ${secaoComum.split('\n').length} linhas`)
     
     // 3. Seção específica do cargo
