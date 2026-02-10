@@ -5832,101 +5832,101 @@ TEXTO:
 ${textoOtimizado}`
 
     // ════════════════════════════════════════════════════════════════
-    // SISTEMA DE FALLBACK: Tenta múltiplas APIs até uma funcionar
+    // ✅ v33 - SISTEMA DE FALLBACK COM GROQ
     // ════════════════════════════════════════════════════════════════
     
     let textoResposta = ''
     let modeloUsado = ''
     let lastError = ''
     
-    // Lista de modelos para tentar (em ordem de preferência)
-    const modelos = [
-      { 
-        nome: 'gemini-2.0-flash',
-        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-        headers: { 'Content-Type': 'application/json' },
-        body: (p: string) => JSON.stringify({
-          contents: [{ parts: [{ text: p }] }],
-          generationConfig: { temperature: 0, maxOutputTokens: 65536 }
-        }),
-        extractResponse: (data: any) => data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      },
-      { 
-        nome: 'gemini-1.5-flash',
-        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
-        headers: { 'Content-Type': 'application/json' },
-        body: (p: string) => JSON.stringify({
-          contents: [{ parts: [{ text: p }] }],
-          generationConfig: { temperature: 0, maxOutputTokens: 65536 }
-        }),
-        extractResponse: (data: any) => data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      },
-      { 
-        nome: 'gemini-2.0-flash-lite',
-        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`,
-        headers: { 'Content-Type': 'application/json' },
-        body: (p: string) => JSON.stringify({
-          contents: [{ parts: [{ text: p }] }],
-          generationConfig: { temperature: 0, maxOutputTokens: 32768 }
-        }),
-        extractResponse: (data: any) => data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      }
+    // Chave do Groq (fallback)
+    const groqKey = c.env.GROQ_API_KEY || ''
+    
+    // ETAPA 1: Tentar modelos Gemini
+    const modelosGemini = [
+      { nome: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}` },
+      { nome: 'gemini-1.5-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}` }
     ]
     
-    // Tentar cada modelo até um funcionar
-    for (const modelo of modelos) {
+    for (const modelo of modelosGemini) {
       console.log(`🚀 Tentando ${modelo.nome}...`)
       
       try {
         const response = await fetch(modelo.url, {
           method: 'POST',
-          headers: modelo.headers,
-          body: modelo.body(prompt)
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0, maxOutputTokens: 32768 }
+          })
         })
         
         if (response.status === 429) {
-          console.warn(`⚠️ ${modelo.nome}: Rate limit (429), tentando próximo modelo...`)
-          lastError = `${modelo.nome}: Rate limit exceeded`
-          // Aguardar 2 segundos antes de tentar próximo modelo
-          await new Promise(resolve => setTimeout(resolve, 2000))
+          lastError = `${modelo.nome}: Rate limit`
+          await new Promise(r => setTimeout(r, 2000))
           continue
         }
         
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.warn(`⚠️ ${modelo.nome}: Erro ${response.status}`)
-          lastError = `${modelo.nome}: HTTP ${response.status}`
-          continue
-        }
+        if (!response.ok) continue
         
         const data = await response.json() as any
-        textoResposta = modelo.extractResponse(data)
+        textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
         
-        if (textoResposta && textoResposta.includes('"nome"')) {
+        if (textoResposta && textoResposta.includes('disciplinas')) {
           modeloUsado = modelo.nome
-          console.log(`✅ ${modelo.nome} respondeu com sucesso! (${textoResposta.length} chars)`)
+          console.log(`✅ ${modelo.nome} OK!`)
           break
-        } else {
-          console.warn(`⚠️ ${modelo.nome}: Resposta vazia ou inválida`)
-          lastError = `${modelo.nome}: Resposta inválida`
         }
+      } catch (err) {
+        lastError = `${modelo.nome}: ${err}`
+      }
+    }
+    
+    // ETAPA 2: Se Gemini falhou, tentar GROQ
+    if (!textoResposta && groqKey) {
+      console.log(`🔄 Gemini falhou, tentando GROQ...`)
+      
+      try {
+        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${groqKey}`
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0,
+            max_tokens: 8000
+          })
+        })
         
-      } catch (fetchError) {
-        lastError = `${modelo.nome}: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
-        console.error(`❌ ${modelo.nome}:`, lastError)
+        if (groqResponse.ok) {
+          const groqData = await groqResponse.json() as any
+          textoResposta = groqData?.choices?.[0]?.message?.content || ''
+          
+          if (textoResposta && textoResposta.includes('disciplinas')) {
+            modeloUsado = 'groq-llama-3.3-70b'
+            console.log(`✅ GROQ OK!`)
+          }
+        } else {
+          lastError = `GROQ: HTTP ${groqResponse.status}`
+        }
+      } catch (groqErr) {
+        lastError = `GROQ: ${groqErr}`
       }
     }
     
     // Se nenhum modelo funcionou, retornar erro
     if (!textoResposta || !modeloUsado) {
-      console.error(`❌ Todos os modelos falharam. Último erro: ${lastError}`)
+      console.error(`❌ Todos falharam: ${lastError}`)
       
       await DB.prepare(`UPDATE editais SET status = 'erro' WHERE id = ?`).bind(editalId).run()
       
       return c.json({
         error: 'API temporariamente indisponível.',
         errorType: 'AI_UNAVAILABLE',
-        suggestion: 'Todas as APIs estão sobrecarregadas. Aguarde 1-2 minutos e tente novamente, ou use "Colar Texto do Edital".',
+        suggestion: 'Aguarde 1-2 minutos e tente novamente, ou use "Colar Texto do Edital".',
         canRetry: true,
         retryAfter: 60
       }, 503)
@@ -6591,31 +6591,26 @@ REGRAS: peso 1=Básicos, peso 2=Específicos. Nomes EXATOS. TODOS os tópicos.
 TEXTO:
 ${textoLimitado}`
 
-    // ✅ CORREÇÃO v32 - SISTEMA DE FALLBACK ROBUSTO
-    // Tenta múltiplos modelos até um funcionar
+    // ✅ CORREÇÃO v33 - SISTEMA DE FALLBACK COM GROQ
+    // Tenta Gemini primeiro, depois Groq como fallback final
     let textoResposta = ''
     let modeloUsado = ''
     let ultimoErro = ''
     
-    const modelos = [
-      { 
-        nome: 'gemini-2.0-flash',
-        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
-      },
-      { 
-        nome: 'gemini-1.5-flash',
-        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`
-      },
-      { 
-        nome: 'gemini-2.0-flash-lite',
-        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`
-      }
+    // Chave do Groq (fallback)
+    const groqKey = c.env.GROQ_API_KEY || ''
+    
+    console.log(`🔑 Gemini: ${geminiKey?.substring(0,10)}...`)
+    console.log(`🔑 Groq: ${groqKey ? groqKey.substring(0,10) + '...' : 'NÃO CONFIGURADA'}`)
+    
+    // ETAPA 1: Tentar modelos Gemini
+    const modelosGemini = [
+      { nome: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}` },
+      { nome: 'gemini-1.5-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}` }
     ]
     
-    console.log(`🔑 Chave API: ${geminiKey?.substring(0,10)}...`)
-    
-    for (const modelo of modelos) {
-      console.log(`🚀 [processar-texto] Tentando ${modelo.nome}...`)
+    for (const modelo of modelosGemini) {
+      console.log(`🚀 Tentando ${modelo.nome}...`)
       
       try {
         const response = await fetch(modelo.url, {
@@ -6630,36 +6625,63 @@ ${textoLimitado}`
         console.log(`📡 ${modelo.nome}: Status ${response.status}`)
         
         if (response.status === 429) {
-          ultimoErro = `${modelo.nome}: Rate limit (429)`
-          console.warn(`⚠️ ${ultimoErro}`)
-          await new Promise(r => setTimeout(r, 3000))
+          ultimoErro = `${modelo.nome}: Rate limit`
+          await new Promise(r => setTimeout(r, 2000))
           continue
         }
         
-        if (!response.ok) {
-          const errText = await response.text()
-          ultimoErro = `${modelo.nome}: HTTP ${response.status} - ${errText.substring(0, 100)}`
-          console.warn(`⚠️ ${ultimoErro}`)
-          continue
-        }
+        if (!response.ok) continue
         
         const data = await response.json() as any
         textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
         
-        console.log(`📝 ${modelo.nome}: Resposta ${textoResposta.length} chars`)
-        
-        // Validação mais flexível - aceita se tem "disciplinas" ou "nome" no JSON
-        if (textoResposta && (textoResposta.includes('disciplinas') || textoResposta.includes('"nome"'))) {
+        if (textoResposta && textoResposta.includes('disciplinas')) {
           modeloUsado = modelo.nome
-          console.log(`✅ ${modelo.nome} respondeu com sucesso!`)
+          console.log(`✅ ${modelo.nome} OK!`)
           break
-        } else {
-          ultimoErro = `${modelo.nome}: Resposta não contém disciplinas`
-          console.warn(`⚠️ ${ultimoErro}`)
         }
       } catch (err) {
         ultimoErro = `${modelo.nome}: ${err}`
-        console.error(`❌ ${ultimoErro}`)
+      }
+    }
+    
+    // ETAPA 2: Se Gemini falhou, tentar GROQ como fallback
+    if (!textoResposta && groqKey) {
+      console.log(`🔄 Gemini falhou, tentando GROQ...`)
+      
+      try {
+        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${groqKey}`
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0,
+            max_tokens: 8000
+          })
+        })
+        
+        console.log(`📡 GROQ: Status ${groqResponse.status}`)
+        
+        if (groqResponse.ok) {
+          const groqData = await groqResponse.json() as any
+          textoResposta = groqData?.choices?.[0]?.message?.content || ''
+          
+          if (textoResposta && textoResposta.includes('disciplinas')) {
+            modeloUsado = 'groq-llama-3.3-70b'
+            console.log(`✅ GROQ respondeu com sucesso!`)
+          }
+        } else {
+          const errText = await groqResponse.text()
+          ultimoErro = `GROQ: HTTP ${groqResponse.status}`
+          console.error(`❌ GROQ falhou: ${errText.substring(0, 100)}`)
+        }
+      } catch (groqErr) {
+        ultimoErro = `GROQ: ${groqErr}`
+        console.error(`❌ GROQ erro:`, groqErr)
       }
     }
     
