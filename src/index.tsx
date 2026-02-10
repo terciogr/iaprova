@@ -7265,494 +7265,523 @@ app.post('/api/editais/processar-texto', async (c) => {
     console.log(`📝 Processando para cargo: ${cargoUpper}`)
     
     // ════════════════════════════════════════════════════════════════
-    // ✅ v48b: EXTRAÇÃO DETERMINÍSTICA POR SEÇÕES (MELHORADA)
+    // ✅ v51b: EXTRAÇÃO UNIVERSAL DE DISCIPLINAS - QUALQUER EDITAL
+    // Abordagem: 1) Tenta tabela de disciplinas  2) Padrão "Nome: conteúdo"
     // ════════════════════════════════════════════════════════════════
     
-    // Lista de cargos conhecidos para delimitar seções
-    const CARGOS_CONHECIDOS = [
-      'Assistente Social', 'Enfermeiro', 'Médico', 'Farmacêutico', 'Fisioterapeuta',
-      'Nutricionista', 'Psicólogo', 'Fonoaudiólogo', 'Dentista', 'Cirurgião',
-      'Biólogo', 'Veterinário', 'Técnico', 'Analista', 'Auditor', 'Contador',
-      'Advogado', 'Engenheiro', 'Arquiteto', 'Administrador', 'Economista',
-      'Agente', 'Oficial', 'Escrivão', 'Delegado', 'Perito', 'Professor'
-    ]
+    // Limpar texto: remover form feed, carriage return
+    const textoLimpo = texto
+      .replace(/\f/g, '\n')
+      .replace(/\r/g, '')
     
-    // Converter texto para linhas para análise precisa
-    // Remover caracteres de controle como \f (form feed de PDFs)
-    const linhas = texto
-      .replace(/\f/g, '') // Remover form feed
-      .replace(/\r/g, '') // Remover carriage return
-      .split(/\n/)
+    const linhas = textoLimpo.split('\n')
     console.log(`📄 Total de linhas no edital: ${linhas.length}`)
     
-    // Função MELHORADA para encontrar seção de Conhecimentos Gerais
-    // Precisa encontrar a seção do nível correto (superior ou médio)
-    const encontrarSecaoConhecimentosGerais = (): string => {
-      let conteudo: string[] = []
-      let encontrouCabecalho = false
+    // ──────────────────────────────────────────────────────────────
+    // MÉTODO 1: Tentar extrair disciplinas da TABELA do edital
+    // Funciona para editais que listam "Disciplina    Questões"
+    // ──────────────────────────────────────────────────────────────
+    
+    let disciplinasTabela: { nome: string, questoes: number, categoria: string, peso: number }[] = []
+    let dentroTabela = false
+    let moduloTabelaAtual = 'BÁSICOS'
+    let ultimoCargoTabela = ''
+    
+    for (let i = 0; i < linhas.length; i++) {
+      const l = linhas[i].trim()
+      const lUpper = l.toUpperCase()
       
-      // Determinar nível do cargo
-      const ehNivelSuperior = ['enfermeiro', 'médico', 'farmacêutico', 'fisioterapeuta', 
-        'nutricionista', 'psicólogo', 'fonoaudiólogo', 'dentista', 'assistente social',
-        'engenheiro', 'arquiteto', 'contador', 'advogado', 'analista', 'auditor']
-        .some(c => cargoLower.includes(c))
+      // Detectar cargo na tabela
+      if (lUpper.includes(cargoUpper) || 
+          (cargoUpper.includes('AUDITOR') && lUpper.includes('AUDITOR')) ||
+          (cargoUpper.includes('ANALISTA') && lUpper.includes('ANALISTA'))) {
+        if (l.length < 80 && !lUpper.includes('VAGA') && !lUpper.includes('SALÁRIO')) {
+          ultimoCargoTabela = l.trim()
+        }
+      }
       
-      const nivelBuscado = ehNivelSuperior ? 'superior' : 'médio'
-      console.log(`🎯 Buscando Conhecimentos Gerais para nível: ${nivelBuscado.toUpperCase()}`)
+      // Detectar módulo
+      if (lUpper.includes('MÓDULO') && lUpper.includes('CONHECIMENTOS')) {
+        moduloTabelaAtual = lUpper.includes('II') ? 'ESPECÍFICOS' : 'BÁSICOS'
+        dentroTabela = false
+      }
       
-      for (let i = 0; i < linhas.length; i++) {
-        const linha = linhas[i].trim()
-        const linhaLower = linha.toLowerCase()
-        
-        // Buscar linha "CONHECIMENTOS GERAIS" seguida por "CARGOS DE ENSINO [NÍVEL]"
-        if (!encontrouCabecalho) {
-          if (linhaLower.includes('conhecimentos gerais') && 
-              !linhaLower.includes('questões') && 
-              linha.length < 100) {
-            // Verificar se a próxima linha contém o nível correto
-            const proximaLinha = linhas[i+1]?.trim().toLowerCase() || ''
-            const nivelCorreto = proximaLinha.includes(nivelBuscado) && 
-              (proximaLinha.includes('cargos de ensino') || proximaLinha.includes('nível'))
-            
-            if (nivelCorreto) {
-              console.log(`   ✓ Encontrado cabeçalho na linha ${i+1}: "${linha}"`)
-              console.log(`     Próxima linha: "${linhas[i+1]?.trim()}"`)
-              encontrouCabecalho = true
-              conteudo.push(linha)
-              continue
+      // Detectar cabeçalho de tabela
+      if (/Disciplina\s+Quest/i.test(l)) {
+        dentroTabela = true
+        continue
+      }
+      
+      if (dentroTabela) {
+        if (/^\s*Total\s+\d+/i.test(l)) {
+          dentroTabela = false
+          continue
+        }
+        // Extrair "Nome da Disciplina    N"
+        const match = l.match(/^(.+?)\s{2,}(\d+)\s*$/)
+        if (match) {
+          const nome = match[1].trim()
+          const questoes = parseInt(match[2])
+          if (nome.length > 3 && questoes > 0 && questoes < 200) {
+            disciplinasTabela.push({
+              nome, questoes,
+              categoria: moduloTabelaAtual,
+              peso: moduloTabelaAtual === 'ESPECÍFICOS' ? 2 : 1
+            })
+          }
+        }
+      }
+    }
+    
+    // Filtrar disciplinas: usar até encontrar repetição (indica outro cargo)
+    let disciplinasDaTabela: typeof disciplinasTabela = []
+    if (disciplinasTabela.length > 0) {
+      const nomes = new Set<string>()
+      for (const d of disciplinasTabela) {
+        const key = d.nome.toLowerCase()
+        if (nomes.has(key)) break // Repetiu = começo de outro cargo
+        nomes.add(key)
+        disciplinasDaTabela.push(d)
+      }
+      console.log(`📊 Tabela encontrada: ${disciplinasDaTabela.length} disciplinas`)
+    }
+    
+    // ──────────────────────────────────────────────────────────────
+    // LOCALIZAR CONTEÚDO PROGRAMÁTICO do cargo
+    // ──────────────────────────────────────────────────────────────
+    
+    let inicioConteudo = -1
+    for (let i = 0; i < linhas.length; i++) {
+      const l = linhas[i].trim().toUpperCase()
+      // Buscar marcador REAL de conteúdo programático (não referência)
+      // "CONTEÚDO PROGRAMÁTICO" sozinho na linha OU como título de ANEXO
+      // Ignorar linhas como "O Conteúdo Programático consta do Anexo II"
+      if ((l.includes('CONTEÚDO PROGRAMÁTICO') || l.includes('CONTEUDO PROGRAMATICO') ||
+           l.includes('PROGRAMA DAS PROVAS')) && 
+          !l.includes('CONSTA') && !l.includes('CONSTAM') && !l.includes('CONFORME') &&
+          !l.includes('VIDE') && !l.includes('VER ') && !l.includes('PREVISTO')) {
+        // Verificar se as próximas linhas têm disciplinas (Língua, Direito, etc.)
+        const prox10 = linhas.slice(i+1, i+15).join(' ').toLowerCase()
+        if (prox10.includes('língua') || prox10.includes('raciocínio') || prox10.includes('direito') ||
+            prox10.includes('módulo') || prox10.includes('conhecimentos') || prox10.includes('cargos de ensino')) {
+          inicioConteudo = i
+          console.log(`📍 Conteúdo programático: linha ${i+1}: "${linhas[i].trim().substring(0, 60)}"`)
+          break
+        }
+      }
+    }
+    if (inicioConteudo === -1) {
+      // Fallback: buscar por MÓDULO I ou CONHECIMENTOS GERAIS com conteúdo
+      for (let i = Math.floor(linhas.length * 0.4); i < linhas.length; i++) {
+        const l = linhas[i].trim().toUpperCase()
+        if ((l.includes('MÓDULO I') && l.includes('CONHECIMENTOS')) ||
+            (l.includes('CONHECIMENTOS GERAIS') && !l.includes('QUESTÕES') && !l.includes('ACERTOS'))) {
+          const prox = linhas.slice(i+1, i+6).join(' ').toLowerCase()
+          if (prox.includes('língua') || prox.includes('raciocínio') || prox.includes('português')) {
+            inicioConteudo = i
+            console.log(`📍 Início de conteúdo (fallback): linha ${i+1}`)
+            break
+          }
+        }
+      }
+    }
+    if (inicioConteudo === -1) inicioConteudo = Math.floor(linhas.length * 0.5)
+    
+    // Localizar seção do cargo no conteúdo programático
+    const variacoesCargo: string[] = [cargoUpper]
+    if (cargoUpper.includes('AUDITOR')) variacoesCargo.push('AUDITOR-FISCAL', 'AUDITOR FISCAL')
+    if (cargoUpper.includes('ANALISTA')) variacoesCargo.push('ANALISTA-TRIBUTÁRIO', 'ANALISTA TRIBUTÁRIO')
+    
+    let inicioSecaoCargo = -1
+    let fimSecaoCargo = -1
+    
+    for (let i = inicioConteudo; i < linhas.length; i++) {
+      const l = linhas[i].trim().toUpperCase()
+      for (const v of variacoesCargo) {
+        if ((l === v || (l.length < 80 && l.includes(v) && !l.includes('VAGA') && !l.includes('QUESTÕES') && !l.includes('SALÁRIO'))) && l.length < 80) {
+          const prox = linhas.slice(i+1, i+5).join(' ').toLowerCase()
+          if (prox.includes('módulo') || prox.includes('conhecimentos') || prox.includes('língua') || prox.includes('direito') || prox.includes('raciocínio')) {
+            inicioSecaoCargo = i
+            console.log(`📍 Seção do cargo: linha ${i+1}`)
+            break
+          }
+        }
+      }
+      if (inicioSecaoCargo !== -1) break
+    }
+    
+    // Se não encontrou seção específica do cargo, pegar todo o conteúdo programático
+    if (inicioSecaoCargo === -1) {
+      inicioSecaoCargo = inicioConteudo
+      console.log(`📍 Usando todo conteúdo programático desde linha ${inicioConteudo+1}`)
+    }
+    
+    // Lista de cargos conhecidos para delimitar seções
+    const outrosCargosConhecidos = ['AUDITOR-FISCAL', 'ANALISTA-TRIBUTÁRIO', 'ANALISTA TRIBUTÁRIO',
+      'AUDITOR FISCAL', 'ASSISTENTE SOCIAL', 'ENFERMEIRO', 'MÉDICO', 'FARMACÊUTICO',
+      'FISIOTERAPEUTA', 'NUTRICIONISTA', 'PSICÓLOGO', 'TÉCNICO', 'ENGENHEIRO',
+      'FONOAUDIÓLOGO', 'DENTISTA', 'BIOMÉDICO', 'VETERINÁRIO', 'ECONOMISTA',
+      'CIRURGIÃO', 'PROFESSOR', 'DELEGADO', 'PERITO', 'AGENTE', 'CONTADOR', 'ADVOGADO']
+      .filter(c => !variacoesCargo.some(v => c.includes(v)))
+    
+    // Encontrar fim da seção do cargo
+    for (let i = inicioSecaoCargo + 1; i < linhas.length; i++) {
+      const l = linhas[i].trim().toUpperCase()
+      if (l.length < 80 && l.length > 3) {
+        for (const outro of outrosCargosConhecidos) {
+          if (l === outro || l.startsWith(outro + ' ') || l.startsWith(outro + ' -') || l.startsWith(outro + ' –')) {
+            const prox = linhas.slice(i+1, i+5).join(' ')
+            if (prox.length > 50) {
+              fimSecaoCargo = i
+              console.log(`📍 Fim: linha ${i+1} (${outro})`)
+              break
             }
           }
         }
-        
-        if (encontrouCabecalho) {
-          // Terminar ao encontrar "CONHECIMENTOS ESPECÍFICOS"
-          if (linhaLower.includes('conhecimentos específicos')) {
-            console.log(`   ✓ Fim da seção na linha ${i+1}`)
-            break
-          }
-          
-          // Adicionar linhas com conteúdo relevante (disciplinas e tópicos)
-          // Uma disciplina típica tem ":" seguido de conteúdo
-          if (linha.length > 20 && !linha.match(/^\d+$/)) {
-            conteudo.push(linha)
-          }
-        }
-        
-        // Limitar para não pegar demais
-        if (conteudo.length > 30) break
+        if (fimSecaoCargo !== -1) break
       }
-      
-      return conteudo.join('\n')
-    }
-    
-    // Função para encontrar seção "PARA TODOS OS CARGOS" (SUS/Legislação comum)
-    // IMPORTANTE: Só buscar depois da segunda metade do documento para evitar tabelas
-    const encontrarSecaoTodosCargos = (): string => {
-      let conteudo: string[] = []
-      let encontrouCabecalho = false
-      
-      // Determinar nível do cargo
-      const ehNivelSuperior = ['enfermeiro', 'médico', 'farmacêutico', 'fisioterapeuta', 
-        'nutricionista', 'psicólogo', 'fonoaudiólogo', 'dentista', 'assistente social',
-        'engenheiro', 'arquiteto', 'contador', 'advogado', 'analista', 'auditor']
-        .some(c => cargoLower.includes(c))
-      
-      const nivelBuscado = ehNivelSuperior ? 'superior' : 'médio'
-      
-      // Começar a buscar apenas na segunda metade do documento
-      const inicioDoConteudo = Math.floor(linhas.length * 0.5)
-      console.log(`   🔍 Buscando 'PARA TODOS OS CARGOS' a partir da linha ${inicioDoConteudo}`)
-      
-      for (let i = inicioDoConteudo; i < linhas.length; i++) {
-        const linha = linhas[i].trim()
-        const linhaLower = linha.toLowerCase()
-        
-        // Buscar "PARA TODOS OS CARGOS DE ENSINO [NÍVEL]"
-        if (!encontrouCabecalho) {
-          if (linhaLower.includes('para todos os cargos') && linhaLower.includes(nivelBuscado)) {
-            console.log(`   ✓ Encontrado 'PARA TODOS OS CARGOS' na linha ${i+1}: "${linha.substring(0, 60)}..."`)
-            encontrouCabecalho = true
-            conteudo.push(linha)
-            continue
-          }
-        }
-        
-        if (encontrouCabecalho) {
-          // Terminar ao encontrar próxima seção ou nome de cargo
-          if ((linhaLower.includes('conhecimentos específicos') && 
-               linhaLower.includes('cargos')) ||
-              CARGOS_CONHECIDOS.some(c => linha.toLowerCase().startsWith(c.toLowerCase()))) {
-            console.log(`   ✓ Fim da seção na linha ${i+1}`)
-            break
-          }
-          
-          if (linha.length > 15 && !linha.match(/^\d+$/)) {
-            conteudo.push(linha)
-          }
-        }
-        
-        if (conteudo.length > 20) break
+      if (l.includes('ANEXO II') || l.includes('ANEXO III') || l.includes('ATRIBUIÇÕES DOS CARGOS')) {
+        fimSecaoCargo = i
+        break
       }
-      
-      return conteudo.join('\n')
     }
+    if (fimSecaoCargo === -1) fimSecaoCargo = linhas.length
     
-    // Função para encontrar seção específica do cargo
-    // IMPORTANTE: Só buscar depois da segunda metade do documento
-    const encontrarSecaoCargo = (cargoAlvo: string): string => {
-      const cargoNormalizado = cargoAlvo.trim().toLowerCase()
-      const primeiraPalavra = cargoNormalizado.split(/\s+/)[0]
-      let iniciou = false
-      let conteudo: string[] = []
-      
-      // Começar a buscar apenas na segunda metade do documento (onde está o conteúdo programático)
-      const inicioDoConteudo = Math.floor(linhas.length * 0.5)
-      console.log(`🔍 Buscando cargo: "${cargoAlvo}" a partir da linha ${inicioDoConteudo}`)
-      
-      for (let i = inicioDoConteudo; i < linhas.length; i++) {
-        const linha = linhas[i].trim()
-        
-        // Procurar linha que começa com o nome do cargo
-        // Ex: "Enfermeiro" ou "Enfermeiro - Clínico"
-        if (!iniciou) {
-          const linhaSemNum = linha.replace(/^\d+\s*/, '').trim()
-          const inicioCargoExato = new RegExp(`^${primeiraPalavra}(\\s|$|\\s*-)`, 'i')
-          
-          if (inicioCargoExato.test(linhaSemNum)) {
-            console.log(`   ✓ Encontrado cargo na linha ${i+1}: "${linha.substring(0, 50)}..."`)
-            iniciou = true
-            conteudo.push(linha)
-            continue
-          }
-        }
-        
-        if (iniciou) {
-          // Verificar se chegou a outro cargo
-          const outroCargoEncontrado = CARGOS_CONHECIDOS.some(c => {
-            if (c.toLowerCase() === cargoNormalizado) return false
-            const pattern = new RegExp(`^${c}(\\s|$|\\s*-)`, 'i')
-            return pattern.test(linha.replace(/^\d+\s*/, '').trim())
-          })
-          
-          if (outroCargoEncontrado && conteudo.length > 3) {
-            console.log(`   ✓ Fim da seção na linha ${i+1} (próximo cargo)`)
-            break
-          }
-          
-          // Adicionar linha se tiver conteúdo relevante
-          if (linha.length > 10 && !/^\d+$/.test(linha)) {
-            conteudo.push(linha)
-          }
-        }
-        
-        // Limitar tamanho
-        if (conteudo.length > 80) break
-      }
-      
-      console.log(`   📝 Seção do cargo: ${conteudo.length} linhas extraídas`)
-      return conteudo.join('\n')
-    }
+    // Montar texto da seção para análise
+    let textoSecaoCargo = ''
     
-    // EXTRAIR AS 3 SEÇÕES NECESSÁRIAS
-    console.log('\n📋 Extraindo seções do edital...')
-    
-    // 1. Conhecimentos Gerais (usando função melhorada)
-    const secaoGeral = encontrarSecaoConhecimentosGerais()
-    console.log(`📖 Seção Conhecimentos Gerais: ${secaoGeral.length} chars, ${secaoGeral.split('\n').length} linhas`)
-    
-    // 2. Conhecimentos Específicos Comuns (para todos os cargos do nível)
-    const secaoComum = encontrarSecaoTodosCargos()
-    console.log(`📖 Seção Conhecimentos Comuns: ${secaoComum.length} chars, ${secaoComum.split('\n').length} linhas`)
-    
-    // 3. Seção específica do cargo
-    const secaoCargo = encontrarSecaoCargo(cargoUpper)
-    console.log(`📖 Seção Cargo ${cargoUpper}: ${secaoCargo.length} chars`)
-    
-    // Montar texto filtrado apenas com as seções relevantes
-    const textoFiltrado = `
-=== CONHECIMENTOS GERAIS ===
-${secaoGeral || '(Seção não encontrada no edital)'}
-
-=== CONHECIMENTOS ESPECÍFICOS COMUNS (PARA TODOS OS CARGOS DO NÍVEL) ===
-${secaoComum || '(Seção não encontrada no edital)'}
-
-=== CONHECIMENTOS ESPECÍFICOS DO CARGO: ${cargoUpper} ===
-${secaoCargo || '(Seção não encontrada no edital)'}
-`.trim()
-
-    console.log(`📋 Texto filtrado total: ${textoFiltrado.length} chars`)
-    
-    // Log das seções extraídas para debug
-    console.log(`\n📝 SEÇÕES EXTRAÍDAS:`)
-    console.log(`   Gerais: "${secaoGeral.substring(0, 200)}..."`)
-    console.log(`   Comuns: "${secaoComum.substring(0, 200)}..."`)
-    console.log(`   Cargo: "${secaoCargo.substring(0, 200)}..."`)
-    
-    // Se não conseguiu extrair seções, usar texto original (mas limitado)
-    const usarTextoFiltrado = secaoGeral.length > 100 || secaoComum.length > 100 || secaoCargo.length > 100
-    const textoParaIA = usarTextoFiltrado ? textoFiltrado : texto.substring(0, 35000)
-    const textoLimitado = textoParaIA.substring(0, 40000)
-    
-    console.log(`🤖 Enviando para IA: ${textoLimitado.length} chars (filtrado: ${usarTextoFiltrado})`)
-    
-    // ✅ v48: PROMPT ESPECÍFICO POR ÁREA
-    // Para SAÚDE: estrutura clara com 4-6 disciplinas
-    // Para FISCAL: estrutura modular com 15-20 disciplinas
-    
-    const ehConcursoSaude = areaDetectada === 'saude' || 
-      ['enfermeiro', 'médico', 'farmacêutico', 'fisioterapeuta', 'nutricionista', 'dentista', 'psicólogo']
-        .some(c => cargoLower.includes(c))
-    
-    let promptExtracao: string
-    
-    if (ehConcursoSaude) {
-      promptExtracao = `TAREFA: Extrair EXATAMENTE as disciplinas para o cargo "${cargoUpper}" do edital.
-
-ESTRUTURA TÍPICA DE EDITAIS DE SAÚDE:
-1. CONHECIMENTOS GERAIS (peso 1):
-   - "Língua portuguesa:" → 1 disciplina
-   - "Raciocínio lógico-matemático:" → 1 disciplina  
-   - "Conhecimentos Regionais:" → 1 disciplina (se houver)
-
-2. CONHECIMENTOS ESPECÍFICOS COMUNS (peso 2):
-   - "Conhecimentos sobre o Sistema Único de Saúde (SUS):" → 1 disciplina
-
-3. CONHECIMENTOS ESPECÍFICOS DO CARGO (peso 2):
-   - Seção com nome do cargo (ex: "Enfermeiro") → 1 disciplina
-   - IMPORTANTE: Todo o conteúdo após o nome do cargo é TÓPICO, não disciplina separada
-
-REGRAS CRÍTICAS:
-- Cada título seguido de ":" é UMA disciplina
-- O conteúdo DEPOIS do título são os TÓPICOS dessa disciplina
-- A seção do cargo inteira ("${cargoUpper}") vira UMA ÚNICA disciplina chamada "Conhecimentos Específicos de ${cargoUpper}"
-- NÃO criar disciplinas de "Ética", "Farmacologia", etc. separadamente - são TÓPICOS
-
-TOTAL ESPERADO: 4-6 disciplinas
-
-FORMATO JSON (sem markdown):
-{"disciplinas":[
-  {"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Acentuação","Pontuação"]},
-  {"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica","Raciocínio"]},
-  {"nome":"Conhecimentos Regionais do Estado do Piauí","peso":1,"categoria":"BÁSICOS","topicos":["História","Geografia"]},
-  {"nome":"Conhecimentos sobre o SUS e Legislação","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080","Lei 8142"]},
-  {"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["Ética","Farmacologia","Biossegurança"]}
-]}
-
-TEXTO DO EDITAL:
-${textoLimitado}`
+    if (disciplinasDaTabela.length >= 3) {
+      // Para editais COM tabela, usar toda a seção do cargo (Estratégia A)
+      textoSecaoCargo = linhas.slice(inicioSecaoCargo, fimSecaoCargo).join('\n')
+      console.log(`📖 Seção do cargo (com tabela): ${textoSecaoCargo.length} chars (linhas ${inicioSecaoCargo+1}-${fimSecaoCargo})`)
     } else {
-      promptExtracao = `TAREFA: Extrair TODAS as disciplinas para o cargo "${cargoUpper}" do edital.
-
-ESTRUTURA TÍPICA DE EDITAIS FISCAIS/ADMINISTRATIVOS:
-1. MÓDULO I - CONHECIMENTOS BÁSICOS (peso 1):
-   - Língua Portuguesa, Inglês, Raciocínio Lógico, Estatística, etc.
-   - Cada título é UMA disciplina separada
-
-2. MÓDULO II - CONHECIMENTOS ESPECÍFICOS (peso 2):
-   - Direito Tributário, Direito Constitucional, Contabilidade, etc.
-   - Cada título é UMA disciplina separada
-
-REGRAS:
-- Cada título/matéria do edital = 1 disciplina
-- Subtópicos dentro de cada matéria = tópicos da disciplina
-- NÃO inclua disciplinas de outros cargos
-
-TOTAL ESPERADO: 15-20 disciplinas
-
-FORMATO JSON (sem markdown):
-{"disciplinas":[
-  {"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Interpretação","Gramática"]},
-  {"nome":"Direito Tributário","peso":2,"categoria":"ESPECÍFICOS","topicos":["CTN","Impostos"]}
-]}
-
-TEXTO DO EDITAL:
-${textoLimitado}`
+      // Para editais SEM tabela: montar texto com seções relevantes
+      
+      // Buscar "CONHECIMENTOS GERAIS" antes do cargo
+      let secaoGeraisTexto = ''
+      for (let i = inicioConteudo; i < inicioSecaoCargo; i++) {
+        const l = linhas[i].trim().toUpperCase()
+        if ((l.includes('CONHECIMENTOS GERAIS') || l.includes('CONHECIMENTOS BÁSICOS')) && l.length < 80) {
+          const prox = linhas.slice(i+1, i+10).join(' ').toLowerCase()
+          if (prox.includes('língua') || prox.includes('raciocínio') || prox.includes('cargos de ensino')) {
+            const secaoLinhas: string[] = []
+            for (let j = i; j < inicioSecaoCargo; j++) {
+              const lj = linhas[j].trim().toUpperCase()
+              if (lj.includes('CONHECIMENTOS ESPECÍFICOS') && secaoLinhas.length > 3) break
+              secaoLinhas.push(linhas[j])
+            }
+            secaoGeraisTexto = secaoLinhas.join('\n')
+            console.log(`📍 Seção Gerais: ${secaoGeraisTexto.length} chars (linha ${i+1})`)
+            break
+          }
+        }
+      }
+      
+      // Buscar "PARA TODOS OS CARGOS" (SUS/Legislação)
+      let secaoComumTexto = ''
+      for (let i = inicioConteudo; i < inicioSecaoCargo; i++) {
+        const l = linhas[i].trim().toUpperCase()
+        if (l.includes('PARA TODOS OS CARGOS') && l.length < 100) {
+          const secaoLinhas: string[] = []
+          for (let j = i; j < inicioSecaoCargo; j++) {
+            const lj = linhas[j].trim().toUpperCase()
+            if ((lj.includes('CONHECIMENTOS ESPECÍFICOS') && !lj.includes('PARA TODOS')) && secaoLinhas.length > 1) break
+            if (outrosCargosConhecidos.some(c => lj === c || lj.startsWith(c + ' -') || lj.startsWith(c + ' –'))) break
+            secaoLinhas.push(linhas[j])
+          }
+          secaoComumTexto = secaoLinhas.join('\n')
+          console.log(`📍 Seção SUS/Comuns: ${secaoComumTexto.length} chars (linha ${i+1})`)
+          break
+        }
+      }
+      
+      const secaoCargoTexto = linhas.slice(inicioSecaoCargo, fimSecaoCargo).join('\n')
+      
+      textoSecaoCargo = [
+        secaoGeraisTexto ? 'CONHECIMENTOS GERAIS\n' + secaoGeraisTexto : '',
+        secaoComumTexto ? 'CONHECIMENTOS ESPECÍFICOS COMUNS\n' + secaoComumTexto : '',
+        secaoCargoTexto
+      ].filter(s => s.length > 0).join('\n\n')
+      
+      console.log(`📖 Seção total: ${textoSecaoCargo.length} chars (Gerais:${secaoGeraisTexto.length}, Comuns:${secaoComumTexto.length}, Cargo:${secaoCargoTexto.length})`)
     }
     
-    console.log(`📝 Usando prompt para: ${ehConcursoSaude ? 'SAÚDE' : 'FISCAL/ADMINISTRATIVO'}`)
-
-    // ════════════════════════════════════════════════════════════════
-    // ✅ v50: EXTRAÇÃO HÍBRIDA - PROGRAMÁTICA (SAÚDE) + IA (FISCAL)
-    // ════════════════════════════════════════════════════════════════
+    // ──────────────────────────────────────────────────────────────
+    // EXTRAIR DISCIPLINAS: duas estratégias
+    // ──────────────────────────────────────────────────────────────
     
     let disciplinasExtraidas: any[] = []
     
-    // Para concursos de SAÚDE: extração programática (estrutura previsível)
-    if (ehConcursoSaude && (secaoGeral.length > 100 || secaoComum.length > 100 || secaoCargo.length > 100)) {
-      console.log('\n🔧 Modo PROGRAMÁTICO: Extraindo disciplinas para concurso de SAÚDE...')
-      
-      // Função auxiliar para extrair tópicos de uma seção
-      const extrairTopicos = (textoSecao: string): string[] => {
-        const topicos: string[] = []
-        // Dividir por pontos finais seguidos de maiúscula ou ponto e vírgula
-        const partes = textoSecao.split(/[.;]\s*(?=[A-ZÀ-Ú]|\d)/)
-        for (const parte of partes) {
-          const topico = parte.trim().replace(/[.;:]+$/, '').trim()
-          if (topico.length > 10 && topico.length < 250) {
-            topicos.push(topico)
-          }
+    // Função para extrair tópicos do texto de uma disciplina
+    const extrairTopicosDeTexto = (textoDisc: string): string[] => {
+      const topicos: string[] = []
+      // Tentar dividir por numeração
+      const partesPorNumero = textoDisc.split(/(?=\d+\.\s)/)
+      if (partesPorNumero.length > 3) {
+        for (const p of partesPorNumero) {
+          const t = p.trim().replace(/^\d+\.?\s*/, '').replace(/[.;]+$/, '').trim()
+          if (t.length > 5 && t.length < 300) topicos.push(t)
         }
-        return topicos.slice(0, 40) // Limitar
+        if (topicos.length > 3) return topicos.slice(0, 50)
       }
-      
-      // 1. Extrair disciplinas de CONHECIMENTOS GERAIS usando padrão "Nome:"
-      if (secaoGeral.length > 100) {
-        console.log('   📖 Processando seção de Conhecimentos Gerais...')
-        
-        // Padrões específicos para disciplinas de editais de saúde
-        const padroesDiscGerais = [
-          /Língua\s+portuguesa:\s*([^]*?)(?=Raciocínio|Conhecimentos\s+Regionais|$)/gi,
-          /Raciocínio\s+lógico[^:]*:\s*([^]*?)(?=Noções|Conhecimentos\s+Regionais|Conhecimentos\s+Específicos|$)/gi,
-          /Noções\s+básicas\s+de\s+aritmética[^:]*:\s*([^]*?)(?=Conhecimentos\s+Regionais|Conhecimentos\s+Específicos|$)/gi,
-          /Conhecimentos\s+Regionais[^:]*:\s*([^]*?)(?=Conhecimentos\s+Específicos|$)/gi
-        ]
-        
-        // Extrair Língua Portuguesa
-        const matchPortugues = secaoGeral.match(/Língua\s+portuguesa:\s*([^]*?)(?=Raciocínio|$)/i)
-        if (matchPortugues) {
-          disciplinasExtraidas.push({
-            nome: 'Língua Portuguesa',
-            peso: 1,
-            categoria: 'BÁSICOS',
-            topicos: extrairTopicos(matchPortugues[0])
-          })
-          console.log(`   ✓ Língua Portuguesa`)
-        }
-        
-        // Extrair Raciocínio Lógico
-        const matchRaciocinio = secaoGeral.match(/Raciocínio\s+lógico[^:]*:\s*([^]*?)(?=Noções|Conhecimentos|$)/i)
-        if (matchRaciocinio) {
-          disciplinasExtraidas.push({
-            nome: 'Raciocínio Lógico-Matemático',
-            peso: 1,
-            categoria: 'BÁSICOS',
-            topicos: extrairTopicos(matchRaciocinio[0])
-          })
-          console.log(`   ✓ Raciocínio Lógico-Matemático`)
-        }
-        
-        // Extrair Conhecimentos Regionais (se houver)
-        const matchRegionais = secaoGeral.match(/Conhecimentos\s+Regionais[^:]*:\s*([^]*?)(?=Conhecimentos\s+Específicos|$)/i)
-        if (matchRegionais) {
-          disciplinasExtraidas.push({
-            nome: 'Conhecimentos Regionais',
-            peso: 1,
-            categoria: 'BÁSICOS',
-            topicos: extrairTopicos(matchRegionais[0])
-          })
-          console.log(`   ✓ Conhecimentos Regionais`)
-        }
+      // Dividir por ponto-e-vírgula ou ponto seguido de maiúscula
+      const partes = textoDisc.split(/[;.]\s*(?=[A-ZÀ-Ú\d])/)
+      for (const p of partes) {
+        const t = p.trim().replace(/^\d+\.?\s*/, '').replace(/[;.]+$/, '').trim()
+        if (t.length > 5 && t.length < 300) topicos.push(t)
       }
-      
-      // 2. Extrair disciplina de CONHECIMENTOS COMUNS (SUS)
-      if (secaoComum.length > 50) {
-        console.log('   📖 Processando seção de SUS/Legislação...')
-        const topicosComuns = extrairTopicos(secaoComum)
-        disciplinasExtraidas.push({
-          nome: 'Conhecimentos sobre o SUS e Legislação',
-          peso: 2,
-          categoria: 'ESPECÍFICOS',
-          topicos: topicosComuns
-        })
-        console.log(`   ✓ Conhecimentos sobre o SUS e Legislação (${topicosComuns.length} tópicos)`)
-      }
-      
-      // 3. Extrair disciplina ESPECÍFICA DO CARGO
-      if (secaoCargo.length > 50) {
-        console.log('   📖 Processando seção específica do cargo...')
-        const topicosCargo = extrairTopicos(secaoCargo)
-        disciplinasExtraidas.push({
-          nome: `Conhecimentos Específicos de ${cargoUpper}`,
-          peso: 2,
-          categoria: 'ESPECÍFICOS',
-          topicos: topicosCargo
-        })
-        console.log(`   ✓ Conhecimentos Específicos de ${cargoUpper} (${topicosCargo.length} tópicos)`)
-      }
-      
-      console.log(`\n✅ Extração programática: ${disciplinasExtraidas.length} disciplinas`)
+      return topicos.slice(0, 50)
     }
     
-    // Se extração programática não conseguiu extrair disciplinas suficientes, usar IA
-    if (disciplinasExtraidas.length < 3) {
+    // ════════════════════════════════════════════════════════════════
+    // ESTRATÉGIA A: Se encontrou tabela de disciplinas, usar como guia
+    // ════════════════════════════════════════════════════════════════
+    
+    if (disciplinasDaTabela.length >= 3) {
+      console.log('\n🔧 Usando TABELA DE DISCIPLINAS como guia...')
+      
+      for (const disc of disciplinasDaTabela) {
+        // Buscar "NomeDisciplina:" no conteúdo programático
+        // Normalizar: "Raciocínio Lógico Matemático" → match "Raciocínio Lógico-Matemático"
+        const nomeParaBusca = disc.nome.replace(/\s+/g, '[\\s\\-–]+')
+        const regex = new RegExp(nomeParaBusca + '[^:]*:\\s*', 'i')
+        const match = textoSecaoCargo.match(regex)
+        
+        if (match) {
+          const posInicio = textoSecaoCargo.indexOf(match[0])
+          let conteudo = textoSecaoCargo.substring(posInicio + match[0].length)
+          
+          // Cortar na próxima disciplina da tabela
+          let menorPos = conteudo.length
+          for (const outra of disciplinasDaTabela) {
+            if (outra.nome === disc.nome) continue
+            const outraBusca = outra.nome.replace(/\s+/g, '[\\s\\-–]+')
+            const outraRegex = new RegExp('\\n' + outraBusca + '[^:]*:\\s', 'i')
+            const outraMatch = conteudo.match(outraRegex)
+            if (outraMatch && outraMatch.index !== undefined && outraMatch.index < menorPos) {
+              menorPos = outraMatch.index
+            }
+          }
+          // Também cortar em MÓDULO II ou marcadores de seção
+          const marcadores = [/\nMÓDULO\s+II/i, /\nCONHECIMENTOS\s+ESPECÍFICOS/i]
+          for (const marc of marcadores) {
+            const m = conteudo.match(marc)
+            if (m && m.index !== undefined && m.index < menorPos) menorPos = m.index
+          }
+          
+          conteudo = conteudo.substring(0, menorPos).trim()
+          const topicos = extrairTopicosDeTexto(conteudo)
+          
+          disciplinasExtraidas.push({
+            nome: disc.nome,
+            peso: disc.peso,
+            categoria: disc.categoria,
+            topicos
+          })
+          console.log(`   ✅ ${disc.nome}: ${conteudo.length} chars, ${topicos.length} tópicos`)
+        } else {
+          // Não encontrou conteúdo, mas a disciplina existe na tabela
+          disciplinasExtraidas.push({
+            nome: disc.nome,
+            peso: disc.peso,
+            categoria: disc.categoria,
+            topicos: []
+          })
+          console.log(`   ⚠️ ${disc.nome}: sem conteúdo programático`)
+        }
+      }
+      
+    } else {
+      // ════════════════════════════════════════════════════════════════
+      // ESTRATÉGIA B: Extração por padrão "Nome: conteúdo..."
+      // Funciona para editais sem tabela (SESAPI, etc)
+      // ════════════════════════════════════════════════════════════════
+      
+      console.log('\n🔧 Extração por padrão "Nome: conteúdo"...')
+      
+      const linhasSecao = textoSecaoCargo.split('\n')
+      let categoriaAtual = 'BÁSICOS'
+      let pesoAtual = 1
+      let disciplinaAtual: { nome: string, peso: number, categoria: string, textoCompleto: string } | null = null
+      const disciplinasRaw: typeof disciplinaAtual[] = []
+      
+      for (let i = 0; i < linhasSecao.length; i++) {
+        const linha = linhasSecao[i].trim()
+        const linhaUpper = linha.toUpperCase()
+        
+        // Detectar mudança de seção
+        if (linhaUpper.includes('MÓDULO II') || 
+            (linhaUpper.includes('CONHECIMENTOS ESPECÍFICOS') && linha.length < 100)) {
+          categoriaAtual = 'ESPECÍFICOS'
+          pesoAtual = 2
+          continue
+        }
+        if (linhaUpper.includes('MÓDULO I') || 
+            (linhaUpper.includes('CONHECIMENTOS BÁSICOS') && linha.length < 100) ||
+            (linhaUpper.includes('CONHECIMENTOS GERAIS') && linha.length < 100)) {
+          categoriaAtual = 'BÁSICOS'
+          pesoAtual = 1
+          continue
+        }
+        
+        if (linha.length < 15) continue
+        if (/^(CARGOS|PARA TODOS|ANEXO)\s/i.test(linha)) continue
+        
+        // Padrão de disciplina: "NomeDisciplina: conteúdo..."
+        const matchDisc = linha.match(/^([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú\s,\-–()\/e]+?):\s+(.+)/)
+        
+        if (matchDisc) {
+          const nomeCand = matchDisc[1].trim()
+          const resto = matchDisc[2].trim()
+          
+          // Disciplina real: não é número, começa com maiúscula, tem tamanho certo, conteúdo longo
+          const ehDisciplinaReal = 
+            /^[A-ZÀ-Ú]/.test(nomeCand) && 
+            nomeCand.length >= 4 && nomeCand.length <= 120 &&
+            resto.length > 30 && 
+            !/^\d/.test(nomeCand) &&
+            !/^(Conceito|Definição|Tipo|Classificação|Observação)\s*$/i.test(nomeCand)
+          
+          if (ehDisciplinaReal) {
+            if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
+            disciplinaAtual = { nome: nomeCand, peso: pesoAtual, categoria: categoriaAtual, textoCompleto: resto }
+            continue
+          }
+        }
+        
+        // Caso para editais de saúde: nome de cargo sozinho na linha
+        // Ex: "Enfermeiro" seguido por conteúdo sem ":" de disciplina
+        if (/^[A-ZÀ-Ú][a-zà-ú]+(\s+[A-Za-zÀ-ú\-]+)*\s*$/.test(linha) && linha.length < 60) {
+          const proxLinha = linhasSecao[i+1]?.trim() || ''
+          // Verificar se é nome de cargo (não nome de disciplina): próxima linha não tem ":" no início
+          if (proxLinha.length > 30 && !proxLinha.match(/^[A-ZÀ-Ú][^:]{3,30}:\s/)) {
+            if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
+            disciplinaAtual = { nome: `Conhecimentos Específicos de ${linha.trim()}`, peso: 2, categoria: 'ESPECÍFICOS', textoCompleto: '' }
+            continue
+          }
+        }
+        
+        // Caso para seções de edital de saúde: "PARA TODOS OS CARGOS DE ENSINO SUPERIOR"
+        if (linhaUpper.includes('PARA TODOS OS CARGOS')) {
+          if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
+          disciplinaAtual = null // Reset, a próxima disciplina será a de SUS
+          continue
+        }
+        
+        // Caso para "Conhecimentos sobre o SUS:" ou similar
+        if (linhaUpper.includes('CARGOS DE ENSINO') && linha.length < 100) {
+          continue // Ignorar cabeçalho, o conteúdo vem depois
+        }
+        
+        // Acumular conteúdo
+        if (disciplinaAtual && linha.length > 10) {
+          disciplinaAtual.textoCompleto += ' ' + linha
+        }
+      }
+      if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
+      
+      // Processar disciplinas brutas
+      for (const disc of disciplinasRaw) {
+        if (!disc) continue
+        const topicos = extrairTopicosDeTexto(disc.textoCompleto)
+        if (disc.textoCompleto.length > 30) {
+          disciplinasExtraidas.push({
+            nome: disc.nome,
+            peso: disc.peso,
+            categoria: disc.categoria,
+            topicos
+          })
+        }
+      }
+    }
+    
+    console.log(`\n📊 Extração programática: ${disciplinasExtraidas.length} disciplinas`)
+    
+    // ──────────────────────────────────────────────────────────────
+    // FALLBACK: Se programática falhou, usar IA
+    // ──────────────────────────────────────────────────────────────
+    
+    if (disciplinasExtraidas.length < 2) {
       console.log('\n🤖 Extração programática insuficiente, usando IA...')
       
-      // Construir lista de APIs disponíveis
-      const ordemAPIs = apiKeys.filter(k => k.api_key && k.api_key.length > 10).map(k => k.provider)
+      const textoParaIA = textoSecaoCargo.substring(0, 50000)
+      const promptIA = `TAREFA CRÍTICA: Extrair TODAS as disciplinas para o cargo "${cargoUpper}" do conteúdo programático abaixo.
+
+REGRAS:
+1. Cada matéria/disciplina listada (seguida de ":") = UMA disciplina
+2. Conteúdo após o nome = TÓPICOS da disciplina
+3. NÃO invente - extraia APENAS do texto
+4. Conhecimentos Básicos/Gerais = peso 1, Específicos = peso 2
+5. Retorne APENAS JSON válido, sem markdown
+
+FORMATO: {"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["T1","T2"]}]}
+
+CONTEÚDO:
+${textoParaIA}`
       
-      // Fallback para variáveis de ambiente se necessário
-      if (ordemAPIs.length === 0) {
-        if (geminiKey && geminiKey.length > 10) ordemAPIs.push('gemini')
-        if (openaiKey && openaiKey.length > 10) ordemAPIs.push('openai')
-        if (groqKey && groqKey.length > 10) ordemAPIs.push('groq')
+      if (!geminiKey && !openaiKey && !groqKey) {
+        return c.json({ error: 'Nenhuma chave de API configurada.', errorType: 'NO_API_KEYS', canRetry: false }, 500)
       }
       
-      if (ordemAPIs.length === 0) {
-        return c.json({
-          error: 'Nenhuma chave de API configurada.',
-          errorType: 'NO_API_KEYS',
-          canRetry: false
-        }, 500)
-      }
-      
-      // Helper para chamar API
-      const chamarAPI = async (promptTexto: string): Promise<string> => {
-        // Tentar Gemini
-        if (geminiKey) {
-          try {
-            const response = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: promptTexto }] }],
-                  generationConfig: { temperature: 0, maxOutputTokens: 8000 }
-                })
-              }
-            )
-            if (response.ok) {
-              const data = await response.json() as any
-              return data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-            }
-          } catch (e) { /* ignorar */ }
-        }
-        return ''
-      }
-      
-      // Tentar extração via IA
-      const resultado = await chamarAPI(promptExtracao)
-      if (resultado) {
+      // Tentar Gemini → OpenAI → GROQ
+      let respostaIA = ''
+      if (geminiKey) {
         try {
-          const jsonStr = resultado.replace(/```json\n?/gi, '').replace(/```\n?/gi, '')
+          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: promptIA }] }], generationConfig: { temperature: 0, maxOutputTokens: 16000 } })
+          })
+          if (r.ok) { const d = await r.json() as any; respostaIA = d?.candidates?.[0]?.content?.parts?.[0]?.text || '' }
+        } catch (e) { /* */ }
+      }
+      if (!respostaIA && openaiKey) {
+        try {
+          const r = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+            body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'Extraia disciplinas de editais. JSON apenas.' }, { role: 'user', content: promptIA }], temperature: 0, max_tokens: 16000 })
+          })
+          if (r.ok) { const d = await r.json() as any; respostaIA = d?.choices?.[0]?.message?.content || '' }
+        } catch (e) { /* */ }
+      }
+      if (!respostaIA && groqKey) {
+        try {
+          const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+            body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: 'Extraia disciplinas. JSON apenas.' }, { role: 'user', content: promptIA }], temperature: 0, max_tokens: 16000 })
+          })
+          if (r.ok) { const d = await r.json() as any; respostaIA = d?.choices?.[0]?.message?.content || '' }
+        } catch (e) { /* */ }
+      }
+      
+      if (respostaIA) {
+        try {
+          const jsonStr = respostaIA.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim()
           const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
           if (jsonMatch) {
             const data = JSON.parse(jsonMatch[0])
-            if (data.disciplinas && data.disciplinas.length > 0) {
-              disciplinasExtraidas = data.disciplinas
+            if (data.disciplinas?.length > 0) {
+              disciplinasExtraidas = data.disciplinas.map((d: any) => ({
+                nome: d.nome || 'Sem nome',
+                peso: d.peso || 1,
+                categoria: d.categoria || 'BÁSICOS',
+                topicos: Array.isArray(d.topicos) ? d.topicos.filter((t: any) => typeof t === 'string' && t.length > 3) : []
+              }))
               console.log(`✅ IA extraiu: ${disciplinasExtraidas.length} disciplinas`)
             }
           }
-        } catch (e) {
-          console.log(`⚠️ Erro ao parsear JSON da IA: ${e}`)
-        }
+        } catch (e) { console.log(`⚠️ Erro JSON IA: ${e}`) }
       }
     }
     
-    // Verificar se conseguimos extrair alguma disciplina
     if (disciplinasExtraidas.length === 0) {
-      return c.json({
-        error: 'Não foi possível extrair disciplinas do edital',
-        errorType: 'EXTRACTION_FAILED',
-        canRetry: true
-      }, 400)
+      return c.json({ error: 'Não foi possível extrair disciplinas do edital', errorType: 'EXTRACTION_FAILED', canRetry: true }, 400)
     }
     
     // ════════════════════════════════════════════════════════════════
-    // ✅ v50: RESULTADO FINAL
+    // RESULTADO FINAL
     // ════════════════════════════════════════════════════════════════
     console.log('\n' + '═'.repeat(60))
-    console.log(`✅ EXTRAÇÃO COMPLETA: ${disciplinasExtraidas.length} disciplinas`)
+    console.log(`✅ EXTRAÇÃO v51b: ${disciplinasExtraidas.length} disciplinas`)
     console.log('═'.repeat(60))
     disciplinasExtraidas.forEach((d: any, i: number) => {
       console.log(`   ${i+1}. ${d.nome} (peso: ${d.peso}, tópicos: ${d.topicos?.length || 0})`)
