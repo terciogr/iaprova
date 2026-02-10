@@ -5895,6 +5895,20 @@ ${textoOtimizado}`
     if (!textoResposta && groqKey) {
       console.log(`🔄 Gemini falhou, tentando GROQ...`)
       
+      // v35: GROQ tem limite de tokens menor, usar texto reduzido
+      const textoParaGroq = textoOtimizado.substring(0, 25000)
+      const promptGroq = `EXTRAIA TODAS AS DISCIPLINAS E TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
+
+CARGO: ${cargoDesejado?.toUpperCase() || 'GERAL'}
+
+FORMATO JSON:
+{"disciplinas":[{"nome":"Disciplina","peso":1,"categoria":"CONHECIMENTOS BÁSICOS","topicos":["tópico"]}]}
+
+PESOS: 1=Básicos, 2=Específicos
+
+TEXTO:
+${textoParaGroq}`
+      
       try {
         const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -5904,7 +5918,7 @@ ${textoOtimizado}`
           },
           body: JSON.stringify({
             model: 'llama-3.3-70b-versatile',
-            messages: [{ role: 'user', content: prompt }],
+            messages: [{ role: 'user', content: promptGroq }],
             temperature: 0,
             max_tokens: 8000
           })
@@ -6672,6 +6686,20 @@ ${textoLimitado}`
     if (!textoResposta && groqKey) {
       console.log(`🔄 Gemini falhou, tentando GROQ...`)
       
+      // v35: GROQ tem limite de tokens menor, usar texto reduzido
+      const textoParaGroq = textoLimitado.substring(0, 25000)
+      const promptGroq = `EXTRAIA TODAS AS DISCIPLINAS E TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
+
+CARGO: ${cargo?.toUpperCase() || 'GERAL'}
+
+FORMATO JSON:
+{"disciplinas":[{"nome":"Disciplina","peso":1,"categoria":"CONHECIMENTOS BÁSICOS","topicos":["tópico"]}]}
+
+PESOS: 1=Básicos, 2=Específicos
+
+TEXTO:
+${textoParaGroq}`
+      
       try {
         const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -6681,7 +6709,7 @@ ${textoLimitado}`
           },
           body: JSON.stringify({
             model: 'llama-3.3-70b-versatile',
-            messages: [{ role: 'user', content: prompt }],
+            messages: [{ role: 'user', content: promptGroq }],
             temperature: 0,
             max_tokens: 8000
           })
