@@ -7278,7 +7278,11 @@ app.post('/api/editais/processar-texto', async (c) => {
     ]
     
     // Converter texto para linhas para análise precisa
-    const linhas = texto.split(/\r?\n/)
+    // Remover caracteres de controle como \f (form feed de PDFs)
+    const linhas = texto
+      .replace(/\f/g, '') // Remover form feed
+      .replace(/\r/g, '') // Remover carriage return
+      .split(/\n/)
     console.log(`📄 Total de linhas no edital: ${linhas.length}`)
     
     // Função MELHORADA para encontrar seção de Conhecimentos Gerais
