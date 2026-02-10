@@ -11151,19 +11151,22 @@ app.delete('/api/planos/:plano_id', async (c) => {
         { nome: 'edital_topicos_via_interview', query: `DELETE FROM edital_topicos WHERE edital_disciplina_id IN (SELECT ed.id FROM edital_disciplinas ed JOIN editais e ON ed.edital_id = e.id JOIN interviews i ON e.user_id = i.user_id JOIN planos_estudo p ON i.id = p.interview_id WHERE p.id = ?)` },
       ]
       
+      const plano_id_int = parseInt(plano_id)
+      console.log(`📋 Plano ID (int): ${plano_id_int}`)
+      
       for (const tabela of tabelasParaLimpar) {
         try {
-          await DB.prepare(tabela.query).bind(plano_id).run()
-          console.log(`  ✓ ${tabela.nome}`)
+          const result = await DB.prepare(tabela.query).bind(plano_id_int).run()
+          console.log(`  ✓ ${tabela.nome}: ${result.meta?.changes || 0} deletados`)
         } catch (e: any) {
           // Ignorar erros (tabela pode não existir ou não ter dados)
-          console.log(`  ⚠️ ${tabela.nome}: ${e.message?.substring(0, 40) || 'erro'}`)
+          console.log(`  ⚠️ ${tabela.nome}: ${e.message?.substring(0, 60) || 'erro'}`)
         }
       }
       
       // PASSO 2: FINALMENTE deletar o plano
       console.log('🗑️ Deletando plano...')
-      await DB.prepare('DELETE FROM planos_estudo WHERE id = ?').bind(plano_id).run()
+      await DB.prepare('DELETE FROM planos_estudo WHERE id = ?').bind(plano_id_int).run()
       console.log(`✅ Plano ${plano_id} deletado com sucesso!`)
       
     } catch (mainError: any) {
