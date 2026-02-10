@@ -5810,163 +5810,165 @@ INSTRUÇÕES:
     const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
     const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
     
-    // ✅ CORREÇÃO v24 - PROMPT 100% BASEADO NO EDITAL (SEM DISCIPLINAS PRÉ-DEFINIDAS)
+    // ✅ CORREÇÃO v25 - SISTEMA ULTRA-ROBUSTO COM MÚLTIPLAS ESTRATÉGIAS
     console.log(`📝 Analisando edital para cargo: ${cargoDesejado || 'NÃO ESPECIFICADO'}`)
     
-    // Prompt que FORÇA a IA a ler o documento e extrair APENAS o que está escrito
-    const prompt = `VOCÊ É UM ANALISADOR ESPECIALIZADO EM EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
+    // ════════════════════════════════════════════════════════════════════════════
+    // ESTRATÉGIA 1: PROMPT SIMPLIFICADO PARA IA (mais direto, menos instruções)
+    // ════════════════════════════════════════════════════════════════════════════
+    const promptSimplificado = `Extraia as disciplinas e tópicos do conteúdo programático abaixo.
 
-═══════════════════════════════════════════════════════════════════════════════
-⚠️ REGRA ABSOLUTA: EXTRAIA SOMENTE O QUE ESTÁ ESCRITO NO TEXTO ABAIXO
-═══════════════════════════════════════════════════════════════════════════════
+CARGO: ${cargoDesejado?.toUpperCase() || 'GERAL'}
+
+Retorne APENAS um JSON com este formato:
+{"disciplinas":[{"nome":"Nome da Disciplina","peso":1,"topicos":["tópico 1","tópico 2"]}]}
+
+REGRAS:
+- peso 1 = Conhecimentos Básicos (Português, Raciocínio Lógico, etc)
+- peso 2 = Conhecimentos Específicos (área técnica do cargo)
+- Extraia TODAS as disciplinas que encontrar (5, 10, 15+)
+- Use os nomes EXATOS das disciplinas como aparecem no texto
+
+TEXTO DO EDITAL:
+${textoParaIA}`
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // ESTRATÉGIA 2: PROMPT DETALHADO (caso o simplificado falhe)
+    // ════════════════════════════════════════════════════════════════════════════
+    const promptDetalhado = `VOCÊ É UM ANALISADOR DE EDITAIS DE CONCURSOS PÚBLICOS.
+
+TAREFA: Extrair TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
 
 CARGO DO CANDIDATO: ${cargoDesejado?.toUpperCase() || 'TODOS OS CARGOS'}
 
 ${instrucaoCargo}
 
-INSTRUÇÕES OBRIGATÓRIAS:
+INSTRUÇÕES:
+1. Procure por "CONTEÚDO PROGRAMÁTICO", "CONHECIMENTOS BÁSICOS", "CONHECIMENTOS ESPECÍFICOS"
+2. Extraia o nome de CADA disciplina (ex: "Língua Portuguesa", "Direito Constitucional")
+3. Liste os tópicos de cada disciplina
+4. Use peso 1 para Conhecimentos Básicos, peso 2 para Específicos
 
-1. LEIA O TEXTO COMPLETO DO EDITAL ABAIXO
-2. ENCONTRE A SEÇÃO "CONTEÚDO PROGRAMÁTICO" OU "CONHECIMENTOS"
-3. EXTRAIA **EXATAMENTE** AS DISCIPLINAS E TÓPICOS COMO APARECEM NO TEXTO
-4. USE OS NOMES **EXATOS** DAS DISCIPLINAS (não renomeie, não simplifique)
-5. INCLUA **TODOS** OS TÓPICOS DE CADA DISCIPLINA
-
-REGRAS DE PESO:
-- Conhecimentos Básicos/Gerais = peso ${pesoCG}
-- Conhecimentos Específicos = peso ${pesoCE}
-
-⛔ PROIBIÇÕES:
-- NÃO invente disciplinas que não estão no texto
-- NÃO adicione tópicos que não estão listados
-- NÃO use disciplinas genéricas como "Conhecimentos Gerais" se não estiverem no edital
-- NÃO presuma disciplinas baseado no cargo (ex: NÃO adicione "Enfermagem" só porque o cargo é enfermeiro)
-
-✅ OBRIGATÓRIO:
-- Extraia TODAS as disciplinas do conteúdo programático (pode ser 5, 10, 15, 20+ disciplinas)
-- Copie os tópicos EXATAMENTE como aparecem
-- Se houver subdivisões (ex: "Direito Tributário: 1. Sistema Tributário Nacional..."), use como tópicos
-
-FORMATO DA RESPOSTA (APENAS JSON):
+FORMATO JSON OBRIGATÓRIO:
 {
   "disciplinas": [
-    {
-      "nome": "Nome EXATO da Disciplina conforme o edital",
-      "peso": 1,
-      "topicos": ["Tópico 1 conforme edital", "Tópico 2 conforme edital"]
-    }
+    {"nome": "Nome Exato", "peso": 1, "topicos": ["tópico 1", "tópico 2"]}
   ]
 }
 
-TEXTO DO EDITAL PARA ANÁLISE:
+TEXTO PARA ANÁLISE:
 ${textoParaIA}`
 
-    // ════════════════════════════════════════════════════════════════════════
-    // ✅ SISTEMA SIMPLIFICADO DE CHAMADA À API GEMINI (máximo 2 tentativas)
-    // ════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════════════════
+    // SISTEMA DE TENTATIVAS COM MÚLTIPLOS PROMPTS
+    // ════════════════════════════════════════════════════════════════════════════
     let response: Response | null = null
     let data: any = null
     let lastError: string = ''
-    const MAX_RETRIES = 2
     
-    // Usar apenas 1 modelo estável
+    // Usar geminiKey já declarado anteriormente
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`
-    
-    // Função auxiliar para delay simples
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
     
+    // Lista de prompts para tentar em sequência
+    const prompts = [promptSimplificado, promptDetalhado]
     let successModel = 'gemini-2.5-flash'
+    let textoResposta = ''
     
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      console.log(`🔄 Tentativa ${attempt}/${MAX_RETRIES} com Gemini Flash...`)
+    // Tentar cada prompt até um funcionar
+    for (let promptIndex = 0; promptIndex < prompts.length; promptIndex++) {
+      const currentPrompt = prompts[promptIndex]
+      console.log(`🔄 Tentativa ${promptIndex + 1}/${prompts.length} (prompt ${promptIndex === 0 ? 'simplificado' : 'detalhado'})...`)
       
-      try {
-        response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.1,
-              topP: 0.95,
-              topK: 40,
-              maxOutputTokens: 32768
-            }
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          console.log(`   Requisição ${attempt}/2...`)
+          
+          response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: currentPrompt }] }],
+              generationConfig: {
+                temperature: promptIndex === 0 ? 0.1 : 0.2,
+                topP: 0.95,
+                topK: 40,
+                maxOutputTokens: 65536
+              }
+            })
           })
-        })
-        
-        if (!response.ok) {
-          const errorText = await response.text()
-          lastError = `HTTP ${response.status}: ${errorText.substring(0, 200)}`
-          console.error(`❌ Erro HTTP ${response.status}`)
           
-          if (attempt < MAX_RETRIES) {
-            console.log(`⏳ Aguardando 5s antes de nova tentativa...`)
-            await delay(5000)
+          if (!response.ok) {
+            const errorText = await response.text()
+            lastError = `HTTP ${response.status}: ${errorText.substring(0, 200)}`
+            console.error(`❌ Erro HTTP ${response.status}`)
+            
+            if (response.status === 429) {
+              console.log(`⏳ Rate limit - aguardando 10s...`)
+              await delay(10000)
+            } else if (attempt < 2) {
+              await delay(3000)
+            }
             continue
           }
-          break
-        }
-        
-        data = await response.json() as any
-        
-        if (!data?.candidates?.[0]) {
-          lastError = 'Resposta sem conteúdo válido'
-          if (data?.promptFeedback?.blockReason) {
-            lastError = `Conteúdo bloqueado: ${data.promptFeedback.blockReason}`
+          
+          data = await response.json() as any
+          
+          if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+            textoResposta = data.candidates[0].content.parts[0].text
+            console.log(`✅ Resposta recebida: ${textoResposta.length} caracteres`)
+            
+            // Verificar se a resposta contém JSON válido com disciplinas
+            if (textoResposta.includes('"disciplinas"') && textoResposta.includes('"nome"')) {
+              console.log(`✅ Resposta parece conter disciplinas válidas!`)
+              break
+            } else {
+              console.warn(`⚠️ Resposta não contém estrutura de disciplinas esperada`)
+              lastError = 'Resposta sem disciplinas válidas'
+            }
+          } else {
+            lastError = 'Resposta sem conteúdo'
+            if (data?.promptFeedback?.blockReason) {
+              lastError = `Bloqueado: ${data.promptFeedback.blockReason}`
+            }
           }
           
-          if (attempt < MAX_RETRIES) {
-            await delay(3000)
-            continue
-          }
-          break
+          if (attempt < 2) await delay(2000)
+          
+        } catch (fetchError) {
+          lastError = `Erro de rede: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
+          console.error(`❌ Erro:`, lastError)
+          if (attempt < 2) await delay(2000)
         }
-        
-        // SUCESSO!
-        console.log(`✅ Gemini respondeu com sucesso!`)
+      }
+      
+      // Se conseguiu uma resposta válida, sair do loop de prompts
+      if (textoResposta && textoResposta.includes('"disciplinas"')) {
         break
-        
-      } catch (fetchError) {
-        lastError = `Erro de rede: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
-        console.error(`❌ Erro:`, lastError)
-        
-        if (attempt < MAX_RETRIES) {
-          await delay(3000)
-          continue
-        }
       }
     }
     
-    // Se falhou, retornar erro
-    if (!data?.candidates?.[0]) {
+    // Se ainda não tem resposta válida, retornar erro
+    if (!textoResposta || !textoResposta.includes('"disciplinas"')) {
       console.error('❌ Falha após todas as tentativas.')
       console.error(`Último erro: ${lastError}`)
       
       await DB.prepare(`UPDATE editais SET status = 'erro' WHERE id = ?`).bind(editalId).run()
       
-      const isRateLimit = lastError.includes('429') || lastError.includes('Too Many')
+      const isRateLimit = lastError.includes('429') || lastError.includes('Rate')
       
       return c.json({
         error: isRateLimit ? 'API temporariamente indisponível (rate limit).' : 'Erro ao processar edital com IA.',
         errorType: isRateLimit ? 'RATE_LIMIT' : 'AI_ERROR',
-        suggestion: 'Aguarde 30 segundos e tente novamente, ou use um arquivo XLSX.',
+        suggestion: 'Aguarde 30 segundos e tente novamente, ou use a opção "Colar Texto do Edital" para colar o conteúdo programático diretamente.',
         canRetry: true,
-        retryAfter: 30,
+        retryAfter: isRateLimit ? 30 : 10,
         step: 4,
         stepName: 'Análise com IA'
       }, isRateLimit ? 429 : 500)
     }
     
     console.log(`✅ Sucesso com modelo: ${successModel}`)
-    
-    // Extrair texto da resposta com validação
-    if (!data.candidates[0]?.content?.parts?.[0]?.text) {
-      console.error('❌ Estrutura da resposta inválida:', JSON.stringify(data, null, 2))
-      throw new Error('Gemini retornou estrutura de resposta inválida')
-    }
-    
-    const textoResposta = data.candidates[0].content.parts[0].text
     console.log('🤖 Resposta da IA (primeiros 500 caracteres):', textoResposta.substring(0, 500))
     console.log(`📝 Tamanho total da resposta: ${textoResposta.length} caracteres`)
     
