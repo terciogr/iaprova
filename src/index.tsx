@@ -5810,15 +5810,15 @@ INSTRUÇÕES:
     const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
     const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
     
-    // ✅ CORREÇÃO v30 - SISTEMA DE FALLBACK COM MÚLTIPLAS IAs
-    // Cloudflare Workers tem limite de 100s - usar modelos rápidos com fallback
+    // ✅ CORREÇÃO v31 - SISTEMA DE FALLBACK COM MÚLTIPLAS IAs
+    // Cloudflare Workers tem limite de 100s - usar texto reduzido
     console.log(`📝 Analisando edital para cargo: ${cargoDesejado || 'NÃO ESPECIFICADO'}`)
     
-    // OTIMIZAÇÃO v30: Usar 25k caracteres com sistema de fallback
-    const textoOtimizado = textoParaIA.substring(0, 25000)
+    // OTIMIZAÇÃO v31: Usar 15k caracteres para processar mais rápido
+    const textoOtimizado = textoParaIA.substring(0, 15000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
-    // PROMPT v30 - Compacto e eficiente para todas as IAs
+    // PROMPT v31 - Compacto e eficiente para todas as IAs
     const prompt = `Extraia disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
 
 CARGO: ${cargoDesejado?.toUpperCase() || 'GERAL'}
@@ -6575,7 +6575,10 @@ app.post('/api/editais/processar-texto', async (c) => {
     // Chamar Gemini para extrair disciplinas
     const geminiKey = c.env.GEMINI_API_KEY || 'SUA_CHAVE_GEMINI_AQUI'
     
-    // ✅ CORREÇÃO v30: Prompt compacto para extração rápida
+    // ✅ CORREÇÃO v31: Texto reduzido para 15k para evitar timeout
+    const textoLimitado = texto.substring(0, 15000)
+    console.log(`📝 Processando ${textoLimitado.length} caracteres`)
+    
     const prompt = `Extraia disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
 
 CARGO: ${cargo?.toUpperCase() || 'GERAL'}
@@ -6586,7 +6589,7 @@ RETORNE JSON:
 REGRAS: peso 1=Básicos, peso 2=Específicos. Nomes EXATOS. TODOS os tópicos.
 
 TEXTO:
-${texto.substring(0, 25000)}`
+${textoLimitado}`
 
     // ✅ CORREÇÃO v30 - SISTEMA DE FALLBACK PARA processar-texto
     // Tenta múltiplos modelos até um funcionar
