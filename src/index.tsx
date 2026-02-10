@@ -6459,7 +6459,11 @@ ${textoOtimizado}`
                 break // Passou max retries
               }
               
-              if (!response.ok) break
+              if (!response.ok) {
+                ultimoErro = `${modelo.nome}: HTTP ${response.status}`
+                errosAPI.push(ultimoErro)
+                break
+              }
               
               const data = await response.json() as any
               textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
@@ -7428,7 +7432,11 @@ ${textoLimitado}`
                 break
               }
               
-              if (!response.ok) break
+              if (!response.ok) {
+                ultimoErro = `${modelo.nome}: HTTP ${response.status}`
+                errosAPI.push(ultimoErro)
+                break
+              }
               
               const data = await response.json() as any
               textoResposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
