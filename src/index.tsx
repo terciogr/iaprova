@@ -3422,6 +3422,225 @@ async function getActiveAPIKeys(DB: any): Promise<{ provider: string, api_key: s
   }
 }
 
+// ════════════════════════════════════════════════════════════════════════════════
+// ✅ v37: FUNÇÃO CENTRALIZADA PARA CHAMADAS DE IA
+// Usa as chaves do banco de dados na ordem de prioridade configurada pelo admin
+// ════════════════════════════════════════════════════════════════════════════════
+interface AICallOptions {
+  prompt: string
+  systemPrompt?: string
+  maxTokens?: number
+  temperature?: number
+  jsonMode?: boolean  // Se true, espera resposta em JSON
+  maxTextLength?: number  // Limite de texto para providers com contexto menor (ex: Groq)
+}
+
+interface AICallResult {
+  success: boolean
+  text: string
+  provider: string
+  model: string
+  latency: number
+  error?: string
+}
+
+async function callAI(DB: any, env: any, options: AICallOptions): Promise<AICallResult> {
+  const {
+    prompt,
+    systemPrompt = '',
+    maxTokens = 16000,
+    temperature = 0,
+    jsonMode = false,
+    maxTextLength = 25000
+  } = options
+  
+  // Buscar chaves do banco de dados
+  const apiKeys = await getActiveAPIKeys(DB)
+  
+  // Fallback para variáveis de ambiente
+  const geminiKeyFromDB = apiKeys.find(k => k.provider === 'gemini')?.api_key
+  const openaiKeyFromDB = apiKeys.find(k => k.provider === 'openai')?.api_key
+  const groqKeyFromDB = apiKeys.find(k => k.provider === 'groq')?.api_key
+  
+  const geminiKey = geminiKeyFromDB || env.GEMINI_API_KEY || ''
+  const openaiKey = openaiKeyFromDB || env.OPENAI_API_KEY || ''
+  const groqKey = groqKeyFromDB || env.GROQ_API_KEY || ''
+  
+  // Determinar ordem de tentativa
+  const ordemAPIs = apiKeys.length > 0 
+    ? apiKeys.map(k => k.provider)
+    : ['gemini', 'openai', 'groq'].filter(p => 
+        (p === 'gemini' && geminiKey) || 
+        (p === 'openai' && openaiKey) || 
+        (p === 'groq' && groqKey)
+      )
+  
+  console.log(`🤖 callAI: Ordem de fallback: ${ordemAPIs.join(' → ')}`)
+  
+  let lastError = ''
+  const startTime = Date.now()
+  
+  for (const provider of ordemAPIs) {
+    try {
+      // GEMINI
+      if (provider === 'gemini' && geminiKey) {
+        const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite']
+        
+        for (const model of models) {
+          try {
+            console.log(`🚀 Tentando ${model}...`)
+            const response = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt }] }],
+                  generationConfig: { temperature, maxOutputTokens: maxTokens }
+                })
+              }
+            )
+            
+            if (response.status === 429) {
+              lastError = `${model}: Rate limit`
+              await new Promise(r => setTimeout(r, 2000))
+              continue
+            }
+            
+            if (response.ok) {
+              const data = await response.json() as any
+              const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+              
+              if (text && (!jsonMode || text.includes('{'))) {
+                console.log(`✅ ${model} OK!`)
+                return {
+                  success: true,
+                  text,
+                  provider: 'gemini',
+                  model,
+                  latency: Date.now() - startTime
+                }
+              }
+            }
+          } catch (err: any) {
+            lastError = `${model}: ${err.message}`
+          }
+        }
+      }
+      
+      // OPENAI
+      if (provider === 'openai' && openaiKey) {
+        console.log(`🚀 Tentando OpenAI gpt-4o-mini...`)
+        const messages: any[] = []
+        if (systemPrompt) {
+          messages.push({ role: 'system', content: systemPrompt })
+        }
+        messages.push({ role: 'user', content: prompt })
+        
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages,
+            temperature,
+            max_tokens: maxTokens,
+            ...(jsonMode && { response_format: { type: 'json_object' } })
+          })
+        })
+        
+        if (response.status === 429) {
+          lastError = 'OpenAI: Rate limit'
+        } else if (response.ok) {
+          const data = await response.json() as any
+          const text = data?.choices?.[0]?.message?.content || ''
+          
+          if (text && (!jsonMode || text.includes('{'))) {
+            console.log(`✅ OpenAI gpt-4o-mini OK!`)
+            return {
+              success: true,
+              text,
+              provider: 'openai',
+              model: 'gpt-4o-mini',
+              latency: Date.now() - startTime
+            }
+          }
+        } else {
+          const err = await response.json() as any
+          lastError = `OpenAI: ${err.error?.message || response.status}`
+        }
+      }
+      
+      // GROQ (com texto limitado)
+      if (provider === 'groq' && groqKey) {
+        console.log(`🚀 Tentando GROQ llama-3.3-70b-versatile...`)
+        
+        // Limitar texto para Groq (contexto menor)
+        const promptLimitado = prompt.length > maxTextLength 
+          ? prompt.substring(0, maxTextLength) + '\n\n[TEXTO TRUNCADO]'
+          : prompt
+        
+        const messages: any[] = []
+        if (systemPrompt) {
+          messages.push({ role: 'system', content: systemPrompt })
+        }
+        messages.push({ role: 'user', content: promptLimitado })
+        
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${groqKey}`
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages,
+            temperature,
+            max_tokens: Math.min(maxTokens, 8000)  // Groq tem limite menor
+          })
+        })
+        
+        if (response.status === 429 || response.status === 413) {
+          lastError = `GROQ: ${response.status === 429 ? 'Rate limit' : 'Payload muito grande'}`
+        } else if (response.ok) {
+          const data = await response.json() as any
+          const text = data?.choices?.[0]?.message?.content || ''
+          
+          if (text && (!jsonMode || text.includes('{'))) {
+            console.log(`✅ GROQ llama-3.3-70b-versatile OK!`)
+            return {
+              success: true,
+              text,
+              provider: 'groq',
+              model: 'llama-3.3-70b-versatile',
+              latency: Date.now() - startTime
+            }
+          }
+        } else {
+          const err = await response.json() as any
+          lastError = `GROQ: ${err.error?.message || response.status}`
+        }
+      }
+    } catch (err: any) {
+      lastError = `${provider}: ${err.message}`
+      console.error(`❌ Erro com ${provider}:`, err.message)
+    }
+  }
+  
+  console.error(`❌ Todas as APIs falharam: ${lastError}`)
+  return {
+    success: false,
+    text: '',
+    provider: '',
+    model: '',
+    latency: Date.now() - startTime,
+    error: lastError || 'Nenhuma API disponível'
+  }
+}
+
 // ✅ NOVO: Registrar visita ao site
 app.post('/api/visits/track', async (c) => {
   const { DB } = c.env
@@ -14723,8 +14942,126 @@ function getOpenAIClient(env: any) {
   }
 }
 
-// 🆕 Gerar conteúdo usando Groq (FALLBACK GRATUITO)
+// 🆕 Gerar conteúdo usando IA (usa função centralizada callAI)
+// Renomeado de gerarConteudoComGroq para usar todas as APIs disponíveis
+async function gerarConteudoComIA(DB: any, disciplina: string, tipo: string, tempo_minutos: number, dificuldade: string, contexto: any, env: any, userDisc: any = null, topicos: string[] = []) {
+  try {
+    console.log('🚀 Gerando conteúdo com IA (sistema centralizado callAI)...')
+    
+    // ✅ CORREÇÃO: usar TODOS os tópicos específicos do edital
+    const topicosEspecificos = topicos.length > 0 ? topicos.join(', ') : 'Conteúdo Geral'
+    const nivelAluno = userDisc?.nivel_atual || 5
+    
+    console.log(`📚 Tópicos específicos para IA: ${topicosEspecificos}`)
+    
+    const prompt = `Você é um Professor Especialista em Concursos Públicos do Brasil. Gere material de estudo DETALHADO para ${disciplina}.
+
+DADOS DO ALUNO:
+- Disciplina: ${disciplina}
+- Tópicos Específicos do Edital: ${topicosEspecificos}
+- Nível: ${nivelAluno}/10 (${dificuldade})
+- Concurso: ${contexto.concurso || contexto.area || 'Concursos Gerais'}
+- Tempo: ${tempo_minutos} minutos
+
+⚠️ IMPORTANTE: Gere conteúdo EXCLUSIVAMENTE sobre os tópicos específicos listados acima, não sobre conceitos gerais da disciplina.
+
+${tipo === 'teoria' ? `
+GERE TEORIA COMPLETA (mínimo 3000 palavras):
+- Conceitos fundamentais detalhados
+- Exemplos práticos extensos
+- Jurisprudência relevante
+- Tabelas comparativas
+- Dicas de prova
+` : tipo === 'exercicios' ? `
+GERE 10+ QUESTÕES DE MÚLTIPLA ESCOLHA:
+- Estilo CESPE/FCC/FGV
+- 5 alternativas por questão
+- Enunciados contextualizados (100+ palavras)
+- Explicação detalhada (200+ palavras) para cada
+- Fundamentação legal completa
+` : `
+GERE MATERIAL DE REVISÃO:
+- Resumo executivo (800+ palavras)
+- 5+ mnemônicos criativos
+- 5-8 questões de fixação
+`}
+
+**CRÍTICO: Retorne APENAS JSON válido no formato:**
+{
+  "topicos": ["${topicos[0] || 'Tópico Principal'}"],
+  "objetivos": ["Objetivo 1", "Objetivo 2"],
+  "conteudo": {
+    "introducao": "Introdução contextualizada",
+    "secoes": [
+      {
+        "titulo": "${topicos[0] || 'Seção Principal'}",
+        "tempo_estimado": ${tempo_minutos},
+        "ordem": 1,
+        "conteudo": {
+          "teoria_completa": "# Conteúdo em Markdown\\n\\n...",
+          "questoes": [
+            {
+              "enunciado": "Enunciado completo da questão...",
+              "alternativas": ["Alternativa 1", "Alternativa 2", "Alternativa 3", "Alternativa 4", "Alternativa 5"],
+              "gabarito": 0,
+              "explicacao": "Explicação detalhada..."
+            }
+          ]
+        }
+      }
+    ],
+    "proximos_passos": "Próximos passos recomendados"
+  }
+}`
+
+    // ✅ v37: Usar função centralizada callAI
+    const aiResult = await callAI(DB, env, {
+      prompt,
+      systemPrompt: 'Você é um professor especialista em concursos públicos. Sempre retorne JSON válido.',
+      maxTokens: 8000,
+      temperature: 0.7,
+      jsonMode: true
+    })
+
+    if (!aiResult.success) {
+      console.error('❌ callAI falhou:', aiResult.error)
+      return null
+    }
+
+    console.log(`✅ IA respondeu (${aiResult.provider}/${aiResult.model}), parseando JSON...`)
+    
+    // 🔧 SANITIZAR JSON: Remover caracteres de controle inválidos
+    let jsonText = aiResult.text.trim()
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    }
+    jsonText = jsonText.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    
+    let resultado
+    try {
+      resultado = JSON.parse(jsonText)
+    } catch (parseError: any) {
+      console.error('❌ Erro no parse do JSON:', parseError.message)
+      return null
+    }
+    
+    if (!resultado.topicos || !resultado.objetivos || !resultado.conteudo?.secoes) {
+      console.error('❌ JSON inválido: faltam campos obrigatórios')
+      return null
+    }
+    
+    console.log(`✅ Conteúdo gerado com ${aiResult.provider} com sucesso!`)
+    return resultado
+  } catch (error) {
+    console.error('❌ Erro ao gerar conteúdo com IA:', error)
+    return null
+  }
+}
+
+// 🆕 Mantido para compatibilidade - chama gerarConteudoComIA
 async function gerarConteudoComGroq(disciplina: string, tipo: string, tempo_minutos: number, dificuldade: string, contexto: any, env: any, userDisc: any = null, topicos: string[] = []) {
+  // Função mantida para compatibilidade - agora usa callAI internamente
+  // NOTA: Esta função não tem acesso ao DB, então usa as variáveis de ambiente como fallback
   const GROQ_API_KEY = env.GROQ_API_KEY || process.env.GROQ_API_KEY
   const GEMINI_API_KEY = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY
   
@@ -18496,40 +18833,57 @@ Retorne APENAS um JSON válido no formato:
 }`
 
     if (!GROQ_API_KEY) {
-      console.log('⚠️ GROQ_API_KEY não configurada, gerando questões de exemplo')
-      // Gerar questões de exemplo se não tiver API key
-      const questoesExemplo = gerarQuestoesExemplo(cfg.questoes, discsParaUsar)
+      // v37: Usar função centralizada callAI em vez de verificar apenas GROQ
+      const aiResult = await callAI(DB, c.env, {
+        prompt,
+        systemPrompt: 'Você é um especialista em elaboração de questões para concursos públicos brasileiros. REGRAS ABSOLUTAS: 1) SEMPRE retorne JSON válido. 2) CADA questão deve abordar um TÓPICO DIFERENTE - NUNCA repita tópicos ou enunciados. 3) O conteúdo deve ser PRECISO e VERIFICÁVEL - use fatos, leis e dados REAIS. 4) As questões devem ser baseadas nos TÓPICOS ESPECÍFICOS fornecidos no edital do candidato. 5) Varie a dificuldade: 30% fácil, 50% médio, 20% difícil.',
+        maxTokens: 8000,
+        temperature: 0.3,
+        jsonMode: true
+      })
+      
+      if (!aiResult.success) {
+        console.log('⚠️ Nenhuma API disponível, gerando questões de exemplo')
+        const questoesExemplo = gerarQuestoesExemplo(cfg.questoes, discsParaUsar)
+        return c.json({ 
+          success: true, 
+          questoes: questoesExemplo,
+          tempo_minutos: cfg.tempo,
+          tipo,
+          fallback: true
+        })
+      }
+      
+      // Sanitizar JSON
+      let jsonText = aiResult.text.trim()
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      }
+      jsonText = jsonText.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      
+      const resultado = JSON.parse(jsonText)
+      
       return c.json({ 
         success: true, 
-        questoes: questoesExemplo,
+        questoes: resultado.questoes || [],
         tempo_minutos: cfg.tempo,
-        tipo
+        tipo,
+        modelo: aiResult.model,
+        provider: aiResult.provider
       })
     }
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{
-          role: 'system',
-          content: 'Você é um especialista em elaboração de questões para concursos públicos brasileiros. REGRAS ABSOLUTAS: 1) SEMPRE retorne JSON válido. 2) CADA questão deve abordar um TÓPICO DIFERENTE - NUNCA repita tópicos ou enunciados. 3) O conteúdo deve ser PRECISO e VERIFICÁVEL - use fatos, leis e dados REAIS. 4) As questões devem ser baseadas nos TÓPICOS ESPECÍFICOS fornecidos no edital do candidato. 5) Varie a dificuldade: 30% fácil, 50% médio, 20% difícil.'
-        }, {
-          role: 'user',
-          content: prompt
-        }],
-        temperature: 0.3,
-        max_tokens: 8000,
-        response_format: { type: 'json_object' }
-      })
+    // v37: Usar função centralizada callAI
+    const aiResult = await callAI(DB, c.env, {
+      prompt,
+      systemPrompt: 'Você é um especialista em elaboração de questões para concursos públicos brasileiros. REGRAS ABSOLUTAS: 1) SEMPRE retorne JSON válido. 2) CADA questão deve abordar um TÓPICO DIFERENTE - NUNCA repita tópicos ou enunciados. 3) O conteúdo deve ser PRECISO e VERIFICÁVEL - use fatos, leis e dados REAIS. 4) As questões devem ser baseadas nos TÓPICOS ESPECÍFICOS fornecidos no edital do candidato. 5) Varie a dificuldade: 30% fácil, 50% médio, 20% difícil.',
+      maxTokens: 8000,
+      temperature: 0.3,
+      jsonMode: true
     })
-
-    if (!response.ok) {
-      console.error('❌ Erro na API do Groq:', response.status)
+    
+    if (!aiResult.success) {
+      console.error('❌ Erro em todas as APIs')
       const questoesExemplo = gerarQuestoesExemplo(cfg.questoes, discsParaUsar)
       return c.json({ 
         success: true, 
@@ -18540,11 +18894,8 @@ Retorne APENAS um JSON válido no formato:
       })
     }
 
-    const data = await response.json() as any
-    let resposta = data.choices?.[0]?.message?.content || ''
-    
     // Sanitizar JSON
-    let jsonText = resposta.trim()
+    let jsonText = aiResult.text.trim()
     if (jsonText.startsWith('```json')) {
       jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     }
@@ -18556,7 +18907,9 @@ Retorne APENAS um JSON válido no formato:
       success: true, 
       questoes: resultado.questoes || [],
       tempo_minutos: cfg.tempo,
-      tipo
+      tipo,
+      modelo: aiResult.model,
+      provider: aiResult.provider
     })
     
   } catch (error: any) {
