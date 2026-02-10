@@ -11038,6 +11038,48 @@ app.put('/api/planos/:plano_id/nome', async (c) => {
   }
 })
 
+// Diagnóstico para exclusão de plano - verificar FKs pendentes
+app.get('/api/planos/:plano_id/diagnostico-fk', async (c) => {
+  const { DB } = c.env
+  const plano_id = c.req.param('plano_id')
+  
+  try {
+    const resultado: any = {}
+    
+    // Verificar cada tabela que pode ter FK para o plano
+    const tabelas = [
+      { nome: 'ciclos_estudo', query: 'SELECT COUNT(*) as count FROM ciclos_estudo WHERE plano_id = ?' },
+      { nome: 'metas_diarias', query: 'SELECT COUNT(*) as count FROM metas_diarias WHERE plano_id = ?' },
+      { nome: 'semanas_estudo', query: 'SELECT COUNT(*) as count FROM semanas_estudo WHERE plano_id = ?' },
+      { nome: 'topicos_edital', query: 'SELECT COUNT(*) as count FROM topicos_edital WHERE plano_id = ?' },
+      { nome: 'user_topicos_progresso', query: 'SELECT COUNT(*) as count FROM user_topicos_progresso WHERE plano_id = ?' },
+      { nome: 'metas_semana', query: 'SELECT COUNT(*) as count FROM metas_semana WHERE semana_id IN (SELECT id FROM semanas_estudo WHERE plano_id = ?)' },
+      { nome: 'conteudo_estudo', query: 'SELECT COUNT(*) as count FROM conteudo_estudo WHERE meta_id IN (SELECT id FROM metas_diarias WHERE plano_id = ?)' },
+    ]
+    
+    for (const tabela of tabelas) {
+      try {
+        const r = await DB.prepare(tabela.query).bind(plano_id).first() as any
+        resultado[tabela.nome] = r?.count || 0
+      } catch (e: any) {
+        resultado[tabela.nome] = `Erro: ${e.message?.substring(0, 50)}`
+      }
+    }
+    
+    // Verificar se o plano existe
+    const plano = await DB.prepare('SELECT id, user_id, interview_id FROM planos_estudo WHERE id = ?').bind(plano_id).first()
+    
+    return c.json({ 
+      plano_id,
+      plano_existe: !!plano,
+      plano,
+      referencias_pendentes: resultado
+    })
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500)
+  }
+})
+
 // Excluir plano (com cascata manual)
 app.delete('/api/planos/:plano_id', async (c) => {
   const { DB } = c.env
