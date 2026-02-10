@@ -5814,7 +5814,8 @@ INSTRUÇÕES:
     console.log(`📝 Analisando edital para cargo: ${cargoDesejado || 'NÃO ESPECIFICADO'}`)
     
     // v35: Aumentar para 55k caracteres para capturar TODOS os módulos
-    const textoOtimizado = textoParaIA.substring(0, 55000)
+    // v35d: Aumentar para 65k para capturar TODAS as disciplinas
+    const textoOtimizado = textoParaIA.substring(0, 65000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
     // PROMPT v35c - Extração COMPLETA com instrução para separar disciplinas
@@ -6600,8 +6601,8 @@ app.post('/api/editais/processar-texto', async (c) => {
     // Chamar Gemini para extrair disciplinas
     const geminiKey = c.env.GEMINI_API_KEY || 'SUA_CHAVE_GEMINI_AQUI'
     
-    // ✅ CORREÇÃO v35: Aumentado para 55k (capturar TODAS as disciplinas)
-    const textoLimitado = texto.substring(0, 55000)
+    // ✅ CORREÇÃO v35d: Aumentado para 65k para capturar TODAS as disciplinas
+    const textoLimitado = texto.substring(0, 65000)
     console.log(`📝 Processando ${textoLimitado.length} caracteres`)
     
     const prompt = `EXTRAIA TODAS AS DISCIPLINAS E TODOS OS TÓPICOS DO CONTEÚDO PROGRAMÁTICO.
