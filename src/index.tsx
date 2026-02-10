@@ -5810,31 +5810,29 @@ INSTRUÇÕES:
     const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
     const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
     
-    // ✅ CORREÇÃO v28 - BALANCEADO: Extração completa dentro do limite de 100s
-    // Cloudflare Workers tem limite de 100s - usar 35k caracteres (otimizado)
+    // ✅ CORREÇÃO v29 - MODELO RÁPIDO + TEXTO REDUZIDO
+    // Cloudflare Workers tem limite de 100s - usar modelo mais rápido
     console.log(`📝 Analisando edital para cargo: ${cargoDesejado || 'NÃO ESPECIFICADO'}`)
     
-    // OTIMIZAÇÃO v28: Usar 35k caracteres (balanceado para ficar <100s)
-    const textoOtimizado = textoParaIA.substring(0, 35000)
+    // OTIMIZAÇÃO v29: Usar 25k caracteres com modelo rápido
+    const textoOtimizado = textoParaIA.substring(0, 25000)
     console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
     
-    // PROMPT v28 - Direto e eficiente, mas exige tópicos completos
-    const prompt = `Extraia disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO para o cargo "${cargoDesejado?.toUpperCase() || 'GERAL'}".
+    // PROMPT v29 - Direto e eficiente
+    const prompt = `Extraia disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
 
-REGRAS:
-- Nomes EXATOS das disciplinas como no edital
-- TODOS os tópicos de cada disciplina (não resumir)
-- peso: 1 = Conhecimentos Básicos/Gerais
-- peso: 2 = Conhecimentos Específicos
+CARGO: ${cargoDesejado?.toUpperCase() || 'GERAL'}
 
-RESPONDA APENAS EM JSON:
-{"disciplinas":[{"nome":"NOME EXATO","peso":1,"topicos":["Tópico completo 1","Tópico completo 2"]}]}
+RETORNE JSON:
+{"disciplinas":[{"nome":"DISCIPLINA","peso":1,"topicos":["tópico 1","tópico 2"]}]}
 
-EDITAL:
+REGRAS: peso 1=Básicos, peso 2=Específicos. Use nomes EXATOS. Inclua TODOS os tópicos.
+
+TEXTO:
 ${textoOtimizado}`
 
-    // CHAMADA ÚNICA À API (sem retry para evitar timeout)
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`
+    // CHAMADA ÚNICA À API - Usando modelo RÁPIDO gemini-2.0-flash
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
     let textoResposta = ''
     let lastError = ''
     
