@@ -225,6 +225,13 @@ O sistema inclui um módulo de administração exclusivo para gestão da platafo
 
 ## 🔄 Últimas Atualizações
 
+### v2.3.0 (Fevereiro 2026 - CORREÇÃO v23)
+- ✅ **Análise de Editais REFORMULADA**: Prompt de IA completamente reescrito
+  - Não usa mais "áreas pré-detectadas" (que causavam erros)
+  - IA agora lê o documento COMPLETO e extrai disciplinas reais
+  - Suporta editais com 10-20+ disciplinas
+  - Limite de tokens aumentado para 65536
+
 ### v2.2.0 (Fevereiro 2026 - CORREÇÃO v22)
 - ✅ **Google Analytics GA4**: Tag G-94LLLJN9HM inserida em todos os arquivos HTML
 - ✅ **Outra Banca Personalizada**: Campo para especificar banca não listada
