@@ -11059,7 +11059,7 @@ app.get('/api/planos/:plano_id/diagnostico-fk', async (c) => {
     
     for (const tabela of tabelas) {
       try {
-        const r = await DB.prepare(tabela.query).bind(plano_id).first() as any
+        const r = await DB.prepare(tabela.query).bind(parseInt(plano_id)).first() as any
         resultado[tabela.nome] = r?.count || 0
       } catch (e: any) {
         resultado[tabela.nome] = `Erro: ${e.message?.substring(0, 50)}`
@@ -11067,13 +11067,52 @@ app.get('/api/planos/:plano_id/diagnostico-fk', async (c) => {
     }
     
     // Verificar se o plano existe
-    const plano = await DB.prepare('SELECT id, user_id, interview_id FROM planos_estudo WHERE id = ?').bind(plano_id).first()
+    const plano = await DB.prepare('SELECT id, user_id, interview_id FROM planos_estudo WHERE id = ?').bind(parseInt(plano_id)).first()
     
     return c.json({ 
       plano_id,
       plano_existe: !!plano,
       plano,
       referencias_pendentes: resultado
+    })
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500)
+  }
+})
+
+// Limpar referências pendentes de um plano (DELETE forçado para cada tabela)
+app.post('/api/planos/:plano_id/limpar-fk', async (c) => {
+  const { DB } = c.env
+  const plano_id = parseInt(c.req.param('plano_id'))
+  
+  try {
+    const resultado: any = {}
+    
+    // Deletar de cada tabela na ordem correta
+    const deletes = [
+      { nome: 'conteudo_topicos', query: `DELETE FROM conteudo_topicos WHERE topico_id IN (SELECT id FROM topicos_edital WHERE plano_id = ?)` },
+      { nome: 'materiais_salvos', query: `DELETE FROM materiais_salvos WHERE topico_id IN (SELECT id FROM topicos_edital WHERE plano_id = ?)` },
+      { nome: 'user_topicos_progresso', query: `DELETE FROM user_topicos_progresso WHERE plano_id = ?` },
+      { nome: 'topicos_edital', query: `DELETE FROM topicos_edital WHERE plano_id = ?` },
+      { nome: 'conteudo_estudo', query: `DELETE FROM conteudo_estudo WHERE meta_id IN (SELECT id FROM metas_diarias WHERE plano_id = ?)` },
+      { nome: 'metas_semana', query: `DELETE FROM metas_semana WHERE semana_id IN (SELECT id FROM semanas_estudo WHERE plano_id = ?)` },
+      { nome: 'semanas_estudo', query: `DELETE FROM semanas_estudo WHERE plano_id = ?` },
+      { nome: 'metas_diarias', query: `DELETE FROM metas_diarias WHERE plano_id = ?` },
+      { nome: 'ciclos_estudo', query: `DELETE FROM ciclos_estudo WHERE plano_id = ?` },
+    ]
+    
+    for (const del of deletes) {
+      try {
+        const result = await DB.prepare(del.query).bind(plano_id).run()
+        resultado[del.nome] = { deletados: result.meta?.changes || 0, sucesso: true }
+      } catch (e: any) {
+        resultado[del.nome] = { erro: e.message, sucesso: false }
+      }
+    }
+    
+    return c.json({ 
+      plano_id,
+      limpeza: resultado
     })
   } catch (error: any) {
     return c.json({ error: error.message }, 500)
