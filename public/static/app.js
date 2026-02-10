@@ -3168,7 +3168,7 @@ function renderConcursoEspecifico() {
                 <i class="fas fa-landmark mr-1 text-[#1A3A7F]"></i>
                 Banca Organizadora <span class="text-gray-400 font-normal">(se souber)</span>
               </label>
-              <select id="bancaOrganizadora"
+              <select id="bancaOrganizadora" onchange="toggleOutraBancaInput()"
                 class="w-full px-3 md:px-4 py-2.5 md:py-3 ${themes[currentTheme].input} rounded-lg md:rounded-xl border-2 border-gray-200 focus:border-[#1A3A7F] focus:ring-2 focus:ring-[#1A3A7F]/20 transition-all text-sm md:text-base">
                 <option value="">Selecione a banca (opcional)</option>
                 <option value="CESPE/CEBRASPE">CESPE / CEBRASPE</option>
@@ -3185,8 +3185,21 @@ function renderConcursoEspecifico() {
                 <option value="FUNDATEC">FUNDATEC</option>
                 <option value="FUNCAB">FUNCAB</option>
                 <option value="COPESE">COPESE</option>
-                <option value="outra">Outra banca</option>
+                <option value="outra">Outra banca...</option>
               </select>
+              
+              <!-- Campo para especificar outra banca -->
+              <div id="outraBancaContainer" class="mt-2 hidden">
+                <input type="text" id="outraBancaInput" 
+                  placeholder="Digite o nome da banca organizadora"
+                  class="w-full px-3 md:px-4 py-2.5 md:py-3 ${themes[currentTheme].input} rounded-lg md:rounded-xl border-2 border-[#1A3A7F] focus:border-[#122D6A] focus:ring-2 focus:ring-[#1A3A7F]/20 transition-all text-sm md:text-base"
+                  maxlength="100">
+                <p class="text-[10px] md:text-xs text-[#1A3A7F] mt-1">
+                  <i class="fas fa-info-circle mr-1"></i>
+                  Ex: FUNDEP, IBADE, CESEP, Instituto Quadrix, etc.
+                </p>
+              </div>
+              
               <p class="text-[10px] md:text-xs text-gray-400 mt-1">
                 <i class="fas fa-star mr-1"></i>
                 Questões e conteúdo serão adaptados ao estilo da banca
@@ -3400,10 +3413,21 @@ CONHECIMENTOS ESPECÍFICOS
     e.preventDefault();
     interviewData.concurso_nome = document.getElementById('concursoNome').value;
     interviewData.cargo = document.getElementById('cargo').value;
-    interviewData.banca_organizadora = document.getElementById('bancaOrganizadora').value || null;
+    
+    // ✅ CORREÇÃO v17: Capturar banca organizadora (incluindo "outra banca")
+    const bancaSelect = document.getElementById('bancaOrganizadora').value;
+    if (bancaSelect === 'outra') {
+      const outraBancaInput = document.getElementById('outraBancaInput')?.value?.trim();
+      interviewData.banca_organizadora = outraBancaInput || null;
+      interviewData.banca_personalizada = true; // Flag para indicar que é uma banca personalizada
+    } else {
+      interviewData.banca_organizadora = bancaSelect || null;
+      interviewData.banca_personalizada = false;
+    }
+    
     interviewData.prazo_prova = document.getElementById('prazoProva').value || null;
     
-    console.log('📋 Banca organizadora selecionada:', interviewData.banca_organizadora);
+    console.log('📋 Banca organizadora selecionada:', interviewData.banca_organizadora, interviewData.banca_personalizada ? '(personalizada)' : '');
     
     // Verificar qual método de importação foi usado
     const textoEdital = document.getElementById('textoEdital')?.value?.trim();
@@ -5130,6 +5154,18 @@ function renderEntrevistaStep2() {
                   </label>
                 `).join('')}
               </div>
+              
+              <!-- ✅ CORREÇÃO v17: Campo para outra banca na área geral -->
+              <div class="mt-3">
+                <label class="block text-xs md:text-sm font-medium ${themes[currentTheme].text} mb-1.5">
+                  <i class="fas fa-plus-circle mr-1 text-[#1A3A7F]"></i>
+                  Outra banca não listada?
+                </label>
+                <input type="text" name="outra_banca_preferida" id="outraBancaPreferidaInput"
+                  placeholder="Digite o nome da banca (ex: FUNDEP, IBADE, etc.)"
+                  class="w-full px-3 md:px-4 py-2 md:py-2.5 ${themes[currentTheme].input} rounded-lg md:rounded-xl border-2 border-gray-200 focus:border-[#1A3A7F] focus:ring-2 focus:ring-[#1A3A7F]/20 transition-all text-sm md:text-base"
+                  maxlength="100">
+              </div>
             </div>
             ` : ''}
 
@@ -5188,8 +5224,42 @@ function renderEntrevistaStep2() {
       console.log('🏛️ Bancas preferidas:', interviewData.bancas_preferidas);
     }
     
+    // ✅ CORREÇÃO v17: Capturar outra banca preferida na área geral
+    const outraBancaPreferida = formData.get('outra_banca_preferida')?.trim();
+    if (outraBancaPreferida) {
+      if (!interviewData.bancas_preferidas) {
+        interviewData.bancas_preferidas = [];
+      }
+      interviewData.bancas_preferidas.push(outraBancaPreferida);
+      interviewData.outra_banca_personalizada = outraBancaPreferida;
+      console.log('🏛️ Outra banca adicionada:', outraBancaPreferida);
+    }
+    
     renderEntrevistaStep3();
   });
+}
+
+// ✅ CORREÇÃO v17: Função para mostrar/ocultar campo de outra banca
+window.toggleOutraBancaInput = function() {
+  const select = document.getElementById('bancaOrganizadora');
+  const container = document.getElementById('outraBancaContainer');
+  const input = document.getElementById('outraBancaInput');
+  
+  if (!select || !container) return;
+  
+  if (select.value === 'outra') {
+    container.classList.remove('hidden');
+    if (input) {
+      input.focus();
+      input.required = true;
+    }
+  } else {
+    container.classList.add('hidden');
+    if (input) {
+      input.value = '';
+      input.required = false;
+    }
+  }
 }
 
 function voltarStep1() {

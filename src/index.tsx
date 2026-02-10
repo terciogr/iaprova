@@ -2736,6 +2736,185 @@ app.get('/pagamento/pendente', async (c) => {
   return c.redirect(`/?payment=pending&payment_id=${paymentId}`)
 })
 
+// ============== PÁGINA DE CONVERSÃO GOOGLE ADS ==============
+// ⚠️ Esta página é EXCLUSIVA para tracking de conversão do Google Ads
+// NÃO deve ser acessível via navegação do sistema
+// Usar como URL de destino após conclusão de pagamento no Mercado Pago
+
+app.get('/obrigado-premium', async (c) => {
+  // Parâmetros opcionais para tracking
+  const paymentId = c.req.query('payment_id') || ''
+  const plan = c.req.query('plan') || 'premium'
+  
+  const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obrigado! | IAprova Premium</title>
+    <meta name="robots" content="noindex, nofollow">
+    
+    <!-- Google tag (gtag.js) - Tracking de Conversão -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-94LLLJN9HM"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-94LLLJN9HM');
+      
+      // ✅ Evento de conversão de compra
+      gtag('event', 'purchase', {
+        transaction_id: '${paymentId}',
+        value: ${plan === 'anual' ? '249.90' : '29.90'},
+        currency: 'BRL',
+        items: [{
+          item_name: 'IAprova ${plan === 'anual' ? 'Premium Anual' : 'Premium Mensal'}',
+          item_category: 'subscription',
+          price: ${plan === 'anual' ? '249.90' : '29.90'},
+          quantity: 1
+        }]
+      });
+      
+      // Evento adicional para conversão personalizada
+      gtag('event', 'conversion', {
+        'send_to': 'AW-CONVERSION_ID/CONVERSION_LABEL',
+        'value': ${plan === 'anual' ? '249.90' : '29.90'},
+        'currency': 'BRL',
+        'transaction_id': '${paymentId}'
+      });
+    </script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+      @keyframes confetti {
+        0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+      }
+      .confetti {
+        position: fixed;
+        width: 10px;
+        height: 10px;
+        animation: confetti 5s linear infinite;
+      }
+      @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 0 20px rgba(26, 58, 127, 0.5); }
+        50% { box-shadow: 0 0 40px rgba(26, 58, 127, 0.8); }
+      }
+      .glow-effect {
+        animation: pulse-glow 2s ease-in-out infinite;
+      }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-[#E8EDF5] via-[#F3F6FA] to-white flex items-center justify-center p-4">
+    
+    <!-- Confetti Animation -->
+    <div id="confetti-container"></div>
+    
+    <div class="max-w-lg w-full bg-white rounded-3xl shadow-2xl p-8 md:p-12 text-center relative overflow-hidden">
+        
+        <!-- Background Decoration -->
+        <div class="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-[#1A3A7F]/10 to-[#122D6A]/5 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-20 -left-20 w-40 h-40 bg-gradient-to-br from-green-500/10 to-emerald-500/5 rounded-full blur-3xl"></div>
+        
+        <!-- Success Icon -->
+        <div class="relative z-10 mb-6">
+            <div class="w-24 h-24 mx-auto bg-gradient-to-br from-emerald-400 to-green-500 rounded-full flex items-center justify-center glow-effect">
+                <i class="fas fa-check text-4xl text-white"></i>
+            </div>
+        </div>
+        
+        <!-- Title -->
+        <h1 class="text-3xl md:text-4xl font-bold text-[#122D6A] mb-4 relative z-10">
+            🎉 Parabéns!
+        </h1>
+        
+        <h2 class="text-xl md:text-2xl font-semibold text-[#1A3A7F] mb-6 relative z-10">
+            Você agora é <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-yellow-500">Premium</span>!
+        </h2>
+        
+        <!-- Message -->
+        <p class="text-gray-600 mb-8 relative z-10 leading-relaxed">
+            Sua assinatura do <strong class="text-[#1A3A7F]">IAprova Premium</strong> foi ativada com sucesso! 
+            Agora você tem acesso completo a todos os recursos para acelerar sua preparação.
+        </p>
+        
+        <!-- Benefits -->
+        <div class="bg-gradient-to-br from-[#E8EDF5] to-[#F3F6FA] rounded-2xl p-6 mb-8 relative z-10 text-left">
+            <h3 class="font-bold text-[#122D6A] mb-4 flex items-center">
+                <i class="fas fa-crown text-amber-500 mr-2"></i>
+                Seus Benefícios Premium:
+            </h3>
+            <ul class="space-y-3 text-sm text-gray-700">
+                <li class="flex items-start">
+                    <i class="fas fa-check-circle text-green-500 mr-3 mt-0.5"></i>
+                    <span><strong>IA Ilimitada</strong> - Gere teoria, exercícios e resumos sem limites</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check-circle text-green-500 mr-3 mt-0.5"></i>
+                    <span><strong>Flashcards Inteligentes</strong> - Memorização científica com repetição espaçada</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check-circle text-green-500 mr-3 mt-0.5"></i>
+                    <span><strong>Simulados Personalizados</strong> - Questões no estilo da sua banca</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check-circle text-green-500 mr-3 mt-0.5"></i>
+                    <span><strong>Análise de Desempenho</strong> - Identifique seus pontos fracos</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check-circle text-green-500 mr-3 mt-0.5"></i>
+                    <span><strong>Suporte Prioritário</strong> - Atendimento rápido e dedicado</span>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- CTA Button -->
+        <a href="https://iaprova.app" 
+           class="inline-block w-full py-4 px-8 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white font-bold text-lg rounded-xl hover:from-[#0D1F4D] hover:to-[#122D6A] transition-all transform hover:scale-[1.02] shadow-lg shadow-[#122D6A]/30 relative z-10">
+            <i class="fas fa-rocket mr-2"></i>
+            Começar a Estudar Agora
+        </a>
+        
+        <!-- Footer -->
+        <p class="text-xs text-gray-400 mt-6 relative z-10">
+            <i class="fas fa-shield-alt mr-1"></i>
+            Pagamento processado com segurança
+        </p>
+        
+    </div>
+    
+    <script>
+        // Criar confetti
+        const colors = ['#122D6A', '#1A3A7F', '#4CAF50', '#FFD700', '#E91E63', '#00BCD4'];
+        const container = document.getElementById('confetti-container');
+        
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.animationDelay = Math.random() * 5 + 's';
+            confetti.style.animationDuration = (Math.random() * 3 + 3) + 's';
+            container.appendChild(confetti);
+        }
+        
+        // Auto-redirect após 10 segundos
+        setTimeout(() => {
+            // Descomentar para redirecionar automaticamente
+            // window.location.href = 'https://iaprova.app';
+        }, 10000);
+    </script>
+    
+</body>
+</html>
+  `
+  
+  return c.html(html)
+})
+
 // ============== MÓDULO ADMINISTRADOR (EXCLUSIVO) ==============
 // ⚠️ ACESSO RESTRITO: Apenas terciogomesrabelo@gmail.com
 
