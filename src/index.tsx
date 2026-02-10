@@ -5925,26 +5925,34 @@ app.post('/api/editais/processar/:id', async (c) => {
             }, 413)
           }
           
-          // ✅ ENVIAR PDF DIRETAMENTE PARA GEMINI (sem pré-processamento)
-          console.log('🚀 Enviando PDF diretamente para Gemini API...')
-          const geminiKey = c.env.GEMINI_API_KEY || 'SUA_CHAVE_GEMINI_AQUI'
+          // ✅ v38: ENVIAR PDF COM FALLBACK MULTI-PROVIDER
+          console.log('🚀 Enviando PDF para análise com IA (sistema centralizado)...')
           
-          // Converter PDF para base64
-          const bytes = new Uint8Array(pdfBuffer)
-          let binary = ''
-          const chunkSize = 8192
-          for (let i = 0; i < bytes.length; i += chunkSize) {
-            const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
-            binary += String.fromCharCode.apply(null, Array.from(chunk))
-          }
-          const base64PDF = btoa(binary)
+          // Buscar chaves do banco de dados
+          const apiKeys = await getActiveAPIKeys(DB)
+          const geminiKeyFromDB = apiKeys.find(k => k.provider === 'gemini')?.api_key
+          const geminiKey = geminiKeyFromDB || c.env.GEMINI_API_KEY || ''
           
-          // Prompt otimizado para extração de disciplinas
-          const cargoLower = cargoDesejado?.toLowerCase() || ''
-          
-          // ✅ CORREÇÃO v23: Prompt completamente reformulado para análise REAL do edital
-          // Não usar mais área pré-detectada, deixar a IA ler o edital completo
-          const promptPDF = `VOCÊ É UM ESPECIALISTA EM ANÁLISE DE EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
+          if (!geminiKey) {
+            console.error('❌ Nenhuma chave Gemini disponível para processar PDF')
+            // Continuar com o fluxo de texto alternativo
+          } else {
+            // Converter PDF para base64
+            const bytes = new Uint8Array(pdfBuffer)
+            let binary = ''
+            const chunkSize = 8192
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+              const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
+              binary += String.fromCharCode.apply(null, Array.from(chunk))
+            }
+            const base64PDF = btoa(binary)
+            
+            // Prompt otimizado para extração de disciplinas
+            const cargoLower = cargoDesejado?.toLowerCase() || ''
+            
+            // ✅ CORREÇÃO v23: Prompt completamente reformulado para análise REAL do edital
+            // Não usar mais área pré-detectada, deixar a IA ler o edital completo
+            const promptPDF = `VOCÊ É UM ESPECIALISTA EM ANÁLISE DE EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
 
 === SUA TAREFA ===
 Analise ESTE DOCUMENTO PDF (edital de concurso) e extraia TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
@@ -5989,121 +5997,145 @@ ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo princ
 - NÃO use disciplinas genéricas - use os nomes EXATOS do edital
 - Se não encontrar o cargo especificado, avise no campo cargo_detectado`
 
-          const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [
-                    { text: promptPDF },
-                    { inline_data: { mime_type: 'application/pdf', data: base64PDF } }
-                  ]
-                }],
-                generationConfig: {
-                  temperature: 0.1,
-                  maxOutputTokens: 65536
-                }
-              })
-            }
-          )
-          
-          if (!response.ok) {
-            const errorText = await response.text()
-            console.error(`❌ Erro Gemini: ${response.status}`)
+            // ✅ v38: Tentar múltiplos modelos Gemini com fallback
+            const modelosGeminiPDF = [
+              'gemini-2.0-flash',
+              'gemini-1.5-flash', 
+              'gemini-2.0-flash-lite'
+            ]
             
-            if (response.status === 429) {
-              return c.json({
-                error: 'API temporariamente indisponível (rate limit)',
-                errorType: 'RATE_LIMIT',
-                suggestion: 'Aguarde 30 segundos e tente novamente',
-                canRetry: true,
-                retryAfter: 30
-              }, 429)
-            }
-            throw new Error(`Gemini erro ${response.status}: ${errorText.substring(0, 200)}`)
-          }
-          
-          const data = await response.json() as any
-          const textoGemini = data?.candidates?.[0]?.content?.parts?.[0]?.text
-          
-          if (!textoGemini) {
-            throw new Error('Resposta vazia da Gemini')
-          }
-          
-          console.log(`✅ Gemini respondeu: ${textoGemini.length} caracteres`)
-          
-          // Parsear JSON da resposta
-          const jsonMatch = textoGemini.match(/\{[\s\S]*\}/)
-          if (jsonMatch) {
-            try {
-              const resultado = JSON.parse(jsonMatch[0].replace(/[\x00-\x1F\x7F]/g, ' ').replace(/,\s*([}\]])/g, '$1'))
+            let textoGemini = ''
+            let modeloUsado = ''
+            let ultimoErroPDF = ''
+            
+            for (const modelo of modelosGeminiPDF) {
+              console.log(`🚀 Tentando ${modelo} para PDF...`)
               
-              if (resultado?.disciplinas?.length > 0) {
-                console.log(`✅ ${resultado.disciplinas.length} disciplinas extraídas do PDF`)
+              try {
+                const response = await fetch(
+                  `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${geminiKey}`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      contents: [{
+                        parts: [
+                          { text: promptPDF },
+                          { inline_data: { mime_type: 'application/pdf', data: base64PDF } }
+                        ]
+                      }],
+                      generationConfig: {
+                        temperature: 0.1,
+                        maxOutputTokens: 65536
+                      }
+                    })
+                  }
+                )
                 
-                // ✅ MODO REVISÃO: Retornar disciplinas para o usuário revisar
-                const modo = c.req.query('modo')
-                if (modo === 'revisao') {
-                  return c.json({
-                    success: true,
-                    modo: 'revisao',
-                    disciplinas: resultado.disciplinas,
-                    fonte: 'pdf_direto',
-                    message: `${resultado.disciplinas.length} disciplinas identificadas para revisão`
-                  })
+                if (response.status === 429) {
+                  ultimoErroPDF = `${modelo}: Rate limit`
+                  console.log(`⚠️ ${modelo}: Rate limit, tentando próximo...`)
+                  await new Promise(r => setTimeout(r, 2000))
+                  continue
                 }
                 
-                // Salvar disciplinas no banco
-                for (const disc of resultado.disciplinas) {
-                  // Buscar ou criar disciplina
-                  let disciplinaBaseId: number
-                  const { results: existentes } = await DB.prepare(
-                    'SELECT id FROM disciplinas WHERE nome LIKE ?'
-                  ).bind(`%${disc.nome}%`).all() as any
-                  
-                  if (existentes?.length > 0) {
-                    disciplinaBaseId = existentes[0].id
-                  } else {
-                    const novaDisc = await DB.prepare(
-                      'INSERT INTO disciplinas (nome, area) VALUES (?, ?)'
-                    ).bind(disc.nome, 'geral').run()
-                    disciplinaBaseId = novaDisc.meta.last_row_id
-                  }
-                  
-                  // Salvar edital_disciplinas
-                  const editalDisc = await DB.prepare(
-                    'INSERT INTO edital_disciplinas (edital_id, disciplina_id, nome, peso) VALUES (?, ?, ?, ?)'
-                  ).bind(editalId, disciplinaBaseId, disc.nome, disc.peso || 1).run()
-                  
-                  // Salvar tópicos (INSERT OR IGNORE para evitar duplicatas)
-                  for (let i = 0; i < (disc.topicos || []).length; i++) {
-                    await DB.prepare(
-                      'INSERT OR IGNORE INTO edital_topicos (edital_disciplina_id, nome, ordem) VALUES (?, ?, ?)'
-                    ).bind(editalDisc.meta.last_row_id, disc.topicos[i], i).run()
-                  }
+                if (!response.ok) {
+                  ultimoErroPDF = `${modelo}: HTTP ${response.status}`
+                  continue
                 }
                 
-                // Atualizar status
-                await DB.prepare('UPDATE editais SET status = ? WHERE id = ?').bind('processado', editalId).run()
+                const data = await response.json() as any
+                textoGemini = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
                 
-                return c.json({
-                  success: true,
-                  disciplinas: resultado.disciplinas,
-                  total: resultado.disciplinas.length,
-                  fonte: 'pdf_direto'
-                })
+                if (textoGemini && textoGemini.length > 100) {
+                  modeloUsado = modelo
+                  console.log(`✅ ${modelo} respondeu: ${textoGemini.length} caracteres`)
+                  break
+                }
+              } catch (err: any) {
+                ultimoErroPDF = `${modelo}: ${err.message}`
+                console.error(`❌ ${modelo} erro:`, err.message)
               }
-            } catch (parseError) {
-              console.error('❌ Erro ao parsear JSON:', parseError)
+            }
+            
+            if (!textoGemini) {
+              console.error(`❌ Todos os modelos Gemini falharam: ${ultimoErroPDF}`)
+              // Continuar com o fluxo de texto alternativo em vez de retornar erro
+            } else {
+              console.log(`✅ Gemini (${modeloUsado}) respondeu: ${textoGemini.length} caracteres`)
+              
+              // Parsear JSON da resposta
+              const jsonMatch = textoGemini.match(/\{[\s\S]*\}/)
+              if (jsonMatch) {
+                try {
+                  const resultado = JSON.parse(jsonMatch[0].replace(/[\x00-\x1F\x7F]/g, ' ').replace(/,\s*([}\]])/g, '$1'))
+                  
+                  if (resultado?.disciplinas?.length > 0) {
+                    console.log(`✅ ${resultado.disciplinas.length} disciplinas extraídas do PDF`)
+                    
+                    // ✅ MODO REVISÃO: Retornar disciplinas para o usuário revisar
+                    const modo = c.req.query('modo')
+                    if (modo === 'revisao') {
+                      return c.json({
+                        success: true,
+                        modo: 'revisao',
+                        disciplinas: resultado.disciplinas,
+                        fonte: 'pdf_direto',
+                        message: `${resultado.disciplinas.length} disciplinas identificadas para revisão`
+                      })
+                    }
+                    
+                    // Salvar disciplinas no banco
+                    for (const disc of resultado.disciplinas) {
+                      // Buscar ou criar disciplina
+                      let disciplinaBaseId: number
+                      const { results: existentes } = await DB.prepare(
+                        'SELECT id FROM disciplinas WHERE nome LIKE ?'
+                      ).bind(`%${disc.nome}%`).all() as any
+                      
+                      if (existentes?.length > 0) {
+                        disciplinaBaseId = existentes[0].id
+                      } else {
+                        const novaDisc = await DB.prepare(
+                          'INSERT INTO disciplinas (nome, area) VALUES (?, ?)'
+                        ).bind(disc.nome, 'geral').run()
+                        disciplinaBaseId = novaDisc.meta.last_row_id
+                      }
+                      
+                      // Salvar edital_disciplinas
+                      const editalDisc = await DB.prepare(
+                        'INSERT INTO edital_disciplinas (edital_id, disciplina_id, nome, peso) VALUES (?, ?, ?, ?)'
+                      ).bind(editalId, disciplinaBaseId, disc.nome, disc.peso || 1).run()
+                      
+                      // Salvar tópicos (INSERT OR IGNORE para evitar duplicatas)
+                      for (let i = 0; i < (disc.topicos || []).length; i++) {
+                        await DB.prepare(
+                          'INSERT OR IGNORE INTO edital_topicos (edital_disciplina_id, nome, ordem) VALUES (?, ?, ?)'
+                        ).bind(editalDisc.meta.last_row_id, disc.topicos[i], i).run()
+                      }
+                    }
+                    
+                    // Atualizar status
+                    await DB.prepare('UPDATE editais SET status = ? WHERE id = ?').bind('processado', editalId).run()
+                    
+                    return c.json({
+                      success: true,
+                      disciplinas: resultado.disciplinas,
+                      total: resultado.disciplinas.length,
+                      fonte: 'pdf_direto'
+                    })
+                  }
+                } catch (parseError) {
+                  console.error('❌ Erro ao parsear JSON:', parseError)
+                }
+              }
+              
+              // Se não conseguiu extrair, salvar o texto bruto para análise posterior
+              textoOriginal = textoGemini
+              await DB.prepare('UPDATE editais SET texto_completo = ? WHERE id = ?').bind(textoGemini, editalId).run()
+              console.log('📝 Texto salvo no banco para processamento alternativo')
             }
           }
-          
-          // Se não conseguiu extrair, salvar o texto bruto para análise posterior
-          textoOriginal = textoGemini
-          await DB.prepare('UPDATE editais SET texto_completo = ? WHERE id = ?').bind(textoGemini, editalId).run()
-          console.log('📝 Texto salvo no banco para processamento alternativo')
         }
       } catch (r2Error) {
         console.error('⚠️ Erro ao buscar PDF do R2:', r2Error)
