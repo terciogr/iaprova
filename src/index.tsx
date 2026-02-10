@@ -7346,9 +7346,11 @@ app.post('/api/editais/processar-texto', async (c) => {
     }
     
     // Função para encontrar seção "PARA TODOS OS CARGOS" (SUS/Legislação comum)
+    // IMPORTANTE: Precisa estar DEPOIS de "CONHECIMENTOS ESPECÍFICOS" no edital
     const encontrarSecaoTodosCargos = (): string => {
       let conteudo: string[] = []
       let encontrouCabecalho = false
+      let passouConhecimentosEspecificos = false
       
       // Determinar nível do cargo
       const ehNivelSuperior = ['enfermeiro', 'médico', 'farmacêutico', 'fisioterapeuta', 
@@ -7362,10 +7364,18 @@ app.post('/api/editais/processar-texto', async (c) => {
         const linha = linhas[i].trim()
         const linhaLower = linha.toLowerCase()
         
-        // Buscar "PARA TODOS OS CARGOS DE ENSINO [NÍVEL]"
+        // Primeiro, precisa passar pela seção de "CONHECIMENTOS ESPECÍFICOS"
+        if (!passouConhecimentosEspecificos) {
+          if (linhaLower.includes('conhecimentos específicos') && linha.length < 100) {
+            passouConhecimentosEspecificos = true
+            console.log(`   ✓ Passou por 'CONHECIMENTOS ESPECÍFICOS' na linha ${i+1}`)
+          }
+          continue
+        }
+        
+        // Agora sim, buscar "PARA TODOS OS CARGOS DE ENSINO [NÍVEL]"
         if (!encontrouCabecalho) {
-          if (linhaLower.includes('para todos os cargos') && 
-              linhaLower.includes(nivelBuscado)) {
+          if (linhaLower.includes('para todos os cargos') && linhaLower.includes(nivelBuscado)) {
             console.log(`   ✓ Encontrado 'PARA TODOS OS CARGOS' na linha ${i+1}: "${linha}"`)
             encontrouCabecalho = true
             conteudo.push(linha)
@@ -7374,7 +7384,7 @@ app.post('/api/editais/processar-texto', async (c) => {
         }
         
         if (encontrouCabecalho) {
-          // Terminar ao encontrar próxima seção ou nome de cargo
+          // Terminar ao encontrar próxima seção de "CONHECIMENTOS ESPECÍFICOS" ou nome de cargo
           if ((linhaLower.includes('conhecimentos específicos') && 
                linhaLower.includes('cargos')) ||
               CARGOS_CONHECIDOS.some(c => linha.toLowerCase().startsWith(c.toLowerCase()))) {
