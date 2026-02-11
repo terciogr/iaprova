@@ -6,6 +6,7 @@ let currentUser = null;
 let currentStep = 'login';
 let interviewData = {};
 let disciplinasDisponiveis = [];
+let disciplinasFiltradas = []; // ✅ v57: GLOBAL para persistir entre funções
 let currentTheme = localStorage.getItem('theme') || 'light';
 let customColors = JSON.parse(localStorage.getItem('customColors') || '{"primary": "#1A3A7F", "secondary": "#ec4899", "accent": "#3b82f6"}');
 let rgbColors = JSON.parse(localStorage.getItem('rgbColors') || '{"primary": "#1A3A7F", "secondary": "#ec4899", "accent": "#3b82f6"}');
@@ -5433,7 +5434,8 @@ function voltarStep1() {
 }
 
 async function renderEntrevistaStep3() {
-  let disciplinasFiltradas = [];
+  // ✅ v57: Usar variável global, não redeclarar
+  disciplinasFiltradas = [];
   
   // 🐛 DEBUG: Mostrar estado do interviewData
   console.log('🔍 DEBUG interviewData:', {
@@ -6086,30 +6088,26 @@ Conhecimentos Específicos"></textarea>
       return;
     }
     
-    // Adicionar disciplinas à lista
-    let adicionadas = 0;
-    let jaExistentes = 0;
-    
-    // ✅ v56: Salvar em interviewData para persistir entre re-renders
+    // ✅ v57: Garantir que interviewData.disciplinas_do_edital existe (fonte de verdade)
     if (!interviewData.disciplinas_do_edital) {
       interviewData.disciplinas_do_edital = [];
     }
     
+    // Adicionar disciplinas à lista
+    let adicionadas = 0;
+    let jaExistentes = 0;
+    
     for (const nomeDisciplina of disciplinas) {
-      // ✅ v57: Verificar se já existe usando comparação EXATA (case-insensitive)
-      // A verificação anterior com includes() era muito permissiva
+      // ✅ v57: Verificar APENAS em interviewData (fonte de verdade)
       const nomeNormalizado = nomeDisciplina.toLowerCase().trim();
       
-      const jaExisteLocal = disciplinasFiltradas.some(d => 
-        d.nome.toLowerCase().trim() === nomeNormalizado
-      );
-      const jaExisteEdital = interviewData.disciplinas_do_edital.some(d =>
+      const jaExiste = interviewData.disciplinas_do_edital.some(d =>
         d.nome.toLowerCase().trim() === nomeNormalizado
       );
       
-      if (!jaExisteLocal && !jaExisteEdital) {
-        // Criar nova disciplina com ID temporário negativo
-        const novoId = -(Date.now() + Math.random() * 1000);
+      if (!jaExiste) {
+        // Criar nova disciplina com ID temporário negativo único
+        const novoId = -Math.floor(Date.now() + Math.random() * 100000);
         const novaDisciplina = {
           id: novoId,
           disciplina_id_real: novoId,
@@ -6122,12 +6120,13 @@ Conhecimentos Específicos"></textarea>
           topicos: []
         };
         
-        // ✅ v56: Adicionar tanto em disciplinasFiltradas quanto em interviewData
-        disciplinasFiltradas.push(novaDisciplina);
+        // ✅ v57: Adicionar APENAS em interviewData (renderEntrevistaStep3 vai sincronizar)
         interviewData.disciplinas_do_edital.push(novaDisciplina);
         adicionadas++;
+        console.log(`✅ Disciplina adicionada: ${nomeDisciplina} (ID: ${novoId})`);
       } else {
         jaExistentes++;
+        console.log(`⏭️ Disciplina já existe: ${nomeDisciplina}`);
       }
     }
     
@@ -6135,8 +6134,8 @@ Conhecimentos Específicos"></textarea>
     
     if (adicionadas > 0) {
       showToast('✅ ' + adicionadas + ' disciplina(s) importada(s)!' + (jaExistentes > 0 ? ' (' + jaExistentes + ' já existiam)' : ''), 'success');
-      console.log(`📋 v56: ${adicionadas} disciplinas importadas em lote. Total agora: ${interviewData.disciplinas_do_edital.length}`);
-      // Re-renderizar a tela
+      console.log(`📋 v57: ${adicionadas} disciplinas importadas. Total: ${interviewData.disciplinas_do_edital.length}`);
+      // Re-renderizar a tela (vai usar interviewData.disciplinas_do_edital)
       renderEntrevistaStep3();
     } else {
       showToast('Todas as ' + jaExistentes + ' disciplinas já existem na lista', 'info');
@@ -6146,18 +6145,26 @@ Conhecimentos Específicos"></textarea>
   // ✅ FUNÇÃO DE IMPORTAÇÃO EM LOTE DE TÓPICOS
   window.abrirImportacaoTopicosLote = () => {
     const selectDisciplina = document.getElementById('disciplina-para-topicos');
-    const disciplinaId = selectDisciplina ? parseInt(selectDisciplina.value) : null;
+    const disciplinaId = selectDisciplina ? selectDisciplina.value : null;
     
     if (!disciplinaId) {
       showToast('Selecione uma disciplina primeiro', 'error');
       return;
     }
     
-    const disciplina = disciplinasFiltradas.find(d => d.id === disciplinaId);
+    // ✅ v57: Buscar disciplina em interviewData (fonte de verdade)
+    const disciplinaIdNum = parseInt(disciplinaId) || parseFloat(disciplinaId);
+    const disciplina = interviewData.disciplinas_do_edital?.find(d => 
+      d.id === disciplinaIdNum || d.disciplina_id_real === disciplinaIdNum || String(d.id) === disciplinaId
+    ) || disciplinasFiltradas.find(d => d.id === disciplinaIdNum);
+    
     if (!disciplina) {
-      showToast('Disciplina não encontrada', 'error');
+      showToast('Disciplina não encontrada. Selecione novamente.', 'error');
+      console.error('Disciplina não encontrada:', disciplinaId, 'disponíveis:', interviewData.disciplinas_do_edital?.map(d => d.id));
       return;
     }
+    
+    console.log('📝 Abrindo importação de tópicos para:', disciplina.nome, 'ID:', disciplina.id);
     
     const modal = document.createElement('div');
     modal.id = 'modal-importacao-topicos';
@@ -6280,9 +6287,15 @@ Sintaxe da oração e do período"></textarea>
       return;
     }
     
-    const disciplina = disciplinasFiltradas.find(d => d.id === disciplinaId);
+    // ✅ v57: Buscar disciplina em interviewData (fonte de verdade)
+    const disciplinaIdNum = parseInt(disciplinaId) || parseFloat(disciplinaId);
+    const disciplina = interviewData.disciplinas_do_edital?.find(d => 
+      d.id === disciplinaIdNum || d.disciplina_id_real === disciplinaIdNum || d.id === disciplinaId
+    );
+    
     if (!disciplina) {
       showToast('Disciplina não encontrada', 'error');
+      console.error('Disciplina não encontrada para tópicos:', disciplinaId);
       return;
     }
     
@@ -6293,9 +6306,10 @@ Sintaxe da oração e do período"></textarea>
     let jaExistentes = 0;
     
     for (const topicoNome of topicos) {
-      // Verificar se já existe
+      // Verificar se já existe (comparação exata case-insensitive)
+      const nomeNorm = topicoNome.toLowerCase().trim();
       const jaExiste = disciplina.topicos.some(t => 
-        (t.nome || t).toLowerCase() === topicoNome.toLowerCase()
+        ((t.nome || t) + '').toLowerCase().trim() === nomeNorm
       );
       
       if (!jaExiste) {
@@ -6309,17 +6323,7 @@ Sintaxe da oração e do período"></textarea>
     // Atualizar contador de tópicos
     disciplina.total_topicos = disciplina.topicos.length;
     
-    // ✅ v56: Sincronizar com interviewData para persistir entre re-renders
-    if (interviewData.disciplinas_do_edital) {
-      const discEdital = interviewData.disciplinas_do_edital.find(d => 
-        d.nome === disciplina.nome || d.id === disciplinaId || d.disciplina_id_real === disciplinaId
-      );
-      if (discEdital) {
-        discEdital.topicos = [...disciplina.topicos];
-        discEdital.total_topicos = disciplina.topicos.length;
-        console.log(`📋 v56: Sincronizado ${adicionados} tópicos para ${disciplina.nome} em interviewData`);
-      }
-    }
+    console.log(`📋 v57: ${adicionados} tópicos adicionados para ${disciplina.nome}. Total: ${disciplina.total_topicos}`);
     
     fecharModalImportacaoTopicos();
     
@@ -6333,6 +6337,14 @@ Sintaxe da oração e do período"></textarea>
   };
   
   // ✅ FUNÇÕES DE MANIPULAÇÃO DE TÓPICOS
+  // ✅ v57: Helper function para buscar disciplina (usa interviewData como fonte de verdade)
+  function buscarDisciplina(discId) {
+    const id = parseInt(discId) || parseFloat(discId) || discId;
+    return interviewData.disciplinas_do_edital?.find(d => 
+      d.id === id || d.disciplina_id_real === id || d.id === discId
+    ) || disciplinasFiltradas.find(d => d.id === id);
+  }
+  
   window.toggleTopicos = (discId) => {
     const topicosDiv = document.getElementById(`topicos_${discId}`);
     if (topicosDiv) {
@@ -6341,13 +6353,14 @@ Sintaxe da oração e do período"></textarea>
   };
   
   window.adicionarTopico = (discId) => {
-    const disc = disciplinasFiltradas.find(d => d.id === discId);
+    const disc = buscarDisciplina(discId);
     if (!disc) return;
     
     if (!disc.topicos) disc.topicos = [];
     
     const novoTopico = { nome: 'Novo tópico', peso: 1 };
     disc.topicos.push(novoTopico);
+    disc.total_topicos = disc.topicos.length;
     
     // Recriar a lista
     renderListaTopicos(discId);
@@ -6355,12 +6368,13 @@ Sintaxe da oração e do período"></textarea>
   };
   
   window.removerTopico = (discId, idx) => {
-    const disc = disciplinasFiltradas.find(d => d.id === discId);
+    const disc = buscarDisciplina(discId);
     if (!disc || !disc.topicos) return;
     
     showConfirm('Tem certeza que deseja remover este tópico?', (confirmed) => {
       if (confirmed) {
         disc.topicos.splice(idx, 1);
+        disc.total_topicos = disc.topicos.length;
         renderListaTopicos(discId);
         showToast('Tópico removido!', 'info');
       }
@@ -6368,7 +6382,7 @@ Sintaxe da oração e do período"></textarea>
   };
   
   window.atualizarTopico = (discId, idx, novoNome) => {
-    const disc = disciplinasFiltradas.find(d => d.id === discId);
+    const disc = buscarDisciplina(discId);
     if (!disc || !disc.topicos || !disc.topicos[idx]) return;
     
     if (typeof disc.topicos[idx] === 'string') {
@@ -6381,7 +6395,7 @@ Sintaxe da oração e do período"></textarea>
   };
   
   function renderListaTopicos(discId) {
-    const disc = disciplinasFiltradas.find(d => d.id === discId);
+    const disc = buscarDisciplina(discId);
     if (!disc) return;
     
     const listaDiv = document.getElementById(`lista_topicos_${discId}`);
