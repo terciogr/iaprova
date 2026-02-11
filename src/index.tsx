@@ -12897,9 +12897,9 @@ app.get('/api/conteudo/:conteudo_id', async (c) => {
 
     const conteudoObj = {
       ...conteudo,
-      topicos: JSON.parse(conteudo.topicos),
-      objetivos: JSON.parse(conteudo.objetivos),
-      conteudo: JSON.parse(conteudo.conteudo)
+      topicos: conteudo.topicos ? JSON.parse(conteudo.topicos as string) : [],
+      objetivos: conteudo.objetivos ? JSON.parse(conteudo.objetivos as string) : [],
+      conteudo: conteudo.conteudo ? JSON.parse(conteudo.conteudo as string) : {}
     }
 
     // Formato JSON (padrão)
@@ -12947,16 +12947,16 @@ app.get('/api/conteudos/usuario/:user_id', async (c) => {
         d.nome as disciplina_nome,
         m.data as data_estudo
       FROM conteudo_estudo c
-      JOIN disciplinas d ON c.disciplina_id = d.id
+      LEFT JOIN disciplinas d ON c.disciplina_id = d.id
       LEFT JOIN metas_diarias m ON c.meta_id = m.id
       WHERE c.user_id = ?
       ORDER BY c.created_at DESC
       LIMIT ? OFFSET ?
     `).bind(user_id, limit, offset).all()
 
-    const conteudosFormatados = conteudos.map(c => ({
+    const conteudosFormatados = conteudos.map((c: any) => ({
       ...c,
-      topicos: JSON.parse(c.topicos)
+      topicos: c.topicos ? JSON.parse(c.topicos) : []
     }))
 
     return c.json({
@@ -14517,7 +14517,7 @@ app.post('/api/conteudo/gerar', async (c) => {
   }
 })
 
-app.get('/api/conteudo/:meta_id', async (c) => {
+app.get('/api/conteudo/meta/:meta_id', async (c) => {
   const { DB } = c.env
   const meta_id = c.req.param('meta_id')
 
@@ -14532,9 +14532,9 @@ app.get('/api/conteudo/:meta_id', async (c) => {
 
   return c.json({
     ...conteudo,
-    conteudo: JSON.parse(conteudo.conteudo),
-    topicos: JSON.parse(conteudo.topicos),
-    objetivos: JSON.parse(conteudo.objetivos)
+    conteudo: conteudo.conteudo ? JSON.parse(conteudo.conteudo as string) : {},
+    topicos: conteudo.topicos ? JSON.parse(conteudo.topicos as string) : [],
+    objetivos: conteudo.objetivos ? JSON.parse(conteudo.objetivos as string) : []
   })
 })
 
@@ -17792,7 +17792,14 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
     }
     
     // Para outros tipos (não teoria), usar config do usuário se definida
-    if (tipoConteudo !== 'teoria') {
+    if (tipoConteudo === 'flashcards') {
+      // ✅ CORREÇÃO: Flashcards NÃO precisam de limite de caracteres alto
+      // O que importa é a QUANTIDADE de flashcards, não o tamanho total
+      limiteCaracteres = 0; // Sem limite mínimo para flashcards
+    } else if (tipoConteudo === 'exercicios') {
+      // Exercícios também dependem da quantidade, não do tamanho
+      limiteCaracteres = 0;
+    } else if (tipoConteudo !== 'teoria') {
       if (iaConfig.extensao === 'curto') limiteCaracteres = 5000;
       else if (iaConfig.extensao === 'medio') limiteCaracteres = 10000;
       else if (iaConfig.extensao === 'longo') limiteCaracteres = 15000;
@@ -17813,15 +17820,19 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
     }
     
     // Instruções de personalização comuns (SEM criatividade - sempre objetivo)
+    // ✅ CORREÇÃO: Para flashcards e exercícios, NÃO incluir limite de caracteres
+    // pois isso confunde a IA e faz ela gerar teoria ao invés do formato correto
+    const incluirLimiteExtensao = tipoConteudo !== 'flashcards' && tipoConteudo !== 'exercicios'
+    
     let personalizacao = `
 === CONFIGURAÇÕES DE PERSONALIZAÇÃO OBRIGATÓRIAS ===
 1. TOM: ${tomInstrucoes[iaConfig.tom] || tomInstrucoes['didatico']}
 2. ESTILO: Seja OBJETIVO, DIRETO e PRECISO. Sem rodeios ou enrolação.
 3. INTENSIDADE: ${intensidadeInstrucoes[iaConfig.intensidade] || intensidadeInstrucoes['intermediaria']}
 4. PROFUNDIDADE: ${profundidadeInstrucoes[iaConfig.profundidade] || profundidadeInstrucoes['aplicada']}
-5. EXTENSÃO MÍNIMA: ${limiteCaracteres} caracteres (pode ultrapassar um pouco, mas NUNCA gere menos que isso)
+${incluirLimiteExtensao ? `5. EXTENSÃO MÍNIMA: ${limiteCaracteres} caracteres (pode ultrapassar um pouco, mas NUNCA gere menos que isso)
 
-⚠️ REGRA CRÍTICA: O conteúdo DEVE ter NO MÍNIMO ${limiteCaracteres} caracteres. Gere conteúdo COMPLETO e DETALHADO.
+⚠️ REGRA CRÍTICA: O conteúdo DEVE ter NO MÍNIMO ${limiteCaracteres} caracteres. Gere conteúdo COMPLETO e DETALHADO.` : `5. FORMATO: Siga EXATAMENTE o formato solicitado abaixo. NÃO gere texto corrido ou teoria.`}
 
 🚫 PROIBIDO ABSOLUTAMENTE:
 - NÃO inicie com saudações como "Olá", "Olá futuro servidor", "Caro estudante", etc.
@@ -18088,9 +18099,13 @@ REGRAS:
           'Flashcards OBJETIVOS: FRENTE com termo/conceito (1-5 palavras), VERSO com definição direta (1-2 linhas).' :
           'Flashcards APROFUNDADOS: FRENTE com termo/conceito (1-5 palavras), VERSO com explicação detalhada e exemplo (2-4 linhas).'
         
+        // ✅ CORREÇÃO: Flashcards NÃO usa personalizacao com limite de caracteres
+        // pois isso confundia a IA fazendo gerar teoria ao invés de flashcards
         systemPrompt = `Você é um professor especialista em concursos públicos brasileiros.
-${personalizacao}
-6. FORMATO: ${formatoFlashcards}
+
+🚫 PROIBIDO: NÃO gere teoria, texto corrido ou explicações longas. Gere APENAS flashcards no formato abaixo.
+
+FORMATO: ${formatoFlashcards}
 
 CRIE EXATAMENTE ${qtdFlashcards} FLASHCARDS sobre o tópico "${topico_nome}" da disciplina "${disciplina_nome}".
 

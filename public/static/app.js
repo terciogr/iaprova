@@ -9221,12 +9221,17 @@ window.visualizarMaterialDireto = async function(materialId, tipo) {
         showToast('Não foi possível processar as questões', 'error');
       }
     } else if (tipo === 'flashcards') {
-      const flashcards = parseFlashcards(material.conteudo);
-      if (flashcards && flashcards.length > 0) {
-        exibirFlashcardsVisuais(flashcards, material.disciplina_nome, material.topico_nome);
-      } else {
-        showToast('Não foi possível processar os flashcards', 'error');
-      }
+      // ✅ CORREÇÃO: Passar objeto com dados completos para exibirFlashcardsVisuais
+      // (a função espera { conteudo, topico_nome, disciplina_nome, ... })
+      exibirFlashcardsVisuais({
+        topico_nome: material.topico_nome || 'Flashcards',
+        disciplina_nome: material.disciplina_nome || '',
+        disciplina_id: material.disciplina_id,
+        topico_id: material.topico_id,
+        tipo: 'flashcards',
+        conteudo: material.conteudo,
+        material_id: material.id
+      });
     } else {
       // Teoria ou Resumo - exibir normalmente
       exibirConteudoGerado({
