@@ -4944,8 +4944,16 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
           return;
         }
         
-        console.log('📝 Salvando disciplinas para edital:', editalId);
-        console.log('📋 Disciplinas:', JSON.stringify(disciplinasEditadas, null, 2));
+        // ✅ v63: Validar disciplinas antes de enviar
+        if (!disciplinasEditadas || disciplinasEditadas.length === 0) {
+          console.error('❌ Nenhuma disciplina para salvar!');
+          showModal('Erro: Nenhuma disciplina para salvar. Adicione pelo menos uma disciplina.', { type: 'error' });
+          return;
+        }
+        
+        console.log('📝 v63: Salvando disciplinas para edital:', editalId);
+        console.log('📋 v63: Total disciplinas:', disciplinasEditadas.length);
+        console.log('📋 v63: URL:', `/api/editais/${editalId}/disciplinas`);
         
         // Mostrar loading
         const btnConfirmar = document.getElementById('btnConfirmarDisciplinas');
