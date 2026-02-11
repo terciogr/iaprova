@@ -6435,33 +6435,144 @@ app.post('/api/editais/processar-texto', async (c) => {
     console.log(`📄 Total de linhas no edital: ${linhas.length}`)
     
     // ════════════════════════════════════════════════════════════════
-    // ✅ v60: DETECTAR TIPO DE EDITAL
-    // Alguns editais são "Processo Seletivo Simplificado" sem provas de conhecimento
-    // Nesses casos, devemos informar o usuário e oferecer alternativas
+    // ✅ v61: DETECTAR TIPO DE EDITAL (mais tolerante)
+    // Processo Seletivo Simplificado SEM NENHUM conteúdo programático
+    // Se tiver qualquer disciplina/conteúdo, tentar extrair normalmente
     // ════════════════════════════════════════════════════════════════
     
     const textoUpper = textoLimpo.toUpperCase()
-    const ehProcessoSeletivoSimplificado = (
-      textoUpper.includes('PROCESSO SELETIVO SIMPLIFICADO') ||
-      textoUpper.includes('SELEÇÃO SIMPLIFICADA') ||
-      (textoUpper.includes('PROVA DE TÍTULOS') && !textoUpper.includes('PROVA OBJETIVA') && !textoUpper.includes('PROVA DE CONHECIMENTOS'))
-    )
     const temConteudoProgramatico = textoUpper.includes('CONTEÚDO PROGRAMÁTICO') || textoUpper.includes('CONTEUDO PROGRAMATICO')
     const temProvaObjetiva = textoUpper.includes('PROVA OBJETIVA') || textoUpper.includes('PROVA DE CONHECIMENTOS') || textoUpper.includes('PROVAS OBJETIVAS')
+    const temDisciplinas = textoUpper.includes('LÍNGUA PORTUGUESA') || textoUpper.includes('DIREITO CONSTITUCIONAL') || 
+                          textoUpper.includes('DIREITO ADMINISTRATIVO') || textoUpper.includes('RACIOCÍNIO LÓGICO') ||
+                          textoUpper.includes('CONHECIMENTOS BÁSICOS') || textoUpper.includes('CONHECIMENTOS ESPECÍFICOS')
     
-    if (ehProcessoSeletivoSimplificado && !temProvaObjetiva && !temConteudoProgramatico) {
-      console.log('⚠️ v60: Detectado PROCESSO SELETIVO SIMPLIFICADO (sem provas de conhecimento)')
-      console.log('   Este tipo de edital é baseado em títulos/entrevista, sem disciplinas para estudo')
+    // ✅ v61: Só bloquear se REALMENTE não tiver NADA de conteúdo programático
+    const ehProcessoSeletivoSemConteudo = (
+      (textoUpper.includes('PROCESSO SELETIVO SIMPLIFICADO') || textoUpper.includes('SELEÇÃO SIMPLIFICADA')) &&
+      !temProvaObjetiva && !temConteudoProgramatico && !temDisciplinas
+    )
+    
+    if (ehProcessoSeletivoSemConteudo) {
+      console.log('⚠️ v61: Detectado PROCESSO SELETIVO SIMPLIFICADO sem conteúdo programático')
+      console.log('   Não há disciplinas, provas objetivas ou conteúdo programático neste edital')
+      // ✅ v61: Usar IA para sugerir disciplinas relevantes DIRETAMENTE
+      console.log('   Usando IA para sugerir disciplinas relevantes para o cargo...')
       
+      const geminiKey = env.GEMINI_API_KEY
+      if (geminiKey && (cargo || concurso_nome)) {
+        try {
+          const promptSugestaoPS = `Você é um especialista em concursos públicos brasileiros.
+
+CONTEXTO (PROCESSO SELETIVO SIMPLIFICADO):
+- Cargo: ${cargo || 'Não especificado'}
+- Concurso/Órgão: ${concurso_nome || 'Não especificado'}
+- Área: ${area_geral || 'geral'}
+- NOTA: Este é um processo seletivo simplificado baseado em títulos/entrevista, mas o candidato deseja estudar conteúdos relevantes para o cargo
+
+TAREFA: Sugira as disciplinas e tópicos que seriam relevantes para um profissional deste cargo.
+Considere o que um profissional desta área deve conhecer para ter bom desempenho na função.
+
+REGRAS:
+1. Inclua conhecimentos básicos relevantes (ex: Português, Informática)
+2. Inclua conhecimentos específicos da função/área
+3. Cada disciplina deve ter 3-8 tópicos principais
+4. Retorne entre 6 e 12 disciplinas
+
+RETORNE APENAS JSON válido:
+{"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}`
+
+          const sugestaoRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: promptSugestaoPS }] }],
+                generationConfig: { temperature: 0.3, maxOutputTokens: 8000 }
+              })
+            }
+          )
+          
+          if (sugestaoRes.ok) {
+            const sugestaoData = await sugestaoRes.json() as any
+            const respText = sugestaoData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            const jsonMatch = respText.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').match(/\{[\s\S]*\}/)
+            
+            if (jsonMatch) {
+              const sugestao = JSON.parse(jsonMatch[0])
+              if (sugestao.disciplinas && sugestao.disciplinas.length > 0) {
+                console.log(`✅ v61: IA sugeriu ${sugestao.disciplinas.length} disciplinas para processo seletivo`)
+                
+                const disciplinasSugeridas = sugestao.disciplinas.map((d: any, i: number) => ({
+                  id: -(i + 1),
+                  disciplina_id_real: -(i + 1),
+                  nome: d.nome,
+                  peso: d.peso || 1,
+                  categoria: d.categoria || 'BÁSICOS',
+                  total_topicos: d.topicos?.length || 0,
+                  topicos: (d.topicos || []).map((t: string) => ({ nome: t, peso: 1 }))
+                }))
+                
+                return c.json({
+                  success: true,
+                  edital_id: null,
+                  disciplinas: disciplinasSugeridas,
+                  total: disciplinasSugeridas.length,
+                  concurso_detectado: concurso_nome,
+                  area_detectada: area_geral || 'geral',
+                  modo: 'sugestao',
+                  fonte: 'ia_processo_seletivo_v61',
+                  sugestao: true,
+                  tipoEdital: 'processo_seletivo_simplificado',
+                  message: `ℹ️ Este é um Processo Seletivo Simplificado (sem provas de conhecimentos). Sugerimos ${disciplinasSugeridas.length} disciplinas relevantes para o cargo. Revise e ajuste conforme necessário!`
+                })
+              }
+            }
+          }
+        } catch (err) {
+          console.error('⚠️ v61: Erro ao sugerir disciplinas para processo seletivo:', err)
+        }
+      }
+      
+      // Se IA falhou, retornar erro informativo
       return c.json({
         success: false,
-        error: 'Este é um Processo Seletivo Simplificado',
+        error: 'Processo Seletivo Simplificado sem conteúdo programático',
         errorType: 'PROCESSO_SELETIVO_SIMPLIFICADO',
-        message: 'Este edital é de um **Processo Seletivo Simplificado** baseado em **análise de títulos e/ou entrevista**, sem provas de conhecimentos.\n\nNão há disciplinas ou conteúdo programático para estudo neste tipo de seleção.\n\n**Sugestões:**\n• Verifique os requisitos de titulação (diplomas, certificados)\n• Prepare-se para a entrevista (se houver)\n• Use "Continuar sem edital" para criar um plano de estudos personalizado',
+        message: 'Este é um Processo Seletivo Simplificado baseado em análise de títulos e/ou entrevista. Não foi possível identificar ou sugerir disciplinas.\n\n**Sugestões:**\n• Use "Continuar sem edital" para criar um plano personalizado\n• Verifique os requisitos de titulação do edital',
         suggestion: 'Use "Continuar sem edital" para criar um plano de estudos personalizado',
         canRetry: false,
         tipoEdital: 'processo_seletivo_simplificado'
       }, 400)
+    }
+    
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v61: DETECTAR ÁREA/ESPECIALIDADE DO CARGO
+    // Para editais com múltiplos cargos de mesma carreira (ex: Auditor - Área X, Área Y)
+    // ════════════════════════════════════════════════════════════════
+    
+    let areaEspecifica = ''
+    const cargoLowerOriginal = cargo?.toLowerCase() || ''
+    
+    // Detectar área específica no nome do cargo
+    const areasConhecidas = [
+      'infraestrutura', 'segurança', 'sistemas', 'engenharia de dados', 'ciência de dados',
+      'engenharia', 'área comum', 'tecnologia da informação', 'ti',
+      'administração', 'contabilidade', 'direito', 'economia', 'saúde',
+      'fiscal', 'tributário', 'controle externo', 'controle interno'
+    ]
+    
+    for (const area of areasConhecidas) {
+      if (cargoLowerOriginal.includes(area)) {
+        areaEspecifica = area.toUpperCase()
+        break
+      }
+    }
+    
+    console.log(`🎯 Cargo: ${cargoUpper}`)
+    if (areaEspecifica) {
+      console.log(`🎯 Área específica detectada: ${areaEspecifica}`)
     }
     
     // ──────────────────────────────────────────────────────────────
@@ -6601,7 +6712,12 @@ app.post('/api/editais/processar-texto', async (c) => {
     }
     if (inicioConteudo === -1) inicioConteudo = Math.floor(linhas.length * 0.5)
     
-    // Localizar seção do cargo no conteúdo programático
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v61: LOCALIZAÇÃO INTELIGENTE DE SEÇÃO DO CARGO
+    // Melhorada para editais com múltiplas áreas/especialidades
+    // Ex: "AUDITOR DE CONTROLE EXTERNO – ÁREA DE TECNOLOGIA DA INFORMAÇÃO"
+    // ════════════════════════════════════════════════════════════════
+    
     const variacoesCargo: string[] = [cargoUpper]
     if (cargoUpper.includes('AUDITOR')) variacoesCargo.push('AUDITOR-FISCAL', 'AUDITOR FISCAL')
     if (cargoUpper.includes('ANALISTA')) variacoesCargo.push('ANALISTA-TRIBUTÁRIO', 'ANALISTA TRIBUTÁRIO')
@@ -6609,19 +6725,48 @@ app.post('/api/editais/processar-texto', async (c) => {
     let inicioSecaoCargo = -1
     let fimSecaoCargo = -1
     
-    for (let i = inicioConteudo; i < linhas.length; i++) {
-      const l = linhas[i].trim().toUpperCase()
-      for (const v of variacoesCargo) {
-        if ((l === v || (l.length < 80 && l.includes(v) && !l.includes('VAGA') && !l.includes('QUESTÕES') && !l.includes('SALÁRIO'))) && l.length < 80) {
-          const prox = linhas.slice(i+1, i+5).join(' ').toLowerCase()
-          if (prox.includes('módulo') || prox.includes('conhecimentos') || prox.includes('língua') || prox.includes('direito') || prox.includes('raciocínio')) {
-            inicioSecaoCargo = i
-            console.log(`📍 Seção do cargo: linha ${i+1}`)
-            break
+    // ✅ v61: Primeiro buscar seção exata com área específica
+    // Padrão: "PARA O CARGO DE AUDITOR DE CONTROLE EXTERNO – ÁREA DE X"
+    if (areaEspecifica) {
+      for (let i = inicioConteudo; i < linhas.length; i++) {
+        const l = linhas[i].trim().toUpperCase()
+        // Buscar linha que menciona o cargo E a área específica
+        if (l.includes('PARA O CARGO') || l.includes('PARA OS CARGOS') || 
+            (l.includes('AUDITOR') && l.includes('ÁREA')) ||
+            (l.includes('ANALISTA') && l.includes('ÁREA'))) {
+          if (l.includes(areaEspecifica) || 
+              (areaEspecifica.includes('INFRAESTRUTURA') && l.includes('INFRAESTRUTURA')) ||
+              (areaEspecifica.includes('SISTEMAS') && l.includes('SISTEMAS')) ||
+              (areaEspecifica.includes('ENGENHARIA') && l.includes('ENGENHARIA') && !l.includes('DADOS')) ||
+              (areaEspecifica.includes('COMUM') && l.includes('COMUM')) ||
+              (areaEspecifica.includes('TECNOLOGIA') && l.includes('TECNOLOGIA'))) {
+            const prox = linhas.slice(i+1, i+10).join(' ').toLowerCase()
+            if (prox.includes('conhecimentos') || prox.includes('língua') || prox.includes('direito')) {
+              inicioSecaoCargo = i
+              console.log(`📍 v61: Seção do cargo+área encontrada: linha ${i+1} - "${l.substring(0, 80)}"`)
+              break
+            }
           }
         }
       }
-      if (inicioSecaoCargo !== -1) break
+    }
+    
+    // Se não encontrou com área específica, buscar pelo cargo genérico
+    if (inicioSecaoCargo === -1) {
+      for (let i = inicioConteudo; i < linhas.length; i++) {
+        const l = linhas[i].trim().toUpperCase()
+        for (const v of variacoesCargo) {
+          if ((l === v || (l.length < 100 && l.includes(v) && !l.includes('VAGA') && !l.includes('QUESTÕES') && !l.includes('SALÁRIO'))) && l.length < 100) {
+            const prox = linhas.slice(i+1, i+5).join(' ').toLowerCase()
+            if (prox.includes('módulo') || prox.includes('conhecimentos') || prox.includes('língua') || prox.includes('direito') || prox.includes('raciocínio')) {
+              inicioSecaoCargo = i
+              console.log(`📍 Seção do cargo: linha ${i+1}`)
+              break
+            }
+          }
+        }
+        if (inicioSecaoCargo !== -1) break
+      }
     }
     
     // Se não encontrou seção específica do cargo, pegar todo o conteúdo programático
@@ -6630,9 +6775,8 @@ app.post('/api/editais/processar-texto', async (c) => {
       console.log(`📍 Usando todo conteúdo programático desde linha ${inicioConteudo+1}`)
     }
     
-    // Lista de cargos conhecidos para delimitar seções
-    // ✅ v55: Filtro corrigido - excluir cargos que são parte do cargo-alvo
-    // Ex: Se cargo é "AGENTE CENSITÁRIO", excluir "AGENTE" da lista
+    // ✅ v61: Lista melhorada de marcadores de fim de seção
+    // Incluir padrões de outras áreas do mesmo cargo
     const outrosCargosConhecidos = ['AUDITOR-FISCAL', 'ANALISTA-TRIBUTÁRIO', 'ANALISTA TRIBUTÁRIO',
       'AUDITOR FISCAL', 'ASSISTENTE SOCIAL', 'ENFERMEIRO', 'MÉDICO', 'FARMACÊUTICO',
       'FISIOTERAPEUTA', 'NUTRICIONISTA', 'PSICÓLOGO', 'TÉCNICO', 'ENGENHEIRO',
@@ -6640,9 +6784,84 @@ app.post('/api/editais/processar-texto', async (c) => {
       'CIRURGIÃO', 'PROFESSOR', 'DELEGADO', 'PERITO', 'AGENTE', 'CONTADOR', 'ADVOGADO']
       .filter(c => !variacoesCargo.some(v => v.includes(c) || c.includes(v)))
     
-    // Encontrar fim da seção do cargo
+    // ✅ v61: Encontrar fim da seção do cargo
+    // IMPORTANTE: Parar quando encontrar "PARA O CARGO DE..." de OUTRA área
     for (let i = inicioSecaoCargo + 1; i < linhas.length; i++) {
       const l = linhas[i].trim().toUpperCase()
+      
+      // ✅ v61: Detectar início de seção de OUTRO cargo/área
+      if (l.includes('PARA O CARGO DE') || l.includes('PARA OS CARGOS DE')) {
+        // ✅ v62: Lógica melhorada - sub-áreas de TI são tratadas como mesma área principal
+        // INFRAESTRUTURA e SISTEMAS são sub-áreas de TECNOLOGIA DA INFORMAÇÃO
+        const areaTI = areaEspecifica && (
+          areaEspecifica.includes('INFRAESTRUTURA') || 
+          areaEspecifica.includes('SISTEMAS') || 
+          areaEspecifica.includes('TECNOLOGIA') ||
+          areaEspecifica.includes('TI')
+        )
+        
+        // Se minha área é sub-área de TI, incluir tudo de TI até encontrar área totalmente diferente
+        const linhaParece_TI = l.includes('TECNOLOGIA') || l.includes('INFRAESTRUTURA') || l.includes('SISTEMAS') || l.includes('TI –')
+        const linhaParece_Engenharia = l.includes('ENGENHARIA') && !l.includes('DADOS') && !l.includes('SISTEMAS')
+        const linhaParece_AreaComum = l.includes('ÁREA COMUM')
+        
+        let ehOutraArea = true
+        if (areaTI) {
+          // Se eu sou TI/Infraestrutura/Sistemas, só é "outra área" se for Engenharia pura ou Área Comum
+          ehOutraArea = linhaParece_Engenharia || linhaParece_AreaComum
+        } else if (areaEspecifica) {
+          // Para outras áreas (Engenharia, Área Comum), verificar se contém minha área
+          ehOutraArea = (
+            !l.includes(areaEspecifica) &&
+            !(areaEspecifica.includes('ENGENHARIA') && linhaParece_Engenharia) &&
+            !(areaEspecifica.includes('COMUM') && linhaParece_AreaComum)
+          )
+        }
+        
+        if (ehOutraArea) {
+          fimSecaoCargo = i
+          console.log(`📍 v62: Fim da seção (outro cargo/área): linha ${i+1} - "${l.substring(0, 60)}"`)
+          break
+        } else {
+          console.log(`📍 v62: Mesma área/sub-área, continuando: linha ${i+1} - "${l.substring(0, 60)}"`)
+        }
+      }
+      
+      // ✅ v61: Detectar "CONHECIMENTOS ESPECIALIZADOS" de outra área
+      if (l.includes('CONHECIMENTOS ESPECIALIZADOS') && areaEspecifica) {
+        // ✅ v62: Mesma lógica - sub-áreas de TI são tratadas como mesma área
+        const areaTI = areaEspecifica && (
+          areaEspecifica.includes('INFRAESTRUTURA') || 
+          areaEspecifica.includes('SISTEMAS') || 
+          areaEspecifica.includes('TECNOLOGIA')
+        )
+        
+        const linhaParece_TI = l.includes('INFRAESTRUTURA') || l.includes('SISTEMAS') || l.includes('DADOS')
+        const linhaParece_Engenharia = l.includes('ENGENHARIA') && !l.includes('DADOS')
+        const linhaParece_AreaComum = l.includes('COMUM')
+        
+        let ehMinhaArea = false
+        if (areaTI) {
+          ehMinhaArea = linhaParece_TI || (!linhaParece_Engenharia && !linhaParece_AreaComum)
+        } else {
+          ehMinhaArea = (
+            (areaEspecifica.includes('INFRAESTRUTURA') && l.includes('INFRAESTRUTURA')) ||
+            (areaEspecifica.includes('SISTEMAS') && (l.includes('SISTEMAS') || l.includes('DADOS'))) ||
+            (areaEspecifica.includes('ENGENHARIA') && linhaParece_Engenharia) ||
+            (areaEspecifica.includes('COMUM') && linhaParece_AreaComum)
+          )
+        }
+        
+        if (!ehMinhaArea && i > inicioSecaoCargo + 50) {
+          // Provavelmente é conhecimento especializado de outra área
+          // Mas só parar se já processamos bastante conteúdo
+          fimSecaoCargo = i
+          console.log(`📍 v62: Fim da seção (conhecimentos de outra área): linha ${i+1}`)
+          break
+        }
+      }
+      
+      // Detectar outros cargos conhecidos
       if (l.length < 80 && l.length > 3) {
         for (const outro of outrosCargosConhecidos) {
           if (l === outro || l.startsWith(outro + ' ') || l.startsWith(outro + ' -') || l.startsWith(outro + ' –')) {
@@ -6924,11 +7143,101 @@ app.post('/api/editais/processar-texto', async (c) => {
           continue
         }
         
+        // ✅ v62: Detectar CONHECIMENTOS ESPECIALIZADOS e verificar se é da área correta
+        if (linhaUpper.includes('CONHECIMENTOS ESPECIALIZADOS') && linha.length < 120) {
+          // ✅ v62: Lógica melhorada - sub-áreas de TI são tratadas como mesma área principal
+          const areaTI = areaEspecifica && (
+            areaEspecifica.includes('INFRAESTRUTURA') || 
+            areaEspecifica.includes('SISTEMAS') || 
+            areaEspecifica.includes('TECNOLOGIA')
+          )
+          
+          const linhaParece_TI = linhaUpper.includes('INFRAESTRUTURA') || linhaUpper.includes('SISTEMAS') || linhaUpper.includes('DADOS')
+          const linhaParece_Engenharia = linhaUpper.includes('ENGENHARIA') && !linhaUpper.includes('DADOS')
+          const linhaParece_AreaComum = linhaUpper.includes('COMUM')
+          
+          // Se minha área é sub-área de TI, aceitar todos conhecimentos especializados de TI
+          let ehMinhaAreaEsp = !areaEspecifica
+          if (areaTI) {
+            ehMinhaAreaEsp = linhaParece_TI || (!linhaParece_Engenharia && !linhaParece_AreaComum)
+          } else if (areaEspecifica) {
+            ehMinhaAreaEsp = (
+              (areaEspecifica.includes('INFRAESTRUTURA') && linhaUpper.includes('INFRAESTRUTURA')) ||
+              (areaEspecifica.includes('SISTEMAS') && (linhaUpper.includes('SISTEMAS') || linhaUpper.includes('DADOS'))) ||
+              (areaEspecifica.includes('ENGENHARIA') && linhaParece_Engenharia) ||
+              (areaEspecifica.includes('COMUM') && linhaParece_AreaComum) ||
+              // Se não menciona nenhuma área específica, assumir que é a minha
+              (!linhaUpper.includes('INFRAESTRUTURA') && !linhaUpper.includes('SISTEMAS') && 
+               !linhaUpper.includes('ENGENHARIA') && !linhaUpper.includes('COMUM') && !linhaUpper.includes('DADOS'))
+            )
+          }
+          
+          if (ehMinhaAreaEsp) {
+            categoriaAtual = 'ESPECÍFICOS'
+            pesoAtual = 2
+            console.log(`   📌 CONHECIMENTOS ESPECIALIZADOS (minha área): ${linha.substring(0, 60)}`)
+            continue
+          } else {
+            // É conhecimento especializado de OUTRA área - IGNORAR tudo até próxima seção
+            console.log(`   ⏭️ v62: CONHECIMENTOS ESPECIALIZADOS de OUTRA área (${linha.substring(0, 40)}), ignorando...`)
+            // Pular até encontrar outra seção ou fim
+            let j = i + 1
+            while (j < linhasSecao.length) {
+              const proxLinha = linhasSecao[j].toUpperCase()
+              if (proxLinha.includes('PARA O CARGO') || proxLinha.includes('PARA OS CARGOS') ||
+                  proxLinha.includes('CONHECIMENTOS BÁSICOS') || proxLinha.includes('CONHECIMENTOS ESPECÍFICOS') ||
+                  (proxLinha.includes('CONHECIMENTOS ESPECIALIZADOS') && !proxLinha.includes(linha.substring(0, 20)))) {
+                break
+              }
+              j++
+            }
+            i = j - 1  // -1 porque o loop vai incrementar
+            continue
+          }
+        }
+        
         if (linha.length < 4) continue
         if (/^(CARGOS|PARA TODOS|ANEXO)\s/i.test(linha)) continue
         if (linhaUpper.includes('CARGOS DE ENSINO') && linha.length < 100) continue
         // ✅ v55: Pular títulos de seção que não são disciplinas
         if (/^(CONTEÚDO PROGRAMÁTICO|CONTEUDO PROGRAMATICO|PROGRAMA DAS PROVAS|CONTEÚDOS PROGRAMÁTICOS)\s*$/i.test(linha)) continue
+        
+        // ✅ v62: Detectar "PARA O CARGO DE..." de outra área e PARAR extração
+        if ((linhaUpper.includes('PARA O CARGO DE') || linhaUpper.includes('PARA OS CARGOS DE')) && 
+            areaEspecifica && linha.length < 150) {
+          // ✅ v62: Lógica melhorada - sub-áreas de TI são tratadas como mesma área principal
+          const areaTI = areaEspecifica && (
+            areaEspecifica.includes('INFRAESTRUTURA') || 
+            areaEspecifica.includes('SISTEMAS') || 
+            areaEspecifica.includes('TECNOLOGIA') ||
+            areaEspecifica.includes('TI')
+          )
+          
+          const linhaParece_TI = linhaUpper.includes('TECNOLOGIA') || linhaUpper.includes('INFRAESTRUTURA') || linhaUpper.includes('SISTEMAS')
+          const linhaParece_Engenharia = linhaUpper.includes('ENGENHARIA') && !linhaUpper.includes('DADOS') && !linhaUpper.includes('SISTEMAS')
+          const linhaParece_AreaComum = linhaUpper.includes('ÁREA COMUM')
+          
+          let ehOutraArea = true
+          if (areaTI) {
+            // Se eu sou TI/Infraestrutura/Sistemas, só é "outra área" se for Engenharia pura ou Área Comum
+            ehOutraArea = linhaParece_Engenharia || linhaParece_AreaComum
+          } else {
+            // Para outras áreas (Engenharia, Área Comum), verificar se contém minha área
+            ehOutraArea = (
+              !linhaUpper.includes(areaEspecifica) &&
+              !(areaEspecifica.includes('ENGENHARIA') && linhaParece_Engenharia) &&
+              !(areaEspecifica.includes('COMUM') && linhaParece_AreaComum)
+            )
+          }
+          
+          if (ehOutraArea) {
+            console.log(`   🛑 v62: Encontrada seção de OUTRA área: ${linha.substring(0, 60)}`)
+            console.log(`   🛑 v62: PARANDO extração - não incluir disciplinas de outras áreas`)
+            break  // PARAR toda a extração
+          } else {
+            console.log(`   ✅ v62: Mesma área/sub-área (${areaEspecifica} ~ ${linhaUpper.substring(0, 40)}), continuando...`)
+          }
+        }
         
         // Caso: "PARA TODOS OS CARGOS DE ENSINO SUPERIOR"
         if (linhaUpper.includes('PARA TODOS OS CARGOS')) {
@@ -7279,7 +7588,7 @@ RETORNE APENAS JSON válido:
     }
     
     // ════════════════════════════════════════════════════════════════
-    // FILTRO DE DISCIPLINAS INVÁLIDAS (v60)
+    // FILTRO DE DISCIPLINAS INVÁLIDAS (v62)
     // ════════════════════════════════════════════════════════════════
     const nomesInvalidos = [
       'OBSERVAÇÕES', 'OBSERVAÇÃO', 'OBS', 'NOTA', 'NOTAS',
@@ -7298,24 +7607,43 @@ RETORNE APENAS JSON válido:
       'TITULAÇÃO', 'TITULAÇÃO MÍNIMA', 'FORMAÇÃO', 'FORMAÇÃO MÍNIMA',
       'PONTUAÇÃO', 'TABELA DE PONTUAÇÃO', 'QUADRO DE PONTUAÇÃO',
       'DOCUMENTAÇÃO', 'DOCUMENTAÇÃO APRESENTADA', 'LIMITE MÁXIMO',
-      'COMPONENTE', 'DESCRIÇÃO', 'PONTUAÇÃO POR ITEM'
+      'COMPONENTE', 'DESCRIÇÃO', 'PONTUAÇÃO POR ITEM',
+      // ✅ v62: Filtrar perguntas e termos de entrevista
+      'QUE MEDIDAS', 'DE QUE FORMA', 'CITE UMA', 'CITE UM', 'CITE DUAS',
+      'COMO VOCÊ', 'QUAIS OS', 'QUAL O', 'QUAL A', 'NA SUA VISÃO',
+      'DESCREVA', 'EXPLIQUE', 'JUSTIFIQUE'
+    ]
+    
+    // ✅ v62: Padrões que indicam pergunta/entrevista (não disciplina)
+    const padroesInvalidos = [
+      /^(QUE|COMO|QUAL|QUAIS|CITE|DESCREVA|EXPLIQUE|DE QUE)\s/i,  // Perguntas
+      /\?$/,  // Termina com interrogação
+      /^(NA SUA|EM SUA|SEGUNDO SUA)\s/i,  // Início de pergunta subjetiva
+      /VOCÊ\s+(CONSIDERA|ACHA|PENSA|ENTENDE)/i,  // Perguntas pessoais
+      /FORMAÇÃO\s+CAPACITAÇÃO/i  // Critério de tabela de pontuação
     ]
     
     const disciplinasAntesDoFiltro = disciplinasExtraidas.length
     disciplinasExtraidas = disciplinasExtraidas.filter((d: any) => {
       const nomeUpper = d.nome?.toUpperCase()?.trim() || ''
+      const nomeTrimmed = d.nome?.trim() || ''
+      
       // Filtrar nomes inválidos (match exato ou que comecem com esses prefixos)
       const ehInvalido = nomesInvalidos.some(inv => 
         nomeUpper === inv || 
         nomeUpper.startsWith(inv + ':') ||
         nomeUpper.startsWith(inv + ' -')
       )
+      
+      // ✅ v62: Filtrar por padrões de perguntas
+      const ehPergunta = padroesInvalidos.some(p => p.test(nomeTrimmed))
+      
       // Filtrar disciplinas sem tópicos ou com nomes muito curtos
       const ehMuitoCurto = d.nome?.trim()?.length < 3
       const semConteudo = (!d.topicos || d.topicos.length === 0) && d.nome?.length < 20
       
-      if (ehInvalido || ehMuitoCurto) {
-        console.log(`   🗑️ Filtrada: "${d.nome}" (inválido: ${ehInvalido}, curto: ${ehMuitoCurto})`)
+      if (ehInvalido || ehMuitoCurto || ehPergunta) {
+        console.log(`   🗑️ Filtrada: "${d.nome}" (inválido: ${ehInvalido}, curto: ${ehMuitoCurto}, pergunta: ${ehPergunta})`)
         return false
       }
       return true
@@ -7336,6 +7664,97 @@ RETORNE APENAS JSON válido:
     })
     
     const resultado = { disciplinas: disciplinasExtraidas }
+    
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v62: VERIFICAR SE AINDA HÁ DISCIPLINAS APÓS FILTRO
+    // Se não houver, usar fallback de IA
+    // ════════════════════════════════════════════════════════════════
+    if (resultado.disciplinas.length === 0) {
+      console.log('⚠️ v62: Todas as disciplinas foram filtradas, usando fallback de IA...')
+      
+      const geminiKeyFallback = c.env.GEMINI_API_KEY
+      if (geminiKeyFallback && (cargo || concurso_nome)) {
+        try {
+          const promptFallbackFiltro = `Você é um especialista em concursos públicos brasileiros.
+
+CONTEXTO:
+- Cargo: ${cargo || 'Não especificado'}
+- Concurso/Órgão: ${concurso_nome || 'Não especificado'}
+- Área: ${areaDetectada}
+- NOTA: O edital fornecido não continha disciplinas válidas para extração (pode ser um processo seletivo simplificado ou documento sem conteúdo programático)
+
+TAREFA: Sugira as disciplinas e tópicos TÍPICOS para este tipo de cargo/concurso.
+Baseie-se em editais anteriores de cargos similares.
+
+REGRAS:
+1. Inclua disciplinas básicas relevantes (Português, Raciocínio Lógico, Informática, etc.)
+2. Inclua disciplinas específicas da função/área
+3. Cada disciplina deve ter 3-8 tópicos principais
+4. Retorne entre 6 e 12 disciplinas
+
+RETORNE APENAS JSON válido:
+{"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}`
+
+          const fallbackRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKeyFallback}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: promptFallbackFiltro }] }],
+                generationConfig: { temperature: 0.3, maxOutputTokens: 8000 }
+              })
+            }
+          )
+          
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json() as any
+            const respText = fallbackData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            const jsonMatch = respText.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').match(/\{[\s\S]*\}/)
+            
+            if (jsonMatch) {
+              const sugestao = JSON.parse(jsonMatch[0])
+              if (sugestao.disciplinas && sugestao.disciplinas.length > 0) {
+                console.log(`✅ v62: IA sugeriu ${sugestao.disciplinas.length} disciplinas como fallback`)
+                
+                const disciplinasSugeridas = sugestao.disciplinas.map((d: any, i: number) => ({
+                  id: -(i + 1),
+                  disciplina_id_real: -(i + 1),
+                  nome: d.nome,
+                  peso: d.peso || 1,
+                  categoria: d.categoria || 'BÁSICOS',
+                  total_topicos: d.topicos?.length || 0,
+                  topicos: (d.topicos || []).map((t: string) => ({ nome: t, peso: 1 }))
+                }))
+                
+                return c.json({
+                  success: true,
+                  edital_id: null,
+                  disciplinas: disciplinasSugeridas,
+                  total: disciplinasSugeridas.length,
+                  concurso_detectado: concurso_nome,
+                  area_detectada: areaDetectada,
+                  modo: 'sugestao',
+                  fonte: 'ia_fallback_filtro_v62',
+                  sugestao: true,
+                  message: `ℹ️ O edital não continha disciplinas identificáveis (pode ser um processo seletivo simplificado). Sugerimos ${disciplinasSugeridas.length} disciplinas relevantes para o cargo. Revise e ajuste conforme necessário!`
+                })
+              }
+            }
+          }
+        } catch (err) {
+          console.error('⚠️ v62: Erro ao gerar sugestão IA após filtro:', err)
+        }
+      }
+      
+      // Se IA falhou, retornar erro informativo
+      return c.json({
+        error: 'Não foi possível extrair disciplinas do edital',
+        errorType: 'EXTRACTION_FAILED',
+        canRetry: false,
+        suggestion: 'Este edital pode ser um processo seletivo simplificado (sem provas de conhecimentos) ou não contém conteúdo programático.\n\n• Use "Continuar sem edital" para criar um plano de estudos personalizado\n• Ou cole apenas a seção de CONTEÚDO PROGRAMÁTICO do edital'
+      }, 400)
+    }
     
     // ════════════════════════════════════════════════════════════════
     // ✅ v59: SALVAR EDITAL E DISCIPLINAS NO BANCO DE DADOS
