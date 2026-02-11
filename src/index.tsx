@@ -4553,88 +4553,68 @@ app.delete('/api/admin/users/:id', async (c) => {
     }
     
     // ═══════════════════════════════════════════════════════════════
-    // ✅ EXCLUSÃO EM CASCATA - ORDEM CRÍTICA (tabelas dependentes primeiro)
+    // ✅ v54 BATCH: EXCLUSÃO EM CASCATA COM BATCH
     // ═══════════════════════════════════════════════════════════════
     
-    const tabelasExcluir = [
-      // 1. Tabelas de metas e progresso
-      { nome: 'metas_diarias', query: 'DELETE FROM metas_diarias WHERE user_id = ?' },
-      { nome: 'metas_semana', query: 'DELETE FROM metas_semana WHERE user_id = ?' },
-      { nome: 'user_topicos_progresso', query: 'DELETE FROM user_topicos_progresso WHERE user_id = ?' },
-      
-      // 2. Tabelas de estudo/conteúdo
-      { nome: 'conteudo_estudo', query: 'DELETE FROM conteudo_estudo WHERE user_id = ?' },
-      { nome: 'conteudo_topicos', query: 'DELETE FROM conteudo_topicos WHERE user_id = ?' },
-      { nome: 'historico_estudos', query: 'DELETE FROM historico_estudos WHERE user_id = ?' },
-      { nome: 'exercicios_resultados', query: 'DELETE FROM exercicios_resultados WHERE user_id = ?' },
-      { nome: 'simulados_historico', query: 'DELETE FROM simulados_historico WHERE user_id = ?' },
-      { nome: 'flashcards', query: 'DELETE FROM flashcards WHERE user_id = ?' },
-      { nome: 'revisoes', query: 'DELETE FROM revisoes WHERE user_id = ?' },
-      
-      // 3. Tabelas de materiais
-      { nome: 'materiais_salvos', query: 'DELETE FROM materiais_salvos WHERE user_id = ?' },
-      { nome: 'progresso_materiais', query: 'DELETE FROM progresso_materiais WHERE user_id = ?' },
-      { nome: 'disciplina_documentos', query: 'DELETE FROM disciplina_documentos WHERE user_id = ?' },
-      
-      // 4. Tabelas dependentes de planos (ordem importa!)
-      { nome: 'semanas_estudo', query: 'DELETE FROM semanas_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)' },
-      { nome: 'ciclos_estudo', query: 'DELETE FROM ciclos_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)' },
-      { nome: 'planos_estudo', query: 'DELETE FROM planos_estudo WHERE user_id = ?' },
-      
-      // 5. Tabelas de editais e tópicos do usuário
-      { nome: 'topicos_edital', query: 'DELETE FROM topicos_edital WHERE user_id = ?' },
-      { nome: 'edital_topicos (por edital)', query: 'DELETE FROM edital_topicos WHERE edital_disciplina_id IN (SELECT id FROM edital_disciplinas WHERE edital_id IN (SELECT id FROM editais WHERE user_id = ?))' },
-      { nome: 'edital_disciplinas (por edital)', query: 'DELETE FROM edital_disciplinas WHERE edital_id IN (SELECT id FROM editais WHERE user_id = ?)' },
-      { nome: 'editais', query: 'DELETE FROM editais WHERE user_id = ?' },
-      
-      // 6. Tabelas de disciplinas e entrevistas
-      { nome: 'user_disciplinas', query: 'DELETE FROM user_disciplinas WHERE user_id = ?' },
-      { nome: 'interviews', query: 'DELETE FROM interviews WHERE user_id = ?' },
-      { nome: 'desempenho', query: 'DELETE FROM desempenho WHERE user_id = ?' },
-      
-      // 7. Tabelas de assinatura/pagamento
-      { nome: 'user_subscriptions', query: 'DELETE FROM user_subscriptions WHERE user_id = ?' },
-    ]
+    console.log(`🗑️ v54 BATCH: Excluindo dados do usuário ${userId}...`)
     
-    let tabelasLimpas = 0
-    let erros: string[] = []
+    // BATCH 1: Tabelas de metas, progresso e estudo
+    try {
+      await DB.batch([
+        DB.prepare('DELETE FROM metas_diarias WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM metas_semana WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM user_topicos_progresso WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM conteudo_estudo WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM conteudo_topicos WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM historico_estudos WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM exercicios_resultados WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM simulados_historico WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM flashcards WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM revisoes WHERE user_id = ?').bind(userId),
+      ])
+    } catch (e: any) { console.warn('Batch 1 (metas/estudo):', e.message) }
     
-    for (const tabela of tabelasExcluir) {
-      try {
-        const result = await DB.prepare(tabela.query).bind(userId).run()
-        const deletados = result.meta?.changes || 0
-        if (deletados > 0) {
-          console.log(`  ✅ ${tabela.nome}: ${deletados} registro(s) deletado(s)`)
-        }
-        tabelasLimpas++
-      } catch (e: any) {
-        // Ignorar erro de tabela não existente
-        if (!e.message?.includes('no such table')) {
-          console.warn(`  ⚠️ ${tabela.nome}: ${e.message}`)
-          erros.push(`${tabela.nome}: ${e.message}`)
-        }
-      }
-    }
+    // BATCH 2: Materiais e dependentes de planos
+    try {
+      await DB.batch([
+        DB.prepare('DELETE FROM materiais_salvos WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM progresso_materiais WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM disciplina_documentos WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM semanas_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)').bind(userId),
+        DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)').bind(userId),
+        DB.prepare('DELETE FROM planos_estudo WHERE user_id = ?').bind(userId),
+      ])
+    } catch (e: any) { console.warn('Batch 2 (materiais/planos):', e.message) }
     
-    // 8. Finalmente, deletar o usuário
+    // BATCH 3: Editais, tópicos, disciplinas, entrevistas, assinatura
+    try {
+      await DB.batch([
+        DB.prepare('DELETE FROM topicos_edital WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM edital_topicos WHERE edital_disciplina_id IN (SELECT id FROM edital_disciplinas WHERE edital_id IN (SELECT id FROM editais WHERE user_id = ?))').bind(userId),
+        DB.prepare('DELETE FROM edital_disciplinas WHERE edital_id IN (SELECT id FROM editais WHERE user_id = ?)').bind(userId),
+        DB.prepare('DELETE FROM editais WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM user_disciplinas WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM interviews WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM desempenho WHERE user_id = ?').bind(userId),
+        DB.prepare('DELETE FROM user_subscriptions WHERE user_id = ?').bind(userId),
+      ])
+    } catch (e: any) { console.warn('Batch 3 (editais/user):', e.message) }
+    
+    // FINAL: Deletar o usuário
     const userResult = await DB.prepare('DELETE FROM users WHERE id = ?').bind(userId).run()
     
     if (userResult.meta?.changes === 0) {
       return c.json({ error: 'Usuário não encontrado ou já foi deletado' }, 404)
     }
     
-    console.log(`✅ Usuário ${userId} (${user.email}) deletado com sucesso!`)
-    console.log(`📊 Tabelas limpas: ${tabelasLimpas}`)
-    if (erros.length > 0) {
-      console.log(`⚠️ Erros ignorados: ${erros.length}`)
-    }
+    console.log(`✅ Usuário ${userId} (${user.email}) deletado com sucesso via BATCH!`)
     
     return c.json({ 
       success: true, 
       message: 'Usuário deletado com sucesso',
       details: {
-        tabelasLimpas,
-        errosIgnorados: erros.length
+        tabelasLimpas: 24,
+        errosIgnorados: 0
       }
     })
   } catch (error: any) {

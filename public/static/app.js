@@ -14676,7 +14676,7 @@ window.verListaUsuarios = async function() {
         </div>
         <div class="overflow-y-auto flex-1 p-4">
           <table class="w-full text-sm">
-            <thead class="bg-gray-100 dark:bg-gray-800 sticky top-0">
+            <thead class="bg-gray-50 sticky top-0">
               <tr>
                 <th class="p-2 text-left ${themes[currentTheme].text}">ID</th>
                 <th class="p-2 text-left ${themes[currentTheme].text}">Nome</th>
@@ -14694,7 +14694,7 @@ window.verListaUsuarios = async function() {
                 const planLabel = u.subscription_plan === 'anual' ? 'Anual' : (u.subscription_plan === 'mensal' ? 'Mensal' : '-');
                 const statusClass = u.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500';
                 return `
-                <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50 dark:hover:bg-gray-800" id="user-row-${u.id}">
+                <tr class="border-b ${themes[currentTheme].border} hover:bg-blue-50/50" id="user-row-${u.id}">
                   <td class="p-2 ${themes[currentTheme].textSecondary}">${u.id}</td>
                   <td class="p-2 ${themes[currentTheme].text} font-medium">${u.name || '-'}</td>
                   <td class="p-2 ${themes[currentTheme].textSecondary} text-xs">${u.email}</td>
@@ -14919,7 +14919,7 @@ window.salvarUsuarioAdmin = async function(userId) {
 };
 
 // Deletar usuário (admin)
-// ✅ CORREÇÃO v13: Verificar se usuário pode ser deletado (apenas sem email verificado)
+// ✅ CORREÇÃO v54: Batch delete + showConfirm
 window.deletarUsuarioAdmin = async function(userId, email, emailVerified) {
   // Verificar no frontend se o email é verificado
   if (emailVerified) {
@@ -14927,9 +14927,14 @@ window.deletarUsuarioAdmin = async function(userId, email, emailVerified) {
     return;
   }
   
-  if (!confirm(`⚠️ ATENÇÃO!\n\nVocê está prestes a DELETAR permanentemente o usuário:\n${email}\n\nTodos os dados (planos, metas, progresso) serão perdidos.\n\nTem certeza?`)) {
-    return;
-  }
+  const confirmed = await showConfirm(`Deseja realmente DELETAR permanentemente o usuário:\n\n${email}\n\nTodos os dados (planos, metas, progresso) serão perdidos.`, {
+    type: 'warning',
+    title: 'Excluir Usuário',
+    confirmText: 'Sim, excluir',
+    cancelText: 'Cancelar'
+  });
+  
+  if (!confirmed) return;
   
   try {
     await axios.delete(`/api/admin/users/${userId}`, {
