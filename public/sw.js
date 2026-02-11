@@ -1,7 +1,7 @@
 // IAprova Service Worker v3.0 - Atualização de ícones e configurações
-const CACHE_NAME = 'iaprova-v66';
-const STATIC_CACHE = 'iaprova-static-v66';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v66';
+const CACHE_NAME = 'iaprova-v67';
+const STATIC_CACHE = 'iaprova-static-v67';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v67';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [

@@ -22260,106 +22260,100 @@ window.exibirFlashcardsVisuais = function(data) {
   renderFlashcardsModal(flashcards, topico_nome, disciplina_nome, 0);
 }
 
-// Parser de flashcards - VERSÃO V66 - Ultra robusto
+// Parser de flashcards - VERSÃO V67 - Suporte a todos os formatos
 function parseFlashcards(texto) {
-  console.log('🎴 v66: Iniciando parse de flashcards...');
-  console.log('🎴 v66: Texto recebido (500 chars):', texto?.substring(0, 500));
+  console.log('🎴 v67: Iniciando parse de flashcards...');
   
   if (!texto || typeof texto !== 'string') {
-    console.error('🎴 v66: Texto inválido');
+    console.error('🎴 v67: Texto inválido');
     return [];
   }
   
+  // Mostrar amostra do texto para debug
+  console.log('🎴 v67: Amostra do texto:', texto.substring(0, 300));
+  
   const flashcards = [];
   
-  // ✅ MÉTODO 1: Formato **Flashcard X** com **FRENTE:** e **VERSO:**
-  const regexFlashcard = /\*{2}Flashcard\s*\d+\*{2}[\s\S]*?\*{2}FRENTE:?\*{2}\s*:?\s*(.+?)[\s\S]*?\*{2}VERSO:?\*{2}\s*:?\s*([\s\S]+?)(?=\*{2}Flashcard|\n---|\n\n\*{2}|$)/gi;
+  // ✅ MÉTODO 1: Buscar **FRENTE:** e **VERSO:** em qualquer lugar
+  // Este é o formato mais comum da IA
+  const regexFrenteVerso = /\*{2}\s*FRENTE\s*:?\s*\*{2}\s*:?\s*([^\n*]+)[\s\S]*?\*{2}\s*VERSO\s*:?\s*\*{2}\s*:?\s*([^\n*]+(?:\n(?!\*{2})[^\n*]+)*)/gi;
   let match;
-  while ((match = regexFlashcard.exec(texto)) !== null) {
-    const frente = match[1].replace(/\*+/g, '').replace(/\n/g, ' ').trim();
-    const verso = match[2].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+  while ((match = regexFrenteVerso.exec(texto)) !== null) {
+    const frente = match[1].trim();
+    const verso = match[2].replace(/\n+/g, ' ').trim();
     if (frente.length > 1 && verso.length > 1) {
       flashcards.push({ id: flashcards.length + 1, frente, verso });
-      console.log('✅ v66 M1:', frente.substring(0, 30));
+      console.log('✅ v67 M1:', frente.substring(0, 40));
     }
   }
   
-  // ✅ MÉTODO 2: Separar por --- e buscar FRENTE/VERSO
+  // ✅ MÉTODO 2: Separar por --- ou **Flashcard X**
   if (flashcards.length === 0) {
-    const blocos = texto.split(/\n\s*---+\s*\n/);
-    console.log('🎴 v66 M2: Blocos por ---:', blocos.length);
+    console.log('🎴 v67: Tentando método de blocos...');
+    const blocos = texto.split(/\n\s*---+\s*\n|\*{2}Flashcard\s*\d+\*{2}/i);
     
     for (const bloco of blocos) {
       if (bloco.length < 20) continue;
       
-      const fMatch = bloco.match(/\*{0,2}FRENTE:?\*{0,2}\s*:?\s*(.+)/i);
-      const vMatch = bloco.match(/\*{0,2}VERSO:?\*{0,2}\s*:?\s*([\s\S]+?)$/i);
+      // Buscar FRENTE e VERSO no bloco
+      const fMatch = bloco.match(/FRENTE\s*:?\s*\*{0,2}\s*:?\s*([^\n]+)/i);
+      const vMatch = bloco.match(/VERSO\s*:?\s*\*{0,2}\s*:?\s*([^\n]+)/i);
       
       if (fMatch && vMatch) {
-        const frente = fMatch[1].replace(/\*+/g, '').replace(/\n.*$/s, '').trim();
-        const verso = vMatch[1].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+        const frente = fMatch[1].replace(/\*+/g, '').trim();
+        const verso = vMatch[1].replace(/\*+/g, '').trim();
         if (frente.length > 1 && verso.length > 1) {
           flashcards.push({ id: flashcards.length + 1, frente, verso });
-          console.log('✅ v66 M2:', frente.substring(0, 30));
+          console.log('✅ v67 M2:', frente.substring(0, 40));
         }
       }
     }
   }
   
-  // ✅ MÉTODO 3: Linha a linha procurando FRENTE: e VERSO:
+  // ✅ MÉTODO 3: Linha a linha
   if (flashcards.length === 0) {
-    console.log('🎴 v66 M3: Tentando linha a linha...');
+    console.log('🎴 v67: Tentando linha a linha...');
     const linhas = texto.split('\n');
     let frenteAtual = null;
     
-    for (const linha of linhas) {
-      const fMatch = linha.match(/^\*{0,2}\s*FRENTE:?\s*\*{0,2}\s*:?\s*(.+)/i);
+    for (let i = 0; i < linhas.length; i++) {
+      const linha = linhas[i].trim();
+      
+      // Detectar FRENTE
+      const fMatch = linha.match(/^[\*\d\.\s]*FRENTE\s*:?\s*\*{0,2}\s*:?\s*(.+)/i);
       if (fMatch) {
         frenteAtual = fMatch[1].replace(/\*+/g, '').trim();
         continue;
       }
       
-      const vMatch = linha.match(/^\*{0,2}\s*VERSO:?\s*\*{0,2}\s*:?\s*(.+)/i);
+      // Detectar VERSO
+      const vMatch = linha.match(/^[\*\s]*VERSO\s*:?\s*\*{0,2}\s*:?\s*(.+)/i);
       if (vMatch && frenteAtual) {
         const verso = vMatch[1].replace(/\*+/g, '').trim();
         if (frenteAtual.length > 1 && verso.length > 1) {
           flashcards.push({ id: flashcards.length + 1, frente: frenteAtual, verso });
-          console.log('✅ v66 M3:', frenteAtual.substring(0, 30));
+          console.log('✅ v67 M3:', frenteAtual.substring(0, 40));
         }
         frenteAtual = null;
       }
     }
   }
   
-  // ✅ MÉTODO 4: Buscar padrões numerados "1. **Termo**: definição"
+  // ✅ MÉTODO 4: Formato simples "Termo: Definição" em lista
   if (flashcards.length === 0) {
-    console.log('🎴 v66 M4: Tentando padrões numerados...');
-    const regexNum = /\d+\.\s*\*{0,2}([^:*\n]+)\*{0,2}\s*:?\s*([^\n]+)/g;
-    while ((match = regexNum.exec(texto)) !== null) {
+    console.log('🎴 v67: Tentando formato termo:definição...');
+    const regexTermoDef = /^\s*[\d\.\-\*•]+\s*\*{0,2}([^:\n]{3,50})\*{0,2}\s*:\s*(.{10,})/gm;
+    while ((match = regexTermoDef.exec(texto)) !== null) {
       const frente = match[1].replace(/\*+/g, '').trim();
       const verso = match[2].replace(/\*+/g, '').trim();
-      if (frente.length > 2 && frente.length < 100 && verso.length > 10) {
+      if (frente.length > 2 && verso.length > 10 && !frente.toLowerCase().includes('flashcard')) {
         flashcards.push({ id: flashcards.length + 1, frente, verso });
-        console.log('✅ v66 M4:', frente.substring(0, 30));
+        console.log('✅ v67 M4:', frente.substring(0, 40));
       }
     }
   }
   
-  // ✅ MÉTODO 5 (FALLBACK): Criar flashcards a partir de bullets/listas
-  if (flashcards.length === 0) {
-    console.log('🎴 v66 M5: Tentando extrair de listas...');
-    const regexBullet = /[•\-\*]\s*\*{0,2}([^:]+)\*{0,2}\s*:\s*([^\n•\-\*]+)/g;
-    while ((match = regexBullet.exec(texto)) !== null) {
-      const frente = match[1].replace(/\*+/g, '').trim();
-      const verso = match[2].replace(/\*+/g, '').trim();
-      if (frente.length > 2 && frente.length < 80 && verso.length > 10) {
-        flashcards.push({ id: flashcards.length + 1, frente, verso });
-        console.log('✅ v66 M5:', frente.substring(0, 30));
-      }
-    }
-  }
-  
-  console.log('📊 v66: Total flashcards parseados:', flashcards.length);
+  console.log('📊 v67: Total flashcards:', flashcards.length);
   return flashcards;
 }
 
