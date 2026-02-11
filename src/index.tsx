@@ -10182,101 +10182,154 @@ app.post('/api/interviews', async (c) => {
       if (planoExistenteAuto) {
         console.log(`🔄 Plano "${nomePlanoAuto}" já existe (ID ${planoExistenteAuto.id}). Substituindo...`)
         
-        // Deletar dados relacionados ao plano antigo
-        await DB.prepare('DELETE FROM metas_diarias WHERE plano_id = ?').bind(planoExistenteAuto.id).run()
-        await DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id = ?').bind(planoExistenteAuto.id).run()
-        await DB.prepare('DELETE FROM semanas_estudo WHERE plano_id = ?').bind(planoExistenteAuto.id).run()
-        await DB.prepare('DELETE FROM planos_estudo WHERE id = ?').bind(planoExistenteAuto.id).run()
+        // Deletar dados relacionados ao plano antigo (batch)
+        await DB.batch([
+          DB.prepare('DELETE FROM metas_diarias WHERE plano_id = ?').bind(planoExistenteAuto.id),
+          DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id = ?').bind(planoExistenteAuto.id),
+          DB.prepare('DELETE FROM semanas_estudo WHERE plano_id = ?').bind(planoExistenteAuto.id),
+          DB.prepare('DELETE FROM planos_estudo WHERE id = ?').bind(planoExistenteAuto.id)
+        ])
         
         console.log(`✅ Plano antigo ${planoExistenteAuto.id} removido`)
       }
       
-      // ✅ CORREÇÃO v21: Garantir que disciplinas do edital existam no sistema
-      // O frontend envia disc.id que pode ser o ID de edital_disciplinas, não de disciplinas
-      console.log(`📋 Disciplinas recebidas do frontend:`, data.disciplinas.map(d => `ID ${d.disciplina_id}`).join(', '))
+      // ✅ v54 BATCH: Processar disciplinas em batch para evitar limite de 50 subrequests
+      console.log(`📋 Disciplinas recebidas do frontend:`, data.disciplinas.map((d: any) => `ID ${d.disciplina_id}`).join(', '))
       
-      // Processar cada disciplina individualmente para garantir que exista
-      const disciplinasProcessadas = []
+      const disciplinasProcessadas: any[] = []
+      const discIds = data.disciplinas.filter((d: any) => d.disciplina_id).map((d: any) => d.disciplina_id)
       
-      for (const discData of data.disciplinas) {
-        if (!discData.disciplina_id) continue
+      if (discIds.length === 0) {
+        throw new Error('Nenhuma disciplina válida foi selecionada')
+      }
+      
+      // PASSO 1: Buscar TODAS as disciplinas por ID direto (batch)
+      const batchBuscaDisc = discIds.map((id: number) =>
+        DB.prepare('SELECT id, nome, area FROM disciplinas WHERE id = ?').bind(id)
+      )
+      const resBuscaDisc = await DB.batch(batchBuscaDisc)
+      
+      // Mapear quais foram encontradas e quais não
+      const discEncontradas = new Map<number, any>()
+      const discNaoEncontradas: number[] = []
+      
+      resBuscaDisc.forEach((r: any, i: number) => {
+        const rows = r.results || []
+        if (rows.length > 0) {
+          discEncontradas.set(discIds[i], rows[0])
+        } else {
+          discNaoEncontradas.push(discIds[i])
+        }
+      })
+      
+      // PASSO 2: Para as não encontradas, buscar em edital_disciplinas (batch)
+      if (discNaoEncontradas.length > 0) {
+        console.log(`🔍 ${discNaoEncontradas.length} IDs não são de disciplinas. Verificando edital_disciplinas...`)
         
-        // Tentar buscar a disciplina pelo ID direto primeiro
-        let disciplina = await DB.prepare(
-          'SELECT id, nome, area FROM disciplinas WHERE id = ?'
-        ).bind(discData.disciplina_id).first() as any
+        const batchBuscaEdDisc = discNaoEncontradas.map((id: number) =>
+          DB.prepare('SELECT id, nome, disciplina_id as real_id FROM edital_disciplinas WHERE id = ?').bind(id)
+        )
+        const resBuscaEdDisc = await DB.batch(batchBuscaEdDisc)
         
-        // Se não encontrou, pode ser um ID de edital_disciplinas
-        // Buscar na tabela edital_disciplinas e criar a disciplina se necessário
-        if (!disciplina) {
-          console.log(`🔍 ID ${discData.disciplina_id} não é de disciplinas. Verificando edital_disciplinas...`)
-          
-          const editalDisc = await DB.prepare(
-            'SELECT id, nome, disciplina_id as real_id FROM edital_disciplinas WHERE id = ?'
-          ).bind(discData.disciplina_id).first() as any
-          
-          if (editalDisc) {
-            // Se já tem disciplina_id real, usar
-            if (editalDisc.real_id) {
-              disciplina = await DB.prepare(
-                'SELECT id, nome, area FROM disciplinas WHERE id = ?'
-              ).bind(editalDisc.real_id).first() as any
-            }
-            
-            // Se ainda não tem disciplina, criar uma nova
-            if (!disciplina) {
-              console.log(`✨ Criando nova disciplina: ${editalDisc.nome}`)
-              
-              // Criar na tabela disciplinas
-              const result = await DB.prepare(
-                'INSERT INTO disciplinas (nome, area) VALUES (?, ?) RETURNING id'
-              ).bind(editalDisc.nome, 'edital').first() as any
-              
-              disciplina = { id: result.id, nome: editalDisc.nome, area: 'edital' }
-              
-              // Atualizar edital_disciplinas com o ID real
-              await DB.prepare(
-                'UPDATE edital_disciplinas SET disciplina_id = ? WHERE id = ?'
-              ).bind(disciplina.id, editalDisc.id).run()
-              
-              console.log(`✅ Disciplina ${editalDisc.nome} criada com ID ${disciplina.id}`)
+        // Coletar os real_ids que precisam ser buscados
+        const realIdsParaBuscar: { origId: number, realId: number, editalDiscId: number, nome: string }[] = []
+        const discParaCriar: { origId: number, editalDiscId: number, nome: string }[] = []
+        
+        resBuscaEdDisc.forEach((r: any, i: number) => {
+          const rows = r.results || []
+          if (rows.length > 0) {
+            const edDisc = rows[0]
+            if (edDisc.real_id) {
+              realIdsParaBuscar.push({ origId: discNaoEncontradas[i], realId: edDisc.real_id, editalDiscId: edDisc.id, nome: edDisc.nome })
+            } else {
+              discParaCriar.push({ origId: discNaoEncontradas[i], editalDiscId: edDisc.id, nome: edDisc.nome })
             }
           }
+        })
+        
+        // Buscar disciplinas pelos real_ids (batch)
+        if (realIdsParaBuscar.length > 0) {
+          const batchBuscaReal = realIdsParaBuscar.map(r =>
+            DB.prepare('SELECT id, nome, area FROM disciplinas WHERE id = ?').bind(r.realId)
+          )
+          const resBuscaReal = await DB.batch(batchBuscaReal)
+          resBuscaReal.forEach((r: any, i: number) => {
+            const rows = r.results || []
+            if (rows.length > 0) {
+              discEncontradas.set(realIdsParaBuscar[i].origId, rows[0])
+            } else {
+              // real_id não existe, precisa criar
+              discParaCriar.push(realIdsParaBuscar[i])
+            }
+          })
         }
         
-        if (!disciplina) {
-          console.warn(`⚠️ Disciplina ID ${discData.disciplina_id} não encontrada. Pulando...`)
-          continue
+        // Criar disciplinas que não existem (batch)
+        if (discParaCriar.length > 0) {
+          console.log(`✨ Criando ${discParaCriar.length} novas disciplinas`)
+          const batchCriar = discParaCriar.map(d =>
+            DB.prepare("INSERT INTO disciplinas (nome, area) VALUES (?, 'edital') RETURNING id, nome, area").bind(d.nome)
+          )
+          const resCriar = await DB.batch(batchCriar)
+          
+          // Mapear e atualizar edital_disciplinas
+          const batchUpdateEdDisc: any[] = []
+          resCriar.forEach((r: any, i: number) => {
+            const rows = r.results || []
+            if (rows.length > 0) {
+              const novaDisc = rows[0]
+              discEncontradas.set(discParaCriar[i].origId, novaDisc)
+              batchUpdateEdDisc.push(
+                DB.prepare('UPDATE edital_disciplinas SET disciplina_id = ? WHERE id = ?')
+                  .bind(novaDisc.id, discParaCriar[i].editalDiscId)
+              )
+            }
+          })
+          if (batchUpdateEdDisc.length > 0) {
+            await DB.batch(batchUpdateEdDisc)
+          }
         }
-        
-        // Garantir registro em user_disciplinas
-        const userDisc = await DB.prepare(
-          'SELECT id, disciplina_id FROM user_disciplinas WHERE user_id = ? AND disciplina_id = ?'
-        ).bind(data.user_id, disciplina.id).first() as any
-        
-        if (!userDisc) {
-          console.log(`📝 Criando user_disciplinas para ${disciplina.nome}`)
-          await DB.prepare(`
-            INSERT INTO user_disciplinas (user_id, disciplina_id, ja_estudou, nivel_atual, dificuldade)
-            VALUES (?, ?, ?, ?, ?)
-          `).bind(
-            data.user_id, 
-            disciplina.id, 
-            discData.ja_estudou ? 1 : 0,
-            discData.nivel_atual || 0,
-            discData.dificuldade ? 1 : 0
-          ).run()
+      }
+      
+      // PASSO 3: Garantir registros em user_disciplinas (batch)
+      const discIdsValidos = [...discEncontradas.entries()].map(([origId, disc]) => ({
+        origId, disc, discData: data.disciplinas.find((d: any) => d.disciplina_id === origId)
+      })).filter(item => item.discData)
+      
+      // Buscar user_disciplinas existentes (batch)
+      const batchBuscaUserDisc = discIdsValidos.map(item =>
+        DB.prepare('SELECT id FROM user_disciplinas WHERE user_id = ? AND disciplina_id = ?')
+          .bind(data.user_id, item.disc.id)
+      )
+      const resBuscaUserDisc = await DB.batch(batchBuscaUserDisc)
+      
+      // Inserir user_disciplinas faltantes (batch)
+      const batchInsertUserDisc: any[] = []
+      resBuscaUserDisc.forEach((r: any, i: number) => {
+        const rows = r.results || []
+        if (rows.length === 0) {
+          const item = discIdsValidos[i]
+          batchInsertUserDisc.push(
+            DB.prepare('INSERT INTO user_disciplinas (user_id, disciplina_id, ja_estudou, nivel_atual, dificuldade) VALUES (?, ?, ?, ?, ?)')
+              .bind(data.user_id, item.disc.id, item.discData.ja_estudou ? 1 : 0, item.discData.nivel_atual || 0, item.discData.dificuldade ? 1 : 0)
+          )
         }
-        
+      })
+      if (batchInsertUserDisc.length > 0) {
+        await DB.batch(batchInsertUserDisc)
+      }
+      
+      // Montar disciplinasProcessadas
+      for (const item of discIdsValidos) {
         disciplinasProcessadas.push({
-          disciplina_id: disciplina.id,
-          nome: disciplina.nome,
-          area: disciplina.area,
-          ja_estudou: discData.ja_estudou || false,
-          nivel_atual: discData.nivel_atual || 0,
-          dificuldade: discData.dificuldade || false,
-          nivel_dominio: discData.nivel_dominio || 0,
-          peso: discData.peso || null
+          disciplina_id: item.disc.id,
+          nome: item.disc.nome,
+          area: item.disc.area,
+          ja_estudou: item.discData.ja_estudou || false,
+          nivel_atual: item.discData.nivel_atual || 0,
+          dificuldade: item.discData.dificuldade || false,
+          nivel_dominio: item.discData.nivel_dominio || 0,
+          peso: item.discData.peso || null
         })
       }
       
@@ -10455,11 +10508,13 @@ app.post('/api/planos', async (c) => {
     if (planoExistente && substituir_existente) {
       console.log(`🔄 Substituindo plano existente ID ${planoExistente.id}: ${nomePlano}`)
       
-      // Deletar dados relacionados ao plano antigo
-      await DB.prepare('DELETE FROM metas_diarias WHERE plano_id = ?').bind(planoExistente.id).run()
-      await DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id = ?').bind(planoExistente.id).run()
-      await DB.prepare('DELETE FROM semanas_estudo WHERE plano_id = ?').bind(planoExistente.id).run()
-      await DB.prepare('DELETE FROM planos_estudo WHERE id = ?').bind(planoExistente.id).run()
+      // Deletar dados relacionados ao plano antigo (batch)
+      await DB.batch([
+        DB.prepare('DELETE FROM metas_diarias WHERE plano_id = ?').bind(planoExistente.id),
+        DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id = ?').bind(planoExistente.id),
+        DB.prepare('DELETE FROM semanas_estudo WHERE plano_id = ?').bind(planoExistente.id),
+        DB.prepare('DELETE FROM planos_estudo WHERE id = ?').bind(planoExistente.id)
+      ])
       
       console.log(`✅ Plano antigo ${planoExistente.id} removido com sucesso`)
     }
@@ -14591,102 +14646,105 @@ async function copiarTopicosParaPlano(
   let totalCopiados = 0
   let disciplinasProcessadas = 0
   
-  console.log(`📋 Copiando tópicos para plano ${plano_id}...`)
+  console.log(`📋 v54 BATCH: Copiando tópicos para plano ${plano_id}...`)
   console.log(`   Disciplinas: ${disciplinaIds.join(', ')}`)
   console.log(`   Edital ID: ${edital_id || 'nenhum'}`)
   
-  for (const disciplina_id of disciplinaIds) {
-    let topicosCopiados = 0
-    
-    // 1. Primeiro, tentar buscar tópicos do edital específico (se houver)
+  // PASSO 1: Buscar TODOS os tópicos de todas as disciplinas de uma vez (batch)
+  const batchBuscaTopicos = disciplinaIds.map(disc_id => {
     if (edital_id) {
-      const { results: topicosEdital } = await DB.prepare(`
-        SELECT et.nome, et.ordem, ed.peso
+      return DB.prepare(`
+        SELECT et.nome, et.ordem, ed.peso, ed.disciplina_id
         FROM edital_topicos et
         JOIN edital_disciplinas ed ON et.edital_disciplina_id = ed.id
         WHERE ed.edital_id = ? AND ed.disciplina_id = ?
         ORDER BY et.ordem
-      `).bind(edital_id, disciplina_id).all() as any[]
-      
-      for (let i = 0; i < topicosEdital.length; i++) {
-        const topico = topicosEdital[i]
-        
-        // Verificar se já existe para ESTE PLANO
-        const existente = await DB.prepare(`
-          SELECT id FROM topicos_edital 
-          WHERE plano_id = ? AND disciplina_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
-        `).bind(plano_id, disciplina_id, topico.nome).first()
-        
-        if (!existente) {
-          await DB.prepare(`
-            INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id, plano_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `).bind(
-            disciplina_id, 
-            topico.nome, 
-            'Conteúdo Programático', 
-            topico.ordem || (i + 1), 
-            topico.peso || 1, 
-            user_id, 
-            plano_id
-          ).run()
-          topicosCopiados++
-        }
-      }
-      
-      if (topicosCopiados > 0) {
-        console.log(`   ✅ ${disciplina_id}: ${topicosCopiados} tópicos copiados do edital`)
-      }
-    }
-    
-    // 2. Se não encontrou tópicos no edital, buscar tópicos genéricos da disciplina (sem plano_id)
-    if (topicosCopiados === 0) {
-      const { results: topicosGerais } = await DB.prepare(`
-        SELECT nome, categoria, ordem, peso
+      `).bind(edital_id, disc_id)
+    } else {
+      return DB.prepare(`
+        SELECT nome, categoria, ordem, peso, disciplina_id
         FROM topicos_edital
         WHERE disciplina_id = ? AND plano_id IS NULL
         ORDER BY ordem
         LIMIT 20
-      `).bind(disciplina_id).all() as any[]
-      
-      for (let i = 0; i < topicosGerais.length; i++) {
-        const topico = topicosGerais[i]
-        
-        // Verificar se já existe para ESTE PLANO
-        const existente = await DB.prepare(`
-          SELECT id FROM topicos_edital 
-          WHERE plano_id = ? AND disciplina_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
-        `).bind(plano_id, disciplina_id, topico.nome).first()
-        
-        if (!existente) {
-          await DB.prepare(`
-            INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id, plano_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `).bind(
-            disciplina_id, 
-            topico.nome, 
-            topico.categoria || 'Conteúdo Programático', 
-            topico.ordem || (i + 1), 
-            topico.peso || 1, 
-            user_id, 
-            plano_id
-          ).run()
-          topicosCopiados++
-        }
-      }
-      
-      if (topicosCopiados > 0) {
-        console.log(`   ✅ ${disciplina_id}: ${topicosCopiados} tópicos copiados (genéricos)`)
-      }
+      `).bind(disc_id)
     }
+  })
+  const resBuscaTopicos = await DB.batch(batchBuscaTopicos)
+  
+  // PASSO 2: Para disciplinas sem tópicos do edital, buscar genéricos (batch)
+  const discSemTopicos: number[] = []
+  const discSemTopicosIndices: number[] = []
+  
+  if (edital_id) {
+    resBuscaTopicos.forEach((r: any, i: number) => {
+      const rows = r.results || []
+      if (rows.length === 0) {
+        discSemTopicos.push(disciplinaIds[i])
+        discSemTopicosIndices.push(i)
+      }
+    })
     
-    if (topicosCopiados > 0) {
-      disciplinasProcessadas++
-      totalCopiados += topicosCopiados
+    if (discSemTopicos.length > 0) {
+      const batchBuscaGenericos = discSemTopicos.map(disc_id =>
+        DB.prepare(`
+          SELECT nome, categoria, ordem, peso, ? as disciplina_id
+          FROM topicos_edital
+          WHERE disciplina_id = ? AND plano_id IS NULL
+          ORDER BY ordem LIMIT 20
+        `).bind(disc_id, disc_id)
+      )
+      const resBuscaGenericos = await DB.batch(batchBuscaGenericos)
+      
+      // Substituir resultados vazios pelos genéricos
+      resBuscaGenericos.forEach((r: any, i: number) => {
+        const idx = discSemTopicosIndices[i]
+        ;(resBuscaTopicos as any)[idx] = r
+      })
     }
   }
   
-  console.log(`📋 Total: ${totalCopiados} tópicos copiados para ${disciplinasProcessadas} disciplinas`)
+  // PASSO 3: Preparar TODOS os INSERTs e executar em batch
+  const batchInsertTopicos: any[] = []
+  
+  for (let i = 0; i < disciplinaIds.length; i++) {
+    const disc_id = disciplinaIds[i]
+    const topicos = (resBuscaTopicos[i] as any)?.results || []
+    
+    if (topicos.length === 0) continue
+    
+    disciplinasProcessadas++
+    
+    for (let j = 0; j < topicos.length; j++) {
+      const topico = topicos[j]
+      batchInsertTopicos.push(
+        DB.prepare(`
+          INSERT OR IGNORE INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id, plano_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          disc_id,
+          topico.nome,
+          topico.categoria || 'Conteúdo Programático',
+          topico.ordem || (j + 1),
+          topico.peso || 1,
+          user_id,
+          plano_id
+        )
+      )
+    }
+    
+    console.log(`   ✅ ${disc_id}: ${topicos.length} tópicos preparados`)
+  }
+  
+  // Executar em chunks de 80
+  const BATCH_TOPICOS = 80
+  for (let s = 0; s < batchInsertTopicos.length; s += BATCH_TOPICOS) {
+    await DB.batch(batchInsertTopicos.slice(s, s + BATCH_TOPICOS))
+  }
+  
+  totalCopiados = batchInsertTopicos.length
+  
+  console.log(`📋 Total: ${totalCopiados} tópicos copiados para ${disciplinasProcessadas} disciplinas (via BATCH)`)
   
   return { copiados: totalCopiados, disciplinas: disciplinasProcessadas }
 }
@@ -16317,7 +16375,7 @@ async function gerarCiclosEstudo(
   console.log(`📊 ${sessoesDisponiveis} sessões disponíveis, ${sessoesPorDisciplina} sessões por disciplina`)
   
   // Criar lista de todas as sessões a distribuir (round-robin)
-  const todasSessoes = []
+  const todasSessoes: any[] = []
   for (let rodada = 0; rodada < sessoesPorDisciplina; rodada++) {
     for (const disc of prioridades) {
       // Calcular tempo da sessão baseado na prioridade
@@ -16334,13 +16392,14 @@ async function gerarCiclosEstudo(
   
   console.log(`📋 Total de ${todasSessoes.length} sessões criadas (${totalDisciplinas} disciplinas × ${sessoesPorDisciplina} sessões)`)
   
-  // Distribuir sessões pelos dias da semana
+  // Distribuir sessões pelos dias da semana e preparar batch
   let sessaoIndex = 0
+  const batchCiclos: any[] = []
   
   for (const dia of diasSemana) {
     let ordemDia = 0
     let tempoRestante = tempoDiario
-    const sessoesDia = []
+    const sessoesDia: any[] = []
 
     // Adicionar sessões até preencher o tempo do dia
     while (tempoRestante >= TEMPO_MINIMO_MATERIA && sessaoIndex < todasSessoes.length) {
@@ -16355,7 +16414,7 @@ async function gerarCiclosEstudo(
       }
     }
 
-    // Inserir ciclos no banco
+    // Preparar inserts para batch
     for (const sessao of sessoesDia) {
       const disciplinaCompleta = disciplinas.find((d: any) => d.disciplina_id === sessao.disciplina_id)
       let tipo = 'teoria'
@@ -16366,11 +16425,10 @@ async function gerarCiclosEstudo(
         tipo = dia % 2 === 0 ? 'teoria' : 'exercicios'
       }
 
-      await DB.prepare(`
-        INSERT INTO ciclos_estudo (plano_id, disciplina_id, tipo, dia_semana, tempo_minutos, ordem)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).bind(plano_id, sessao.disciplina_id, tipo, dia, sessao.tempoSessao, ordemDia).run()
-
+      batchCiclos.push(
+        DB.prepare(`INSERT INTO ciclos_estudo (plano_id, disciplina_id, tipo, dia_semana, tempo_minutos, ordem) VALUES (?, ?, ?, ?, ?, ?)`)
+          .bind(plano_id, sessao.disciplina_id, tipo, dia, sessao.tempoSessao, ordemDia)
+      )
       ordemDia++
     }
     
@@ -16378,7 +16436,13 @@ async function gerarCiclosEstudo(
     console.log(`📅 Dia ${dia}: ${sessoesDia.length} sessões (${disciplinasUnicas} disciplinas únicas) - ${tempoDiario - tempoRestante}min de ${tempoDiario}min`)
   }
   
-  console.log(`✅ ${sessaoIndex} sessões distribuídas de ${todasSessoes.length} planejadas`)
+  // ✅ v54 BATCH: Inserir TODOS os ciclos em um único batch (chunks de 80)
+  const BATCH_CICLOS = 80
+  for (let s = 0; s < batchCiclos.length; s += BATCH_CICLOS) {
+    await DB.batch(batchCiclos.slice(s, s + BATCH_CICLOS))
+  }
+  
+  console.log(`✅ ${sessaoIndex} sessões distribuídas de ${todasSessoes.length} planejadas (via BATCH)`)
 }
 
 // ============== CHATBOT IA ==============
