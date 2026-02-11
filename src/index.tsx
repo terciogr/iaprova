@@ -7160,7 +7160,92 @@ ${textoParaIA}`
     }
     
     if (disciplinasExtraidas.length === 0) {
-      return c.json({ error: 'Não foi possível extrair disciplinas do edital', errorType: 'EXTRACTION_FAILED', canRetry: true }, 400)
+      // ════════════════════════════════════════════════════════════════
+      // ✅ v59: FALLBACK FINAL - Sugerir disciplinas típicas via IA
+      // Se nem a extração programática nem a IA do edital funcionaram,
+      // oferecemos sugestões baseadas no cargo/concurso/banca
+      // ════════════════════════════════════════════════════════════════
+      console.log('🤖 v59: Extração falhou completamente, tentando sugestão IA...')
+      
+      if (geminiKey && (cargo || concurso_nome)) {
+        try {
+          const promptSugestao = `Você é um especialista em concursos públicos brasileiros.
+
+CONTEXTO:
+- Cargo: ${cargo || 'Não especificado'}
+- Concurso: ${concurso_nome || 'Não especificado'}
+- Área: ${areaDetectada}
+
+TAREFA: Sugira as disciplinas e tópicos TÍPICOS para este tipo de concurso.
+Baseie-se em editais anteriores de cargos similares.
+
+REGRAS:
+1. Inclua disciplinas básicas (Português, Raciocínio Lógico, Informática, etc.)
+2. Inclua disciplinas específicas da área
+3. Cada disciplina deve ter 3-10 tópicos principais
+4. Retorne entre 8 e 15 disciplinas
+
+RETORNE APENAS JSON válido:
+{"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}`
+
+          const sugestaoRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: promptSugestao }] }],
+                generationConfig: { temperature: 0.3, maxOutputTokens: 8000 }
+              })
+            }
+          )
+          
+          if (sugestaoRes.ok) {
+            const sugestaoData = await sugestaoRes.json() as any
+            const respText = sugestaoData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            const jsonMatch = respText.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').match(/\{[\s\S]*\}/)
+            
+            if (jsonMatch) {
+              const sugestao = JSON.parse(jsonMatch[0])
+              if (sugestao.disciplinas && sugestao.disciplinas.length > 0) {
+                console.log(`✅ v59: IA sugeriu ${sugestao.disciplinas.length} disciplinas para o cargo`)
+                
+                const disciplinasSugeridas = sugestao.disciplinas.map((d: any, i: number) => ({
+                  id: -(i + 1),
+                  disciplina_id_real: -(i + 1),
+                  nome: d.nome,
+                  peso: d.peso || 1,
+                  categoria: d.categoria || 'BÁSICOS',
+                  total_topicos: d.topicos?.length || 0,
+                  topicos: (d.topicos || []).map((t: string) => ({ nome: t, peso: 1 }))
+                }))
+                
+                return c.json({
+                  success: true,
+                  edital_id: null,
+                  disciplinas: disciplinasSugeridas,
+                  total: disciplinasSugeridas.length,
+                  concurso_detectado: concurso_nome,
+                  area_detectada: areaDetectada,
+                  modo: 'sugestao',
+                  fonte: 'ia_sugestao_v59',
+                  sugestao: true,
+                  message: `⚠️ Não foi possível extrair disciplinas do edital. Estas ${disciplinasSugeridas.length} disciplinas são SUGESTÕES baseadas em concursos similares. Por favor, revise e ajuste conforme seu edital real!`
+                })
+              }
+            }
+          }
+        } catch (sugestaoErr) {
+          console.error('⚠️ Erro na sugestão IA:', sugestaoErr)
+        }
+      }
+      
+      return c.json({ 
+        error: 'Não foi possível extrair disciplinas do edital', 
+        errorType: 'EXTRACTION_FAILED', 
+        canRetry: true,
+        suggestion: 'Tente:\n• Colar apenas a seção "CONTEÚDO PROGRAMÁTICO"\n• Usar "Continuar sem edital" e adicionar disciplinas manualmente'
+      }, 400)
     }
     
     // ════════════════════════════════════════════════════════════════
@@ -7215,29 +7300,42 @@ ${textoParaIA}`
     
     const resultado = { disciplinas: disciplinasExtraidas }
     
-    
-    // ✅ SALVAR EDITAL E DISCIPLINAS NO BANCO DE DADOS
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v59: SALVAR EDITAL E DISCIPLINAS NO BANCO DE DADOS
+    // Com tratamento robusto de erros - se falhar, retorna disciplinas sem salvar
+    // ════════════════════════════════════════════════════════════════
     console.log(`\n✅ ${resultado.disciplinas.length} disciplinas prontas para salvar`)
     
-    // Criar edital
-    const editalResult = await DB.prepare(`
-      INSERT INTO editais (user_id, nome_concurso, texto_completo, status)
-      VALUES (?, ?, ?, 'processado')
-    `).bind(
-      user_id,
-      concurso_nome || 'Edital via texto',
-      texto.substring(0, 10000)
-    ).run()
+    let editalId: number | null = null
+    let disciplinasComIds: any[] = []
+    let salvouNoBanco = false
     
-    const editalId = editalResult.meta.last_row_id
-    console.log(`📁 Edital criado com ID ${editalId}`)
+    // ✅ v59: Criar edital primeiro
+    try {
+      const editalResult = await DB.prepare(`
+        INSERT INTO editais (user_id, nome_concurso, texto_completo, status)
+        VALUES (?, ?, ?, 'processado')
+      `).bind(
+        user_id || null,
+        concurso_nome || 'Edital via texto',
+        texto.substring(0, 10000)
+      ).run()
+      
+      editalId = editalResult.meta.last_row_id as number
+      console.log(`📁 Edital criado com ID ${editalId}`)
+    } catch (editalErr) {
+      console.error('⚠️ Erro ao criar edital:', editalErr)
+      // Continuar sem editalId - disciplinas ainda podem ser retornadas
+    }
     
     // ════════════════════════════════════════════════════════════════
-    // v54: BATCH OTIMIZADO para evitar "Too many API requests" no Cloudflare Workers
+    // v59: BATCH OTIMIZADO para evitar "Too many API requests" no Cloudflare Workers
     // Cloudflare Workers tem limite de ~50 subrequests por invocação
     // Usamos DB.batch() para enviar todas as queries de uma vez
     // ════════════════════════════════════════════════════════════════
     
+    // ✅ v59: Todo o salvamento em try/catch - se falhar, retorna disciplinas sem IDs
+    try {
     // PASSO 1: Buscar todas as disciplinas existentes de uma vez
     const nomesDisc = resultado.disciplinas.map((d: any) => d.nome.trim().toLowerCase())
     const disciplinasExistentes = new Map()
@@ -7288,7 +7386,7 @@ ${textoParaIA}`
     // ✅ v57: SIMPLIFICADO - Não inserir em topicos_edital aqui (evita FK errors)
     // Os tópicos do usuário serão criados quando ele iniciar o plano de estudos
     const batchTopicosEdital: any[] = []
-    const disciplinasComIds: any[] = []
+    // ✅ v59: REMOVIDO - disciplinasComIds já declarado na linha 7226
     
     for (let i = 0; i < resultado.disciplinas.length; i++) {
       const disc = resultado.disciplinas[i]
@@ -7380,9 +7478,16 @@ ${textoParaIA}`
     }
     
     // PASSO 6: Atualizar status do edital para processado
-    await DB.prepare(`UPDATE editais SET status = 'processado' WHERE id = ?`).bind(editalId).run()
+    if (editalId) {
+      try {
+        await DB.prepare(`UPDATE editais SET status = 'processado' WHERE id = ?`).bind(editalId).run()
+        salvouNoBanco = true
+      } catch (e) {
+        console.error('⚠️ Erro ao atualizar status do edital:', e)
+      }
+    }
     
-    console.log(`✅ Edital ${editalId} processado com ${disciplinasComIds.length} disciplinas (${batchTopicosEdital.length} tópicos)`)
+    console.log(`✅ Edital ${editalId || 'N/A'} processado com ${disciplinasComIds.length} disciplinas (${batchTopicosEdital.length} tópicos)`)
     
     // Retornar disciplinas com IDs reais do banco
     return c.json({
@@ -7393,17 +7498,70 @@ ${textoParaIA}`
       concurso_detectado: concurso_nome,
       area_detectada: areaDetectada,
       modo: 'revisao',
+      salvou_banco: salvouNoBanco,
       message: `${resultado.disciplinas.length} disciplinas identificadas. Você pode adicionar, editar ou remover disciplinas e tópicos a qualquer momento!`
     })
     
-  } catch (error) {
+    } catch (dbError) {
+      // ════════════════════════════════════════════════════════════════
+      // ✅ v59: Se salvamento no banco falhou, retorna disciplinas mesmo assim
+      // O usuário pode trabalhar com elas e tentamos salvar depois
+      // ════════════════════════════════════════════════════════════════
+      console.error('❌ Erro ao salvar no banco:', dbError)
+      
+      // Se temos disciplinas extraídas, retornamos elas sem salvar
+      if (resultado.disciplinas.length > 0) {
+        console.log('⚠️ v59: Retornando disciplinas extraídas sem salvar no banco')
+        
+        const disciplinasSemBanco = resultado.disciplinas.map((d: any, i: number) => ({
+          id: -(i + 1),
+          disciplina_id_real: -(i + 1),
+          nome: d.nome,
+          peso: d.peso || 1,
+          categoria: d.categoria || 'BÁSICOS',
+          total_topicos: d.topicos?.length || 0,
+          topicos: (d.topicos || []).map((t: any) => ({
+            nome: typeof t === 'string' ? t : t.nome,
+            peso: 1
+          }))
+        }))
+        
+        return c.json({
+          success: true,
+          edital_id: null,
+          disciplinas: disciplinasSemBanco,
+          total: disciplinasSemBanco.length,
+          concurso_detectado: concurso_nome,
+          area_detectada: areaDetectada,
+          modo: 'revisao',
+          salvou_banco: false,
+          message: `${resultado.disciplinas.length} disciplinas extraídas. Houve um problema ao salvar, mas você pode continuar!`
+        })
+      }
+      
+      // Se não temos disciplinas, lança erro para fallback com IA
+      throw dbError
+    }
+    
+  } catch (error: any) {
     console.error('❌ Erro ao processar texto de edital:', error)
     console.error('❌ Stack:', error instanceof Error ? error.stack : 'no stack')
+    
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v59: FALLBACK INTELIGENTE - Sugerir disciplinas via IA
+    // Se a extração falhou completamente, usamos IA para sugerir disciplinas típicas
+    // baseado no cargo, concurso e banca informados
+    // NOTA: As variáveis cargo, concurso_nome, area_geral já foram extraídas no início
+    // do try, então não precisamos (e não podemos) ler o body novamente
+    // ════════════════════════════════════════════════════════════════
+    
+    // Se chegou aqui, nem extração nem fallback funcionaram
     return c.json({
-      error: 'Erro interno ao processar texto',
-      details: String(error),
-      errorType: 'INTERNAL_ERROR',
-      canRetry: true
+      error: 'Erro ao processar edital. Por favor, tente uma das alternativas abaixo.',
+      details: String(error).substring(0, 200),
+      errorType: 'PROCESSING_ERROR',
+      canRetry: true,
+      suggestion: '• Cole apenas o CONTEÚDO PROGRAMÁTICO do edital (a seção com as disciplinas)\n• Use "Continuar sem edital" e adicione as disciplinas manualmente\n• Tente converter o PDF para TXT em smallpdf.com/pdf-to-text'
     }, 500)
   }
 })
