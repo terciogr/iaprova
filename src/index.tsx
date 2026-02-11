@@ -6574,12 +6574,14 @@ app.post('/api/editais/processar-texto', async (c) => {
     }
     
     // Lista de cargos conhecidos para delimitar seções
+    // ✅ v55: Filtro corrigido - excluir cargos que são parte do cargo-alvo
+    // Ex: Se cargo é "AGENTE CENSITÁRIO", excluir "AGENTE" da lista
     const outrosCargosConhecidos = ['AUDITOR-FISCAL', 'ANALISTA-TRIBUTÁRIO', 'ANALISTA TRIBUTÁRIO',
       'AUDITOR FISCAL', 'ASSISTENTE SOCIAL', 'ENFERMEIRO', 'MÉDICO', 'FARMACÊUTICO',
       'FISIOTERAPEUTA', 'NUTRICIONISTA', 'PSICÓLOGO', 'TÉCNICO', 'ENGENHEIRO',
       'FONOAUDIÓLOGO', 'DENTISTA', 'BIOMÉDICO', 'VETERINÁRIO', 'ECONOMISTA',
       'CIRURGIÃO', 'PROFESSOR', 'DELEGADO', 'PERITO', 'AGENTE', 'CONTADOR', 'ADVOGADO']
-      .filter(c => !variacoesCargo.some(v => c.includes(v)))
+      .filter(c => !variacoesCargo.some(v => v.includes(c) || c.includes(v)))
     
     // Encontrar fim da seção do cargo
     for (let i = inicioSecaoCargo + 1; i < linhas.length; i++) {
@@ -6691,6 +6693,23 @@ app.post('/api/editais/processar-texto', async (c) => {
         }
         if (topicos.length > 3) return topicos.slice(0, 50)
       }
+      
+      // ✅ v55: Tentar dividir por linhas independentes (formato SESAPI)
+      // Se cada linha é curta (< 100 chars) e a maioria começa com maiúscula,
+      // provavelmente cada linha é um tópico individual
+      const linhasIndividuais = textoDisc.split('\n').map(l => l.trim()).filter(l => l.length > 5)
+      if (linhasIndividuais.length > 2) {
+        const linhasCurtas = linhasIndividuais.filter(l => l.length < 120)
+        // Se pelo menos 60% das linhas são curtas, tratar como tópicos por linha
+        if (linhasCurtas.length >= linhasIndividuais.length * 0.6) {
+          for (const l of linhasIndividuais) {
+            const t = l.replace(/[.;]+$/, '').trim()
+            if (t.length > 5 && t.length < 300) topicos.push(t)
+          }
+          if (topicos.length > 2) return topicos.slice(0, 50)
+        }
+      }
+      
       // Dividir por ponto-e-vírgula ou ponto seguido de maiúscula
       const partes = textoDisc.split(/[;.]\s*(?=[A-ZÀ-Ú\d])/)
       for (const p of partes) {
@@ -6840,6 +6859,8 @@ app.post('/api/editais/processar-texto', async (c) => {
         if (linha.length < 4) continue
         if (/^(CARGOS|PARA TODOS|ANEXO)\s/i.test(linha)) continue
         if (linhaUpper.includes('CARGOS DE ENSINO') && linha.length < 100) continue
+        // ✅ v55: Pular títulos de seção que não são disciplinas
+        if (/^(CONTEÚDO PROGRAMÁTICO|CONTEUDO PROGRAMATICO|PROGRAMA DAS PROVAS|CONTEÚDOS PROGRAMÁTICOS)\s*$/i.test(linha)) continue
         
         // Caso: "PARA TODOS OS CARGOS DE ENSINO SUPERIOR"
         if (linhaUpper.includes('PARA TODOS OS CARGOS')) {
@@ -6851,33 +6872,34 @@ app.post('/api/editais/processar-texto', async (c) => {
         }
         
         // Caso: nome de cargo sozinho na linha (ex: "Enfermeiro")
-        // Prioridade: se é o CARGO ALVO, sempre tratar como cargo
+        // ✅ v55: CORRIGIDO - cargo alvo NÃO cria disciplina guarda-chuva
+        // Apenas muda para categoria ESPECÍFICOS e continua extraindo disciplinas individuais
         if (/^[A-ZÀ-Ú][a-zà-ú]+(\s+[-–]\s+[A-Za-zÀ-ú]+)?(\s+[A-Za-zÀ-ú\-]+)*\s*$/.test(linha) && linha.length < 60 && linha.length > 3) {
           const linhaUpperTrim = linhaUpper.replace(/\s+/g, ' ').trim()
           const ehCargoAlvo = variacoesCargo.some(v => linhaUpperTrim === v || linhaUpperTrim.startsWith(v + ' -') || linhaUpperTrim.startsWith(v + ' –'))
           const ehOutroCargo = outrosCargosConhecidos.some(c => linhaUpperTrim === c || linhaUpperTrim.startsWith(c + ' ') || linhaUpperTrim.startsWith(c + ' -') || linhaUpperTrim.startsWith(c + ' –'))
           
-          if (ehCargoAlvo || ehOutroCargo) {
+          if (ehCargoAlvo) {
+            // ✅ v55: Cargo alvo → mudar para ESPECÍFICOS e continuar extraindo disciplinas
             if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
-            const nomeCargo = linha.trim().replace(/\s*[-–]\s+/g, ' - ')
-            if (ehCargoAlvo) {
-              // Cargo alvo: criar disciplina "Conhecimentos Específicos de X"
-              disciplinaAtual = { nome: `Conhecimentos Específicos de ${nomeCargo}`, peso: 2, categoria: 'ESPECÍFICOS', textoCompleto: '' }
-              console.log(`   📌 Cargo ALVO detectado: "${nomeCargo}" → disciplina única`)
-            } else {
-              // Outro cargo: ignorar (parar se vier depois do cargo alvo)
-              disciplinaAtual = null
-              console.log(`   📌 Outro cargo detectado: "${nomeCargo}" → ignorado`)
-            }
+            disciplinaAtual = null
+            categoriaAtual = 'ESPECÍFICOS'
+            pesoAtual = 2
+            console.log(`   📌 Cargo ALVO detectado: "${linha.trim()}" → mudando para ESPECÍFICOS, continuando extração`)
+            continue
+          } else if (ehOutroCargo) {
+            // Outro cargo: ignorar (parar se vier depois do cargo alvo)
+            if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
+            disciplinaAtual = null
+            console.log(`   📌 Outro cargo detectado: "${linha.trim()}" → ignorado`)
             continue
           }
         }
         
         // Padrão de disciplina: "NomeDisciplina: conteúdo..."
         // ✅ v53: Também detectar "N. NOME DA DISCIPLINA" (formato numérico)
-        // MAS: se estamos dentro de um cargo alvo ("Conhecimentos Específicos de X"),
-        // tudo é conteúdo desse cargo, não criar nova disciplina
-        const dentroDeCargoEspecifico = disciplinaAtual?.nome.startsWith('Conhecimentos Específicos de ')
+        // ✅ v55: Removido bloqueio "dentroDeCargoEspecifico" - agora sempre extrai disciplinas individuais
+        const dentroDeCargoEspecifico = false // v55: desabilitado - sempre extrair
         
         // Padrão 1: "NomeDisciplina: conteúdo..."
         const matchDisc = !dentroDeCargoEspecifico ? linha.match(/^([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú\s,\-–()\/e]+?):\s+(.+)/) : null
@@ -6980,26 +7002,40 @@ app.post('/api/editais/processar-texto', async (c) => {
     console.log(`\n📊 Extração programática: ${disciplinasExtraidas.length} disciplinas`)
     
     // ──────────────────────────────────────────────────────────────
-    // FALLBACK: Se programática falhou, usar IA
+    // ✅ v55: FALLBACK INTELIGENTE via IA
+    // Condições para usar IA:
+    // 1) Menos de 3 disciplinas extraídas (extração falhou)
+    // 2) Texto do edital é grande (>5000 chars) mas poucas disciplinas (possível perda)
+    // 3) Nenhuma disciplina específica encontrada (pode ter perdido seção)
     // ──────────────────────────────────────────────────────────────
     
-    if (disciplinasExtraidas.length < 2) {
-      console.log('\n🤖 Extração programática insuficiente, usando IA...')
+    const temEspecificas = disciplinasExtraidas.some((d: any) => 
+      d.categoria === 'ESPECÍFICOS' || d.peso >= 2
+    )
+    const textoMuitoGrande = textoSecaoCargo.length > 5000
+    const poucasDisciplinas = disciplinasExtraidas.length < 3
+    const poucasParaTextoGrande = textoMuitoGrande && disciplinasExtraidas.length < 5 && !temEspecificas
+    
+    if (poucasDisciplinas || poucasParaTextoGrande) {
+      const motivo = poucasDisciplinas ? 'poucas disciplinas' : 'texto grande mas sem específicas'
+      console.log(`\n🤖 Extração programática insuficiente (${motivo}: ${disciplinasExtraidas.length} disc, ${textoSecaoCargo.length} chars), usando IA...`)
       
-      // ✅ v54: Limitar texto para IA a 30000 chars para evitar timeout
-      const textoParaIA = textoSecaoCargo.substring(0, 30000)
-      const promptIA = `TAREFA CRÍTICA: Extrair TODAS as disciplinas para o cargo "${cargoUpper}" do conteúdo programático abaixo.
+      // ✅ v55: Limitar texto para IA a 40000 chars (aumentado de 30000)
+      const textoParaIA = textoSecaoCargo.length > 40000 ? textoSecaoCargo.substring(0, 40000) : textoSecaoCargo
+      const promptIA = `TAREFA CRÍTICA: Extrair TODAS as disciplinas e seus tópicos para o cargo "${cargoUpper}" do conteúdo programático abaixo.
 
-REGRAS:
-1. Cada matéria/disciplina listada (seguida de ":" ou em linha separada) = UMA disciplina
-2. Conteúdo após o nome = TÓPICOS da disciplina
-3. NÃO invente - extraia APENAS do texto
-4. MÓDULO I / Conhecimentos Básicos/Gerais = peso 1 e categoria "BÁSICOS"
-5. MÓDULO II / Conhecimentos Específicos = peso 2 e categoria "ESPECÍFICOS"
-6. Retorne APENAS JSON válido, sem markdown
-7. Se não conseguir extrair tópicos detalhados, retorne ao menos todas as disciplinas com seus pesos e categorias
+REGRAS OBRIGATÓRIAS:
+1. EXTRAIA ABSOLUTAMENTE TODAS as disciplinas (básicas E específicas) - geralmente 8 a 20
+2. Cada matéria/disciplina listada (seguida de ":" ou em linha separada) = UMA disciplina
+3. Conteúdo após o nome = TÓPICOS da disciplina (separados por ponto, vírgula ou lista)
+4. NÃO invente - extraia APENAS do texto fornecido
+5. MÓDULO I / Conhecimentos Básicos/Gerais = peso 1 e categoria "BÁSICOS"
+6. MÓDULO II / Conhecimentos Específicos = peso 2 e categoria "ESPECÍFICOS"
+7. Retorne APENAS JSON válido, sem markdown, sem explicações
+8. Se não conseguir extrair tópicos detalhados, retorne ao menos TODAS as disciplinas com seus pesos e categorias (isso é OBRIGATÓRIO)
+9. NUNCA retorne menos de 5 disciplinas para um edital de concurso público real
 
-FORMATO: {"disciplinas":[{"nome":"Nome da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}
+FORMATO OBRIGATÓRIO: {"disciplinas":[{"nome":"Nome Exato da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}
 
 CONTEÚDO:
 ${textoParaIA}`
