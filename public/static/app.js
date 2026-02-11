@@ -10259,22 +10259,44 @@ window.copiarConteudoGerado = function() {
 
 // Função para salvar conteúdo gerado na biblioteca de materiais
 window.salvarConteudoGerado = async function() {
-  console.log('💾 v65: Iniciando salvarConteudoGerado...');
-  console.log('💾 v65: dados:', window.conteudoAtualDados);
-  console.log('💾 v65: conteudo length:', window.conteudoGeradoOriginal?.length);
+  console.log('💾 v68: Iniciando salvarConteudoGerado...');
+  console.log('💾 v68: dados:', window.conteudoAtualDados);
+  console.log('💾 v68: conteudo length:', window.conteudoGeradoOriginal?.length);
   
   const dados = window.conteudoAtualDados;
   const conteudo = window.conteudoGeradoOriginal;
   
-  if (!dados || !conteudo) {
-    console.error('💾 v65: Dados ou conteúdo não encontrados', { dados, conteudo: !!conteudo });
+  if (!dados) {
+    console.error('💾 v68: Dados não encontrados');
     showToast('Erro: dados do conteúdo não encontrados. Tente gerar novamente.', 'error');
     return;
   }
   
+  if (!conteudo) {
+    console.error('💾 v68: Conteúdo não encontrado');
+    showToast('Erro: conteúdo não encontrado. Tente gerar novamente.', 'error');
+    return;
+  }
+  
   if (!currentUser?.id) {
-    console.error('💾 v65: Usuário não autenticado');
+    console.error('💾 v68: Usuário não autenticado');
     showToast('Erro: usuário não autenticado', 'error');
+    return;
+  }
+  
+  // ✅ v68: Se já tem material_id, significa que já foi salvo automaticamente
+  if (dados.material_id) {
+    console.log('💾 v68: Conteúdo já foi salvo automaticamente (ID:', dados.material_id, ')');
+    showToast('✅ Conteúdo já está salvo na sua biblioteca!', 'success');
+    
+    // Atualizar botão
+    const btnSalvar = document.querySelector('button[onclick="salvarConteudoGerado()"]');
+    if (btnSalvar) {
+      btnSalvar.innerHTML = '<i class="fas fa-check"></i> Salvo';
+      btnSalvar.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+      btnSalvar.classList.add('bg-gray-400', 'cursor-not-allowed');
+      btnSalvar.onclick = null;
+    }
     return;
   }
   
@@ -10288,7 +10310,7 @@ window.salvarConteudoGerado = async function() {
   const tipoLabel = tipoLabels[dados.tipo] || 'Conteúdo';
   const titulo = `${tipoLabel} - ${dados.topico_nome || dados.disciplina_nome || 'Material'}`;
   
-  console.log('💾 v65: Salvando material:', { titulo, tipo: dados.tipo, user_id: currentUser.id });
+  console.log('💾 v68: Salvando novo material:', { titulo, tipo: dados.tipo, user_id: currentUser.id });
   
   try {
     // Salvar na biblioteca de materiais
@@ -10302,12 +10324,15 @@ window.salvarConteudoGerado = async function() {
       tags: `${dados.disciplina_nome || ''},${dados.topico_nome || ''},${dados.tipo},gerado`
     });
     
-    console.log('💾 v65: Resposta do servidor:', response.data);
+    console.log('💾 v68: Resposta do servidor:', response.data);
     
     if (response.data.success) {
       showToast('✅ Conteúdo salvo na sua biblioteca de materiais!', 'success');
       
-      // Atualizar botão para mostrar que foi salvo - buscar em qualquer modal
+      // Atualizar o material_id nos dados para não salvar novamente
+      dados.material_id = response.data.id;
+      
+      // Atualizar botão para mostrar que foi salvo
       const btnSalvar = document.querySelector('button[onclick="salvarConteudoGerado()"]');
       if (btnSalvar) {
         btnSalvar.innerHTML = '<i class="fas fa-check"></i> Salvo';
@@ -10316,11 +10341,13 @@ window.salvarConteudoGerado = async function() {
         btnSalvar.onclick = null;
       }
     } else {
-      showToast('Erro ao salvar conteúdo', 'error');
+      console.error('💾 v68: Erro na resposta:', response.data);
+      showToast('Erro ao salvar conteúdo: ' + (response.data.error || 'Erro desconhecido'), 'error');
     }
   } catch (error) {
-    console.error('Erro ao salvar conteúdo:', error);
-    showToast('Erro ao salvar conteúdo. Tente novamente.', 'error');
+    console.error('💾 v68: Erro ao salvar:', error);
+    const errorMsg = error.response?.data?.error || error.message || 'Erro desconhecido';
+    showToast('Erro ao salvar: ' + errorMsg, 'error');
   }
 }
 
@@ -19879,6 +19906,23 @@ function renderCalendarioSemanal() {
                   const tipoIcon = meta.tipo === 'teoria' ? 'fa-book' : meta.tipo === 'exercicios' ? 'fa-pencil-alt' : 'fa-sync'
                   const tipoBg = meta.tipo === 'teoria' ? 'text-[#122D6A]' : meta.tipo === 'exercicios' ? 'text-[#2A4A9F]' : 'text-amber-600'
                   
+                  // ✅ v68: Extrair topico_nome e topico_id de forma robusta
+                  let topicoNome = meta.topico_nome || '';
+                  let topicoId = meta.topico_id || null;
+                  
+                  // Se não tem topico_nome direto, tentar extrair de topicos_sugeridos
+                  if (!topicoNome && meta.topicos_sugeridos) {
+                    const topicos = Array.isArray(meta.topicos_sugeridos) ? meta.topicos_sugeridos : [];
+                    if (topicos.length > 0) {
+                      topicoNome = topicos[0].nome || '';
+                      topicoId = topicos[0].id || null;
+                    }
+                  }
+                  
+                  // Escapar aspas para uso em strings
+                  const topicoNomeEscaped = (topicoNome || '').replace(/'/g, "\\'");
+                  const disciplinaNomeEscaped = (meta.disciplina_nome || '').replace(/'/g, "\\'");
+                  
                   return `
                     <div class="meta-card group flex flex-col p-2 rounded-lg border transition-all cursor-pointer ${meta.concluida 
                       ? 'bg-emerald-50 border-emerald-200' 
@@ -19896,7 +19940,7 @@ function renderCalendarioSemanal() {
                       <div class="flex items-start gap-1 mb-1.5">
                         <p class="text-xs font-medium text-gray-800 line-clamp-2 flex-1 ${meta.concluida ? 'line-through opacity-60' : ''}">${meta.disciplina_nome}</p>
                         ${!meta.concluida ? `
-                          <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', '${(meta.topico_nome || '').replace(/'/g, "\\'")}', ${meta.dia_semana})" 
+                          <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${disciplinaNomeEscaped}', '${topicoNomeEscaped}', ${meta.dia_semana})" 
                                   class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 transition" 
                                   title="Trocar disciplina/tópico">
                             <i class="fas fa-pencil-alt text-[9px] text-gray-400 hover:text-[#122D6A]"></i>
@@ -19912,31 +19956,31 @@ function renderCalendarioSemanal() {
                         
                         <!-- Linha 2: Botões de conteúdo com labels -->
                         <div class="grid grid-cols-3 gap-1.5" id="conteudos-meta-${meta.id}">
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'teoria')" 
+                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'teoria')" 
                             class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#122D6A] hover:text-white active:bg-[#122D6A] active:text-white transition touch-manipulation group" 
                             title="Teoria" data-tipo="teoria" id="icon-teoria-${meta.id}">
                             <i class="fas fa-book text-sm text-[#122D6A] group-hover:text-white"></i>
                             <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Teoria</span>
                           </button>
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'exercicios')" 
+                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'exercicios')" 
                             class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#2A4A9F] hover:text-white active:bg-[#2A4A9F] active:text-white transition touch-manipulation group" 
                             title="Exercícios" data-tipo="exercicios" id="icon-exercicios-${meta.id}">
                             <i class="fas fa-tasks text-sm text-[#2A4A9F] group-hover:text-white"></i>
                             <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Questões</span>
                           </button>
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'resumo')" 
+                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'resumo')" 
                             class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#3A5AB0] hover:text-white active:bg-[#3A5AB0] active:text-white transition touch-manipulation group" 
                             title="Resumo" data-tipo="resumo" id="icon-resumo-${meta.id}">
                             <i class="fas fa-file-alt text-sm text-[#3A5AB0] group-hover:text-white"></i>
                             <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Resumo</span>
                           </button>
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; verConteudoGerado(${meta.id}, 'flashcards')" 
+                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'flashcards')" 
                             class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#4A6AC0] hover:text-white active:bg-[#4A6AC0] active:text-white transition touch-manipulation group" 
                             title="Flashcards" data-tipo="flashcards" id="icon-flashcards-${meta.id}">
                             <i class="fas fa-clone text-sm text-[#4A6AC0] group-hover:text-white"></i>
                             <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Flash</span>
                           </button>
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${(meta.topico_nome || '').replace(/'/g, "\\'")}', disciplina_nome: '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}', topico_id: ${meta.topico_id || 'null'} }; abrirModalResumoPersonalizado(${meta.id})" 
+                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; abrirModalResumoPersonalizado(${meta.id})" 
                             class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#8B5CF6] hover:text-white active:bg-[#8B5CF6] active:text-white transition touch-manipulation group" 
                             title="Upload" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">
                             <i class="fas fa-file-upload text-sm text-[#8B5CF6] group-hover:text-white"></i>
@@ -22260,100 +22304,126 @@ window.exibirFlashcardsVisuais = function(data) {
   renderFlashcardsModal(flashcards, topico_nome, disciplina_nome, 0);
 }
 
-// Parser de flashcards - VERSÃO V67 - Suporte a todos os formatos
+// Parser de flashcards - VERSÃO V68 - Formato exato da IA Gemini
 function parseFlashcards(texto) {
-  console.log('🎴 v67: Iniciando parse de flashcards...');
+  console.log('🎴 v68: Iniciando parse de flashcards...');
   
   if (!texto || typeof texto !== 'string') {
-    console.error('🎴 v67: Texto inválido');
+    console.error('🎴 v68: Texto inválido');
     return [];
   }
   
   // Mostrar amostra do texto para debug
-  console.log('🎴 v67: Amostra do texto:', texto.substring(0, 300));
+  console.log('🎴 v68: Amostra do texto:', texto.substring(0, 500));
   
   const flashcards = [];
   
-  // ✅ MÉTODO 1: Buscar **FRENTE:** e **VERSO:** em qualquer lugar
-  // Este é o formato mais comum da IA
-  const regexFrenteVerso = /\*{2}\s*FRENTE\s*:?\s*\*{2}\s*:?\s*([^\n*]+)[\s\S]*?\*{2}\s*VERSO\s*:?\s*\*{2}\s*:?\s*([^\n*]+(?:\n(?!\*{2})[^\n*]+)*)/gi;
-  let match;
-  while ((match = regexFrenteVerso.exec(texto)) !== null) {
-    const frente = match[1].trim();
-    const verso = match[2].replace(/\n+/g, ' ').trim();
-    if (frente.length > 1 && verso.length > 1) {
-      flashcards.push({ id: flashcards.length + 1, frente, verso });
-      console.log('✅ v67 M1:', frente.substring(0, 40));
+  // ✅ MÉTODO 1: Formato EXATO da IA - **Flashcard N** + **FRENTE:** + **VERSO:**
+  // Regex que captura blocos entre **Flashcard X** (ou até o fim do texto)
+  const blocos = texto.split(/\*{2}\s*Flashcard\s*\d+\s*\*{2}/gi);
+  console.log('🎴 v68 M1: Blocos encontrados:', blocos.length);
+  
+  for (const bloco of blocos) {
+    if (bloco.length < 20) continue;
+    
+    // Buscar **FRENTE:** e **VERSO:** no bloco
+    // Formato: **FRENTE:** texto ou **FRENTE: texto** ou FRENTE: texto
+    const fMatch = bloco.match(/\*{0,2}\s*FRENTE\s*:?\s*\*{0,2}\s*:?\s*([^\n]+)/i);
+    const vMatch = bloco.match(/\*{0,2}\s*VERSO\s*:?\s*\*{0,2}\s*:?\s*([^\n]+(?:\n(?!\*{2}|\s*---)[^\n]+)*)/i);
+    
+    if (fMatch && vMatch) {
+      const frente = fMatch[1].replace(/\*+/g, '').replace(/"/g, '').trim();
+      const verso = vMatch[1].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+      if (frente.length > 1 && verso.length > 5) {
+        flashcards.push({ id: flashcards.length + 1, frente, verso });
+        console.log('✅ v68 M1:', frente.substring(0, 40));
+      }
     }
   }
   
-  // ✅ MÉTODO 2: Separar por --- ou **Flashcard X**
+  // ✅ MÉTODO 2: Separar por --- e buscar FRENTE/VERSO
   if (flashcards.length === 0) {
-    console.log('🎴 v67: Tentando método de blocos...');
-    const blocos = texto.split(/\n\s*---+\s*\n|\*{2}Flashcard\s*\d+\*{2}/i);
+    console.log('🎴 v68: Tentando separação por ---...');
+    const blocosSeparador = texto.split(/\n\s*---+\s*\n/);
     
-    for (const bloco of blocos) {
+    for (const bloco of blocosSeparador) {
       if (bloco.length < 20) continue;
       
-      // Buscar FRENTE e VERSO no bloco
-      const fMatch = bloco.match(/FRENTE\s*:?\s*\*{0,2}\s*:?\s*([^\n]+)/i);
-      const vMatch = bloco.match(/VERSO\s*:?\s*\*{0,2}\s*:?\s*([^\n]+)/i);
+      const fMatch = bloco.match(/FRENTE\s*:?\s*\*{0,2}\s*:?\s*"?([^"\n]+)"?/i);
+      const vMatch = bloco.match(/VERSO\s*:?\s*\*{0,2}\s*:?\s*"?([^"]+?)(?:\n\s*---|\n\s*\*{2}Flashcard|$)/i);
       
       if (fMatch && vMatch) {
         const frente = fMatch[1].replace(/\*+/g, '').trim();
-        const verso = vMatch[1].replace(/\*+/g, '').trim();
-        if (frente.length > 1 && verso.length > 1) {
+        const verso = vMatch[1].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+        if (frente.length > 1 && verso.length > 5) {
           flashcards.push({ id: flashcards.length + 1, frente, verso });
-          console.log('✅ v67 M2:', frente.substring(0, 40));
+          console.log('✅ v68 M2:', frente.substring(0, 40));
         }
       }
     }
   }
   
-  // ✅ MÉTODO 3: Linha a linha
+  // ✅ MÉTODO 3: Linha a linha - buscar FRENTE seguido de VERSO
   if (flashcards.length === 0) {
-    console.log('🎴 v67: Tentando linha a linha...');
+    console.log('🎴 v68: Tentando linha a linha...');
     const linhas = texto.split('\n');
     let frenteAtual = null;
     
     for (let i = 0; i < linhas.length; i++) {
       const linha = linhas[i].trim();
       
-      // Detectar FRENTE
-      const fMatch = linha.match(/^[\*\d\.\s]*FRENTE\s*:?\s*\*{0,2}\s*:?\s*(.+)/i);
+      // Detectar FRENTE: "texto" ou **FRENTE:** texto
+      const fMatch = linha.match(/(?:\*{2})?\s*FRENTE\s*:?\s*(?:\*{2})?\s*:?\s*"?([^"\n]+)"?/i);
       if (fMatch) {
         frenteAtual = fMatch[1].replace(/\*+/g, '').trim();
         continue;
       }
       
       // Detectar VERSO
-      const vMatch = linha.match(/^[\*\s]*VERSO\s*:?\s*\*{0,2}\s*:?\s*(.+)/i);
+      const vMatch = linha.match(/(?:\*{2})?\s*VERSO\s*:?\s*(?:\*{2})?\s*:?\s*"?(.+)"?/i);
       if (vMatch && frenteAtual) {
         const verso = vMatch[1].replace(/\*+/g, '').trim();
-        if (frenteAtual.length > 1 && verso.length > 1) {
+        if (frenteAtual.length > 1 && verso.length > 5) {
           flashcards.push({ id: flashcards.length + 1, frente: frenteAtual, verso });
-          console.log('✅ v67 M3:', frenteAtual.substring(0, 40));
+          console.log('✅ v68 M3:', frenteAtual.substring(0, 40));
         }
         frenteAtual = null;
       }
     }
   }
   
-  // ✅ MÉTODO 4: Formato simples "Termo: Definição" em lista
+  // ✅ MÉTODO 4: Regex global para pares FRENTE/VERSO em qualquer lugar
   if (flashcards.length === 0) {
-    console.log('🎴 v67: Tentando formato termo:definição...');
-    const regexTermoDef = /^\s*[\d\.\-\*•]+\s*\*{0,2}([^:\n]{3,50})\*{0,2}\s*:\s*(.{10,})/gm;
-    while ((match = regexTermoDef.exec(texto)) !== null) {
+    console.log('🎴 v68: Tentando regex global...');
+    // Buscar padrões como FRENTE: X ... VERSO: Y em qualquer formato
+    const regexGlobal = /FRENTE\s*:?\s*\*{0,2}\s*:?\s*"?([^"\n]{3,60})"?\s*(?:→|->|\n)\s*VERSO\s*:?\s*\*{0,2}\s*:?\s*"?([^"]{10,}?)(?=\n\s*(?:FRENTE|---|\*{2}Flashcard)|$)/gi;
+    let match;
+    while ((match = regexGlobal.exec(texto)) !== null) {
       const frente = match[1].replace(/\*+/g, '').trim();
-      const verso = match[2].replace(/\*+/g, '').trim();
-      if (frente.length > 2 && verso.length > 10 && !frente.toLowerCase().includes('flashcard')) {
+      const verso = match[2].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+      if (frente.length > 1 && verso.length > 5) {
         flashcards.push({ id: flashcards.length + 1, frente, verso });
-        console.log('✅ v67 M4:', frente.substring(0, 40));
+        console.log('✅ v68 M4:', frente.substring(0, 40));
       }
     }
   }
   
-  console.log('📊 v67: Total flashcards:', flashcards.length);
+  // ✅ MÉTODO 5: Formato numerado 1. CONCEITO: definição
+  if (flashcards.length === 0) {
+    console.log('🎴 v68: Tentando formato numerado...');
+    const regexNumerado = /^\s*\d+[.\)]\s*\*{0,2}([^:\n]{3,60})\*{0,2}\s*:\s*(.{15,})/gm;
+    let match;
+    while ((match = regexNumerado.exec(texto)) !== null) {
+      const frente = match[1].replace(/\*+/g, '').trim();
+      const verso = match[2].replace(/\*+/g, '').trim();
+      if (frente.length > 2 && verso.length > 10 && !frente.toLowerCase().includes('flashcard')) {
+        flashcards.push({ id: flashcards.length + 1, frente, verso });
+        console.log('✅ v68 M5:', frente.substring(0, 40));
+      }
+    }
+  }
+  
+  console.log('📊 v68: Total flashcards parseados:', flashcards.length);
   return flashcards;
 }
 
