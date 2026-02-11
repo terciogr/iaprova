@@ -6090,25 +6090,40 @@ Conhecimentos Específicos"></textarea>
     let adicionadas = 0;
     let jaExistentes = 0;
     
+    // ✅ v56: Salvar em interviewData para persistir entre re-renders
+    if (!interviewData.disciplinas_do_edital) {
+      interviewData.disciplinas_do_edital = [];
+    }
+    
     for (const nomeDisciplina of disciplinas) {
-      // Verificar se já existe (por nome similar)
-      const jaExiste = disciplinasFiltradas.some(d => 
+      // Verificar se já existe em disciplinasFiltradas OU em interviewData
+      const jaExisteLocal = disciplinasFiltradas.some(d => 
+        d.nome.toLowerCase().includes(nomeDisciplina.toLowerCase()) ||
+        nomeDisciplina.toLowerCase().includes(d.nome.toLowerCase())
+      );
+      const jaExisteEdital = interviewData.disciplinas_do_edital.some(d =>
         d.nome.toLowerCase().includes(nomeDisciplina.toLowerCase()) ||
         nomeDisciplina.toLowerCase().includes(d.nome.toLowerCase())
       );
       
-      if (!jaExiste) {
+      if (!jaExisteLocal && !jaExisteEdital) {
         // Criar nova disciplina com ID temporário negativo
         const novoId = -(Date.now() + Math.random() * 1000);
-        disciplinasFiltradas.push({
+        const novaDisciplina = {
           id: novoId,
+          disciplina_id_real: novoId,
           nome: nomeDisciplina,
           descricao: 'Disciplina importada manualmente',
           area: 'custom',
-          peso: null,
+          peso: 1,
+          categoria: 'BÁSICOS',
           total_topicos: 0,
           topicos: []
-        });
+        };
+        
+        // ✅ v56: Adicionar tanto em disciplinasFiltradas quanto em interviewData
+        disciplinasFiltradas.push(novaDisciplina);
+        interviewData.disciplinas_do_edital.push(novaDisciplina);
         adicionadas++;
       } else {
         jaExistentes++;
@@ -6119,6 +6134,7 @@ Conhecimentos Específicos"></textarea>
     
     if (adicionadas > 0) {
       showToast('✅ ' + adicionadas + ' disciplina(s) importada(s)!' + (jaExistentes > 0 ? ' (' + jaExistentes + ' já existiam)' : ''), 'success');
+      console.log(`📋 v56: ${adicionadas} disciplinas importadas em lote. Total agora: ${interviewData.disciplinas_do_edital.length}`);
       // Re-renderizar a tela
       renderEntrevistaStep3();
     } else {
@@ -6291,6 +6307,18 @@ Sintaxe da oração e do período"></textarea>
     
     // Atualizar contador de tópicos
     disciplina.total_topicos = disciplina.topicos.length;
+    
+    // ✅ v56: Sincronizar com interviewData para persistir entre re-renders
+    if (interviewData.disciplinas_do_edital) {
+      const discEdital = interviewData.disciplinas_do_edital.find(d => 
+        d.nome === disciplina.nome || d.id === disciplinaId || d.disciplina_id_real === disciplinaId
+      );
+      if (discEdital) {
+        discEdital.topicos = [...disciplina.topicos];
+        discEdital.total_topicos = disciplina.topicos.length;
+        console.log(`📋 v56: Sincronizado ${adicionados} tópicos para ${disciplina.nome} em interviewData`);
+      }
+    }
     
     fecharModalImportacaoTopicos();
     

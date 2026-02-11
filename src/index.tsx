@@ -6508,24 +6508,51 @@ app.post('/api/editais/processar-texto', async (c) => {
     // ──────────────────────────────────────────────────────────────
     
     let inicioConteudo = -1
+    // ✅ v56: Pegar a ÚLTIMA ocorrência válida de "CONTEÚDO PROGRAMÁTICO" (não a primeira)
+    // A primeira é geralmente referência em parágrafo; a última é o conteúdo detalhado real
+    let candidatosConteudo: { linha: number, score: number }[] = []
     for (let i = 0; i < linhas.length; i++) {
-      const l = linhas[i].trim().toUpperCase()
+      const lTrimmed = linhas[i].trim()
+      const l = lTrimmed.toUpperCase()
       // Buscar marcador REAL de conteúdo programático (não referência)
-      // "CONTEÚDO PROGRAMÁTICO" sozinho na linha OU como título de ANEXO
-      // Ignorar linhas como "O Conteúdo Programático consta do Anexo II"
       if ((l.includes('CONTEÚDO PROGRAMÁTICO') || l.includes('CONTEUDO PROGRAMATICO') ||
            l.includes('PROGRAMA DAS PROVAS')) && 
           !l.includes('CONSTA') && !l.includes('CONSTAM') && !l.includes('CONFORME') &&
-          !l.includes('VIDE') && !l.includes('VER ') && !l.includes('PREVISTO')) {
-        // Verificar se as próximas linhas têm disciplinas (Língua, Direito, etc.)
+          !l.includes('VIDE') && !l.includes('VER ') && !l.includes('PREVISTO') &&
+          !l.includes('BASEADA') && !l.includes('BASEADO')) {
+        
+        // ✅ v56: Filtrar referências em parágrafos longos
+        // Um título de seção é curto (< 60 chars) ou começa com "CONTEÚDO PROGRAMÁTICO"
+        const ehTituloSecao = lTrimmed.length < 60 || 
+                              /^(CONTEÚDO|CONTEUDO)\s+PROGRAM/i.test(lTrimmed) ||
+                              /^(ANEXO|PROGRAMA)\s/i.test(lTrimmed)
+        if (!ehTituloSecao && lTrimmed.length > 80) {
+          // Parágrafo longo que menciona "conteúdo programático" - provavelmente referência
+          continue
+        }
+        
+        // Verificar se as próximas linhas têm disciplinas
         const prox10 = linhas.slice(i+1, i+15).join(' ').toLowerCase()
         if (prox10.includes('língua') || prox10.includes('raciocínio') || prox10.includes('direito') ||
             prox10.includes('módulo') || prox10.includes('conhecimentos') || prox10.includes('cargos de ensino')) {
-          inicioConteudo = i
-          console.log(`📍 Conteúdo programático: linha ${i+1}: "${linhas[i].trim().substring(0, 60)}"`)
-          break
+          // Score: prefer lines that look like section titles
+          let score = 0
+          const prox20 = linhas.slice(i+1, i+20).join('\n')
+          if (prox20.includes(':')) score += 2  // Has "Disciplina: conteúdo" format
+          if (lTrimmed.length < 40) score += 1  // Short line = likely section title
+          if (/^(CONTEÚDO|CONTEUDO)\s+PROGRAM[AÁ]TICO\s*$/i.test(lTrimmed)) score += 5  // Exact title alone on line
+          if (/ANEXO\s+I/i.test(lTrimmed)) score += 1  // Part of an ANEXO
+          candidatosConteudo.push({ linha: i, score })
+          console.log(`📍 Candidato conteúdo programático: linha ${i+1} (score ${score}, len ${lTrimmed.length}): "${lTrimmed.substring(0, 60)}"`)
         }
       }
+    }
+    // Preferir candidato com maior score; em empate, pegar o último (mais provável ser o real)
+    if (candidatosConteudo.length > 0) {
+      const maxScore = Math.max(...candidatosConteudo.map(c => c.score))
+      const melhores = candidatosConteudo.filter(c => c.score === maxScore)
+      inicioConteudo = melhores[melhores.length - 1].linha  // último com maior score
+      console.log(`📍 Conteúdo programático selecionado: linha ${inicioConteudo+1} (de ${candidatosConteudo.length} candidatos)`)
     }
     if (inicioConteudo === -1) {
       // Fallback: buscar por MÓDULO I ou CONHECIMENTOS GERAIS com conteúdo
@@ -6728,9 +6755,17 @@ app.post('/api/editais/processar-texto', async (c) => {
       
       for (const disc of disciplinasDaTabela) {
         // Buscar "NomeDisciplina:" no conteúdo programático
-        // Normalizar: "Raciocínio Lógico Matemático" → match "Raciocínio Lógico-Matemático"
-        const nomeParaBusca = disc.nome.replace(/\s+/g, '[\\s\\-–]+')
-        const regex = new RegExp(nomeParaBusca + '[^:]*:\\s*', 'i')
+        // ✅ v55: Escapar caracteres especiais de regex no nome antes de construir padrão
+        const nomeEscapado = disc.nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const nomeParaBusca = nomeEscapado.replace(/\s+/g, '[\\s\\-–]+')
+        let regex: RegExp
+        try {
+          regex = new RegExp(nomeParaBusca + '[^:]*:\\s*', 'i')
+        } catch (e) {
+          console.log(`   ⚠️ Regex inválida para "${disc.nome}", pulando...`)
+          disciplinasExtraidas.push({ nome: disc.nome, peso: disc.peso, categoria: disc.categoria, topicos: [] })
+          continue
+        }
         const match = textoSecaoCargo.match(regex)
         
         if (match) {
@@ -6741,12 +6776,15 @@ app.post('/api/editais/processar-texto', async (c) => {
           let menorPos = conteudo.length
           for (const outra of disciplinasDaTabela) {
             if (outra.nome === disc.nome) continue
-            const outraBusca = outra.nome.replace(/\s+/g, '[\\s\\-–]+')
-            const outraRegex = new RegExp('\\n' + outraBusca + '[^:]*:\\s', 'i')
-            const outraMatch = conteudo.match(outraRegex)
-            if (outraMatch && outraMatch.index !== undefined && outraMatch.index < menorPos) {
-              menorPos = outraMatch.index
-            }
+            const outraEscapada = outra.nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const outraBusca = outraEscapada.replace(/\s+/g, '[\\s\\-–]+')
+            try {
+              const outraRegex = new RegExp('\\n' + outraBusca + '[^:]*:\\s', 'i')
+              const outraMatch = conteudo.match(outraRegex)
+              if (outraMatch && outraMatch.index !== undefined && outraMatch.index < menorPos) {
+                menorPos = outraMatch.index
+              }
+            } catch (e) { /* regex inválida, ignorar */ }
           }
           // Também cortar em MÓDULO II ou marcadores de seção
           const marcadores = [/\nMÓDULO\s+II/i, /\nCONHECIMENTOS\s+ESPECÍFICOS/i]
@@ -7002,11 +7040,12 @@ app.post('/api/editais/processar-texto', async (c) => {
     console.log(`\n📊 Extração programática: ${disciplinasExtraidas.length} disciplinas`)
     
     // ──────────────────────────────────────────────────────────────
-    // ✅ v55: FALLBACK INTELIGENTE via IA
+    // ✅ v56: FALLBACK INTELIGENTE via IA
     // Condições para usar IA:
     // 1) Menos de 3 disciplinas extraídas (extração falhou)
     // 2) Texto do edital é grande (>5000 chars) mas poucas disciplinas (possível perda)
     // 3) Nenhuma disciplina específica encontrada (pode ter perdido seção)
+    // 4) NOVO: Disciplinas encontradas mas sem tópicos (conteúdo programático truncado)
     // ──────────────────────────────────────────────────────────────
     
     const temEspecificas = disciplinasExtraidas.some((d: any) => 
@@ -7015,6 +7054,17 @@ app.post('/api/editais/processar-texto', async (c) => {
     const textoMuitoGrande = textoSecaoCargo.length > 5000
     const poucasDisciplinas = disciplinasExtraidas.length < 3
     const poucasParaTextoGrande = textoMuitoGrande && disciplinasExtraidas.length < 5 && !temEspecificas
+    
+    // ✅ v56: Detectar quando temos disciplinas da tabela mas sem tópicos
+    // (texto truncado - conteúdo programático não incluído)
+    const totalTopicosExtraidos = disciplinasExtraidas.reduce((sum: number, d: any) => sum + (d.topicos?.length || 0), 0)
+    const semTopicos = disciplinasExtraidas.length >= 3 && totalTopicosExtraidos === 0
+    
+    if (semTopicos) {
+      console.log(`\n⚠️ v56: ${disciplinasExtraidas.length} disciplinas encontradas mas 0 tópicos extraídos!`)
+      console.log(`   Provável causa: texto truncado (${texto.length} chars) não contém conteúdo programático detalhado`)
+      console.log(`   Retornando disciplinas com pesos corretos sem tópicos (usuário pode adicionar depois)`)
+    }
     
     if (poucasDisciplinas || poucasParaTextoGrande) {
       const motivo = poucasDisciplinas ? 'poucas disciplinas' : 'texto grande mas sem específicas'
@@ -7295,22 +7345,32 @@ ${textoParaIA}`
       console.log(`  ✅ ${disc.nome}: ${topicosComIds.length} tópicos preparados`)
     }
     
-    // PASSO 5: Executar batch de tópicos (dividir em chunks de 50 se necessário)
-    // D1 batch aceita até 100 statements por batch
-    const BATCH_SIZE = 80
+    // PASSO 5: Executar batch de tópicos (dividir em chunks menores)
+    // ✅ v55: Reduzido batch size para evitar limites do D1 e adicionado error handling
+    const BATCH_SIZE = 50
     
     // Inserir edital_topicos em batches
     for (let start = 0; start < batchTopicosEdital.length; start += BATCH_SIZE) {
       const chunk = batchTopicosEdital.slice(start, start + BATCH_SIZE)
-      await DB.batch(chunk)
-      console.log(`  💾 edital_topicos batch ${Math.floor(start/BATCH_SIZE)+1}: ${chunk.length} inseridos`)
+      try {
+        await DB.batch(chunk)
+        console.log(`  💾 edital_topicos batch ${Math.floor(start/BATCH_SIZE)+1}: ${chunk.length} inseridos`)
+      } catch (batchErr: any) {
+        console.error(`  ❌ edital_topicos batch ${Math.floor(start/BATCH_SIZE)+1} falhou: ${batchErr.message?.substring(0, 100)}`)
+        // Continuar mesmo com erro - não é fatal
+      }
     }
     
     // Inserir topicos_edital em batches
     for (let start = 0; start < batchTopicosUser.length; start += BATCH_SIZE) {
       const chunk = batchTopicosUser.slice(start, start + BATCH_SIZE)
-      await DB.batch(chunk)
-      console.log(`  💾 topicos_edital batch ${Math.floor(start/BATCH_SIZE)+1}: ${chunk.length} inseridos`)
+      try {
+        await DB.batch(chunk)
+        console.log(`  💾 topicos_edital batch ${Math.floor(start/BATCH_SIZE)+1}: ${chunk.length} inseridos`)
+      } catch (batchErr: any) {
+        console.error(`  ❌ topicos_edital batch ${Math.floor(start/BATCH_SIZE)+1} falhou: ${batchErr.message?.substring(0, 100)}`)
+        // Continuar mesmo com erro - não é fatal
+      }
     }
     
     // PASSO 6: Atualizar status do edital para processado
@@ -7332,9 +7392,12 @@ ${textoParaIA}`
     
   } catch (error) {
     console.error('❌ Erro ao processar texto de edital:', error)
+    console.error('❌ Stack:', error instanceof Error ? error.stack : 'no stack')
     return c.json({
       error: 'Erro interno ao processar texto',
-      details: String(error)
+      details: String(error),
+      errorType: 'INTERNAL_ERROR',
+      canRetry: true
     }, 500)
   }
 })
