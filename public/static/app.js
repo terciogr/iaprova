@@ -17136,7 +17136,7 @@ window.gerarConteudoTipo = async function(tipo) {
 window.conteudosMetaCache = {};
 
 // Buscar e atualizar ícones de conteúdo de uma meta
-// Ícones ficam OCULTOS por padrão, só aparecem quando conteúdo existe
+// v64: Adiciona badge verde quando conteúdo existe (mais visível que opacidade)
 async function atualizarIconesConteudoMeta(metaId) {
   try {
     const response = await axios.get(`/api/conteudos/meta/${metaId}`, {
@@ -17151,20 +17151,28 @@ async function atualizarIconesConteudoMeta(metaId) {
       const btn = document.getElementById(`icon-${tipo}-${metaId}`);
       if (btn) {
         const temConteudo = data[`tem_${tipo}`];
+        
+        // Remover badge existente para recriá-lo
+        const badgeExistente = btn.querySelector('.conteudo-badge');
+        if (badgeExistente) badgeExistente.remove();
+        
         if (temConteudo) {
-          // Conteúdo existe - ícone opaco
-          btn.classList.remove('opacity-40', 'bg-[#E8EDF5]/30', 'hover:opacity-100');
-          btn.classList.add('opacity-100', 'bg-[#E8EDF5]');
-          // Forçar opacidade com style inline para garantir
-          btn.style.opacity = '1';
+          // ✅ v64: Adicionar badge verde no canto superior direito
+          const badge = document.createElement('div');
+          badge.className = 'conteudo-badge absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-sm z-10';
+          badge.title = 'Conteúdo disponível';
+          btn.style.position = 'relative';
+          btn.appendChild(badge);
+          
+          // Também mudar background
+          btn.classList.remove('bg-gray-100');
+          btn.classList.add('bg-emerald-50', 'ring-1', 'ring-emerald-200');
           btn.setAttribute('data-conteudo-id', data.tipos_gerados[tipo]);
-          console.log(`✅ Ícone ${tipo} ativo para meta ${metaId}`);
+          console.log(`✅ v64: Ícone ${tipo} marcado como disponível para meta ${metaId}`);
         } else {
-          // Sem conteúdo - ícone transparente
-          btn.classList.add('opacity-40', 'bg-[#E8EDF5]/30', 'hover:opacity-100');
-          btn.classList.remove('opacity-100', 'bg-[#E8EDF5]');
-          // Remover style inline para permitir classes funcionarem
-          btn.style.opacity = '';
+          // Sem conteúdo - estado normal
+          btn.classList.remove('bg-emerald-50', 'ring-1', 'ring-emerald-200');
+          btn.classList.add('bg-gray-100');
         }
       }
     });
@@ -17175,17 +17183,27 @@ async function atualizarIconesConteudoMeta(metaId) {
 window.atualizarIconesConteudoMeta = atualizarIconesConteudoMeta;
 
 // Mostrar ícone específico após gerar conteúdo
+// v64: Usa badge verde em vez de apenas opacidade
 function mostrarIconeConteudo(metaId, tipo, conteudoId) {
   const btn = document.getElementById(`icon-${tipo}-${metaId}`);
   if (btn) {
-    // Tornar ícone opaco quando conteúdo é gerado
-    btn.classList.remove('opacity-40', 'bg-[#E8EDF5]/30', 'hover:opacity-100');
-    btn.classList.add('opacity-100', 'bg-[#E8EDF5]', 'hover:opacity-100');
-    // Forçar opacidade com style inline para garantir
-    btn.style.opacity = '1';
+    // Remover badge existente para recriá-lo
+    const badgeExistente = btn.querySelector('.conteudo-badge');
+    if (badgeExistente) badgeExistente.remove();
+    
+    // Adicionar badge verde
+    const badge = document.createElement('div');
+    badge.className = 'conteudo-badge absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-sm z-10';
+    badge.title = 'Conteúdo disponível';
+    btn.style.position = 'relative';
+    btn.appendChild(badge);
+    
+    // Mudar background
+    btn.classList.remove('bg-gray-100');
+    btn.classList.add('bg-emerald-50', 'ring-1', 'ring-emerald-200');
     btn.setAttribute('data-conteudo-id', conteudoId);
     btn.setAttribute('data-source', 'materiais_salvos');
-    console.log(`✅ Ícone ${tipo} ativado para meta ${metaId}, conteudo_id=${conteudoId}`);
+    console.log(`✅ v64: Ícone ${tipo} marcado para meta ${metaId}, conteudo_id=${conteudoId}`);
     
     // Atualizar cache
     if (!window.conteudosMetaCache[metaId]) {
@@ -22202,13 +22220,27 @@ window.refazerExercicios = function() {
 
 // Função para exibir flashcards de forma visual
 window.exibirFlashcardsVisuais = function(data) {
-  const { topico_nome, disciplina_nome, conteudo } = data;
+  const { topico_nome, disciplina_nome, disciplina_id, topico_id, tipo, conteudo, material_id } = data;
+  
+  // ✅ v63: Guardar dados para salvar (como em exibirConteudoGerado)
+  window.conteudoGeradoOriginal = conteudo;
+  window.conteudoAtualDados = {
+    topico_nome,
+    disciplina_nome,
+    disciplina_id,
+    topico_id,
+    tipo: tipo || 'flashcards',
+    material_id
+  };
   
   // Parsear flashcards do conteúdo
   const flashcards = parseFlashcards(conteudo);
   
+  console.log(`🎴 v64: ${flashcards.length} flashcards parseados`);
+  
   if (flashcards.length === 0) {
     // Fallback para exibição simples se não conseguir parsear
+    console.warn('⚠️ v64: Nenhum flashcard parseado, usando fallback');
     exibirConteudoGerado(data);
     return;
   }
@@ -22216,103 +22248,91 @@ window.exibirFlashcardsVisuais = function(data) {
   renderFlashcardsModal(flashcards, topico_nome, disciplina_nome, 0);
 }
 
-// Parser de flashcards - VERSÃO ROBUSTA V2
+// Parser de flashcards - VERSÃO ROBUSTA V3
 function parseFlashcards(texto) {
-  console.log('🎴 Iniciando parse de flashcards...');
-  console.log('Texto recebido (primeiros 500 chars):', texto.substring(0, 500));
+  console.log('🎴 v64: Iniciando parse de flashcards...');
   
   const flashcards = [];
   
-  // MÉTODO 1: Separar por --- (separador entre flashcards)
-  let blocos = texto.split(/\n\s*---+\s*\n/);
-  console.log('Blocos encontrados (separador ---):', blocos.length);
+  // ✅ v63: MÉTODO PRINCIPAL - Buscar padrões numerados (1., 2., 3., etc.)
+  // Formato: "1. **CONCEITO**: texto\n   **DEFINIÇÃO**: texto"
+  const blocosNumerados = texto.split(/(?=\n\s*\d+\.\s+)/);
+  console.log('Blocos numerados encontrados:', blocosNumerados.length);
   
-  // Se só encontrou 1 bloco, tentar separar por **Flashcard X**
-  if (blocos.length <= 1) {
-    blocos = texto.split(/(?=\*{2}Flashcard\s*\d+\*{2})/i);
-    console.log('Blocos encontrados (**Flashcard X**):', blocos.length);
-  }
-  
-  // Tentar separar por número no início de linha
-  if (blocos.length <= 1) {
-    blocos = texto.split(/(?=\n\s*\d+[\.\)]\s+)/);
-    console.log('Blocos encontrados (número.):', blocos.length);
-  }
-  
-  for (const bloco of blocos) {
+  for (const bloco of blocosNumerados) {
     if (!bloco.trim() || bloco.length < 20) continue;
     
-    console.log('Processando bloco flashcard:', bloco.substring(0, 100));
+    // Tentar extrair CONCEITO/DEFINIÇÃO ou FRENTE/VERSO
+    let frenteMatch = bloco.match(/\*{2}(CONCEITO|FRENTE|TERMO|Conceito|Frente|Termo)[:\*]*\s*\*{0,2}\s*([^*\n]+)/i);
+    let versoMatch = bloco.match(/\*{2}(DEFINIÇÃO|VERSO|EXPLICAÇÃO|Definição|Verso|Explicação)[:\*]*\s*\*{0,2}\s*([^*]+?)(?=\n\s*\d+\.|\n\s*$|$)/is);
     
-    // Buscar FRENTE e VERSO no formato esperado
-    // Padrões: **FRENTE:** ou FRENTE: ou **Frente:**
-    const frenteMatch = bloco.match(/\*{0,2}\s*(?:FRENTE|Frente|Front|Pergunta|Question)[:\s*]*\*{0,2}\s*(.+?)(?=\*{0,2}\s*(?:VERSO|Verso|Back|Resposta|Answer)[:\s*])/is);
-    const versoMatch = bloco.match(/\*{0,2}\s*(?:VERSO|Verso|Back|Resposta|Answer)[:\s*]*\*{0,2}\s*(.+?)(?=\n\s*\*{2}Flashcard|\n\s*---+|$)/is);
+    // Fallback: tentar formato sem ** 
+    if (!frenteMatch) {
+      frenteMatch = bloco.match(/(?:CONCEITO|FRENTE|TERMO)[:\s]+([^\n]+)/i);
+    }
+    if (!versoMatch) {
+      versoMatch = bloco.match(/(?:DEFINIÇÃO|VERSO|EXPLICAÇÃO)[:\s]+(.+?)(?=\n\s*\d+\.|\n\s*$|$)/is);
+    }
     
     if (frenteMatch && versoMatch) {
-      const frente = frenteMatch[1].trim().replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
-      const verso = versoMatch[1].trim().replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+      const frente = frenteMatch[2] || frenteMatch[1];
+      const verso = versoMatch[2] || versoMatch[1];
       
-      if (frente.length > 3 && verso.length > 3) {
+      const frenteClean = frente.replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+      const versoClean = verso.replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+      
+      if (frenteClean.length > 2 && versoClean.length > 2) {
         flashcards.push({
           id: flashcards.length + 1,
-          frente,
-          verso
+          frente: frenteClean,
+          verso: versoClean
         });
-        console.log('✅ Flashcard', flashcards.length, 'adicionado');
+        console.log('✅ Flashcard', flashcards.length, ':', frenteClean.substring(0, 30));
         continue;
-      }
-    }
-    
-    // Fallback: tentar outros formatos no mesmo bloco
-    // Formato Q: ... A: ... ou P: ... R: ...
-    const qaMatch = bloco.match(/(?:Q|P|Pergunta)[:\.\)]\s*(.+?)\s*(?:A|R|Resposta)[:\.\)]\s*(.+?)$/is);
-    if (qaMatch) {
-      const frente = qaMatch[1].trim().replace(/\*+/g, '').trim();
-      const verso = qaMatch[2].trim().replace(/\*+/g, '').trim();
-      
-      if (frente.length > 3 && verso.length > 3) {
-        flashcards.push({
-          id: flashcards.length + 1,
-          frente,
-          verso
-        });
-        console.log('✅ Flashcard (Q/A)', flashcards.length, 'adicionado');
       }
     }
   }
   
-  // Se não encontrou nada, tentar método linha por linha
+  // Se não encontrou, tentar MÉTODO 2: Separar por --- 
   if (flashcards.length === 0) {
-    console.log('Tentando método linha por linha...');
+    const blocosSeparador = texto.split(/\n\s*---+\s*\n/);
+    console.log('Blocos (separador ---):', blocosSeparador.length);
+    
+    for (const bloco of blocosSeparador) {
+      if (!bloco.trim() || bloco.length < 20) continue;
+      
+      const frenteMatch = bloco.match(/\*{0,2}\s*(?:FRENTE|Frente|CONCEITO|Conceito)[:\s*]*\*{0,2}\s*(.+?)(?=\*{0,2}\s*(?:VERSO|Verso|DEFINIÇÃO|Definição)[:\s*])/is);
+      const versoMatch = bloco.match(/\*{0,2}\s*(?:VERSO|Verso|DEFINIÇÃO|Definição)[:\s*]*\*{0,2}\s*(.+?)$/is);
+      
+      if (frenteMatch && versoMatch) {
+        const frente = frenteMatch[1].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+        const verso = versoMatch[1].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+        
+        if (frente.length > 2 && verso.length > 2) {
+          flashcards.push({ id: flashcards.length + 1, frente, verso });
+        }
+      }
+    }
+  }
+  
+  // MÉTODO 3: Buscar formato "• Conceito: X | Definição: Y" (lista)
+  if (flashcards.length === 0) {
     const linhas = texto.split('\n');
-    let frenteAtual = '';
     
     for (const linha of linhas) {
-      const linhaLimpa = linha.trim();
-      
-      // Detectar frente
-      const fMatch = linhaLimpa.match(/^\*{0,2}\s*(?:FRENTE|Frente|Q|Pergunta)[:\.\)]\s*\*{0,2}\s*(.+)/i);
-      if (fMatch) {
-        frenteAtual = fMatch[1].replace(/\*+/g, '').trim();
-        continue;
-      }
-      
-      // Detectar verso
-      const vMatch = linhaLimpa.match(/^\*{0,2}\s*(?:VERSO|Verso|A|R|Resposta)[:\.\)]\s*\*{0,2}\s*(.+)/i);
-      if (vMatch && frenteAtual) {
+      // Formato: "• **Conceito**: X | **Definição**: Y"
+      const match = linha.match(/[•\-\*]\s*\*{0,2}(Conceito|Termo|Frente)[:\*]*\s*([^|]+)\s*\|\s*\*{0,2}(Definição|Explicação|Verso)[:\*]*\s*(.+)/i);
+      if (match) {
         flashcards.push({
           id: flashcards.length + 1,
-          frente: frenteAtual,
-          verso: vMatch[1].replace(/\*+/g, '').trim()
+          frente: match[2].replace(/\*+/g, '').trim(),
+          verso: match[4].replace(/\*+/g, '').trim()
         });
-        frenteAtual = '';
-        console.log('✅ Flashcard (linha)', flashcards.length, 'adicionado');
       }
     }
   }
   
-  console.log('📊 Total de flashcards parseados:', flashcards.length);
+  console.log('📊 v64: Total flashcards parseados:', flashcards.length);
   return flashcards;
 }
 
