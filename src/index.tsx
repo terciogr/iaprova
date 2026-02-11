@@ -7285,14 +7285,31 @@ ${textoParaIA}`
     const editalDiscIds = resultEditalDisc.map((r: any) => r.meta?.last_row_id)
     
     // PASSO 4: Inserir tópicos em batch (todos de uma vez)
+    // ✅ v57: SIMPLIFICADO - Não inserir em topicos_edital aqui (evita FK errors)
+    // Os tópicos do usuário serão criados quando ele iniciar o plano de estudos
     const batchTopicosEdital: any[] = []
-    const batchTopicosUser: any[] = []
     const disciplinasComIds: any[] = []
     
     for (let i = 0; i < resultado.disciplinas.length; i++) {
       const disc = resultado.disciplinas[i]
       const edital_disciplina_id = editalDiscIds[i]
       const disciplina_id_real = disciplinasExistentes.get(disc.nome) || null
+      
+      // ✅ v57: Validar que temos um ID válido para edital_disciplina
+      if (!edital_disciplina_id) {
+        console.warn(`  ⚠️ ${disc.nome}: ID de edital_disciplina inválido, pulando tópicos...`)
+        disciplinasComIds.push({
+          id: 0,
+          disciplina_id_real: disciplina_id_real,
+          nome: disc.nome,
+          peso: disc.peso || 1,
+          categoria: disc.categoria || (disc.peso >= 2 ? 'ESPECÍFICOS' : 'BÁSICOS'),
+          tipo: disc.tipo || 'geral',
+          total_topicos: 0,
+          topicos: []
+        })
+        continue
+      }
       
       const topicosComIds: any[] = []
       
@@ -7301,7 +7318,7 @@ ${textoParaIA}`
         const topicosUnicos = [...new Set(
           disc.topicos
             .map((t: any) => typeof t === 'string' ? t.trim() : t.nome?.trim())
-            .filter((t: string) => t && t.length > 0)
+            .filter((t: string) => t && t.length > 0 && t.length < 500)
         )]
         
         // Limitar a 50 tópicos por disciplina
@@ -7312,19 +7329,11 @@ ${textoParaIA}`
         for (let j = 0; j < topicosLimitados.length; j++) {
           const topicoNome = topicosLimitados[j]
           
-          // Preparar INSERT para edital_topicos
+          // Preparar INSERT para edital_topicos apenas
           batchTopicosEdital.push(
             DB.prepare(`INSERT OR IGNORE INTO edital_topicos (edital_disciplina_id, nome, ordem) VALUES (?, ?, ?)`)
               .bind(edital_disciplina_id, topicoNome, j + 1)
           )
-          
-          // Preparar INSERT para topicos_edital (metas semanais)
-          if (disciplina_id_real && user_id) {
-            batchTopicosUser.push(
-              DB.prepare(`INSERT OR IGNORE INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id) VALUES (?, ?, ?, ?, ?, ?)`)
-                .bind(disciplina_id_real, topicoNome, 'Conteúdo Programático', j + 1, disc.peso || 1, user_id)
-            )
-          }
           
           topicosComIds.push({ id: 0, nome: topicoNome })
         }
@@ -7345,31 +7354,28 @@ ${textoParaIA}`
       console.log(`  ✅ ${disc.nome}: ${topicosComIds.length} tópicos preparados`)
     }
     
-    // PASSO 5: Executar batch de tópicos (dividir em chunks menores)
-    // ✅ v55: Reduzido batch size para evitar limites do D1 e adicionado error handling
-    const BATCH_SIZE = 50
+    // PASSO 5: Executar batch de tópicos (apenas edital_topicos)
+    // ✅ v57: Batch size reduzido e error handling melhorado
+    const BATCH_SIZE = 30  // Reduzido para maior estabilidade
     
     // Inserir edital_topicos em batches
-    for (let start = 0; start < batchTopicosEdital.length; start += BATCH_SIZE) {
-      const chunk = batchTopicosEdital.slice(start, start + BATCH_SIZE)
-      try {
-        await DB.batch(chunk)
-        console.log(`  💾 edital_topicos batch ${Math.floor(start/BATCH_SIZE)+1}: ${chunk.length} inseridos`)
-      } catch (batchErr: any) {
-        console.error(`  ❌ edital_topicos batch ${Math.floor(start/BATCH_SIZE)+1} falhou: ${batchErr.message?.substring(0, 100)}`)
-        // Continuar mesmo com erro - não é fatal
-      }
-    }
-    
-    // Inserir topicos_edital em batches
-    for (let start = 0; start < batchTopicosUser.length; start += BATCH_SIZE) {
-      const chunk = batchTopicosUser.slice(start, start + BATCH_SIZE)
-      try {
-        await DB.batch(chunk)
-        console.log(`  💾 topicos_edital batch ${Math.floor(start/BATCH_SIZE)+1}: ${chunk.length} inseridos`)
-      } catch (batchErr: any) {
-        console.error(`  ❌ topicos_edital batch ${Math.floor(start/BATCH_SIZE)+1} falhou: ${batchErr.message?.substring(0, 100)}`)
-        // Continuar mesmo com erro - não é fatal
+    if (batchTopicosEdital.length > 0) {
+      for (let start = 0; start < batchTopicosEdital.length; start += BATCH_SIZE) {
+        const chunk = batchTopicosEdital.slice(start, start + BATCH_SIZE)
+        try {
+          await DB.batch(chunk)
+          console.log(`  💾 edital_topicos batch ${Math.floor(start/BATCH_SIZE)+1}: ${chunk.length} inseridos`)
+        } catch (batchErr: any) {
+          console.error(`  ❌ edital_topicos batch ${Math.floor(start/BATCH_SIZE)+1} falhou: ${batchErr.message?.substring(0, 100)}`)
+          // Tentar inserir um por um como fallback
+          for (const stmt of chunk) {
+            try {
+              await stmt.run()
+            } catch (e) {
+              // Ignorar erros individuais
+            }
+          }
+        }
       }
     }
     

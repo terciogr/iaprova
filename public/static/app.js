@@ -6096,14 +6096,15 @@ Conhecimentos Específicos"></textarea>
     }
     
     for (const nomeDisciplina of disciplinas) {
-      // Verificar se já existe em disciplinasFiltradas OU em interviewData
+      // ✅ v57: Verificar se já existe usando comparação EXATA (case-insensitive)
+      // A verificação anterior com includes() era muito permissiva
+      const nomeNormalizado = nomeDisciplina.toLowerCase().trim();
+      
       const jaExisteLocal = disciplinasFiltradas.some(d => 
-        d.nome.toLowerCase().includes(nomeDisciplina.toLowerCase()) ||
-        nomeDisciplina.toLowerCase().includes(d.nome.toLowerCase())
+        d.nome.toLowerCase().trim() === nomeNormalizado
       );
       const jaExisteEdital = interviewData.disciplinas_do_edital.some(d =>
-        d.nome.toLowerCase().includes(nomeDisciplina.toLowerCase()) ||
-        nomeDisciplina.toLowerCase().includes(d.nome.toLowerCase())
+        d.nome.toLowerCase().trim() === nomeNormalizado
       );
       
       if (!jaExisteLocal && !jaExisteEdital) {
