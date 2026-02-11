@@ -3446,9 +3446,42 @@ CONHECIMENTOS ESPECÍFICOS
       console.log(`Área detectada automaticamente: ${areaDetectada} para cargo: ${interviewData.cargo}`);
     }
     
-    // Processar edital ANTES de ir para Step2
+    // ✅ v53: Processar edital ANTES de ir para Step2
+    // Para TXT: ler conteúdo client-side e usar processarTextoEditalColado (1 request só)
+    // Para XLSX: usar upload normal (processamento inline no backend)
+    // Para PDF: bloqueado (pedir conversão)
     if (editaisFiles.length > 0) {
-      await processarEditalAntesDeStep2();
+      // ✅ v53: Verificar se TODOS os arquivos são TXT - se sim, ler client-side
+      const allTxt = Array.from(editaisFiles).every(f => 
+        f.name.toLowerCase().endsWith('.txt') || f.type === 'text/plain'
+      );
+      
+      if (allTxt) {
+        // ✅ v53: Ler TXT client-side e usar processarTextoEditalColado (evita upload + processar = 2 requests)
+        console.log('📄 v53: TXT detectado - lendo client-side para processamento direto');
+        try {
+          let textoConcat = '';
+          for (const f of editaisFiles) {
+            const texto = await f.text();
+            textoConcat += texto + '\n\n';
+          }
+          console.log(`📄 v53: ${editaisFiles.length} arquivo(s) TXT lido(s): ${textoConcat.length} caracteres`);
+          
+          if (textoConcat.trim().length > 50) {
+            await processarTextoEditalColado(textoConcat.trim());
+          } else {
+            showToast('Arquivo TXT vazio ou muito curto', 'error');
+            renderEntrevistaStep2();
+          }
+        } catch (readErr) {
+          console.error('❌ v53: Erro ao ler TXT client-side:', readErr);
+          // Fallback: usar upload normal
+          await processarEditalAntesDeStep2();
+        }
+      } else {
+        // XLSX ou misto: usar upload normal
+        await processarEditalAntesDeStep2();
+      }
     } else if (textoEdital && textoEdital.length > 50) {
       // Processar texto colado
       await processarTextoEditalColado(textoEdital);
@@ -3536,13 +3569,14 @@ async function processarTextoEditalColado(texto) {
   
   try {
     // Enviar texto para o backend processar
+    // ✅ v53: Timeout aumentado para textos grandes (até 3 minutos)
     const response = await axios.post('/api/editais/processar-texto', {
       texto: texto,
       concurso_nome: interviewData.concurso_nome,
       cargo: interviewData.cargo,
       banca: interviewData.banca_organizadora,
       user_id: currentUser?.id
-    });
+    }, { timeout: 180000 });
     
     console.log('✅ Resposta do processamento:', response.data);
     
@@ -3585,26 +3619,59 @@ async function processarTextoEditalColado(texto) {
     console.error('❌ Erro ao processar texto:', error);
     isProcessingEdital = false;
     
-    // Mostrar erro com opção de tentar novamente ou continuar sem
+    // ✅ v53: Verificar se é timeout
+    const isTimeout = error?.code === 'ECONNABORTED' || 
+                      error?.message?.toLowerCase().includes('timeout') ||
+                      error?.message?.toLowerCase().includes('network');
+    
+    const errorType = error?.response?.data?.errorType || '';
+    const canRetry = error?.response?.data?.canRetry !== false;
+    const backendError = error?.response?.data?.error || error?.message || 'Não foi possível processar o texto.';
+    
+    // ✅ v53: Tela de erro melhorada com opções contextuais
+    const iconClass = isTimeout ? 'fa-clock text-orange-500' : 
+                     errorType === 'EXTRACTION_FAILED' ? 'fa-search text-amber-500' :
+                     'fa-exclamation-triangle text-amber-600';
+    const titleText = isTimeout ? 'Tempo de análise excedido' :
+                     errorType === 'EXTRACTION_FAILED' ? 'Disciplinas não encontradas' :
+                     'Ops! Algo deu errado';
+    
     document.getElementById('app').innerHTML = `
       <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
-        <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center">
-          <div class="w-16 h-16 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-4">
-            <i class="fas fa-exclamation-triangle text-2xl text-amber-600"></i>
+        <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
+          <div class="w-20 h-20 mx-auto bg-amber-50 rounded-full flex items-center justify-center mb-4">
+            <i class="fas ${iconClass} text-4xl"></i>
           </div>
-          <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-2">Ops! Algo deu errado</h3>
+          <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-3">${titleText}</h3>
           <p class="${themes[currentTheme].textSecondary} text-sm mb-6">
-            ${error?.response?.data?.error || error?.message || 'Não foi possível processar o texto. Tente novamente ou adicione as disciplinas manualmente.'}
+            ${backendError}
           </p>
           
+          ${isTimeout ? `
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-left">
+              <h4 class="font-semibold text-blue-800 mb-2">💡 O que fazer:</h4>
+              <ul class="text-sm text-blue-700 space-y-1">
+                <li>• <strong>Tente novamente</strong> - pode ser sobrecarga temporária</li>
+                <li>• <strong>Use texto menor</strong> - copie apenas a seção do Conteúdo Programático</li>
+                <li>• <strong>Continue sem edital</strong> e selecione disciplinas manualmente</li>
+              </ul>
+            </div>
+          ` : ''}
+          
           <div class="flex flex-col gap-3">
-            <button onclick="selecionarObjetivo('concurso_especifico')" 
-              class="w-full py-3 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition font-medium">
-              <i class="fas fa-redo mr-2"></i>Tentar Novamente
+            ${canRetry ? `
+              <button onclick="selecionarObjetivo('concurso_especifico')" 
+                class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg hover:from-[#0D1F4D] hover:to-[#1A3A7F] transition font-semibold shadow-lg">
+                <i class="fas fa-redo mr-2"></i>Tentar Novamente
+              </button>
+            ` : ''}
+            <button onclick="cancelarCountdownENavegar('step2')" 
+              class="w-full py-3 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg font-semibold border ${themes[currentTheme].border} hover:opacity-80 transition">
+              <i class="fas fa-check-circle mr-2"></i>Continuar e Selecionar Disciplinas
             </button>
             <button onclick="continuarSemEdital()" 
-              class="w-full py-3 border-2 border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition">
-              Continuar sem edital
+              class="w-full py-2 text-gray-500 hover:text-gray-700 transition text-sm">
+              Continuar sem edital →
             </button>
           </div>
         </div>

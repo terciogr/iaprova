@@ -6669,6 +6669,17 @@ app.post('/api/editais/processar-texto', async (c) => {
     // Função para extrair tópicos do texto de uma disciplina
     const extrairTopicosDeTexto = (textoDisc: string): string[] => {
       const topicos: string[] = []
+      
+      // ✅ v53: Primeiro tentar dividir por marcadores de lista (- , •, –)
+      const partesPorMarcador = textoDisc.split(/(?=\n\s*[-•–]\s)/)
+      if (partesPorMarcador.length > 2) {
+        for (const p of partesPorMarcador) {
+          const t = p.trim().replace(/^[-•–]\s*/, '').replace(/[.;]+$/, '').trim()
+          if (t.length > 5 && t.length < 300) topicos.push(t)
+        }
+        if (topicos.length > 2) return topicos.slice(0, 50)
+      }
+      
       // Tentar dividir por numeração
       const partesPorNumero = textoDisc.split(/(?=\d+\.\s)/)
       if (partesPorNumero.length > 3) {
@@ -6754,20 +6765,25 @@ app.post('/api/editais/processar-texto', async (c) => {
       console.log('\n🔧 Extração por padrão "Nome: conteúdo"...')
       
       // Nomes conhecidos de disciplinas que SÃO reais (não subtópicos)
+      // ✅ v53: Adicionado mais padrões comuns
       const nomesConhecidosDisciplinas = [
         'LÍNGUA PORTUGUESA', 'LÍNGUA INGLESA', 'RACIOCÍNIO LÓGICO',
-        'MATEMÁTICA', 'ESTATÍSTICA', 'INFORMÁTICA', 'DIREITO',
-        'LEGISLAÇÃO', 'CONHECIMENTOS GERAIS', 'CONHECIMENTOS REGIONAIS',
+        'MATEMÁTICA', 'ESTATÍSTICA', 'INFORMÁTICA', 'NOÇÕES DE INFORMÁTICA',
+        'NOÇÕES DE DIREITO', 'NOÇÕES DE ADMINISTRAÇÃO',
+        'DIREITO', 'LEGISLAÇÃO', 'CONHECIMENTOS GERAIS', 'CONHECIMENTOS REGIONAIS',
         'CONHECIMENTOS SOBRE O', 'CONHECIMENTOS ESPECÍFICOS',
         'ADMINISTRAÇÃO', 'CONTABILIDADE', 'ECONOMIA', 'AUDITORIA',
         'FLUÊNCIA EM DADOS', 'CIÊNCIA DE DADOS', 'COMÉRCIO',
-        'ÉTICA E LEGISLAÇÃO', 'SISTEMA ÚNICO', 'SAÚDE PÚBLICA',
-        'ENFERMAGEM', 'FARMACOLOGIA', 'BIOSSEGURANÇA'
+        'ÉTICA E LEGISLAÇÃO', 'ÉTICA NO SERVIÇO', 'SISTEMA ÚNICO', 'SAÚDE PÚBLICA',
+        'ENFERMAGEM', 'FARMACOLOGIA', 'BIOSSEGURANÇA',
+        'ATUALIDADES', 'REDAÇÃO', 'HISTÓRIA', 'GEOGRAFIA',
+        'PORTUGUÊS', 'INGLÊS', 'ESPANHOL'
       ]
       
       // Padrões que indicam que algo é subtópico, NÃO disciplina
+      // ✅ v53: "NOÇÕES DE INFORMÁTICA" é disciplina real - ajustar regex
       const padroesSubtopico = [
-        /^NOÇÕES\s+(BÁSICAS|DE|GERAIS)\b/i,
+        /^NOÇÕES\s+(BÁSICAS|GERAIS)\b/i,  // v53: removido "DE" - "Noções de Informática" é disciplina real
         /^RECURSOS\s+(NA|EM|DE|DO)\b/i,
         /^ALOCAÇÃO\s+DE/i,
         /^PRINCÍPIOS\s+DE/i,
@@ -6856,10 +6872,23 @@ app.post('/api/editais/processar-texto', async (c) => {
         }
         
         // Padrão de disciplina: "NomeDisciplina: conteúdo..."
+        // ✅ v53: Também detectar "N. NOME DA DISCIPLINA" (formato numérico)
         // MAS: se estamos dentro de um cargo alvo ("Conhecimentos Específicos de X"),
         // tudo é conteúdo desse cargo, não criar nova disciplina
         const dentroDeCargoEspecifico = disciplinaAtual?.nome.startsWith('Conhecimentos Específicos de ')
+        
+        // Padrão 1: "NomeDisciplina: conteúdo..."
         const matchDisc = !dentroDeCargoEspecifico ? linha.match(/^([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú\s,\-–()\/e]+?):\s+(.+)/) : null
+        
+        // ✅ v53: Padrão 2: "N. NOME DA DISCIPLINA" ou "N) NOME" (sem conteúdo na mesma linha)
+        // Ex: "1. LÍNGUA PORTUGUESA", "2. RACIOCÍNIO LÓGICO", "3. NOÇÕES DE INFORMÁTICA"
+        const matchDiscNumerada = !dentroDeCargoEspecifico && !matchDisc ? 
+          linha.match(/^(\d{1,2})[.)]\s+([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú\s,\-–()\/e]+)$/) : null
+        
+        // ✅ v53: Padrão 3: "NOME DA DISCIPLINA" em linha sozinha (ALL CAPS, sem número)
+        // Ex: "LÍNGUA PORTUGUESA", "RACIOCÍNIO LÓGICO-MATEMÁTICO"
+        const matchDiscMaiuscula = !dentroDeCargoEspecifico && !matchDisc && !matchDiscNumerada ?
+          linha.match(/^([A-ZÀ-Ú][A-ZÀ-Ú\s,\-–()\/]+)$/) : null
         
         if (matchDisc) {
           const nomeCand = matchDisc[1].trim()
@@ -6883,9 +6912,48 @@ app.post('/api/editais/processar-texto', async (c) => {
           }
         }
         
+        // ✅ v53: Padrão 2 - "N. NOME DA DISCIPLINA" (formato numérico sem conteúdo na mesma linha)
+        if (matchDiscNumerada) {
+          const nomeCand = matchDiscNumerada[2].trim()
+          const temTamanhoOk = nomeCand.length >= 4 && nomeCand.length <= 120
+          const ehReal = ehNomeDeDisciplina(nomeCand)
+          
+          // Verificar se próximas linhas tem tópicos (-, •, número, etc.)
+          const proxLinhas = linhasSecao.slice(i+1, i+5).join(' ')
+          const temTopicosAbaixo = /^\s*[-•–]\s|^\s*\d+[.)]\s|^\s*[a-z][\).]|Compreensão|Estruturas|Conceitos/m.test(
+            linhasSecao.slice(i+1, i+5).join('\n')
+          )
+          
+          if (temTamanhoOk && ehReal && (temTopicosAbaixo || proxLinhas.length > 30)) {
+            if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
+            disciplinaAtual = { nome: nomeCand, peso: pesoAtual, categoria: categoriaAtual, textoCompleto: '' }
+            console.log(`   📘 Disciplina (numerada v53): "${nomeCand}" (${categoriaAtual}, peso ${pesoAtual})`)
+            continue
+          }
+        }
+        
+        // ✅ v53: Padrão 3 - "NOME DA DISCIPLINA" em ALL CAPS sozinha na linha
+        if (matchDiscMaiuscula) {
+          const nomeCand = matchDiscMaiuscula[1].trim()
+          const temTamanhoOk = nomeCand.length >= 8 && nomeCand.length <= 120
+          const ehReal = ehNomeDeDisciplina(nomeCand)
+          
+          // Deve ter tópicos nas próximas linhas
+          const proxLinhas = linhasSecao.slice(i+1, i+5).join('\n')
+          const temTopicosAbaixo = /^\s*[-•–]\s|^\s*\d+[.)]\s|^\s*[a-z][\).]|Compreensão|Estruturas|Conceitos/m.test(proxLinhas)
+          
+          if (temTamanhoOk && ehReal && temTopicosAbaixo) {
+            if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
+            disciplinaAtual = { nome: nomeCand, peso: pesoAtual, categoria: categoriaAtual, textoCompleto: '' }
+            console.log(`   📘 Disciplina (ALL CAPS v53): "${nomeCand}" (${categoriaAtual}, peso ${pesoAtual})`)
+            continue
+          }
+        }
+        
         // Acumular conteúdo na disciplina atual
-        if (disciplinaAtual && linha.length > 10) {
-          disciplinaAtual.textoCompleto += ' ' + linha
+        // ✅ v53: Acumular também linhas com marcadores (-, •, –) como tópicos
+        if (disciplinaAtual && (linha.length > 5 || /^\s*[-•–]\s/.test(linha))) {
+          disciplinaAtual.textoCompleto += '\n' + linha
         }
       }
       if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
@@ -6916,7 +6984,8 @@ app.post('/api/editais/processar-texto', async (c) => {
     if (disciplinasExtraidas.length < 2) {
       console.log('\n🤖 Extração programática insuficiente, usando IA...')
       
-      const textoParaIA = textoSecaoCargo.substring(0, 50000)
+      // ✅ v53: Limitar texto para IA a 30000 chars para evitar timeout
+      const textoParaIA = textoSecaoCargo.substring(0, 30000)
       const promptIA = `TAREFA CRÍTICA: Extrair TODAS as disciplinas para o cargo "${cargoUpper}" do conteúdo programático abaixo.
 
 REGRAS:
@@ -6936,33 +7005,48 @@ ${textoParaIA}`
       }
       
       // Tentar Gemini → OpenAI → GROQ
+      // ✅ v53: Com timeout de 25s para cada chamada (evitar exceder limite Workers)
       let respostaIA = ''
+      const iaTimeout = 25000
+      
       if (geminiKey) {
         try {
+          const controller = new AbortController()
+          const timer = setTimeout(() => controller.abort(), iaTimeout)
           const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: promptIA }] }], generationConfig: { temperature: 0, maxOutputTokens: 16000 } })
+            body: JSON.stringify({ contents: [{ parts: [{ text: promptIA }] }], generationConfig: { temperature: 0, maxOutputTokens: 16000 } }),
+            signal: controller.signal
           })
+          clearTimeout(timer)
           if (r.ok) { const d = await r.json() as any; respostaIA = d?.candidates?.[0]?.content?.parts?.[0]?.text || '' }
-        } catch (e) { /* */ }
+        } catch (e: any) { console.log(`⚠️ Gemini fallback erro: ${e.message?.substring(0, 80)}`) }
       }
       if (!respostaIA && openaiKey) {
         try {
+          const controller = new AbortController()
+          const timer = setTimeout(() => controller.abort(), iaTimeout)
           const r = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
-            body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'Extraia disciplinas de editais. JSON apenas.' }, { role: 'user', content: promptIA }], temperature: 0, max_tokens: 16000 })
+            body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'Extraia disciplinas de editais. JSON apenas.' }, { role: 'user', content: promptIA }], temperature: 0, max_tokens: 16000 }),
+            signal: controller.signal
           })
+          clearTimeout(timer)
           if (r.ok) { const d = await r.json() as any; respostaIA = d?.choices?.[0]?.message?.content || '' }
-        } catch (e) { /* */ }
+        } catch (e: any) { console.log(`⚠️ OpenAI fallback erro: ${e.message?.substring(0, 80)}`) }
       }
       if (!respostaIA && groqKey) {
         try {
+          const controller = new AbortController()
+          const timer = setTimeout(() => controller.abort(), iaTimeout)
           const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
-            body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: 'Extraia disciplinas. JSON apenas.' }, { role: 'user', content: promptIA }], temperature: 0, max_tokens: 16000 })
+            body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: 'Extraia disciplinas. JSON apenas.' }, { role: 'user', content: promptIA }], temperature: 0, max_tokens: 16000 }),
+            signal: controller.signal
           })
+          clearTimeout(timer)
           if (r.ok) { const d = await r.json() as any; respostaIA = d?.choices?.[0]?.message?.content || '' }
-        } catch (e) { /* */ }
+        } catch (e: any) { console.log(`⚠️ GROQ fallback erro: ${e.message?.substring(0, 80)}`) }
       }
       
       if (respostaIA) {
