@@ -3933,7 +3933,11 @@ async function processarEditalAntesDeStep2() {
       try {
         // ✅ MODO REVISÃO: Envia para IA e retorna disciplinas para revisão do usuário
         // Timeout de 3 minutos para PDFs grandes
-        const processRes = await axios.post(`/api/editais/processar/${edital.id}?modo=revisao`, {}, { timeout: 180000 });
+        const processRes = await axios.post(`/api/editais/processar/${edital.id}?modo=revisao`, {
+          cargo: interviewData.cargo || '',
+          concurso_nome: interviewData.concurso_nome || '',
+          banca: interviewData.banca_organizadora || ''
+        }, { timeout: 180000 });
         console.log(`✅ Edital processado:`, processRes.data);
         
         // Verificar se é modo revisão

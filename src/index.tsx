@@ -5889,13 +5889,19 @@ app.post('/api/editais/processar/:id', async (c) => {
     
     console.log(`✅ Edital #${editalId} encontrado: ${edital.nome_concurso}`)
     
-    // ✅ NOVO: Buscar cargo da entrevista do usuário para filtrar disciplinas
+    // ✅ v51d: Buscar cargo do body da requisição COM PRIORIDADE, senão da entrevista
+    let body: any = {}
+    try { body = await c.req.json() } catch (e) { /* body vazio é OK */ }
+    
     const entrevista = await DB.prepare(`
       SELECT cargo, concurso_nome, area_geral FROM interviews WHERE user_id = ? ORDER BY id DESC LIMIT 1
     `).bind(edital.user_id).first() as any
     
-    const cargoDesejado = entrevista?.cargo || ''
-    console.log(`👤 Cargo desejado pelo usuário: ${cargoDesejado || 'Não especificado'}`)
+    // Prioridade: 1) cargo do body, 2) cargo da entrevista
+    const cargoDesejado = body?.cargo?.trim() || entrevista?.cargo || ''
+    const concursoNomeBody = body?.concurso_nome?.trim() || edital.nome_concurso || ''
+    console.log(`👤 Cargo desejado (body: "${body?.cargo || ''}" | entrevista: "${entrevista?.cargo || ''}"): "${cargoDesejado}"`)
+    console.log(`🏫 Concurso: ${concursoNomeBody}`)
 
     // Validar texto do edital
     let textoOriginal = edital.texto_completo || ''
@@ -6208,951 +6214,100 @@ ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo princ
     }
     
     console.log('═'.repeat(60))
-    console.log('📋 PASSO 3: Localizando seção de CONTEÚDO PROGRAMÁTICO...')
+    console.log('📋 PASSO 3: Redirecionando para extração programática unificada (v51c)...')
     console.log('═'.repeat(60))
     
-    // ✅ NOVA LÓGICA: Extrair apenas a seção de conteúdo programático
-    const { conteudo: textoEdital, encontrado, posicao } = extrairConteudoProgramatico(textoLimpo)
+    // ✅ v51c: USAR A MESMA LÓGICA DE EXTRAÇÃO DO processar-texto
+    // Em vez de ter lógica duplicada, reutilizamos o endpoint processar-texto
+    // que já tem a extração programática robusta (tabela + padrão Nome:conteúdo)
     
-    if (encontrado) {
-      console.log(`✅ Conteúdo programático encontrado na posição ${posicao}`)
-      console.log(`📝 Extraídos ${textoEdital.length} caracteres para análise`)
-      console.log(`📄 Preview: ${textoEdital.substring(0, 300)}...`)
-    } else {
-      console.log(`⚠️ Seção específica não encontrada - usando primeiros ${textoEdital.length} caracteres`)
+    const modo = c.req.query('modo')
+    
+    // Construir o request como se fosse processar-texto
+    const requestBody = {
+      texto: textoLimpo,
+      user_id: edital.user_id?.toString(),
+      cargo: cargoDesejado || '',
+      concurso_nome: concursoNomeBody || '',
+      area_geral: entrevista?.area_geral || ''
     }
     
-    // Verificar se parece ser conteúdo programático
-    const temConteudoProgramatico = textoEdital.toLowerCase().includes('disciplina') ||
-                                     textoEdital.toLowerCase().includes('matéria') ||
-                                     textoEdital.toLowerCase().includes('conhecimentos') ||
-                                     textoEdital.toLowerCase().includes('português') ||
-                                     textoEdital.toLowerCase().includes('raciocínio')
+    console.log(`📝 Texto: ${textoLimpo.length} chars`)
+    console.log(`👤 Cargo para extração: "${cargoDesejado || 'não especificado'}"`)
+    console.log(`🏫 Concurso: ${concursoNomeBody || '?'}`)
     
-    if (!temConteudoProgramatico) {
-      console.warn(`⚠️ ALERTA: O texto pode não conter conteúdo programático visível`)
-    }
-    
-    console.log('═'.repeat(60))
-    console.log('📋 PASSO 4: Enviando para análise com IA...')
-    console.log('═'.repeat(60))
-
-    // ✅ v37: Buscar chaves do banco de dados (ordem de prioridade configurada pelo admin)
-    const apiKeys = await getActiveAPIKeys(DB)
-    console.log(`🔑 APIs configuradas: ${apiKeys.map(k => k.provider).join(', ') || 'nenhuma'}`)
-    
-    // Fallback para variáveis de ambiente se não houver chaves no banco
-    const geminiKeyFromDB = apiKeys.find(k => k.provider === 'gemini')?.api_key
-    const openaiKeyFromDB = apiKeys.find(k => k.provider === 'openai')?.api_key
-    const groqKeyFromDB = apiKeys.find(k => k.provider === 'groq')?.api_key
-    
-    const geminiKey = geminiKeyFromDB || c.env.GEMINI_API_KEY || ''
-    const openaiKey = openaiKeyFromDB || c.env.OPENAI_API_KEY || ''
-    const groqKey = groqKeyFromDB || c.env.GROQ_API_KEY || ''
-    
-    // ════════════════════════════════════════════════════════════════
-    // ✅ ETAPA 4A: PRIMEIRA EXTRAÇÃO - LOCALIZAR QUADRO DE PROVAS/PESOS
-    // ════════════════════════════════════════════════════════════════
-    console.log('📊 ETAPA 4A: Buscando QUADRO DE PROVAS para extrair pesos...')
-    
-    // Tentar encontrar tabela de provas no texto
-    const textoLowerCase = textoLimpo.toLowerCase()
-    let quadroProvas: any = null
-    
-    // Padrões comuns de quadro de provas
-    const posQuadro = Math.max(
-      textoLowerCase.indexOf('quadro de provas'),
-      textoLowerCase.indexOf('composição das provas'),
-      textoLowerCase.indexOf('estrutura da prova'),
-      textoLowerCase.indexOf('distribuição de questões'),
-      textoLowerCase.indexOf('tabela de provas')
-    )
-    
-    if (posQuadro > -1) {
-      // Extrair ~3000 caracteres após o início do quadro
-      const textoQuadro = textoLimpo.substring(posQuadro, posQuadro + 3000)
-      console.log(`  📍 Quadro de provas encontrado na posição ${posQuadro}`)
-      console.log(`  📄 Preview: ${textoQuadro.substring(0, 200)}...`)
+    // Chamar internamente o endpoint processar-texto usando app.request
+    try {
+      const internalReq = new Request('http://localhost/api/editais/processar-texto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      })
       
-      // Tentar extrair pesos via regex simples antes de usar IA
-      // Padrão: "Conhecimentos Gerais ... peso 1" ou "peso: 1" ou "(peso 1)"
-      const regexPesoGeral = /conhecimentos?\s+gerais[^0-9]*(?:peso|valor)[:\s]*(\d)/i
-      const regexPesoEspecifico = /conhecimentos?\s+espec[íi]ficos[^0-9]*(?:peso|valor)[:\s]*(\d)/i
+      const internalRes = await app.request(
+        '/api/editais/processar-texto',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        },
+        c.env
+      )
       
-      const matchPesoGeral = textoQuadro.match(regexPesoGeral)
-      const matchPesoEspecifico = textoQuadro.match(regexPesoEspecifico)
+      const resultData = await internalRes.json() as any
       
-      if (matchPesoGeral || matchPesoEspecifico) {
-        quadroProvas = {
-          encontrado: true,
-          peso_conhecimentos_gerais: matchPesoGeral ? parseInt(matchPesoGeral[1]) : 1,
-          peso_conhecimentos_especificos: matchPesoEspecifico ? parseInt(matchPesoEspecifico[1]) : 2,
-          fonte: 'regex'
-        }
-        console.log(`  ✅ Pesos extraídos por regex: CG=${quadroProvas.peso_conhecimentos_gerais}, CE=${quadroProvas.peso_conhecimentos_especificos}`)
+      if (!internalRes.ok || resultData.error) {
+        console.error(`❌ Extração falhou: ${resultData.error || 'erro desconhecido'}`)
+        throw new Error(resultData.error || 'Falha na extração programática')
       }
-    }
-    
-    // ════════════════════════════════════════════════════════════════
-    // ✅ ETAPA 4B: EXTRAÇÃO PRINCIPAL - DISCIPLINAS E TÓPICOS
-    // ════════════════════════════════════════════════════════════════
-    console.log('📚 ETAPA 4B: Extraindo disciplinas e tópicos...')
-    
-    const cargoUpper = cargoDesejado?.toUpperCase() || 'GERAL'
-    console.log(`🎯 Cargo alvo: ${cargoUpper}`)
-    
-    // ════════════════════════════════════════════════════════════════
-    // ✅ v46c: PRÉ-PROCESSAMENTO SIMPLIFICADO
-    // ════════════════════════════════════════════════════════════════
-    // Encontrar apenas a seção de conteúdo programático
-    let textoParaIA = textoEdital
-    
-    // Localizar início do conteúdo programático
-    const inicioConteudo = textoEdital.search(/conhecimentos\s+gerais[\s\r\n]+cargos\s+de\s+ensino\s+superior/i)
-    if (inicioConteudo > 0) {
-      textoParaIA = textoEdital.substring(inicioConteudo)
-      console.log(`📄 Conteúdo programático encontrado na posição ${inicioConteudo}`)
-    }
-    
-    // Limitar a 55000 caracteres
-    textoParaIA = textoParaIA.substring(0, 55000)
-    console.log(`🤖 Enviando ${textoParaIA.length} caracteres para análise da IA`)
-    
-    // ✅ USAR PESOS JÁ EXTRAÍDOS DO QUADRO DE PROVAS
-    const pesoCG = quadroProvas?.peso_conhecimentos_gerais || 1
-    const pesoCE = quadroProvas?.peso_conhecimentos_especificos || 2
-    
-    console.log(`📝 Analisando edital para cargo: ${cargoUpper}`)
-    
-    // Usar texto otimizado
-    const textoOtimizado = textoParaIA.substring(0, 55000)
-    console.log(`📄 Texto para IA: ${textoOtimizado.length} caracteres`)
-    
-    // ✅ v46c: PROMPT SUPER RESTRITIVO PARA SAÚDE
-    // Detectar se é concurso de saúde
-    const ehSaude = cargoUpper.includes('ENFERMEIRO') || cargoUpper.includes('MÉDICO') || 
-                   cargoUpper.includes('TÉCNICO') || cargoUpper.includes('DENTISTA') ||
-                   cargoUpper.includes('FARMACÊUTICO') || cargoUpper.includes('NUTRICIONISTA') ||
-                   cargoUpper.includes('FISIOTERAPEUTA') || cargoUpper.includes('PSICÓLOGO')
-    
-    const prompt = ehSaude ? 
-`RETORNE EXATAMENTE ESTE JSON (ajustando apenas os tópicos do texto):
-
-{"disciplinas":[
-{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Ortografia","Acentuação","Concordância","Interpretação de texto"]},
-{"nome":"Raciocínio Lógico-Matemático","peso":1,"categoria":"BÁSICOS","topicos":["Lógica proposicional","Sequências","Porcentagem"]},
-{"nome":"Conhecimentos Regionais","peso":1,"categoria":"BÁSICOS","topicos":["História local","Geografia local"]},
-{"nome":"Legislação do SUS","peso":2,"categoria":"ESPECÍFICOS","topicos":["Lei 8080/90","Lei 8142/90","Princípios do SUS"]},
-{"nome":"Conhecimentos Específicos de ${cargoUpper}","peso":2,"categoria":"ESPECÍFICOS","topicos":["(TODOS os itens da seção específica do cargo vão aqui como tópicos)"]}
-]}
-
-⚠️ REGRA ABSOLUTA: A seção do cargo "${cargoUpper}" no edital contém VÁRIOS TÓPICOS em texto corrido.
-Esses tópicos NÃO são disciplinas separadas - são todos TÓPICOS de UMA disciplina: "Conhecimentos Específicos de ${cargoUpper}".
-
-Por exemplo, se o edital diz:
-"Enfermeiro
-Ética e legislação: aspectos éticos... Código de Ética... Sistema Único de Saúde... Técnicas básicas..."
-
-Isso significa:
-- "Ética e legislação" → tópico
-- "Código de Ética" → tópico
-- "Sistema Único de Saúde" → tópico
-- "Técnicas básicas" → tópico
-Todos dentro de "Conhecimentos Específicos de ENFERMEIRO"
-
-TEXTO DO EDITAL:
-${textoOtimizado}` 
-:
-// PROMPT PARA CONCURSOS FISCAIS
-`Extraia as DISCIPLINAS do cargo ${cargoUpper}.
-
-ESTRUTURA PARA CONCURSOS FISCAIS:
-- Cada item com ":" é 1 disciplina separada
-- MÓDULO I (peso 1): Língua Portuguesa, Inglês, Raciocínio, Estatística, Economia, Administração, Auditoria, Contabilidade
-- MÓDULO II (peso 2): Direitos (Tributário, Constitucional, Administrativo, Previdenciário), Legislação Tributária/Aduaneira
-
-Total esperado: 15-18 disciplinas.
-
-JSON (sem markdown):
-{"disciplinas":[{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]},{"nome":"Direito Tributário","peso":2,"categoria":"ESPECÍFICOS","topicos":["CTN"]}]}
-
-TEXTO:
-${textoOtimizado}`
-
-    // ════════════════════════════════════════════════════════════════
-    // ✅ v43 - SISTEMA ROBUSTO COM RETRY GLOBAL E FALLBACK COMPLETO
-    // ════════════════════════════════════════════════════════════════
-    
-    let textoResposta = ''
-    let modeloUsado = ''
-    let lastError = ''
-    const errosAPI: string[] = []
-    
-    // Construir lista de APIs disponíveis
-    let ordemAPIs = apiKeys.filter(k => k.api_key && k.api_key.length > 10).map(k => k.provider)
-    
-    console.log(`🔑 Chaves encontradas no banco: ${apiKeys.length}`)
-    apiKeys.forEach(k => {
-      console.log(`   - ${k.provider}: ${k.api_key ? k.api_key.substring(0, 10) + '...' : 'VAZIA'}`)
-    })
-    
-    // Fallback para variáveis de ambiente se necessário
-    if (ordemAPIs.length === 0) {
-      console.log('⚠️ Nenhuma chave válida no banco, usando variáveis de ambiente...')
-      if (geminiKey && geminiKey.length > 10) ordemAPIs.push('gemini')
-      if (openaiKey && openaiKey.length > 10) ordemAPIs.push('openai')
-      if (groqKey && groqKey.length > 10) ordemAPIs.push('groq')
-    }
-    
-    console.log(`📋 Ordem de fallback: ${ordemAPIs.join(' → ') || 'NENHUMA API DISPONÍVEL'}`)
-    
-    if (ordemAPIs.length === 0) {
-      console.error('❌ ERRO CRÍTICO: Nenhuma chave de API disponível!')
+      
+      console.log(`✅ Extração unificada: ${resultData.disciplinas?.length || 0} disciplinas`)
+      
+      // ✅ Atualizar status do edital para processado
+      await DB.prepare('UPDATE editais SET status = ? WHERE id = ?').bind('processado', editalId).run()
+      
+      // ✅ Se modo revisão, retornar disciplinas para o usuário revisar
+      if (modo === 'revisao') {
+        return c.json({
+          success: true,
+          modo: 'revisao',
+          edital_id: resultData.edital_id,
+          disciplinas: resultData.disciplinas,
+          total: resultData.total,
+          concurso_detectado: resultData.concurso_detectado,
+          area_detectada: resultData.area_detectada,
+          fonte: 'extracao_programatica_v51c',
+          message: `${resultData.disciplinas?.length || 0} disciplinas identificadas para revisão`
+        })
+      }
+      
+      // Modo direto
       return c.json({
-        error: 'Nenhuma chave de API configurada.',
-        errorType: 'NO_API_KEYS',
-        suggestion: 'Configure as chaves de API no painel de administração.',
-        canRetry: false
+        success: true,
+        edital_id: resultData.edital_id,
+        disciplinas: resultData.disciplinas,
+        total: resultData.total,
+        concurso_detectado: resultData.concurso_detectado,
+        area_detectada: resultData.area_detectada,
+        fonte: 'extracao_programatica_v51c',
+        estatisticas: {
+          total_disciplinas: resultData.disciplinas?.length || 0,
+          total_topicos: resultData.disciplinas?.reduce((acc: number, d: any) => acc + (d.topicos?.length || 0), 0) || 0
+        }
+      })
+    } catch (internalError: any) {
+      console.error('❌ Erro na extração unificada:', internalError.message)
+      
+      // Marcar como erro
+      await DB.prepare('UPDATE editais SET status = ? WHERE id = ?').bind('erro', editalId).run()
+      
+      return c.json({
+        error: internalError.message || 'Erro ao processar edital',
+        errorType: 'PROCESSING_ERROR',
+        suggestion: 'Tente novamente ou cole o texto do edital manualmente',
+        canRetry: true
       }, 500)
     }
-    
-    // ════════════════════════════════════════════════════════════════
-    // ✅ v43: HELPER FUNCTION - Tenta todas as APIs uma vez
-    // ════════════════════════════════════════════════════════════════
-    const tentarTodasAPIs = async (tentativaGlobal: number): Promise<{sucesso: boolean, texto: string, modelo: string}> => {
-      console.log(`\n🔄 TENTATIVA GLOBAL ${tentativaGlobal + 1}/3...`)
-      
-      // Tentar GEMINI (múltiplos modelos)
-      if (ordemAPIs.includes('gemini') && geminiKey) {
-        const modelosGemini = [
-          { nome: 'gemini-2.0-flash', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}` },
-          { nome: 'gemini-1.5-flash-latest', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}` },
-          { nome: 'gemini-2.0-flash-lite', url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}` }
-        ]
-        
-        for (const modelo of modelosGemini) {
-          console.log(`🚀 Tentando ${modelo.nome}...`)
-          try {
-            const response = await fetch(modelo.url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0, maxOutputTokens: 65536 }
-              })
-            })
-            
-            console.log(`📡 ${modelo.nome}: Status ${response.status}`)
-            
-            if (response.status === 429) {
-              errosAPI.push(`${modelo.nome}: Rate limit (tentativa ${tentativaGlobal + 1})`)
-              continue
-            }
-            
-            if (!response.ok) {
-              errosAPI.push(`${modelo.nome}: HTTP ${response.status}`)
-              continue
-            }
-            
-            const data = await response.json() as any
-            const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-            
-            if (texto && texto.length > 50) {
-              console.log(`✅ ${modelo.nome} OK! (${texto.length} chars)`)
-              return { sucesso: true, texto, modelo: modelo.nome }
-            } else if (texto) {
-              console.log(`⚠️ ${modelo.nome}: resposta curta (${texto.length} chars)`)
-            }
-          } catch (err) {
-            errosAPI.push(`${modelo.nome}: ${err}`)
-          }
-        }
-      }
-      
-      // Tentar OPENAI
-      if (ordemAPIs.includes('openai') && openaiKey) {
-        console.log(`🚀 Tentando OpenAI GPT-4o-mini...`)
-        try {
-          const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${openaiKey}`
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini',
-              messages: [
-                { role: 'system', content: 'Você é um especialista em extrair informações de editais de concursos. Retorne APENAS JSON válido, sem markdown ou texto adicional.' },
-                { role: 'user', content: prompt }
-              ],
-              temperature: 0,
-              max_tokens: 16000
-            })
-          })
-          
-          console.log(`📡 OpenAI: Status ${response.status}`)
-          
-          if (response.status === 429) {
-            errosAPI.push(`OpenAI: Rate limit (tentativa ${tentativaGlobal + 1})`)
-          } else if (response.ok) {
-            const data = await response.json() as any
-            const texto = data?.choices?.[0]?.message?.content || ''
-            if (texto && texto.length > 50) {
-              console.log(`✅ OpenAI OK! (${texto.length} chars)`)
-              return { sucesso: true, texto, modelo: 'gpt-4o-mini' }
-            }
-          } else {
-            errosAPI.push(`OpenAI: HTTP ${response.status}`)
-          }
-        } catch (err) {
-          errosAPI.push(`OpenAI: ${err}`)
-        }
-      }
-      
-      // Tentar GROQ
-      if (ordemAPIs.includes('groq') && groqKey) {
-        console.log(`🚀 Tentando GROQ LLaMA...`)
-        const textoParaGroq = textoOtimizado.substring(0, 25000)
-        const promptGroq = `Extraia APENAS as disciplinas do cargo "${cargoUpper}".
-
-REGRAS:
-1. INCLUA: Conhecimentos Gerais/Básicos do nível do cargo
-2. INCLUA: Conhecimentos Específicos comuns ao nível
-3. INCLUA: Conhecimentos Específicos DO CARGO "${cargoUpper}"
-4. NÃO INCLUA: Disciplinas de OUTROS cargos
-5. Saúde: 4-6 disciplinas. Fiscais: 15-20 disciplinas.
-
-FORMATO JSON: {"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["tópico"]}]}
-
-TEXTO:
-${textoParaGroq}`
-        
-        try {
-          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${groqKey}`
-            },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              messages: [{ role: 'user', content: promptGroq }],
-              temperature: 0,
-              max_tokens: 8000
-            })
-          })
-          
-          console.log(`📡 GROQ: Status ${response.status}`)
-          
-          if (response.status === 429) {
-            errosAPI.push(`GROQ: Rate limit (tentativa ${tentativaGlobal + 1})`)
-          } else if (response.status === 413) {
-            errosAPI.push('GROQ: Payload muito grande')
-          } else if (response.ok) {
-            const data = await response.json() as any
-            const texto = data?.choices?.[0]?.message?.content || ''
-            if (texto && texto.length > 50) {
-              console.log(`✅ GROQ OK! (${texto.length} chars)`)
-              return { sucesso: true, texto, modelo: 'groq-llama-3.3-70b' }
-            }
-          } else {
-            errosAPI.push(`GROQ: HTTP ${response.status}`)
-          }
-        } catch (err) {
-          errosAPI.push(`GROQ: ${err}`)
-        }
-      }
-      
-      return { sucesso: false, texto: '', modelo: '' }
-    }
-    
-    // ════════════════════════════════════════════════════════════════
-    // ✅ v43: RETRY GLOBAL - Tenta até 3 rodadas com delays crescentes
-    // ════════════════════════════════════════════════════════════════
-    const MAX_GLOBAL_RETRIES = 3
-    const GLOBAL_DELAYS = [0, 5000, 15000] // 0s, 5s, 15s entre tentativas
-    
-    for (let globalRetry = 0; globalRetry < MAX_GLOBAL_RETRIES; globalRetry++) {
-      // Aplicar delay (exceto na primeira tentativa)
-      if (globalRetry > 0) {
-        const delay = GLOBAL_DELAYS[globalRetry]
-        console.log(`⏳ Aguardando ${delay/1000}s antes da próxima rodada...`)
-        await new Promise(r => setTimeout(r, delay))
-      }
-      
-      const resultado = await tentarTodasAPIs(globalRetry)
-      
-      if (resultado.sucesso) {
-        textoResposta = resultado.texto
-        modeloUsado = resultado.modelo
-        break
-      }
-    }
-    
-    // Se todas as APIs falharam
-    if (!textoResposta || !modeloUsado) {
-      console.error(`❌ Todas as ${MAX_GLOBAL_RETRIES} tentativas globais falharam. Erros: ${errosAPI.join('; ')}`)
-      console.error(`   APIs tentadas: ${ordemAPIs.join(', ')}`)
-      
-      await DB.prepare(`UPDATE editais SET status = 'erro' WHERE id = ?`).bind(editalId).run()
-      
-      return c.json({
-        error: 'API temporariamente indisponível',
-        errorType: 'AI_UNAVAILABLE',
-        suggestion: 'Todas as APIs estão com rate limit. Aguarde 2-3 minutos e tente novamente.',
-        canRetry: true,
-        retryAfter: 120,
-        debug: `${errosAPI.length} erros em ${MAX_GLOBAL_RETRIES} tentativas`,
-        apisAttempted: ordemAPIs,
-        errors: errosAPI.slice(-10)
-      }, 503)
-    }
-    
-    console.log(`✅ Processamento concluído com ${modeloUsado}!`)
-    
-    // ════════════════════════════════════════════════════════════════
-    // ✅ SISTEMA ULTRA-ROBUSTO DE PARSING DE RESPOSTA DA IA
-    // ════════════════════════════════════════════════════════════════
-    
-    let resultado: any = null
-    
-    // Estratégia 1: Tentar extrair JSON da resposta
-    let jsonMatch = textoResposta.match(/\{[\s\S]*\}/)
-    
-    if (jsonMatch) {
-      try {
-        // Limpar JSON de caracteres problemáticos
-        let jsonStr = jsonMatch[0]
-        jsonStr = jsonStr.replace(/[\x00-\x1F\x7F]/g, ' ') // Remove caracteres de controle
-        jsonStr = jsonStr.replace(/,\s*([}\]])/g, '$1') // Remove vírgulas extras
-        jsonStr = jsonStr.replace(/\n/g, ' ').replace(/\r/g, ' ')
-        
-        try {
-          resultado = JSON.parse(jsonStr)
-          console.log('✅ JSON parseado com sucesso na primeira tentativa')
-        } catch (e) {
-          console.warn('⚠️ Primeira tentativa de parse falhou, tentando correção...')
-          
-          // Estratégia 1b: Fechar arrays/objetos abertos
-          let bracketCount = 0, braceCount = 0
-          for (let i = 0; i < jsonStr.length; i++) {
-            if (jsonStr[i] === '{') braceCount++
-            if (jsonStr[i] === '}') braceCount--
-            if (jsonStr[i] === '[') bracketCount++
-            if (jsonStr[i] === ']') bracketCount--
-          }
-          
-          let closingChars = ''
-          for (let i = 0; i < bracketCount; i++) closingChars += ']'
-          for (let i = 0; i < braceCount; i++) closingChars += '}'
-          
-          if (closingChars) {
-            jsonStr = jsonStr + closingChars
-            console.log('📝 Tentando com fechamento automático...')
-          }
-          
-          try {
-            resultado = JSON.parse(jsonStr)
-            console.log('✅ JSON parseado após correção de fechamento')
-          } catch (e2) {
-            console.warn('⚠️ Segunda tentativa falhou')
-          }
-        }
-      } catch (parseError) {
-        console.warn('⚠️ Erro ao processar JSON:', parseError)
-      }
-    }
-    
-    // Estratégia 2: Extrair disciplinas por regex se JSON falhou
-    if (!resultado || !resultado.disciplinas || resultado.disciplinas.length === 0) {
-      console.log('🔄 Tentando extração por regex...')
-      
-      // Padrões para encontrar disciplinas no texto
-      const disciplinasExtraidas: any[] = []
-      
-      // Padrão 1: "nome": "Disciplina"
-      const regexNome = /"nome"\s*:\s*"([^"]+)"/gi
-      let match
-      const nomesEncontrados = new Set<string>()
-      
-      while ((match = regexNome.exec(textoResposta)) !== null) {
-        const nome = match[1].trim()
-        if (nome.length > 3 && nome.length < 100 && !nomesEncontrados.has(nome.toLowerCase())) {
-          nomesEncontrados.add(nome.toLowerCase())
-          disciplinasExtraidas.push({
-            nome: nome,
-            peso: null,
-            topicos: []
-          })
-        }
-      }
-      
-      // Padrão 2: Buscar listas de disciplinas por texto - FILTRADO POR ÁREA DO CARGO
-      if (disciplinasExtraidas.length === 0) {
-        // Detectar área do cargo para filtrar regex
-        const cargoLower2 = cargoDesejado?.toLowerCase() || ''
-        const ehSaude = cargoLower2.includes('enfermeiro') || cargoLower2.includes('enfermagem') || 
-                        cargoLower2.includes('saúde') || cargoLower2.includes('saude') ||
-                        cargoLower2.includes('médico') || cargoLower2.includes('medico')
-        const ehDireito = cargoLower2.includes('direito') || cargoLower2.includes('advogado') || 
-                          cargoLower2.includes('jurídico') || cargoLower2.includes('juridico')
-        
-        // Padrões COMUNS a todos os cargos
-        const padroesComunsTexto = [
-          /(?:língua\s*)?portugu[eê]s/gi,
-          /racioc[íi]nio\s*l[óo]gico/gi,
-          /matem[áa]tica/gi,
-          /inform[áa]tica/gi,
-          /conhecimentos?\s*(?:regionais?|gerais?)/gi,
-        ]
-        
-        // Padrões de SAÚDE - só usar se cargo for da área
-        const padroesSaudeTexto = [
-          /(?:sistema\s*)?[úu]nico\s*de\s*sa[úu]de|sus/gi,
-          /enfermagem/gi,
-          /sa[úu]de\s*(?:p[úu]blica|coletiva|da\s*mulher|da\s*crian[çc]a)/gi,
-          /legisla[çc][ãa]o\s*(?:de\s*)?(?:sa[úu]de|sus)/gi,
-          /[ée]tica\s*(?:em\s*)?(?:sa[úu]de|enfermagem)/gi,
-        ]
-        
-        // Padrões de DIREITO - só usar se cargo for da área jurídica
-        const padroesDireitoTexto = [
-          /direito\s*(?:administrativo|constitucional|penal|civil|processual)/gi,
-          /legisla[çc][ãa]o\s*(?:trabalhista|previdenci[áa]ria)/gi,
-        ]
-        
-        // Montar lista de padrões baseada no cargo
-        let padroesTexto = [...padroesComunsTexto]
-        if (ehSaude) {
-          padroesTexto.push(...padroesSaudeTexto)
-          console.log('🏥 Usando padrões de SAÚDE para regex')
-        } else if (ehDireito) {
-          padroesTexto.push(...padroesDireitoTexto)
-          console.log('⚖️ Usando padrões de DIREITO para regex')
-        } else {
-          // Cargo genérico: adicionar tudo mas sem prioridade
-          padroesTexto.push(/conhecimentos?\s*espec[íi]ficos/gi)
-          console.log('📋 Usando padrões GENÉRICOS para regex')
-        }
-        
-        for (const padrao of padroesTexto) {
-          const matches = textoResposta.match(padrao)
-          if (matches) {
-            for (const m of matches) {
-              const nomeNorm = m.trim()
-              if (!nomesEncontrados.has(nomeNorm.toLowerCase())) {
-                nomesEncontrados.add(nomeNorm.toLowerCase())
-                // Capitalizar primeira letra
-                const nomeCap = nomeNorm.charAt(0).toUpperCase() + nomeNorm.slice(1).toLowerCase()
-                disciplinasExtraidas.push({
-                  nome: nomeCap,
-                  peso: null,
-                  topicos: []
-                })
-              }
-            }
-          }
-        }
-      }
-      
-      if (disciplinasExtraidas.length > 0) {
-        console.log(`✅ Extraídas ${disciplinasExtraidas.length} disciplinas por regex`)
-        resultado = { disciplinas: disciplinasExtraidas, info_peso: {} }
-      }
-    }
-    
-    // ✅ CORREÇÃO v24 - REMOVIDO FALLBACK DE DISCIPLINAS PADRÃO
-    // Se a IA não conseguiu extrair, retornar erro claro ao usuário
-    // NÃO criar disciplinas genéricas/padrão que não estão no edital
-    
-    // Validar se temos resultado agora
-    if (!resultado || !resultado.disciplinas || resultado.disciplinas.length === 0) {
-      console.error('❌ Não foi possível extrair disciplinas de nenhuma forma')
-      
-      // Marcar como erro mas permitir continuar manualmente
-      await DB.prepare(`UPDATE editais SET status = 'erro' WHERE id = ?`).bind(editalId).run()
-      
-      return c.json({
-        error: 'Não foi possível extrair disciplinas automaticamente.',
-        errorType: 'EXTRACTION_FAILED',
-        suggestion: 'O sistema não conseguiu identificar disciplinas no edital. Você pode:\n\n1. ✅ Continuar e selecionar disciplinas manualmente\n2. 📄 Usar um arquivo XLSX com cronograma de estudos\n3. 📝 Converter o PDF para TXT e tentar novamente',
-        canRetry: true,
-        canContinueManually: true,
-        step: 4,
-        stepName: 'Extração de disciplinas'
-      }, 400)
-    }
-    
-    // ════════════════════════════════════════════════════════════════
-    // ✅ PROCESSAMENTO DAS DISCIPLINAS EXTRAÍDAS
-    // ════════════════════════════════════════════════════════════════
-    
-    console.log(`✅ Extração concluída com sucesso`)
-    console.log(`📚 Disciplinas encontradas: ${resultado.disciplinas?.length || 0}`)
-      
-      // ════════════════════════════════════════════════════════════════
-      // ✅ PÓS-PROCESSAMENTO CRÍTICO: GARANTIR PESO EM TODAS AS DISCIPLINAS
-      // ════════════════════════════════════════════════════════════════
-      
-      // Extrair informações de peso do resultado (se disponível)
-      const infoPeso = resultado.info_peso || {}
-      const pesoConhecimentosGerais = infoPeso.peso_conhecimentos_gerais || 1
-      const pesoConhecimentosEspecificos = infoPeso.peso_conhecimentos_especificos || 3
-      
-      console.log(`📊 INFO PESO EXTRAÍDO: CG=${pesoConhecimentosGerais}, CE=${pesoConhecimentosEspecificos}`)
-      
-      // Definir quais disciplinas são de Conhecimentos Gerais vs Específicos
-      const disciplinasConhecimentosGerais = [
-        'português', 'lingua', 'portugues',
-        'raciocínio', 'raciocinio', 'lógico', 'logico', 'matemático', 'matematico',
-        'conhecimentos regionais', 'regional', 'piauí', 'piaui',
-        'informática', 'informatica', 'computação', 'computacao',
-        'atualidades', 'conhecimentos gerais',
-        'ética', 'etica', 'noções de administração', 'nocoes'
-      ]
-      
-      const disciplinasConhecimentosEspecificos = [
-        'sus', 'saúde', 'saude', 'único', 'unico',
-        'enfermagem', 'enfermeiro', 'técnico', 'tecnico',
-        'específicos', 'especificos', 'especializado',
-        'legislação', 'legislacao',
-        'políticas', 'politicas', 'humanização', 'humanizacao'
-      ]
-      
-      // Função para determinar categoria e peso
-      const determinarPeso = (disc: any): number => {
-        // 1. Se já tem peso definido (não null), usar esse
-        if (disc.peso !== null && disc.peso !== undefined && typeof disc.peso === 'number') {
-          return disc.peso
-        }
-        
-        // 2. Se tem categoria definida pela Gemini, usar
-        if (disc.categoria) {
-          const catNorm = disc.categoria.toLowerCase()
-          if (catNorm.includes('geral') || catNorm.includes('básico') || catNorm.includes('basico')) {
-            return pesoConhecimentosGerais
-          }
-          if (catNorm.includes('específico') || catNorm.includes('especifico')) {
-            return pesoConhecimentosEspecificos
-          }
-        }
-        
-        // 3. Inferir pela nome da disciplina
-        const nomeNorm = disc.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        
-        // Verificar se é Conhecimentos Gerais
-        const ehConhecimentosGerais = disciplinasConhecimentosGerais.some(termo => 
-          nomeNorm.includes(termo.toLowerCase())
-        )
-        if (ehConhecimentosGerais) {
-          return pesoConhecimentosGerais
-        }
-        
-        // Verificar se é Conhecimentos Específicos
-        const ehConhecimentosEspecificos = disciplinasConhecimentosEspecificos.some(termo => 
-          nomeNorm.includes(termo.toLowerCase())
-        )
-        if (ehConhecimentosEspecificos) {
-          return pesoConhecimentosEspecificos
-        }
-        
-        // 4. Fallback: peso 1 (mais conservador)
-        return 1
-      }
-      
-      // Aplicar peso a todas as disciplinas que não têm
-      resultado.disciplinas = resultado.disciplinas.map((disc: any) => {
-        const pesoCalculado = determinarPeso(disc)
-        const pesoFinal = disc.peso ?? pesoCalculado
-        
-        if (disc.peso === null || disc.peso === undefined) {
-          console.log(`  🔧 Atribuindo peso ${pesoFinal} para "${disc.nome}" (categoria: ${disc.categoria || 'inferida'})`)
-        }
-        
-        return {
-          ...disc,
-          peso: pesoFinal
-        }
-      })
-      
-      // ✅ LOG DETALHADO: Mostrar peso e questões de cada disciplina extraída
-      if (resultado.disciplinas && resultado.disciplinas.length > 0) {
-        console.log('📊 DETALHES DAS DISCIPLINAS APÓS PÓS-PROCESSAMENTO:')
-        resultado.disciplinas.forEach((d: any, idx: number) => {
-          console.log(`   ${idx + 1}. ${d.nome} → peso: ${d.peso}, questões: ${d.questoes ?? 'N/A'}, tópicos: ${d.topicos?.length || 0}`)
-        })
-      }
-      
-      // Validar estrutura do resultado
-      if (!resultado.disciplinas || !Array.isArray(resultado.disciplinas)) {
-        throw new Error('JSON não contém array de disciplinas')
-      }
-      
-      if (resultado.disciplinas.length === 0) {
-        // ✅ NOVA LÓGICA: Retornar erro específico quando IA não encontra disciplinas
-        console.error('═'.repeat(60))
-        console.error('❌ PASSO 4 FALHOU: IA não encontrou disciplinas')
-        console.error('═'.repeat(60))
-        console.error(`📝 Texto enviado tinha ${textoEdital.length} caracteres`)
-        console.error(`📝 Preview do texto: ${textoEdital.substring(0, 500)}...`)
-        
-        // Marcar edital como erro para poder tentar novamente
-        await DB.prepare(`
-          UPDATE editais SET status = 'erro' WHERE id = ?
-        `).bind(editalId).run()
-        
-        return c.json({ 
-          error: 'A IA não conseguiu identificar disciplinas no texto do edital.',
-          errorType: 'NO_DISCIPLINES_FOUND',
-          suggestion: `Possíveis causas:\n• O arquivo pode estar protegido ou escaneado\n• O conteúdo programático pode estar em formato não reconhecível\n• O texto pode estar truncado\n\nSoluções:\n1. Converta o PDF para TXT em https://smallpdf.com/pdf-to-text\n2. Use um arquivo XLSX com cronograma de estudos\n3. Copie apenas a seção "Conteúdo Programático" para um arquivo TXT`,
-          textLength: textoEdital.length,
-          textPreview: textoEdital.substring(0, 200),
-          step: 4,
-          stepName: 'Análise com IA Gemini',
-          canRetry: true
-        }, 400)
-      }
-    
-    // ==========================================
-    // AGRUPAMENTO INTELIGENTE PÓS-PROCESSAMENTO
-    // ==========================================
-    console.log('🔄 Iniciando agrupamento inteligente de disciplinas...')
-    
-    // Mapa de agrupamento para área de saúde
-    const gruposAgrupamento = {
-      'Língua Portuguesa': ['portugues', 'lingua', 'gramatica', 'redacao', 'interpretacao'],
-      'Raciocínio Lógico': ['raciocinio', 'logica', 'matematica'],
-      'Informática': ['informatica', 'computador', 'internet', 'software', 'hardware'],
-      'Sistema Único de Saúde (SUS)': ['sus', 'saude publica', 'lei 8080', 'lei 8142', 'politica', 'humanizacao'],
-      'Enfermagem Clínica': ['enfermagem', 'cuidados', 'assistencia', 'procedimento', 'tecnica'],
-      'Urgência e Emergência': ['urgencia', 'emergencia', 'trauma', 'suporte', 'reanimacao'],
-      'Saúde da Criança': ['crianca', 'pediatria', 'neonatal', 'adolescente'],
-      'Saúde da Mulher': ['mulher', 'ginecologia', 'obstetricia', 'gestante', 'materna'],
-      'Legislação': ['legislacao', 'lei', 'decreto', 'resolucao', 'portaria'],
-      'Ética Profissional': ['etica', 'bioetica', 'codigo', 'moral']
-    }
-    
-    const disciplinasAgrupadas: any[] = []
-    const disciplinasUsadas = new Set<number>()
-    
-    // ✅ CORREÇÃO: Preservar PESO durante agrupamento
-    // Primeiro: agrupar por categorias predefinidas
-    for (const [nomeGrupo, palavrasChave] of Object.entries(gruposAgrupamento)) {
-      const topicosGrupo: string[] = []
-      let pesoGrupo: number | null = null // ✅ Preservar peso do grupo
-      let questoesGrupo: number | null = null // ✅ Preservar questões do grupo
-      
-      for (let i = 0; i < resultado.disciplinas.length; i++) {
-        if (disciplinasUsadas.has(i)) continue
-        
-        const disc = resultado.disciplinas[i]
-        const nomeNormalizado = disc.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        
-        // Verificar se o nome da disciplina contém alguma palavra-chave
-        const pertenceAoGrupo = palavrasChave.some(palavra => 
-          nomeNormalizado.includes(palavra.toLowerCase())
-        )
-        
-        if (pertenceAoGrupo) {
-          // ✅ NOVO: Capturar peso e questões da primeira disciplina do grupo
-          if (pesoGrupo === null && disc.peso !== null && disc.peso !== undefined) {
-            pesoGrupo = disc.peso
-            console.log(`    💡 Peso encontrado para grupo "${nomeGrupo}": ${disc.peso} (de ${disc.nome})`)
-          }
-          if (questoesGrupo === null && disc.questoes !== null && disc.questoes !== undefined) {
-            questoesGrupo = disc.questoes
-          }
-          
-          // Adicionar o nome original como tópico
-          topicosGrupo.push(disc.nome)
-          // Adicionar os tópicos originais também
-          if (disc.topicos && disc.topicos.length > 0) {
-            topicosGrupo.push(...disc.topicos)
-          }
-          disciplinasUsadas.add(i)
-        }
-      }
-      
-      // Se encontrou disciplinas para este grupo, criar uma disciplina agrupada
-      if (topicosGrupo.length > 0) {
-        disciplinasAgrupadas.push({
-          nome: nomeGrupo,
-          peso: pesoGrupo, // ✅ PRESERVAR PESO!
-          questoes: questoesGrupo, // ✅ PRESERVAR QUESTÕES!
-          topicos: [...new Set(topicosGrupo)] // Remover duplicatas
-        })
-        console.log(`  📦 Grupo "${nomeGrupo}" criado com peso: ${pesoGrupo || 'N/A'}`)
-      }
-    }
-    
-    // Segundo: adicionar disciplinas não agrupadas (se sobrarem) - COM PESO!
-    for (let i = 0; i < resultado.disciplinas.length; i++) {
-      if (!disciplinasUsadas.has(i)) {
-        const disc = resultado.disciplinas[i]
-        disciplinasAgrupadas.push({
-          nome: disc.nome,
-          peso: disc.peso || null, // ✅ PRESERVAR PESO!
-          questoes: disc.questoes || null, // ✅ PRESERVAR QUESTÕES!
-          topicos: disc.topicos || []
-        })
-        console.log(`  📌 Disciplina "${disc.nome}" mantida com peso: ${disc.peso || 'N/A'}`)
-      }
-    }
-    
-    // Limitar a 12 disciplinas
-    if (disciplinasAgrupadas.length > 12) {
-      console.warn(`⚠️ Após agrupamento: ${disciplinasAgrupadas.length} disciplinas. Limitando a 12.`)
-      resultado.disciplinas = disciplinasAgrupadas.slice(0, 12)
-    } else {
-      resultado.disciplinas = disciplinasAgrupadas
-    }
-    
-    console.log(`✅ Agrupamento concluído: ${resultado.disciplinas.length} disciplinas finais`)
-    console.log('📋 Disciplinas agrupadas:', resultado.disciplinas.map(d => d.nome).join(', '))
-    
-    // Validar estrutura
-    if (!resultado.disciplinas || !Array.isArray(resultado.disciplinas)) {
-      throw new Error('Resposta da IA não contém array de disciplinas')
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // ✅ NOVA FUNCIONALIDADE: MODO REVISÃO - Retorna disciplinas para o usuário revisar
-    // ════════════════════════════════════════════════════════════════════════
-    
-    // Verificar se o usuário quer modo revisão (query param ?modo=revisao)
-    const modoRevisao = c.req.query('modo') === 'revisao'
-    
-    if (modoRevisao) {
-      console.log('📝 MODO REVISÃO: Retornando disciplinas para revisão do usuário...')
-      
-      // Marcar edital como 'aguardando_revisao' em vez de 'processado'
-      await DB.prepare(`
-        UPDATE editais SET status = 'aguardando_revisao' WHERE id = ?
-      `).bind(editalId).run()
-      
-      // Retornar disciplinas completas para revisão (com todos os tópicos)
-      return c.json({ 
-        success: true,
-        modo: 'revisao',
-        edital_id: editalId,
-        message: 'Disciplinas extraídas! Revise os pesos e tópicos antes de confirmar.',
-        quadro_provas: quadroProvas || { encontrado: false },
-        disciplinas: resultado.disciplinas.map((d, idx) => ({
-          id: idx + 1,
-          nome: d.nome,
-          categoria: d.categoria || 'Geral',
-          peso: d.peso || 1,
-          questoes: d.questoes || null,
-          topicos: d.topicos || []
-        })),
-        estatisticas: {
-          total_disciplinas: resultado.disciplinas.length,
-          disciplinas_com_peso: resultado.disciplinas.filter(d => d.peso).length,
-          total_topicos: resultado.disciplinas.reduce((acc, d) => acc + (d.topicos ? d.topicos.length : 0), 0)
-        }
-      })
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // MODO NORMAL: Salvar diretamente (comportamento anterior)
-    // ════════════════════════════════════════════════════════════════════════
-    console.log(`💾 Salvando ${resultado.disciplinas.length} disciplinas no banco...`)
-    
-    for (let i = 0; i < resultado.disciplinas.length; i++) {
-      const disc = resultado.disciplinas[i]
-      
-      // ✅ CORREÇÃO v20.8: Verificar se disciplina já existe na tabela disciplinas
-      let disciplina_id_real = null
-      const discExistente = await DB.prepare(`
-        SELECT id FROM disciplinas WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?))
-      `).bind(disc.nome).first() as any
-      
-      if (discExistente) {
-        disciplina_id_real = discExistente.id
-        console.log(`  ℹ️ Disciplina "${disc.nome}" já existe (ID: ${disciplina_id_real})`)
-      } else {
-        // Criar nova disciplina na tabela disciplinas
-        const novaDiscResult = await DB.prepare(`
-          INSERT INTO disciplinas (nome, area, descricao)
-          VALUES (?, ?, ?)
-        `).bind(disc.nome, 'edital', 'Disciplina extraída de edital/cronograma').run()
-        
-        disciplina_id_real = novaDiscResult.meta.last_row_id
-        console.log(`  ✅ Nova disciplina criada: "${disc.nome}" (ID: ${disciplina_id_real})`)
-      }
-      
-      // Inserir em edital_disciplinas COM o disciplina_id correto E peso
-      const discResult = await DB.prepare(`
-        INSERT INTO edital_disciplinas (edital_id, nome, ordem, disciplina_id, peso)
-        VALUES (?, ?, ?, ?, ?)
-      `).bind(editalId, disc.nome, i + 1, disciplina_id_real, disc.peso || null).run()
-
-      const edital_disciplina_id = discResult.meta.last_row_id
-      console.log(`  ✅ Disciplina vinculada ao edital: ${disc.nome} (edital_disciplina_id: ${edital_disciplina_id}, disciplina_id: ${disciplina_id_real}, peso: ${disc.peso || 'N/A'})`)
-
-      // Inserir tópicos em edital_topicos
-      if (disc.topicos && disc.topicos.length > 0) {
-        // ✅ DEDUPLICAR tópicos antes de salvar (IA às vezes retorna duplicados)
-        const topicosUnicos = [...new Set(
-          disc.topicos
-            .map((t: any) => typeof t === 'string' ? t.trim() : t)
-            .filter((t: string) => t && t.length > 0)
-        )]
-        
-        console.log(`    📋 ${disc.topicos.length} tópicos recebidos, ${topicosUnicos.length} únicos`)
-        
-        for (let j = 0; j < topicosUnicos.length; j++) {
-          const topicoNome = topicosUnicos[j]
-          
-          // Salvar em edital_topicos (INSERT OR IGNORE para evitar duplicatas)
-          await DB.prepare(`
-            INSERT OR IGNORE INTO edital_topicos (edital_disciplina_id, nome, ordem)
-            VALUES (?, ?, ?)
-          `).bind(edital_disciplina_id, topicoNome, j + 1).run()
-          
-          // ✅ Também salvar em topicos_edital (usado nas metas semanais)
-          // Verificar se já existe para ESTE USUÁRIO
-          const topicoExistente = await DB.prepare(`
-            SELECT id FROM topicos_edital WHERE disciplina_id = ? AND user_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
-          `).bind(disciplina_id_real, edital.user_id, topicoNome).first()
-          
-          if (!topicoExistente) {
-            // Usar o peso da disciplina pai para os tópicos + user_id
-            const pesoTopico = disc.peso || 1
-            await DB.prepare(`
-              INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
-              VALUES (?, ?, ?, ?, ?, ?)
-            `).bind(disciplina_id_real, topicoNome, 'Conteúdo Programático', j + 1, pesoTopico, edital.user_id).run()
-          }
-        }
-        console.log(`    → ${topicosUnicos.length} tópicos únicos salvos (edital_topicos + topicos_edital)`)
-      }
-    }
-
-    // Atualizar status do edital
-    await DB.prepare(`
-      UPDATE editais SET status = 'processado' WHERE id = ?
-    `).bind(editalId).run()
-
-    console.log(`✅ Edital ${editalId} marcado como 'processado'`)
-
-    // Retornar detalhes completos do processamento
-    return c.json({ 
-      success: true, 
-      modo: 'direto',
-      disciplinas_extraidas: resultado.disciplinas.length,
-      message: 'Edital processado com sucesso!',
-      disciplinas: resultado.disciplinas.map(d => ({
-        nome: d.nome,
-        peso: d.peso || null,
-        total_topicos: d.topicos ? d.topicos.length : 0
-      })),
-      estatisticas: {
-        total_disciplinas: resultado.disciplinas.length,
-        disciplinas_com_peso: resultado.disciplinas.filter(d => d.peso).length,
-        total_topicos: resultado.disciplinas.reduce((acc, d) => acc + (d.topicos ? d.topicos.length : 0), 0)
-      }
-    })
   } catch (error) {
     console.error('Erro ao processar edital:', error)
     
@@ -7832,6 +6987,46 @@ ${textoParaIA}`
     
     if (disciplinasExtraidas.length === 0) {
       return c.json({ error: 'Não foi possível extrair disciplinas do edital', errorType: 'EXTRACTION_FAILED', canRetry: true }, 400)
+    }
+    
+    // ════════════════════════════════════════════════════════════════
+    // FILTRO DE DISCIPLINAS INVÁLIDAS (v51d)
+    // ════════════════════════════════════════════════════════════════
+    const nomesInvalidos = [
+      'OBSERVAÇÕES', 'OBSERVAÇÃO', 'OBS', 'NOTA', 'NOTAS',
+      'BIBLIOGRAFIA', 'REFERÊNCIAS', 'REFERÊNCIA', 'ANEXO', 'ANEXOS',
+      'INSTRUÇÕES', 'INSTRUÇÃO', 'ATENÇÃO', 'AVISO', 'AVISOS',
+      'RETIFICAÇÃO', 'RETIFICAÇÕES', 'ERRATA', 'ERRATAS',
+      'CARGOS DE ENSINO', 'NÍVEL SUPERIOR', 'NÍVEL MÉDIO',
+      'QUADRO DE VAGAS', 'TABELA DE PROVAS', 'COMPOSIÇÃO DAS PROVAS',
+      'CRONOGRAMA', 'CALENDÁRIO', 'PROGRAMA', 'PROGRAMAS',
+      'DAS PROVAS', 'DA PROVA', 'DOS CARGOS', 'DAS VAGAS',
+      'PARA TODOS', 'TODOS OS CARGOS', 'CONHECIMENTOS ESPECÍFICOS POR CARGOS',
+      'CONTEÚDO PROGRAMÁTICO', 'CONTEÚDOS PROGRAMÁTICOS'
+    ]
+    
+    const disciplinasAntesDoFiltro = disciplinasExtraidas.length
+    disciplinasExtraidas = disciplinasExtraidas.filter((d: any) => {
+      const nomeUpper = d.nome?.toUpperCase()?.trim() || ''
+      // Filtrar nomes inválidos (match exato ou que comecem com esses prefixos)
+      const ehInvalido = nomesInvalidos.some(inv => 
+        nomeUpper === inv || 
+        nomeUpper.startsWith(inv + ':') ||
+        nomeUpper.startsWith(inv + ' -')
+      )
+      // Filtrar disciplinas sem tópicos ou com nomes muito curtos
+      const ehMuitoCurto = d.nome?.trim()?.length < 3
+      const semConteudo = (!d.topicos || d.topicos.length === 0) && d.nome?.length < 20
+      
+      if (ehInvalido || ehMuitoCurto) {
+        console.log(`   🗑️ Filtrada: "${d.nome}" (inválido: ${ehInvalido}, curto: ${ehMuitoCurto})`)
+        return false
+      }
+      return true
+    })
+    
+    if (disciplinasExtraidas.length < disciplinasAntesDoFiltro) {
+      console.log(`   📋 Filtro: ${disciplinasAntesDoFiltro} → ${disciplinasExtraidas.length} disciplinas`)
     }
     
     // ════════════════════════════════════════════════════════════════
