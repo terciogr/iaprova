@@ -6984,18 +6984,20 @@ app.post('/api/editais/processar-texto', async (c) => {
     if (disciplinasExtraidas.length < 2) {
       console.log('\n🤖 Extração programática insuficiente, usando IA...')
       
-      // ✅ v53: Limitar texto para IA a 30000 chars para evitar timeout
+      // ✅ v54: Limitar texto para IA a 30000 chars para evitar timeout
       const textoParaIA = textoSecaoCargo.substring(0, 30000)
       const promptIA = `TAREFA CRÍTICA: Extrair TODAS as disciplinas para o cargo "${cargoUpper}" do conteúdo programático abaixo.
 
 REGRAS:
-1. Cada matéria/disciplina listada (seguida de ":") = UMA disciplina
+1. Cada matéria/disciplina listada (seguida de ":" ou em linha separada) = UMA disciplina
 2. Conteúdo após o nome = TÓPICOS da disciplina
 3. NÃO invente - extraia APENAS do texto
-4. Conhecimentos Básicos/Gerais = peso 1, Específicos = peso 2
-5. Retorne APENAS JSON válido, sem markdown
+4. MÓDULO I / Conhecimentos Básicos/Gerais = peso 1 e categoria "BÁSICOS"
+5. MÓDULO II / Conhecimentos Específicos = peso 2 e categoria "ESPECÍFICOS"
+6. Retorne APENAS JSON válido, sem markdown
+7. Se não conseguir extrair tópicos detalhados, retorne ao menos todas as disciplinas com seus pesos e categorias
 
-FORMATO: {"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["T1","T2"]}]}
+FORMATO: {"disciplinas":[{"nome":"Nome da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}
 
 CONTEÚDO:
 ${textoParaIA}`
@@ -7233,6 +7235,7 @@ ${textoParaIA}`
         disciplina_id_real: disciplina_id_real,
         nome: disc.nome,
         peso: disc.peso || 1,
+        categoria: disc.categoria || (disc.peso >= 2 ? 'ESPECÍFICOS' : 'BÁSICOS'),
         tipo: disc.tipo || 'geral',
         total_topicos: disc.topicos?.length || 0,
         topicos: topicosComIds

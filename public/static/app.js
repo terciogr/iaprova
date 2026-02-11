@@ -3588,6 +3588,7 @@ async function processarTextoEditalColado(texto) {
         disciplina_id_real: d.disciplina_id_real,  // ID real da tabela disciplinas
         nome: d.nome,
         peso: d.peso || 1,
+        categoria: d.categoria || (d.peso >= 2 ? 'ESPECÍFICOS' : 'BÁSICOS'),
         tipo: d.tipo || 'geral',
         total_topicos: d.total_topicos || d.topicos?.length || 0,
         topicos: (d.topicos || []).map(t => ({
@@ -3604,12 +3605,23 @@ async function processarTextoEditalColado(texto) {
       interviewData.via_texto_colado = true;
       
       console.log(`✅ ${response.data.disciplinas.length} disciplinas extraídas do texto colado`);
-      console.log('📋 Disciplinas com IDs reais:', disciplinasComIds.map(d => `${d.nome} (ID: ${d.id}, disciplina_id_real: ${d.disciplina_id_real})`).join(', '));
+      console.log('📋 Disciplinas com IDs reais:', disciplinasComIds.map(d => `${d.nome} (ID: ${d.id}, peso: ${d.peso})`).join(', '));
       
       isProcessingEdital = false;
       
-      // ✅ CORREÇÃO: Ir para Step2 (perfil) primeiro, não direto para Step3
-      // Step2 define tempo_disponivel_dia, experiencia, etc. que são obrigatórios
+      // ✅ v54: RESTAURAR modal de revisão de disciplinas (gerais/específicas)
+      // Mostrar modal para o usuário revisar, editar e confirmar as disciplinas
+      if (response.data.disciplinas.length > 0) {
+        console.log('📋 v54: Abrindo modal de revisão de disciplinas...');
+        try {
+          await mostrarModalRevisaoDisciplinas(response.data, response.data.edital_id);
+          console.log('✅ v54: Modal de revisão confirmado pelo usuário');
+        } catch (modalErr) {
+          console.warn('⚠️ v54: Modal de revisão fechado/cancelado:', modalErr);
+        }
+      }
+      
+      // Após confirmar ou fechar modal, ir para Step2
       renderEntrevistaStep2();
     } else {
       throw new Error(response.data.error || 'Não foi possível extrair disciplinas do texto');
