@@ -4222,8 +4222,60 @@ async function processarEditalAntesDeStep2() {
           
           // ✅ Mostrar tela de erro com opção de tentar novamente
           const apiErrorTypes = ['API_OVERLOADED', 'RATE_LIMIT', 'SERVICE_UNAVAILABLE', 'AI_PROCESSING_FAILED'];
-          const contentErrorTypes = ['NO_DISCIPLINES_FOUND', 'INSUFFICIENT_TEXT', 'EMPTY_TEXT', 'PARSE_ERROR', 'CONTENT_BLOCKED', 'EXTRACTION_FAILED'];
+          const contentErrorTypes = ['NO_DISCIPLINES_FOUND', 'INSUFFICIENT_TEXT', 'EMPTY_TEXT', 'PARSE_ERROR', 'CONTENT_BLOCKED', 'EXTRACTION_FAILED', 'PROCESSO_SELETIVO_SIMPLIFICADO'];
           const allHandledErrors = [...apiErrorTypes, ...contentErrorTypes];
+          
+          // ✅ v60: Tratamento especial para Processo Seletivo Simplificado
+          if (errorType === 'PROCESSO_SELETIVO_SIMPLIFICADO') {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            document.getElementById('app').innerHTML = `
+              <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+                <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
+                  <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+                    <i class="fas fa-info-circle text-blue-500 text-4xl"></i>
+                  </div>
+                  <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-3">
+                    📋 Processo Seletivo Simplificado
+                  </h3>
+                  <p class="text-gray-600 mb-4 text-sm">
+                    Este edital é de um <strong>Processo Seletivo Simplificado</strong> baseado em <strong>análise de títulos e/ou entrevista</strong>.
+                  </p>
+                  
+                  <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-left">
+                    <h4 class="font-semibold text-amber-800 mb-2">⚠️ O que isso significa:</h4>
+                    <ul class="text-sm text-amber-700 space-y-2">
+                      <li>• <strong>Não há provas de conhecimentos</strong> (objetivas ou discursivas)</li>
+                      <li>• A seleção é feita por <strong>análise de títulos</strong> (diplomas, certificados)</li>
+                      <li>• Pode haver <strong>entrevista</strong> como etapa do processo</li>
+                      <li>• <strong>Não há disciplinas para estudar</strong> no formato tradicional</li>
+                    </ul>
+                  </div>
+                  
+                  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                    <h4 class="font-semibold text-blue-800 mb-2">💡 O que você pode fazer:</h4>
+                    <ul class="text-sm text-blue-700 space-y-2">
+                      <li>• <strong>Verifique os requisitos de titulação</strong> (diplomas necessários)</li>
+                      <li>• <strong>Prepare-se para a entrevista</strong> (se houver essa etapa)</li>
+                      <li>• <strong>Organize seus documentos</strong> (certificados, declarações)</li>
+                    </ul>
+                  </div>
+                  
+                  <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button onclick="iniciarEntrevista(); window.semEditalManual = true;" 
+                      class="px-6 py-3 bg-[#2A4A9F] text-white rounded-lg hover:bg-[#1A3A7F] transition-colors font-medium">
+                      <i class="fas fa-plus mr-2"></i>Criar Plano Personalizado
+                    </button>
+                    <button onclick="window.location.reload()" 
+                      class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+                      <i class="fas fa-redo mr-2"></i>Tentar Outro Edital
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+            return;
+          }
           
           if (allHandledErrors.includes(errorType)) {
             await new Promise(resolve => setTimeout(resolve, 1500));
