@@ -17589,22 +17589,28 @@ async function processarResumoPersonalizado(metaId) {
   }
 }
 
-// Ver conteúdo gerado - APENAS abre o conteúdo (ícone só aparece se existe)
+// Ver conteúdo gerado - v66: Melhor tratamento de visualização vs geração
 window.verConteudoGerado = async function(metaId, tipo) {
-  console.log(`👁️ Verificando ${tipo} da meta ${metaId}`);
+  console.log(`👁️ v66: Verificando ${tipo} da meta ${metaId}`);
   
   // Buscar dados do conteúdo da API
   try {
-    const response = await axios.get(`/api/conteudos/meta/${metaId}`);
+    const response = await axios.get(`/api/conteudos/meta/${metaId}`, {
+      headers: { 'X-User-ID': currentUser?.id || localStorage.getItem('userId') }
+    });
     const data = response.data;
+    console.log(`👁️ v66: Dados da API:`, data);
+    
     window.conteudosMetaCache[metaId] = data;
     
     const tipoInfo = data.tipos_sources?.[tipo];
     const conteudoId = data.tipos_gerados?.[tipo];
     
+    console.log(`👁️ v66: conteudoId=${conteudoId}, tipoInfo=`, tipoInfo);
+    
     if (!conteudoId) {
-      // Se não tem conteúdo, SEMPRE abrir modal para selecionar quantidade
-      console.log(`🆕 Conteúdo ${tipo} não existe, abrindo modal para gerar...`);
+      // Se não tem conteúdo, abrir modal para gerar
+      console.log(`🆕 v66: Conteúdo ${tipo} não existe, abrindo modal para gerar...`);
       
       // Buscar informações da meta
       const meta = window.metaAtual || { topico_nome: 'Tópico', disciplina_nome: 'Disciplina' };
@@ -17670,43 +17676,39 @@ window.verConteudoGerado = async function(metaId, tipo) {
     }
     
     const source = tipoInfo?.source || 'materiais_salvos';
-    console.log(`📚 Conteúdo encontrado: ID=${conteudoId}, source=${source}`);
+    console.log(`📚 v66: Conteúdo encontrado: ID=${conteudoId}, source=${source}`);
     
-    // Estratégia: tentar materiais_salvos primeiro (mais confiável)
-    // Se source for conteudo_estudo, buscar o material_id dentro do conteudo
+    // Buscar material diretamente de materiais_salvos (mais confiável)
     let material = null;
     
-    if (source === 'materiais_salvos') {
-      // Buscar diretamente de materiais_salvos
-      try {
-        const materialRes = await axios.get(`/api/materiais/ver/${conteudoId}`);
-        material = materialRes.data;
-      } catch (e) {
-        console.warn('Material não encontrado em materiais_salvos, tentando conteudo_estudo');
-      }
-    }
-    
-    // Se não encontrou em materiais_salvos, buscar de conteudo_estudo
-    if (!material && source === 'conteudo_estudo') {
-      try {
-        const conteudoRes = await axios.get(`/api/conteudos/${conteudoId}`);
-        const conteudoData = conteudoRes.data;
-        
-        // Se tiver material_id dentro do conteudo, buscar de materiais_salvos
-        if (conteudoData?.conteudo?.material_id) {
-          const materialRes = await axios.get(`/api/materiais/ver/${conteudoData.conteudo.material_id}`);
-          material = materialRes.data;
-        } else if (conteudoData?.conteudo?.texto) {
-          // Usar o texto diretamente
-          material = {
-            conteudo: conteudoData.conteudo.texto,
-            topico_nome: conteudoData.topicos?.[0]?.nome || 'Conteúdo',
-            disciplina_nome: conteudoData.disciplina_nome,
-            tipo: conteudoData.tipo
-          };
+    try {
+      console.log(`📚 v66: Buscando material ID=${conteudoId} de ${source}...`);
+      const materialRes = await axios.get(`/api/materiais/ver/${conteudoId}`);
+      material = materialRes.data;
+      console.log(`📚 v66: Material encontrado:`, material?.titulo, material?.tipo);
+    } catch (e) {
+      console.warn(`⚠️ v66: Material não encontrado em materiais_salvos (ID=${conteudoId}):`, e.message);
+      
+      // Fallback: tentar conteudo_estudo
+      if (source === 'conteudo_estudo') {
+        try {
+          const conteudoRes = await axios.get(`/api/conteudos/${conteudoId}`);
+          const conteudoData = conteudoRes.data;
+          
+          if (conteudoData?.conteudo?.material_id) {
+            const materialRes2 = await axios.get(`/api/materiais/ver/${conteudoData.conteudo.material_id}`);
+            material = materialRes2.data;
+          } else if (conteudoData?.conteudo?.texto) {
+            material = {
+              conteudo: conteudoData.conteudo.texto,
+              topico_nome: conteudoData.topicos?.[0]?.nome || 'Conteúdo',
+              disciplina_nome: conteudoData.disciplina_nome,
+              tipo: conteudoData.tipo
+            };
+          }
+        } catch (e2) {
+          console.error('⚠️ v66: Erro ao buscar conteudo_estudo:', e2);
         }
-      } catch (e) {
-        console.error('Erro ao buscar conteudo_estudo:', e);
       }
     }
     
@@ -22258,89 +22260,106 @@ window.exibirFlashcardsVisuais = function(data) {
   renderFlashcardsModal(flashcards, topico_nome, disciplina_nome, 0);
 }
 
-// Parser de flashcards - VERSÃO V65 - Suporte completo ao formato da IA
+// Parser de flashcards - VERSÃO V66 - Ultra robusto
 function parseFlashcards(texto) {
-  console.log('🎴 v65: Iniciando parse de flashcards...');
-  console.log('🎴 v65: Primeiros 500 chars:', texto.substring(0, 500));
+  console.log('🎴 v66: Iniciando parse de flashcards...');
+  console.log('🎴 v66: Texto recebido (500 chars):', texto?.substring(0, 500));
+  
+  if (!texto || typeof texto !== 'string') {
+    console.error('🎴 v66: Texto inválido');
+    return [];
+  }
   
   const flashcards = [];
   
-  // ✅ v65: MÉTODO 1 - Separar por "**Flashcard X**" ou "---"
-  // Este é o formato principal gerado pela IA
-  const blocosFlashcard = texto.split(/(?=\*{2}Flashcard\s*\d+\*{2})|(?=\n\s*---+\s*\n)/i);
-  console.log('🎴 v65: Blocos encontrados:', blocosFlashcard.length);
-  
-  for (const bloco of blocosFlashcard) {
-    if (!bloco.trim() || bloco.length < 15) continue;
-    
-    // Extrair FRENTE e VERSO do formato: **FRENTE:** texto \n **VERSO:** texto
-    const frenteMatch = bloco.match(/\*{2}\s*FRENTE\s*:?\s*\*{2}\s*:?\s*(.+?)(?=\*{2}\s*VERSO|\n\s*\*{2}\s*VERSO|$)/is);
-    const versoMatch = bloco.match(/\*{2}\s*VERSO\s*:?\s*\*{2}\s*:?\s*(.+?)(?=\*{2}\s*Flashcard|\n\s*---|\n\s*$|$)/is);
-    
-    if (frenteMatch && versoMatch) {
-      const frente = frenteMatch[1].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
-      const verso = versoMatch[1].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
-      
-      if (frente.length > 1 && verso.length > 1) {
-        flashcards.push({ id: flashcards.length + 1, frente, verso });
-        console.log('✅ v65 Flashcard', flashcards.length, ':', frente.substring(0, 40));
-      }
+  // ✅ MÉTODO 1: Formato **Flashcard X** com **FRENTE:** e **VERSO:**
+  const regexFlashcard = /\*{2}Flashcard\s*\d+\*{2}[\s\S]*?\*{2}FRENTE:?\*{2}\s*:?\s*(.+?)[\s\S]*?\*{2}VERSO:?\*{2}\s*:?\s*([\s\S]+?)(?=\*{2}Flashcard|\n---|\n\n\*{2}|$)/gi;
+  let match;
+  while ((match = regexFlashcard.exec(texto)) !== null) {
+    const frente = match[1].replace(/\*+/g, '').replace(/\n/g, ' ').trim();
+    const verso = match[2].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+    if (frente.length > 1 && verso.length > 1) {
+      flashcards.push({ id: flashcards.length + 1, frente, verso });
+      console.log('✅ v66 M1:', frente.substring(0, 30));
     }
   }
   
-  // ✅ v65: MÉTODO 2 - Se não encontrou, tentar formato CONCEITO/DEFINIÇÃO
+  // ✅ MÉTODO 2: Separar por --- e buscar FRENTE/VERSO
   if (flashcards.length === 0) {
-    console.log('🎴 v65: Tentando método CONCEITO/DEFINIÇÃO...');
-    const blocosNum = texto.split(/(?=\n\s*\d+\.\s+)/);
+    const blocos = texto.split(/\n\s*---+\s*\n/);
+    console.log('🎴 v66 M2: Blocos por ---:', blocos.length);
     
-    for (const bloco of blocosNum) {
-      if (!bloco.trim() || bloco.length < 20) continue;
+    for (const bloco of blocos) {
+      if (bloco.length < 20) continue;
       
-      const frenteMatch = bloco.match(/\*{2}\s*(CONCEITO|TERMO)\s*:?\s*\*{2}\s*:?\s*(.+?)(?=\*{2}\s*(DEFINIÇÃO|EXPLICAÇÃO)|$)/is);
-      const versoMatch = bloco.match(/\*{2}\s*(DEFINIÇÃO|EXPLICAÇÃO)\s*:?\s*\*{2}\s*:?\s*(.+?)(?=\n\s*\d+\.|\n\s*$|$)/is);
+      const fMatch = bloco.match(/\*{0,2}FRENTE:?\*{0,2}\s*:?\s*(.+)/i);
+      const vMatch = bloco.match(/\*{0,2}VERSO:?\*{0,2}\s*:?\s*([\s\S]+?)$/i);
       
-      if (frenteMatch && versoMatch) {
-        const frente = (frenteMatch[2] || '').replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
-        const verso = (versoMatch[2] || '').replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
-        
+      if (fMatch && vMatch) {
+        const frente = fMatch[1].replace(/\*+/g, '').replace(/\n.*$/s, '').trim();
+        const verso = vMatch[1].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
         if (frente.length > 1 && verso.length > 1) {
           flashcards.push({ id: flashcards.length + 1, frente, verso });
-          console.log('✅ v65 Flashcard (CONCEITO):', frente.substring(0, 40));
+          console.log('✅ v66 M2:', frente.substring(0, 30));
         }
       }
     }
   }
   
-  // ✅ v65: MÉTODO 3 - Linha a linha com padrões flexíveis
+  // ✅ MÉTODO 3: Linha a linha procurando FRENTE: e VERSO:
   if (flashcards.length === 0) {
-    console.log('🎴 v65: Tentando método linha a linha...');
+    console.log('🎴 v66 M3: Tentando linha a linha...');
     const linhas = texto.split('\n');
-    let frenteAtual = '';
+    let frenteAtual = null;
     
     for (const linha of linhas) {
-      const linhaLimpa = linha.trim();
-      
-      // Detectar frente
-      const fMatch = linhaLimpa.match(/^\*{0,2}\s*(FRENTE|Frente|CONCEITO|Conceito|TERMO|Termo)\s*:?\s*\*{0,2}\s*:?\s*(.+)/i);
+      const fMatch = linha.match(/^\*{0,2}\s*FRENTE:?\s*\*{0,2}\s*:?\s*(.+)/i);
       if (fMatch) {
-        frenteAtual = fMatch[2].replace(/\*+/g, '').trim();
+        frenteAtual = fMatch[1].replace(/\*+/g, '').trim();
         continue;
       }
       
-      // Detectar verso
-      const vMatch = linhaLimpa.match(/^\*{0,2}\s*(VERSO|Verso|DEFINIÇÃO|Definição|EXPLICAÇÃO|Explicação)\s*:?\s*\*{0,2}\s*:?\s*(.+)/i);
+      const vMatch = linha.match(/^\*{0,2}\s*VERSO:?\s*\*{0,2}\s*:?\s*(.+)/i);
       if (vMatch && frenteAtual) {
-        const verso = vMatch[2].replace(/\*+/g, '').trim();
+        const verso = vMatch[1].replace(/\*+/g, '').trim();
         if (frenteAtual.length > 1 && verso.length > 1) {
           flashcards.push({ id: flashcards.length + 1, frente: frenteAtual, verso });
-          console.log('✅ v65 Flashcard (linha):', frenteAtual.substring(0, 40));
+          console.log('✅ v66 M3:', frenteAtual.substring(0, 30));
         }
-        frenteAtual = '';
+        frenteAtual = null;
       }
     }
   }
   
-  console.log('📊 v65: Total flashcards parseados:', flashcards.length);
+  // ✅ MÉTODO 4: Buscar padrões numerados "1. **Termo**: definição"
+  if (flashcards.length === 0) {
+    console.log('🎴 v66 M4: Tentando padrões numerados...');
+    const regexNum = /\d+\.\s*\*{0,2}([^:*\n]+)\*{0,2}\s*:?\s*([^\n]+)/g;
+    while ((match = regexNum.exec(texto)) !== null) {
+      const frente = match[1].replace(/\*+/g, '').trim();
+      const verso = match[2].replace(/\*+/g, '').trim();
+      if (frente.length > 2 && frente.length < 100 && verso.length > 10) {
+        flashcards.push({ id: flashcards.length + 1, frente, verso });
+        console.log('✅ v66 M4:', frente.substring(0, 30));
+      }
+    }
+  }
+  
+  // ✅ MÉTODO 5 (FALLBACK): Criar flashcards a partir de bullets/listas
+  if (flashcards.length === 0) {
+    console.log('🎴 v66 M5: Tentando extrair de listas...');
+    const regexBullet = /[•\-\*]\s*\*{0,2}([^:]+)\*{0,2}\s*:\s*([^\n•\-\*]+)/g;
+    while ((match = regexBullet.exec(texto)) !== null) {
+      const frente = match[1].replace(/\*+/g, '').trim();
+      const verso = match[2].replace(/\*+/g, '').trim();
+      if (frente.length > 2 && frente.length < 80 && verso.length > 10) {
+        flashcards.push({ id: flashcards.length + 1, frente, verso });
+        console.log('✅ v66 M5:', frente.substring(0, 30));
+      }
+    }
+  }
+  
+  console.log('📊 v66: Total flashcards parseados:', flashcards.length);
   return flashcards;
 }
 
