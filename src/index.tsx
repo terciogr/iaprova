@@ -6504,6 +6504,24 @@ RETORNE APENAS JSON válido:
               if (sugestao.disciplinas && sugestao.disciplinas.length > 0) {
                 console.log(`✅ v61: IA sugeriu ${sugestao.disciplinas.length} disciplinas para processo seletivo`)
                 
+                // ✅ v63: Criar edital no banco mesmo para processo seletivo simplificado
+                let editalIdPS: number | null = null
+                try {
+                  const editalResult = await c.env.DB.prepare(`
+                    INSERT INTO editais (user_id, nome_concurso, texto_completo, status) 
+                    VALUES (?, ?, ?, 'ativo')
+                  `).bind(
+                    user_id || 1,
+                    concurso_nome || 'Não especificado',
+                    texto.substring(0, 50000)
+                  ).run()
+                  
+                  editalIdPS = editalResult.meta?.last_row_id as number
+                  console.log(`✅ v63: Edital criado para processo seletivo com ID ${editalIdPS}`)
+                } catch (dbErr) {
+                  console.error('⚠️ v63: Erro ao criar edital para processo seletivo:', dbErr)
+                }
+                
                 const disciplinasSugeridas = sugestao.disciplinas.map((d: any, i: number) => ({
                   id: -(i + 1),
                   disciplina_id_real: -(i + 1),
@@ -6516,7 +6534,7 @@ RETORNE APENAS JSON válido:
                 
                 return c.json({
                   success: true,
-                  edital_id: null,
+                  edital_id: editalIdPS,
                   disciplinas: disciplinasSugeridas,
                   total: disciplinasSugeridas.length,
                   concurso_detectado: concurso_nome,
@@ -7549,6 +7567,24 @@ RETORNE APENAS JSON válido:
               if (sugestao.disciplinas && sugestao.disciplinas.length > 0) {
                 console.log(`✅ v59: IA sugeriu ${sugestao.disciplinas.length} disciplinas para o cargo`)
                 
+                // ✅ v63: Criar edital no banco mesmo para sugestões
+                let editalIdSugestao59: number | null = null
+                try {
+                  const editalResult = await c.env.DB.prepare(`
+                    INSERT INTO editais (user_id, nome_concurso, texto_completo, status) 
+                    VALUES (?, ?, ?, 'ativo')
+                  `).bind(
+                    user_id || 1,
+                    concurso_nome || 'Não especificado',
+                    texto.substring(0, 50000)
+                  ).run()
+                  
+                  editalIdSugestao59 = editalResult.meta?.last_row_id as number
+                  console.log(`✅ v63: Edital criado para sugestões v59 com ID ${editalIdSugestao59}`)
+                } catch (dbErr) {
+                  console.error('⚠️ v63: Erro ao criar edital para sugestões v59:', dbErr)
+                }
+                
                 const disciplinasSugeridas = sugestao.disciplinas.map((d: any, i: number) => ({
                   id: -(i + 1),
                   disciplina_id_real: -(i + 1),
@@ -7561,7 +7597,7 @@ RETORNE APENAS JSON válido:
                 
                 return c.json({
                   success: true,
-                  edital_id: null,
+                  edital_id: editalIdSugestao59,
                   disciplinas: disciplinasSugeridas,
                   total: disciplinasSugeridas.length,
                   concurso_detectado: concurso_nome,
@@ -7673,8 +7709,11 @@ RETORNE APENAS JSON válido:
       console.log('⚠️ v62: Todas as disciplinas foram filtradas, usando fallback de IA...')
       
       const geminiKeyFallback = c.env.GEMINI_API_KEY
+      console.log(`🔑 v63: Gemini key existe: ${!!geminiKeyFallback}, cargo: ${!!cargo}, concurso: ${!!concurso_nome}`)
+      
       if (geminiKeyFallback && (cargo || concurso_nome)) {
         try {
+          console.log('🚀 v63: Iniciando chamada para Gemini API...')
           const promptFallbackFiltro = `Você é um especialista em concursos públicos brasileiros.
 
 CONTEXTO:
@@ -7708,6 +7747,7 @@ RETORNE APENAS JSON válido:
           )
           
           if (fallbackRes.ok) {
+            console.log('✅ v63: Gemini API respondeu OK')
             const fallbackData = await fallbackRes.json() as any
             const respText = fallbackData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
             const jsonMatch = respText.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').match(/\{[\s\S]*\}/)
@@ -7716,6 +7756,24 @@ RETORNE APENAS JSON válido:
               const sugestao = JSON.parse(jsonMatch[0])
               if (sugestao.disciplinas && sugestao.disciplinas.length > 0) {
                 console.log(`✅ v62: IA sugeriu ${sugestao.disciplinas.length} disciplinas como fallback`)
+                
+                // ✅ v63: Criar edital no banco mesmo para sugestões (para permitir salvar depois)
+                let editalIdSugestao: number | null = null
+                try {
+                  const editalResult = await c.env.DB.prepare(`
+                    INSERT INTO editais (user_id, nome_concurso, texto_completo, status) 
+                    VALUES (?, ?, ?, 'ativo')
+                  `).bind(
+                    user_id || 1,
+                    concurso_nome || 'Não especificado',
+                    texto.substring(0, 50000)
+                  ).run()
+                  
+                  editalIdSugestao = editalResult.meta?.last_row_id as number
+                  console.log(`✅ v63: Edital criado para sugestões com ID ${editalIdSugestao}`)
+                } catch (dbErr) {
+                  console.error('⚠️ v63: Erro ao criar edital para sugestões:', dbErr)
+                }
                 
                 const disciplinasSugeridas = sugestao.disciplinas.map((d: any, i: number) => ({
                   id: -(i + 1),
@@ -7729,7 +7787,7 @@ RETORNE APENAS JSON válido:
                 
                 return c.json({
                   success: true,
-                  edital_id: null,
+                  edital_id: editalIdSugestao,
                   disciplinas: disciplinasSugeridas,
                   total: disciplinasSugeridas.length,
                   concurso_detectado: concurso_nome,
@@ -7969,6 +8027,24 @@ RETORNE APENAS JSON válido:
       if (resultado.disciplinas.length > 0) {
         console.log('⚠️ v59: Retornando disciplinas extraídas sem salvar no banco')
         
+        // ✅ v63: Tentar criar edital mesmo após erro parcial
+        let editalIdFallback: number | null = null
+        try {
+          const editalResult = await c.env.DB.prepare(`
+            INSERT INTO editais (user_id, nome_concurso, texto_completo, status) 
+            VALUES (?, ?, ?, 'ativo')
+          `).bind(
+            user_id || 1,
+            concurso_nome || 'Não especificado',
+            texto.substring(0, 50000)
+          ).run()
+          
+          editalIdFallback = editalResult.meta?.last_row_id as number
+          console.log(`✅ v63: Edital criado em fallback com ID ${editalIdFallback}`)
+        } catch (fbErr) {
+          console.error('⚠️ v63: Erro ao criar edital em fallback:', fbErr)
+        }
+        
         const disciplinasSemBanco = resultado.disciplinas.map((d: any, i: number) => ({
           id: -(i + 1),
           disciplina_id_real: -(i + 1),
@@ -7984,7 +8060,7 @@ RETORNE APENAS JSON válido:
         
         return c.json({
           success: true,
-          edital_id: null,
+          edital_id: editalIdFallback,
           disciplinas: disciplinasSemBanco,
           total: disciplinasSemBanco.length,
           concurso_detectado: concurso_nome,
