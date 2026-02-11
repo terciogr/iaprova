@@ -225,6 +225,13 @@ O sistema inclui um módulo de administração exclusivo para gestão da platafo
 
 ## 🔄 Últimas Atualizações
 
+### v2.6.2 (Fevereiro 2026 - v62)
+- ✅ **Extração Multi-Cargos Melhorada**: Detecta sub-áreas de TI (Infraestrutura, Sistemas) como parte da área principal
+- ✅ **Filtro de Áreas Especializadas**: Não mistura mais disciplinas de outras especialidades em editais com múltiplos cargos
+- ✅ **Fallback IA para Processo Seletivo**: Sugestão inteligente de disciplinas quando edital não tem conteúdo programático
+- ✅ **Filtros de Termos Inválidos**: CAPACITAÇÃO, APERFEIÇOAMENTO, TITULAÇÃO etc. não são mais extraídos como disciplinas
+- ✅ **Suporte a Processos Seletivos Simplificados**: Detecta e oferece sugestões adequadas
+
 ### v2.3.0 (Fevereiro 2026 - CORREÇÃO v23)
 - ✅ **Análise de Editais REFORMULADA**: Prompt de IA completamente reescrito
   - Não usa mais "áreas pré-detectadas" (que causavam erros)
