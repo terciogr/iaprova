@@ -7144,88 +7144,101 @@ ${textoParaIA}`
     const editalId = editalResult.meta.last_row_id
     console.log(`📁 Edital criado com ID ${editalId}`)
     
-    // Salvar disciplinas e tópicos
-    const disciplinasComIds = []
+    // ════════════════════════════════════════════════════════════════
+    // v54: BATCH OTIMIZADO para evitar "Too many API requests" no Cloudflare Workers
+    // Cloudflare Workers tem limite de ~50 subrequests por invocação
+    // Usamos DB.batch() para enviar todas as queries de uma vez
+    // ════════════════════════════════════════════════════════════════
+    
+    // PASSO 1: Buscar todas as disciplinas existentes de uma vez
+    const nomesDisc = resultado.disciplinas.map((d: any) => d.nome.trim().toLowerCase())
+    const disciplinasExistentes = new Map()
+    
+    // Buscar em lotes para não exceder limites
+    const batchBuscaDisc = resultado.disciplinas.map((disc: any) => 
+      DB.prepare(`SELECT id, nome FROM disciplinas WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?))`).bind(disc.nome)
+    )
+    const resultBuscaDisc = await DB.batch(batchBuscaDisc)
+    
+    resultBuscaDisc.forEach((r: any, i: number) => {
+      const rows = r.results || []
+      if (rows.length > 0) {
+        disciplinasExistentes.set(resultado.disciplinas[i].nome, rows[0].id)
+        console.log(`  ℹ️ Disciplina "${resultado.disciplinas[i].nome}" já existe (ID ${rows[0].id})`)
+      }
+    })
+    
+    // PASSO 2: Criar disciplinas que não existem (em batch)
+    const discParaCriar = resultado.disciplinas.filter((d: any) => !disciplinasExistentes.has(d.nome))
+    if (discParaCriar.length > 0) {
+      const batchCriarDisc = discParaCriar.map((disc: any) => 
+        DB.prepare(`INSERT INTO disciplinas (nome, area, descricao) VALUES (?, ?, ?)`)
+          .bind(disc.nome, areaDetectada, 'Disciplina extraída do edital')
+      )
+      const resultCriarDisc = await DB.batch(batchCriarDisc)
+      resultCriarDisc.forEach((r: any, i: number) => {
+        const novoId = r.meta?.last_row_id
+        disciplinasExistentes.set(discParaCriar[i].nome, novoId)
+        console.log(`  ✅ Disciplina "${discParaCriar[i].nome}" criada (ID ${novoId})`)
+      })
+    }
+    
+    // PASSO 3: Inserir edital_disciplinas em batch
+    const batchEditalDisc = resultado.disciplinas.map((disc: any, i: number) => {
+      const disciplina_id_real = disciplinasExistentes.get(disc.nome) || null
+      return DB.prepare(`
+        INSERT INTO edital_disciplinas (edital_id, nome, ordem, disciplina_id, peso)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(editalId, disc.nome, i + 1, disciplina_id_real, disc.peso || 1)
+    })
+    const resultEditalDisc = await DB.batch(batchEditalDisc)
+    
+    // Mapear IDs das edital_disciplinas criadas
+    const editalDiscIds = resultEditalDisc.map((r: any) => r.meta?.last_row_id)
+    
+    // PASSO 4: Inserir tópicos em batch (todos de uma vez)
+    const batchTopicosEdital: any[] = []
+    const batchTopicosUser: any[] = []
+    const disciplinasComIds: any[] = []
     
     for (let i = 0; i < resultado.disciplinas.length; i++) {
       const disc = resultado.disciplinas[i]
+      const edital_disciplina_id = editalDiscIds[i]
+      const disciplina_id_real = disciplinasExistentes.get(disc.nome) || null
       
-      // Verificar/criar disciplina na tabela principal
-      let disciplina_id_real = null
-      const discExistente = await DB.prepare(`
-        SELECT id FROM disciplinas WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?))
-      `).bind(disc.nome).first() as any
+      const topicosComIds: any[] = []
       
-      if (discExistente) {
-        disciplina_id_real = discExistente.id
-        console.log(`  ℹ️ Disciplina "${disc.nome}" já existe (ID ${disciplina_id_real})`)
-      } else {
-        const novaDiscResult = await DB.prepare(`
-          INSERT INTO disciplinas (nome, area, descricao)
-          VALUES (?, ?, ?)
-        `).bind(disc.nome, areaDetectada, 'Disciplina extraída do edital').run()
-        disciplina_id_real = novaDiscResult.meta.last_row_id
-        console.log(`  ✅ Disciplina "${disc.nome}" criada (ID ${disciplina_id_real})`)
-      }
-      
-      // Inserir em edital_disciplinas
-      const discResult = await DB.prepare(`
-        INSERT INTO edital_disciplinas (edital_id, nome, ordem, disciplina_id, peso)
-        VALUES (?, ?, ?, ?, ?)
-      `).bind(editalId, disc.nome, i + 1, disciplina_id_real, disc.peso || 1).run()
-      
-      const edital_disciplina_id = discResult.meta.last_row_id
-      
-      // Inserir tópicos (evitando duplicatas)
-      const topicosComIds = []
       if (disc.topicos && disc.topicos.length > 0) {
-        // ✅ DEDUPLICAR tópicos antes de salvar (IA às vezes retorna duplicados)
+        // Deduplicar tópicos
         const topicosUnicos = [...new Set(
           disc.topicos
             .map((t: any) => typeof t === 'string' ? t.trim() : t.nome?.trim())
             .filter((t: string) => t && t.length > 0)
         )]
         
-        console.log(`  📋 ${disc.nome}: ${disc.topicos.length} tópicos recebidos, ${topicosUnicos.length} únicos`)
+        // Limitar a 50 tópicos por disciplina
+        const topicosLimitados = topicosUnicos.slice(0, 50)
         
-        for (let j = 0; j < topicosUnicos.length; j++) {
-          const topicoNome = topicosUnicos[j]
+        console.log(`  📋 ${disc.nome}: ${topicosLimitados.length} tópicos (de ${disc.topicos.length} recebidos)`)
+        
+        for (let j = 0; j < topicosLimitados.length; j++) {
+          const topicoNome = topicosLimitados[j]
           
-          // 1. Verificar/inserir em edital_topicos
-          const topicoExistenteEdital = await DB.prepare(`
-            SELECT id FROM edital_topicos 
-            WHERE edital_disciplina_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
-          `).bind(edital_disciplina_id, topicoNome).first() as any
+          // Preparar INSERT para edital_topicos
+          batchTopicosEdital.push(
+            DB.prepare(`INSERT OR IGNORE INTO edital_topicos (edital_disciplina_id, nome, ordem) VALUES (?, ?, ?)`)
+              .bind(edital_disciplina_id, topicoNome, j + 1)
+          )
           
-          let topicoId
-          if (topicoExistenteEdital) {
-            topicoId = topicoExistenteEdital.id
-          } else {
-            const topicoResult = await DB.prepare(`
-              INSERT INTO edital_topicos (edital_disciplina_id, nome, ordem)
-              VALUES (?, ?, ?)
-            `).bind(edital_disciplina_id, topicoNome, j + 1).run()
-            topicoId = topicoResult.meta.last_row_id
+          // Preparar INSERT para topicos_edital (metas semanais)
+          if (disciplina_id_real && user_id) {
+            batchTopicosUser.push(
+              DB.prepare(`INSERT OR IGNORE INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id) VALUES (?, ?, ?, ?, ?, ?)`)
+                .bind(disciplina_id_real, topicoNome, 'Conteúdo Programático', j + 1, disc.peso || 1, user_id)
+            )
           }
           
-          // 2. ✅ TAMBÉM salvar em topicos_edital (para metas semanais e progresso)
-          const topicoExistenteUser = await DB.prepare(`
-            SELECT id FROM topicos_edital 
-            WHERE disciplina_id = ? AND user_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
-          `).bind(disciplina_id_real, user_id, topicoNome).first()
-          
-          if (!topicoExistenteUser) {
-            const pesoTopico = disc.peso || 1
-            await DB.prepare(`
-              INSERT INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso, user_id)
-              VALUES (?, ?, ?, ?, ?, ?)
-            `).bind(disciplina_id_real, topicoNome, 'Conteúdo Programático', j + 1, pesoTopico, user_id).run()
-          }
-          
-          topicosComIds.push({
-            id: topicoId,
-            nome: topicoNome
-          })
+          topicosComIds.push({ id: 0, nome: topicoNome })
         }
       }
       
@@ -7237,14 +7250,35 @@ ${textoParaIA}`
         peso: disc.peso || 1,
         categoria: disc.categoria || (disc.peso >= 2 ? 'ESPECÍFICOS' : 'BÁSICOS'),
         tipo: disc.tipo || 'geral',
-        total_topicos: disc.topicos?.length || 0,
+        total_topicos: topicosComIds.length,
         topicos: topicosComIds
       })
       
-      console.log(`  ✅ ${disc.nome}: ${topicosComIds.length} tópicos salvos`)
+      console.log(`  ✅ ${disc.nome}: ${topicosComIds.length} tópicos preparados`)
     }
     
-    console.log(`✅ Edital ${editalId} processado com ${disciplinasComIds.length} disciplinas`)
+    // PASSO 5: Executar batch de tópicos (dividir em chunks de 50 se necessário)
+    // D1 batch aceita até 100 statements por batch
+    const BATCH_SIZE = 80
+    
+    // Inserir edital_topicos em batches
+    for (let start = 0; start < batchTopicosEdital.length; start += BATCH_SIZE) {
+      const chunk = batchTopicosEdital.slice(start, start + BATCH_SIZE)
+      await DB.batch(chunk)
+      console.log(`  💾 edital_topicos batch ${Math.floor(start/BATCH_SIZE)+1}: ${chunk.length} inseridos`)
+    }
+    
+    // Inserir topicos_edital em batches
+    for (let start = 0; start < batchTopicosUser.length; start += BATCH_SIZE) {
+      const chunk = batchTopicosUser.slice(start, start + BATCH_SIZE)
+      await DB.batch(chunk)
+      console.log(`  💾 topicos_edital batch ${Math.floor(start/BATCH_SIZE)+1}: ${chunk.length} inseridos`)
+    }
+    
+    // PASSO 6: Atualizar status do edital para processado
+    await DB.prepare(`UPDATE editais SET status = 'processado' WHERE id = ?`).bind(editalId).run()
+    
+    console.log(`✅ Edital ${editalId} processado com ${disciplinasComIds.length} disciplinas (${batchTopicosEdital.length} tópicos)`)
     
     // Retornar disciplinas com IDs reais do banco
     return c.json({
