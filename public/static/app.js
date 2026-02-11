@@ -10259,15 +10259,21 @@ window.copiarConteudoGerado = function() {
 
 // Função para salvar conteúdo gerado na biblioteca de materiais
 window.salvarConteudoGerado = async function() {
+  console.log('💾 v65: Iniciando salvarConteudoGerado...');
+  console.log('💾 v65: dados:', window.conteudoAtualDados);
+  console.log('💾 v65: conteudo length:', window.conteudoGeradoOriginal?.length);
+  
   const dados = window.conteudoAtualDados;
   const conteudo = window.conteudoGeradoOriginal;
   
   if (!dados || !conteudo) {
-    showToast('Erro: dados do conteúdo não encontrados', 'error');
+    console.error('💾 v65: Dados ou conteúdo não encontrados', { dados, conteudo: !!conteudo });
+    showToast('Erro: dados do conteúdo não encontrados. Tente gerar novamente.', 'error');
     return;
   }
   
   if (!currentUser?.id) {
+    console.error('💾 v65: Usuário não autenticado');
     showToast('Erro: usuário não autenticado', 'error');
     return;
   }
@@ -10282,6 +10288,8 @@ window.salvarConteudoGerado = async function() {
   const tipoLabel = tipoLabels[dados.tipo] || 'Conteúdo';
   const titulo = `${tipoLabel} - ${dados.topico_nome || dados.disciplina_nome || 'Material'}`;
   
+  console.log('💾 v65: Salvando material:', { titulo, tipo: dados.tipo, user_id: currentUser.id });
+  
   try {
     // Salvar na biblioteca de materiais
     const response = await axios.post('/api/materiais', {
@@ -10294,11 +10302,13 @@ window.salvarConteudoGerado = async function() {
       tags: `${dados.disciplina_nome || ''},${dados.topico_nome || ''},${dados.tipo},gerado`
     });
     
+    console.log('💾 v65: Resposta do servidor:', response.data);
+    
     if (response.data.success) {
       showToast('✅ Conteúdo salvo na sua biblioteca de materiais!', 'success');
       
-      // Atualizar botão para mostrar que foi salvo
-      const btnSalvar = document.querySelector('#modal-conteudo-gerado button[onclick="salvarConteudoGerado()"]');
+      // Atualizar botão para mostrar que foi salvo - buscar em qualquer modal
+      const btnSalvar = document.querySelector('button[onclick="salvarConteudoGerado()"]');
       if (btnSalvar) {
         btnSalvar.innerHTML = '<i class="fas fa-check"></i> Salvo';
         btnSalvar.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
@@ -22248,91 +22258,89 @@ window.exibirFlashcardsVisuais = function(data) {
   renderFlashcardsModal(flashcards, topico_nome, disciplina_nome, 0);
 }
 
-// Parser de flashcards - VERSÃO ROBUSTA V3
+// Parser de flashcards - VERSÃO V65 - Suporte completo ao formato da IA
 function parseFlashcards(texto) {
-  console.log('🎴 v64: Iniciando parse de flashcards...');
+  console.log('🎴 v65: Iniciando parse de flashcards...');
+  console.log('🎴 v65: Primeiros 500 chars:', texto.substring(0, 500));
   
   const flashcards = [];
   
-  // ✅ v63: MÉTODO PRINCIPAL - Buscar padrões numerados (1., 2., 3., etc.)
-  // Formato: "1. **CONCEITO**: texto\n   **DEFINIÇÃO**: texto"
-  const blocosNumerados = texto.split(/(?=\n\s*\d+\.\s+)/);
-  console.log('Blocos numerados encontrados:', blocosNumerados.length);
+  // ✅ v65: MÉTODO 1 - Separar por "**Flashcard X**" ou "---"
+  // Este é o formato principal gerado pela IA
+  const blocosFlashcard = texto.split(/(?=\*{2}Flashcard\s*\d+\*{2})|(?=\n\s*---+\s*\n)/i);
+  console.log('🎴 v65: Blocos encontrados:', blocosFlashcard.length);
   
-  for (const bloco of blocosNumerados) {
-    if (!bloco.trim() || bloco.length < 20) continue;
+  for (const bloco of blocosFlashcard) {
+    if (!bloco.trim() || bloco.length < 15) continue;
     
-    // Tentar extrair CONCEITO/DEFINIÇÃO ou FRENTE/VERSO
-    let frenteMatch = bloco.match(/\*{2}(CONCEITO|FRENTE|TERMO|Conceito|Frente|Termo)[:\*]*\s*\*{0,2}\s*([^*\n]+)/i);
-    let versoMatch = bloco.match(/\*{2}(DEFINIÇÃO|VERSO|EXPLICAÇÃO|Definição|Verso|Explicação)[:\*]*\s*\*{0,2}\s*([^*]+?)(?=\n\s*\d+\.|\n\s*$|$)/is);
-    
-    // Fallback: tentar formato sem ** 
-    if (!frenteMatch) {
-      frenteMatch = bloco.match(/(?:CONCEITO|FRENTE|TERMO)[:\s]+([^\n]+)/i);
-    }
-    if (!versoMatch) {
-      versoMatch = bloco.match(/(?:DEFINIÇÃO|VERSO|EXPLICAÇÃO)[:\s]+(.+?)(?=\n\s*\d+\.|\n\s*$|$)/is);
-    }
+    // Extrair FRENTE e VERSO do formato: **FRENTE:** texto \n **VERSO:** texto
+    const frenteMatch = bloco.match(/\*{2}\s*FRENTE\s*:?\s*\*{2}\s*:?\s*(.+?)(?=\*{2}\s*VERSO|\n\s*\*{2}\s*VERSO|$)/is);
+    const versoMatch = bloco.match(/\*{2}\s*VERSO\s*:?\s*\*{2}\s*:?\s*(.+?)(?=\*{2}\s*Flashcard|\n\s*---|\n\s*$|$)/is);
     
     if (frenteMatch && versoMatch) {
-      const frente = frenteMatch[2] || frenteMatch[1];
-      const verso = versoMatch[2] || versoMatch[1];
+      const frente = frenteMatch[1].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+      const verso = versoMatch[1].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
       
-      const frenteClean = frente.replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
-      const versoClean = verso.replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
-      
-      if (frenteClean.length > 2 && versoClean.length > 2) {
-        flashcards.push({
-          id: flashcards.length + 1,
-          frente: frenteClean,
-          verso: versoClean
-        });
-        console.log('✅ Flashcard', flashcards.length, ':', frenteClean.substring(0, 30));
-        continue;
+      if (frente.length > 1 && verso.length > 1) {
+        flashcards.push({ id: flashcards.length + 1, frente, verso });
+        console.log('✅ v65 Flashcard', flashcards.length, ':', frente.substring(0, 40));
       }
     }
   }
   
-  // Se não encontrou, tentar MÉTODO 2: Separar por --- 
+  // ✅ v65: MÉTODO 2 - Se não encontrou, tentar formato CONCEITO/DEFINIÇÃO
   if (flashcards.length === 0) {
-    const blocosSeparador = texto.split(/\n\s*---+\s*\n/);
-    console.log('Blocos (separador ---):', blocosSeparador.length);
+    console.log('🎴 v65: Tentando método CONCEITO/DEFINIÇÃO...');
+    const blocosNum = texto.split(/(?=\n\s*\d+\.\s+)/);
     
-    for (const bloco of blocosSeparador) {
+    for (const bloco of blocosNum) {
       if (!bloco.trim() || bloco.length < 20) continue;
       
-      const frenteMatch = bloco.match(/\*{0,2}\s*(?:FRENTE|Frente|CONCEITO|Conceito)[:\s*]*\*{0,2}\s*(.+?)(?=\*{0,2}\s*(?:VERSO|Verso|DEFINIÇÃO|Definição)[:\s*])/is);
-      const versoMatch = bloco.match(/\*{0,2}\s*(?:VERSO|Verso|DEFINIÇÃO|Definição)[:\s*]*\*{0,2}\s*(.+?)$/is);
+      const frenteMatch = bloco.match(/\*{2}\s*(CONCEITO|TERMO)\s*:?\s*\*{2}\s*:?\s*(.+?)(?=\*{2}\s*(DEFINIÇÃO|EXPLICAÇÃO)|$)/is);
+      const versoMatch = bloco.match(/\*{2}\s*(DEFINIÇÃO|EXPLICAÇÃO)\s*:?\s*\*{2}\s*:?\s*(.+?)(?=\n\s*\d+\.|\n\s*$|$)/is);
       
       if (frenteMatch && versoMatch) {
-        const frente = frenteMatch[1].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
-        const verso = versoMatch[1].replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+        const frente = (frenteMatch[2] || '').replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
+        const verso = (versoMatch[2] || '').replace(/\*+/g, '').replace(/\n+/g, ' ').trim();
         
-        if (frente.length > 2 && verso.length > 2) {
+        if (frente.length > 1 && verso.length > 1) {
           flashcards.push({ id: flashcards.length + 1, frente, verso });
+          console.log('✅ v65 Flashcard (CONCEITO):', frente.substring(0, 40));
         }
       }
     }
   }
   
-  // MÉTODO 3: Buscar formato "• Conceito: X | Definição: Y" (lista)
+  // ✅ v65: MÉTODO 3 - Linha a linha com padrões flexíveis
   if (flashcards.length === 0) {
+    console.log('🎴 v65: Tentando método linha a linha...');
     const linhas = texto.split('\n');
+    let frenteAtual = '';
     
     for (const linha of linhas) {
-      // Formato: "• **Conceito**: X | **Definição**: Y"
-      const match = linha.match(/[•\-\*]\s*\*{0,2}(Conceito|Termo|Frente)[:\*]*\s*([^|]+)\s*\|\s*\*{0,2}(Definição|Explicação|Verso)[:\*]*\s*(.+)/i);
-      if (match) {
-        flashcards.push({
-          id: flashcards.length + 1,
-          frente: match[2].replace(/\*+/g, '').trim(),
-          verso: match[4].replace(/\*+/g, '').trim()
-        });
+      const linhaLimpa = linha.trim();
+      
+      // Detectar frente
+      const fMatch = linhaLimpa.match(/^\*{0,2}\s*(FRENTE|Frente|CONCEITO|Conceito|TERMO|Termo)\s*:?\s*\*{0,2}\s*:?\s*(.+)/i);
+      if (fMatch) {
+        frenteAtual = fMatch[2].replace(/\*+/g, '').trim();
+        continue;
+      }
+      
+      // Detectar verso
+      const vMatch = linhaLimpa.match(/^\*{0,2}\s*(VERSO|Verso|DEFINIÇÃO|Definição|EXPLICAÇÃO|Explicação)\s*:?\s*\*{0,2}\s*:?\s*(.+)/i);
+      if (vMatch && frenteAtual) {
+        const verso = vMatch[2].replace(/\*+/g, '').trim();
+        if (frenteAtual.length > 1 && verso.length > 1) {
+          flashcards.push({ id: flashcards.length + 1, frente: frenteAtual, verso });
+          console.log('✅ v65 Flashcard (linha):', frenteAtual.substring(0, 40));
+        }
+        frenteAtual = '';
       }
     }
   }
   
-  console.log('📊 v64: Total flashcards parseados:', flashcards.length);
+  console.log('📊 v65: Total flashcards parseados:', flashcards.length);
   return flashcards;
 }
 
