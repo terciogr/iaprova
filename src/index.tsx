@@ -6434,6 +6434,36 @@ app.post('/api/editais/processar-texto', async (c) => {
     const linhas = textoLimpo.split('\n')
     console.log(`📄 Total de linhas no edital: ${linhas.length}`)
     
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v60: DETECTAR TIPO DE EDITAL
+    // Alguns editais são "Processo Seletivo Simplificado" sem provas de conhecimento
+    // Nesses casos, devemos informar o usuário e oferecer alternativas
+    // ════════════════════════════════════════════════════════════════
+    
+    const textoUpper = textoLimpo.toUpperCase()
+    const ehProcessoSeletivoSimplificado = (
+      textoUpper.includes('PROCESSO SELETIVO SIMPLIFICADO') ||
+      textoUpper.includes('SELEÇÃO SIMPLIFICADA') ||
+      (textoUpper.includes('PROVA DE TÍTULOS') && !textoUpper.includes('PROVA OBJETIVA') && !textoUpper.includes('PROVA DE CONHECIMENTOS'))
+    )
+    const temConteudoProgramatico = textoUpper.includes('CONTEÚDO PROGRAMÁTICO') || textoUpper.includes('CONTEUDO PROGRAMATICO')
+    const temProvaObjetiva = textoUpper.includes('PROVA OBJETIVA') || textoUpper.includes('PROVA DE CONHECIMENTOS') || textoUpper.includes('PROVAS OBJETIVAS')
+    
+    if (ehProcessoSeletivoSimplificado && !temProvaObjetiva && !temConteudoProgramatico) {
+      console.log('⚠️ v60: Detectado PROCESSO SELETIVO SIMPLIFICADO (sem provas de conhecimento)')
+      console.log('   Este tipo de edital é baseado em títulos/entrevista, sem disciplinas para estudo')
+      
+      return c.json({
+        success: false,
+        error: 'Este é um Processo Seletivo Simplificado',
+        errorType: 'PROCESSO_SELETIVO_SIMPLIFICADO',
+        message: 'Este edital é de um **Processo Seletivo Simplificado** baseado em **análise de títulos e/ou entrevista**, sem provas de conhecimentos.\n\nNão há disciplinas ou conteúdo programático para estudo neste tipo de seleção.\n\n**Sugestões:**\n• Verifique os requisitos de titulação (diplomas, certificados)\n• Prepare-se para a entrevista (se houver)\n• Use "Continuar sem edital" para criar um plano de estudos personalizado',
+        suggestion: 'Use "Continuar sem edital" para criar um plano de estudos personalizado',
+        canRetry: false,
+        tipoEdital: 'processo_seletivo_simplificado'
+      }, 400)
+    }
+    
     // ──────────────────────────────────────────────────────────────
     // MÉTODO 1: Tentar extrair disciplinas da TABELA do edital
     // Funciona para editais que listam "Disciplina    Questões"
@@ -7249,7 +7279,7 @@ RETORNE APENAS JSON válido:
     }
     
     // ════════════════════════════════════════════════════════════════
-    // FILTRO DE DISCIPLINAS INVÁLIDAS (v51d)
+    // FILTRO DE DISCIPLINAS INVÁLIDAS (v60)
     // ════════════════════════════════════════════════════════════════
     const nomesInvalidos = [
       'OBSERVAÇÕES', 'OBSERVAÇÃO', 'OBS', 'NOTA', 'NOTAS',
@@ -7261,7 +7291,14 @@ RETORNE APENAS JSON válido:
       'CRONOGRAMA', 'CALENDÁRIO', 'PROGRAMA', 'PROGRAMAS',
       'DAS PROVAS', 'DA PROVA', 'DOS CARGOS', 'DAS VAGAS',
       'PARA TODOS', 'TODOS OS CARGOS', 'CONHECIMENTOS ESPECÍFICOS POR CARGOS',
-      'CONTEÚDO PROGRAMÁTICO', 'CONTEÚDOS PROGRAMÁTICOS'
+      'CONTEÚDO PROGRAMÁTICO', 'CONTEÚDOS PROGRAMÁTICOS',
+      // ✅ v60: Filtrar termos de processo seletivo simplificado (tabelas de pontuação)
+      'CAPACITAÇÃO', 'APERFEIÇOAMENTO', 'HABILITAÇÃO',
+      'CURSO DE APERFEIÇOAMENTO', 'CURSO DE CAPACITAÇÃO', 'CURSO DE HABILITAÇÃO',
+      'TITULAÇÃO', 'TITULAÇÃO MÍNIMA', 'FORMAÇÃO', 'FORMAÇÃO MÍNIMA',
+      'PONTUAÇÃO', 'TABELA DE PONTUAÇÃO', 'QUADRO DE PONTUAÇÃO',
+      'DOCUMENTAÇÃO', 'DOCUMENTAÇÃO APRESENTADA', 'LIMITE MÁXIMO',
+      'COMPONENTE', 'DESCRIÇÃO', 'PONTUAÇÃO POR ITEM'
     ]
     
     const disciplinasAntesDoFiltro = disciplinasExtraidas.length
