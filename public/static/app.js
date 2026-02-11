@@ -5387,30 +5387,80 @@ async function renderEntrevistaStep3() {
     
     console.log('📊 IDs mapeados:', disciplinasFiltradas.map(d => `${d.nome}: ID=${d.id}, edital_disciplina_id=${d.edital_disciplina_id}`).join(', '));
     
-  } else {
-    // 🔄 FALLBACK: Carregar disciplinas padrão se não houver edital
-    console.log('📚 Nenhum edital processado. Carregando disciplinas padrão...');
+  } else if (interviewData.edital_id) {
+    // ✅ CORREÇÃO v52: Se tem edital_id mas disciplinas_do_edital se perdeu,
+    // buscar disciplinas do edital via API (NÃO usar disciplinas estáticas!)
+    console.log(`📄 Buscando disciplinas do edital ${interviewData.edital_id} via API...`);
     
-    // Carregar disciplinas padrão agora
-    const response = await axios.get('/api/disciplinas');
-    disciplinasDisponiveis = response.data;
-    
-    // Filtrar disciplinas: BÁSICAS + GERAIS + ESPECÍFICAS DA ÁREA
-    const disciplinasBasicas = disciplinasDisponiveis.filter(d => d.area === 'basico');
-    const disciplinasGerais = disciplinasDisponiveis.filter(d => d.area === 'geral');
-    
-    let disciplinasArea = [];
-    if (interviewData.area_geral) {
-      disciplinasArea = disciplinasDisponiveis.filter(d => d.area === interviewData.area_geral);
-    } else if (interviewData.cargo) {
-      const areaDetectada = detectarAreaPorCargo(interviewData.cargo);
-      if (areaDetectada) {
-        interviewData.area_geral = areaDetectada;
-        disciplinasArea = disciplinasDisponiveis.filter(d => d.area === areaDetectada);
+    try {
+      const editalDiscRes = await axios.get(`/api/editais/${interviewData.edital_id}/disciplinas`);
+      const disciplinasEdital = editalDiscRes.data || [];
+      
+      if (disciplinasEdital.length > 0) {
+        console.log(`✅ ${disciplinasEdital.length} disciplinas recuperadas do edital ${interviewData.edital_id}`);
+        
+        // Salvar de volta no interviewData para não perder novamente
+        interviewData.disciplinas_do_edital = disciplinasEdital;
+        
+        // Mapear para formato esperado
+        disciplinasFiltradas = disciplinasEdital.map(d => ({
+          id: d.disciplina_id_real || d.id || 0,
+          edital_disciplina_id: d.id,
+          nome: d.nome,
+          descricao: `Disciplina extraída do edital (${d.total_topicos || d.topicos?.length || 0} tópicos)`,
+          area: 'edital',
+          peso: d.peso || null,
+          total_topicos: d.total_topicos || d.topicos?.length || 0,
+          topicos: d.topicos || []
+        }));
+        
+        console.log('📊 Disciplinas do edital recuperadas:', disciplinasFiltradas.map(d => d.nome).join(', '));
+      } else {
+        console.warn('⚠️ Edital existe mas sem disciplinas. Usando fallback manual.');
+        // Nenhuma disciplina no edital - deixar vazio para o usuário adicionar manualmente
+        disciplinasFiltradas = [];
       }
+    } catch (editalError) {
+      console.error('❌ Erro ao buscar disciplinas do edital:', editalError);
+      // Em caso de erro, deixar vazio para o usuário adicionar manualmente
+      disciplinasFiltradas = [];
     }
+  } else if (!interviewData.sem_edital) {
+    // ✅ CORREÇÃO v52: Se não tem edital E não escolheu "sem edital" explicitamente,
+    // NÃO carregar disciplinas estáticas automaticamente - deixar vazio
+    console.log('📚 Nenhum edital processado e sem escolha explícita. Lista vazia para adição manual.');
+    disciplinasFiltradas = [];
+  } else {
+    // 🔄 FALLBACK LEGÍTIMO: Usuário ESCOLHEU continuar sem edital
+    // Carregar apenas disciplinas básicas universais (Português, RL, Informática)
+    console.log('📚 Usuário escolheu continuar sem edital. Carregando disciplinas básicas...');
     
-    disciplinasFiltradas = [...disciplinasBasicas, ...disciplinasGerais, ...disciplinasArea];
+    try {
+      const response = await axios.get('/api/disciplinas');
+      disciplinasDisponiveis = response.data;
+      
+      // ✅ CORREÇÃO v52: Carregar APENAS disciplinas básicas + da área específica
+      // NÃO carregar TODAS as disciplinas genéricas
+      const disciplinasBasicas = disciplinasDisponiveis.filter(d => d.area === 'basico');
+      
+      let disciplinasArea = [];
+      if (interviewData.area_geral) {
+        disciplinasArea = disciplinasDisponiveis.filter(d => d.area === interviewData.area_geral);
+      } else if (interviewData.cargo) {
+        const areaDetectada = detectarAreaPorCargo(interviewData.cargo);
+        if (areaDetectada) {
+          interviewData.area_geral = areaDetectada;
+          disciplinasArea = disciplinasDisponiveis.filter(d => d.area === areaDetectada);
+        }
+      }
+      
+      // NÃO incluir 'geral' - essas são disciplinas genéricas demais
+      disciplinasFiltradas = [...disciplinasBasicas, ...disciplinasArea];
+      console.log(`📋 ${disciplinasFiltradas.length} disciplinas básicas/área carregadas`);
+    } catch (error) {
+      console.error('Erro ao carregar disciplinas:', error);
+      disciplinasFiltradas = [];
+    }
   }
 
   document.getElementById('app').innerHTML = `
