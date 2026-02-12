@@ -23011,25 +23011,126 @@ window.gerarSimulado = async function() {
     return;
   }
   
-  // Fechar modal
+  // Fechar modal de configuração
   document.getElementById('modal-simulado')?.remove();
   
-  // Mostrar loading
-  const loadingHtml = `
-    <div id="loading-simulado" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-md text-center">
-        <div class="animate-spin w-16 h-16 border-4 border-[#122D6A] border-t-transparent rounded-full mx-auto mb-4"></div>
-        <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">Gerando seu Simulado...</h3>
-        <p class="text-gray-600 dark:text-gray-300">Criando ${quantidadeQuestoes} questões de ${disciplinasSelecionadas.length} disciplina(s)</p>
-        <p class="text-sm text-gray-400 mt-2">Isso pode levar até 1 minuto...</p>
-        <div id="progresso-simulado" class="mt-4 text-sm text-[#122D6A]"></div>
+  // v72: MODAL DE PROGRESSO ANIMADO PARA SIMULADO
+  const etapasSimulado = [
+    { label: 'Carregando disciplinas e tópicos...', icon: 'fa-book-open', pct: 8 },
+    { label: 'Analisando conteúdo programático...', icon: 'fa-search', pct: 18 },
+    { label: 'Distribuindo questões por disciplina...', icon: 'fa-balance-scale', pct: 30 },
+    { label: 'Gerando questões com Gemini IA...', icon: 'fa-brain', pct: 50 },
+    { label: 'Criando alternativas e gabaritos...', icon: 'fa-list-ol', pct: 70 },
+    { label: 'Elaborando comentários das questões...', icon: 'fa-comment-dots', pct: 82 },
+    { label: 'Revisando e validando simulado...', icon: 'fa-check-double', pct: 92 },
+    { label: 'Finalizando...', icon: 'fa-flag-checkered', pct: 98 }
+  ];
+  
+  const discNomes = disciplinasSelecionadas.map(d => d.nome);
+  const discResumo = discNomes.length <= 3 
+    ? discNomes.join(', ') 
+    : discNomes.slice(0, 2).join(', ') + ` e mais ${discNomes.length - 2}`;
+  
+  const loadingSimuladoHtml = `
+    <div id="loading-simulado" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl p-6 max-w-md w-full">
+        <!-- Header com ícone animado -->
+        <div class="text-center mb-5">
+          <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-[#122D6A] to-cyan-500 flex items-center justify-center mb-4 relative">
+            <i class="fas fa-clipboard-list text-white text-3xl animate-pulse"></i>
+            <div class="absolute -top-1 -right-1 w-6 h-6 bg-green-400 rounded-full flex items-center justify-center animate-bounce">
+              <i class="fas fa-bolt text-white text-xs"></i>
+            </div>
+          </div>
+          <h3 class="text-xl font-bold ${themes[currentTheme].text}">Gerando Simulado</h3>
+          <p class="text-sm ${themes[currentTheme].textSecondary} mt-1">${quantidadeQuestoes} questões · ${disciplinasSelecionadas.length} disciplina(s)</p>
+          <p class="text-xs ${themes[currentTheme].textSecondary} mt-0.5">${discResumo}</p>
+        </div>
+        
+        <!-- Barra de progresso -->
+        <div class="mb-4">
+          <div class="flex justify-between text-xs ${themes[currentTheme].textSecondary} mb-1">
+            <span id="sim-loading-etapa-texto">Iniciando...</span>
+            <span id="sim-loading-percentual">0%</span>
+          </div>
+          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+            <div id="sim-loading-barra" class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-cyan-500 transition-all duration-700 ease-out" style="width: 0%"></div>
+          </div>
+        </div>
+        
+        <!-- Etapas -->
+        <div id="sim-loading-etapas" class="space-y-2 mb-4">
+          ${etapasSimulado.map((e, i) => `
+            <div id="sim-etapa-${i}" class="flex items-center gap-3 text-sm ${themes[currentTheme].textSecondary} opacity-40 transition-all duration-300">
+              <div class="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center flex-shrink-0" id="sim-etapa-icon-${i}">
+                <i class="fas ${e.icon} text-xs"></i>
+              </div>
+              <span>${e.label}</span>
+            </div>
+          `).join('')}
+        </div>
+        
+        <!-- Dica -->
+        <div class="text-center">
+          <p class="text-xs ${themes[currentTheme].textSecondary} italic">
+            <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
+            Simulados com mais questões levam até 90 segundos
+          </p>
+        </div>
       </div>
     </div>
   `;
   
   const loadingDiv = document.createElement('div');
-  loadingDiv.innerHTML = loadingHtml;
+  loadingDiv.innerHTML = loadingSimuladoHtml;
   document.body.appendChild(loadingDiv.firstElementChild);
+  
+  // v72: Animação da barra de progresso do simulado
+  let etapaSimAtual = 0;
+  // Timing adaptativo: mais questões = mais tempo por etapa
+  const tempoBase = quantidadeQuestoes >= 40 ? 9000 : quantidadeQuestoes >= 25 ? 7000 : 5000;
+  
+  const simProgressInterval = setInterval(() => {
+    if (etapaSimAtual < etapasSimulado.length) {
+      const etapa = etapasSimulado[etapaSimAtual];
+      
+      // Atualizar barra
+      const barra = document.getElementById('sim-loading-barra');
+      const textoEtapa = document.getElementById('sim-loading-etapa-texto');
+      const percentual = document.getElementById('sim-loading-percentual');
+      
+      if (barra) barra.style.width = etapa.pct + '%';
+      if (textoEtapa) textoEtapa.textContent = etapa.label;
+      if (percentual) percentual.textContent = etapa.pct + '%';
+      
+      // Marcar etapa como ativa
+      const etapaEl = document.getElementById(`sim-etapa-${etapaSimAtual}`);
+      const iconEl = document.getElementById(`sim-etapa-icon-${etapaSimAtual}`);
+      if (etapaEl) {
+        etapaEl.classList.remove('opacity-40');
+        etapaEl.classList.add('opacity-100', 'font-medium');
+      }
+      if (iconEl) {
+        iconEl.classList.remove('border-gray-300', 'dark:border-gray-600');
+        iconEl.classList.add('border-[#122D6A]', 'bg-[#122D6A]', 'text-white');
+      }
+      
+      // Marcar etapa anterior como concluída (check verde)
+      if (etapaSimAtual > 0) {
+        const prevIconEl = document.getElementById(`sim-etapa-icon-${etapaSimAtual - 1}`);
+        if (prevIconEl) {
+          prevIconEl.innerHTML = '<i class="fas fa-check text-xs"></i>';
+          prevIconEl.classList.add('bg-green-500', 'border-green-500');
+          prevIconEl.classList.remove('bg-[#122D6A]', 'border-[#122D6A]');
+        }
+      }
+      
+      etapaSimAtual++;
+    }
+  }, tempoBase);
+  
+  // Guardar interval para limpar
+  window._simProgressInterval = simProgressInterval;
   
   try {
     // Chamar API de geração de simulado
@@ -23040,6 +23141,32 @@ window.gerarSimulado = async function() {
       quantidade: quantidadeQuestoes
     });
     
+    // Limpar interval
+    clearInterval(simProgressInterval);
+    window._simProgressInterval = null;
+    
+    // Animação final de conclusão
+    const barra = document.getElementById('sim-loading-barra');
+    const textoEtapa = document.getElementById('sim-loading-etapa-texto');
+    const percentual = document.getElementById('sim-loading-percentual');
+    if (barra) barra.style.width = '100%';
+    if (textoEtapa) textoEtapa.textContent = 'Simulado pronto!';
+    if (percentual) percentual.textContent = '100%';
+    
+    // Marcar todas as etapas como concluídas
+    for (let i = 0; i < etapasSimulado.length; i++) {
+      const el = document.getElementById(`sim-etapa-${i}`);
+      const iconEl = document.getElementById(`sim-etapa-icon-${i}`);
+      if (el) { el.classList.remove('opacity-40'); el.classList.add('opacity-100'); }
+      if (iconEl) {
+        iconEl.innerHTML = '<i class="fas fa-check text-xs"></i>';
+        iconEl.classList.add('bg-green-500', 'border-green-500', 'text-white');
+        iconEl.classList.remove('bg-[#122D6A]', 'border-[#122D6A]', 'border-gray-300', 'dark:border-gray-600');
+      }
+    }
+    
+    // Delay breve para mostrar 100% antes de fechar
+    await new Promise(r => setTimeout(r, 800));
     document.getElementById('loading-simulado')?.remove();
     
     if (response.data.success) {
@@ -23057,6 +23184,8 @@ window.gerarSimulado = async function() {
       showToast('Erro ao gerar simulado: ' + (response.data.error || 'Erro no servidor. Tente novamente.'), 'error');
     }
   } catch (error) {
+    clearInterval(simProgressInterval);
+    window._simProgressInterval = null;
     document.getElementById('loading-simulado')?.remove();
     console.error('Erro ao gerar simulado:', error);
     showToast('Erro ao gerar simulado: ' + (error.response?.data?.error || error.message), 'error');
@@ -23500,24 +23629,118 @@ window.confirmarIniciarSimulado = async function(tipo) {
   };
   
   const cfg = config[tipo];
+  const dificuldadeLabel = dificuldade === 'facil' ? 'Fácil' : dificuldade === 'medio' ? 'Médio' : 'Difícil';
   
-  // Mostrar loading
-  document.getElementById('app').innerHTML = `
-    <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center">
-      <div class="text-center">
-        <i class="fas fa-spinner fa-spin text-6xl text-[#122D6A] mb-4"></i>
-        <p class="${themes[currentTheme].text} text-xl mb-2">Gerando ${cfg.questoes} questões...</p>
-        <p class="${themes[currentTheme].textSecondary}">Simulado ${cfg.nome} • ${cfg.tempo} minutos</p>
-        <p class="${themes[currentTheme].textSecondary} text-sm mt-2">
-          <i class="fas fa-signal mr-1"></i>Dificuldade: <strong>${dificuldade === 'facil' ? 'Fácil' : dificuldade === 'medio' ? 'Médio' : 'Difícil'}</strong>
-        </p>
-        <p class="${themes[currentTheme].textSecondary} text-sm">
-          <i class="fas fa-book mr-1"></i>${disciplinasSelecionadas.length} disciplina(s) selecionada(s)
-        </p>
-        <p class="${themes[currentTheme].textSecondary} text-xs mt-4">Isso pode levar alguns segundos...</p>
+  // v72: MODAL DE PROGRESSO ANIMADO PARA SIMULADO (iniciarSimulado)
+  const etapasSimIniciar = [
+    { label: 'Carregando disciplinas selecionadas...', icon: 'fa-book-open', pct: 8 },
+    { label: 'Mapeando tópicos do edital...', icon: 'fa-map', pct: 18 },
+    { label: 'Calibrando dificuldade: ' + dificuldadeLabel + '...', icon: 'fa-signal', pct: 28 },
+    { label: 'Gerando questões com Gemini IA...', icon: 'fa-brain', pct: 48 },
+    { label: 'Criando alternativas e gabaritos...', icon: 'fa-list-ol', pct: 65 },
+    { label: 'Elaborando comentários detalhados...', icon: 'fa-comment-dots', pct: 78 },
+    { label: 'Organizando prova final...', icon: 'fa-check-double', pct: 90 },
+    { label: 'Preparando ambiente do simulado...', icon: 'fa-flag-checkered', pct: 98 }
+  ];
+  
+  const discNomesIniciar = disciplinasSelecionadas.map(d => d.nome);
+  const discResumoIniciar = discNomesIniciar.length <= 3 
+    ? discNomesIniciar.join(', ') 
+    : discNomesIniciar.slice(0, 2).join(', ') + ` e mais ${discNomesIniciar.length - 2}`;
+  
+  const loadingIniciarHtml = `
+    <div id="loading-simulado-iniciar" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl p-6 max-w-md w-full">
+        <!-- Header com ícone animado -->
+        <div class="text-center mb-5">
+          <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-[#122D6A] to-cyan-500 flex items-center justify-center mb-4 relative">
+            <i class="fas fa-clipboard-list text-white text-3xl animate-pulse"></i>
+            <div class="absolute -top-1 -right-1 w-6 h-6 bg-green-400 rounded-full flex items-center justify-center animate-bounce">
+              <i class="fas fa-bolt text-white text-xs"></i>
+            </div>
+          </div>
+          <h3 class="text-xl font-bold ${themes[currentTheme].text}">Gerando Simulado ${cfg.nome}</h3>
+          <p class="text-sm ${themes[currentTheme].textSecondary} mt-1">${cfg.questoes} questões · ${cfg.tempo} min · ${dificuldadeLabel}</p>
+          <p class="text-xs ${themes[currentTheme].textSecondary} mt-0.5">${discResumoIniciar}</p>
+        </div>
+        
+        <!-- Barra de progresso -->
+        <div class="mb-4">
+          <div class="flex justify-between text-xs ${themes[currentTheme].textSecondary} mb-1">
+            <span id="sim2-loading-etapa-texto">Iniciando...</span>
+            <span id="sim2-loading-percentual">0%</span>
+          </div>
+          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+            <div id="sim2-loading-barra" class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-cyan-500 transition-all duration-700 ease-out" style="width: 0%"></div>
+          </div>
+        </div>
+        
+        <!-- Etapas -->
+        <div id="sim2-loading-etapas" class="space-y-2 mb-4">
+          ${etapasSimIniciar.map((e, i) => `
+            <div id="sim2-etapa-${i}" class="flex items-center gap-3 text-sm ${themes[currentTheme].textSecondary} opacity-40 transition-all duration-300">
+              <div class="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center flex-shrink-0" id="sim2-etapa-icon-${i}">
+                <i class="fas ${e.icon} text-xs"></i>
+              </div>
+              <span>${e.label}</span>
+            </div>
+          `).join('')}
+        </div>
+        
+        <!-- Dica -->
+        <div class="text-center">
+          <p class="text-xs ${themes[currentTheme].textSecondary} italic">
+            <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
+            ${cfg.questoes >= 40 ? 'Simulados completos levam até 90 segundos' : 'Isso pode levar de 15 a 60 segundos'}
+          </p>
+        </div>
       </div>
     </div>
   `;
+  
+  const loadingDiv2 = document.createElement('div');
+  loadingDiv2.innerHTML = loadingIniciarHtml;
+  document.body.appendChild(loadingDiv2.firstElementChild);
+  
+  // v72: Animação da barra de progresso
+  let etapaSim2Atual = 0;
+  const tempoBase2 = cfg.questoes >= 40 ? 9000 : cfg.questoes >= 25 ? 7000 : 5000;
+  
+  const sim2ProgressInterval = setInterval(() => {
+    if (etapaSim2Atual < etapasSimIniciar.length) {
+      const etapa = etapasSimIniciar[etapaSim2Atual];
+      
+      const barra = document.getElementById('sim2-loading-barra');
+      const textoEtapa = document.getElementById('sim2-loading-etapa-texto');
+      const percentual = document.getElementById('sim2-loading-percentual');
+      
+      if (barra) barra.style.width = etapa.pct + '%';
+      if (textoEtapa) textoEtapa.textContent = etapa.label;
+      if (percentual) percentual.textContent = etapa.pct + '%';
+      
+      const etapaEl = document.getElementById(`sim2-etapa-${etapaSim2Atual}`);
+      const iconEl = document.getElementById(`sim2-etapa-icon-${etapaSim2Atual}`);
+      if (etapaEl) {
+        etapaEl.classList.remove('opacity-40');
+        etapaEl.classList.add('opacity-100', 'font-medium');
+      }
+      if (iconEl) {
+        iconEl.classList.remove('border-gray-300', 'dark:border-gray-600');
+        iconEl.classList.add('border-[#122D6A]', 'bg-[#122D6A]', 'text-white');
+      }
+      
+      if (etapaSim2Atual > 0) {
+        const prevIconEl = document.getElementById(`sim2-etapa-icon-${etapaSim2Atual - 1}`);
+        if (prevIconEl) {
+          prevIconEl.innerHTML = '<i class="fas fa-check text-xs"></i>';
+          prevIconEl.classList.add('bg-green-500', 'border-green-500');
+          prevIconEl.classList.remove('bg-[#122D6A]', 'border-[#122D6A]');
+        }
+      }
+      
+      etapaSim2Atual++;
+    }
+  }, tempoBase2);
   
   try {
     const response = await axios.post('/api/simulados/gerar-questoes', {
@@ -23526,6 +23749,30 @@ window.confirmarIniciarSimulado = async function(tipo) {
       dificuldade: dificuldade,
       disciplinas: disciplinasSelecionadas
     });
+    
+    // Limpar interval e animação final
+    clearInterval(sim2ProgressInterval);
+    
+    const barra = document.getElementById('sim2-loading-barra');
+    const textoEtapa = document.getElementById('sim2-loading-etapa-texto');
+    const percentual = document.getElementById('sim2-loading-percentual');
+    if (barra) barra.style.width = '100%';
+    if (textoEtapa) textoEtapa.textContent = 'Simulado pronto!';
+    if (percentual) percentual.textContent = '100%';
+    
+    for (let i = 0; i < etapasSimIniciar.length; i++) {
+      const el = document.getElementById(`sim2-etapa-${i}`);
+      const iconEl = document.getElementById(`sim2-etapa-icon-${i}`);
+      if (el) { el.classList.remove('opacity-40'); el.classList.add('opacity-100'); }
+      if (iconEl) {
+        iconEl.innerHTML = '<i class="fas fa-check text-xs"></i>';
+        iconEl.classList.add('bg-green-500', 'border-green-500', 'text-white');
+        iconEl.classList.remove('bg-[#122D6A]', 'border-[#122D6A]', 'border-gray-300', 'dark:border-gray-600');
+      }
+    }
+    
+    await new Promise(r => setTimeout(r, 800));
+    document.getElementById('loading-simulado-iniciar')?.remove();
     
     if (response.data.questoes && response.data.questoes.length > 0) {
       // Inicializar estado do simulado
@@ -23546,8 +23793,10 @@ window.confirmarIniciarSimulado = async function(tipo) {
       throw new Error('Nenhuma questão gerada');
     }
   } catch (error) {
+    clearInterval(sim2ProgressInterval);
+    document.getElementById('loading-simulado-iniciar')?.remove();
     console.error('Erro ao gerar simulado:', error);
-    showModal('❌ Erro ao gerar questões. Tente novamente.');
+    showModal('Erro ao gerar questões. Tente novamente.');
     setTimeout(() => window.renderDashboardSimulados(), 2000);
   }
 }
