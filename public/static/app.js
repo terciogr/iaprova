@@ -9548,13 +9548,45 @@ window.confirmarGeracaoRapida = function(tipo, metaId, topicoId, topicoNome, dis
   window.executarGeracaoConteudo(topicoId || null, topicoNome, disciplinaNome, tipo, quantidade, metaId);
 }
 
+// v71: Função para executar geração a partir de dados salvos no window (evita problemas com onclick inline)
+window.executarGeracaoPendente = function() {
+  const dados = window._geracaoPendente;
+  if (!dados) {
+    showToast('Erro: dados de geração não encontrados', 'error');
+    return;
+  }
+  
+  const slider = document.getElementById('quantidade-rapida-slider');
+  const quantidade = slider ? parseInt(slider.value) : (dados.tipo === 'exercicios' ? 10 : 15);
+  
+  console.log('🚀 v71: Geração pendente executada:', { ...dados, quantidade });
+  
+  // Fechar modal de quantidade
+  document.getElementById('modal-quantidade-rapida')?.remove();
+  
+  // Executar geração com dados salvos
+  window.executarGeracaoConteudo(
+    dados.topicoId,
+    dados.topicoNome,
+    dados.disciplinaNome,
+    dados.tipo,
+    quantidade,
+    dados.metaId
+  );
+}
+
 // Função para executar a geração de conteúdo
 window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplinaNome, tipo, quantidade = null, metaId = null) {
   // ✅ VALIDAÇÃO: Exigir tópico para gerar conteúdo
   if (!topicoId && !topicoNome) {
-    showToast('⚠️ É necessário selecionar um tópico para gerar conteúdo', 'error');
-    showModal('❌ Tópico obrigatório', 'Por favor, selecione um tópico antes de gerar o conteúdo. Não é possível gerar material de estudo sem um tema específico.');
+    showToast('É necessário selecionar um tópico para gerar conteúdo', 'error');
     return;
+  }
+  
+  // v71: Truncar topico_nome muito longo (pode causar problemas na API)
+  if (topicoNome && topicoNome.length > 200) {
+    console.log('⚠️ v71: topicoNome muito longo (' + topicoNome.length + ' chars), truncando...');
+    topicoNome = topicoNome.substring(0, 200);
   }
   
   // Remover modal de seleção
@@ -10030,14 +10062,9 @@ window.exibirConteudoGerado = function(data) {
         
         <!-- Footer fixo -->
         <div class="p-4 border-t ${themes[currentTheme].border} flex-shrink-0 flex gap-3 justify-end">
-          ${material_id ? `
           <button class="px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed flex items-center gap-2" disabled>
-            <i class="fas fa-check"></i>Salvo
-          </button>` : `
-          <button onclick="salvarConteudoGerado()"
-                  class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition flex items-center gap-2">
-            <i class="fas fa-save"></i>Salvar
-          </button>`}
+            <i class="fas fa-check"></i>Salvo automaticamente
+          </button>
           <button onclick="copiarConteudoGerado()"
                   class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex items-center gap-2">
             <i class="fas fa-copy"></i>Copiar
@@ -17218,6 +17245,14 @@ window.gerarConteudoTipo = async function(tipo) {
   
   // ✅ CORREÇÃO v15: Para exercicios e flashcards, abrir modal de quantidade
   if (tipo === 'exercicios' || tipo === 'flashcards') {
+    // v71: Guardar dados no window para não depender de strings inline
+    window._geracaoPendente = {
+      tipo: tipo,
+      metaId: metaId || null,
+      topicoId: topicoId || null,
+      topicoNome: (topicoNome || '').substring(0, 200),
+      disciplinaNome: disciplinaNome || ''
+    };
     // Criar modal rápido de quantidade
     const modalHtml = `
       <div id="modal-quantidade-rapida" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -17252,7 +17287,7 @@ window.gerarConteudoTipo = async function(tipo) {
                     class="flex-1 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition font-medium">
               Cancelar
             </button>
-            <button onclick="confirmarGeracaoRapida('${tipo}', ${metaId || 'null'}, '${(topicoId || '').toString().replace(/'/g, "\\'")}', '${(topicoNome || '').replace(/'/g, "\\'")}', '${(disciplinaNome || '').replace(/'/g, "\\'")}')"
+            <button onclick="executarGeracaoPendente()"
                     class="flex-1 py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition font-semibold flex items-center justify-center gap-2">
               <i class="fas fa-magic"></i> Gerar
             </button>
@@ -17811,6 +17846,16 @@ window.verConteudoGerado = async function(metaId, tipo) {
     console.log(`🆕 v70: Conteúdo ${tipo} não existe, abrindo modal para gerar...`);
     
     if (tipo === 'exercicios' || tipo === 'flashcards') {
+      // v71: Guardar dados no window para não depender de strings inline no onclick
+      window._geracaoPendente = {
+        tipo: tipo,
+        metaId: metaId,
+        topicoId: meta.topico_id || null,
+        topicoNome: (meta.topico_nome || '').substring(0, 200),
+        disciplinaNome: meta.disciplina_nome || ''
+      };
+      console.log('📋 v71: Dados de geração pendente:', window._geracaoPendente);
+      
       const modalHtml = `
         <div id="modal-quantidade-rapida" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-sm w-full p-5">
@@ -17844,7 +17889,7 @@ window.verConteudoGerado = async function(metaId, tipo) {
                       class="flex-1 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition font-medium">
                 Cancelar
               </button>
-              <button onclick="confirmarGeracaoRapida('${tipo}', ${metaId || 'null'}, '${(meta.topico_id || '').toString().replace(/'/g, "\\'")}', '${(meta.topico_nome || '').replace(/'/g, "\\'")}', '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}')"
+              <button onclick="executarGeracaoPendente()"
                       class="flex-1 py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition font-semibold flex items-center justify-center gap-2">
                 <i class="fas fa-magic"></i> Gerar
               </button>
