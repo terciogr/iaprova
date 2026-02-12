@@ -18790,6 +18790,53 @@ app.get('/api/historico/conteudos/:user_id', async (c) => {
 
 // ============== MATERIAIS - LISTAR, SALVAR, DELETAR ==============
 
+// v70: Buscar material por disciplina/topico/tipo (DEVE FICAR ANTES de /:user_id)
+app.get('/api/materiais/buscar', async (c) => {
+  const { DB } = c.env
+  const user_id = c.req.query('user_id')
+  const disciplina_id = c.req.query('disciplina_id')
+  const topico_id = c.req.query('topico_id')
+  const tipo = c.req.query('tipo')
+
+  try {
+    let material = null
+
+    // 1. Tentar buscar por topico_id + tipo (mais específico)
+    if (topico_id && topico_id !== 'null' && topico_id !== 'undefined') {
+      material = await DB.prepare(`
+        SELECT ms.*, d.nome as disciplina_nome, te.nome as topico_nome
+        FROM materiais_salvos ms
+        LEFT JOIN disciplinas d ON ms.disciplina_id = d.id
+        LEFT JOIN topicos_edital te ON ms.topico_id = te.id
+        WHERE ms.user_id = ? AND ms.topico_id = ? AND ms.tipo = ?
+        ORDER BY ms.created_at DESC
+        LIMIT 1
+      `).bind(parseInt(user_id as string), parseInt(topico_id as string), tipo).first()
+    }
+
+    // 2. Fallback: buscar por disciplina_id + tipo
+    if (!material && disciplina_id && disciplina_id !== 'null' && disciplina_id !== 'undefined') {
+      material = await DB.prepare(`
+        SELECT ms.*, d.nome as disciplina_nome, te.nome as topico_nome
+        FROM materiais_salvos ms
+        LEFT JOIN disciplinas d ON ms.disciplina_id = d.id
+        LEFT JOIN topicos_edital te ON ms.topico_id = te.id
+        WHERE ms.user_id = ? AND ms.disciplina_id = ? AND ms.tipo = ?
+        ORDER BY ms.created_at DESC
+        LIMIT 1
+      `).bind(parseInt(user_id as string), parseInt(disciplina_id as string), tipo).first()
+    }
+
+    if (material) {
+      return c.json({ found: true, material })
+    }
+    return c.json({ found: false, material: null })
+  } catch (error: any) {
+    console.error('Erro ao buscar material:', error)
+    return c.json({ found: false, material: null, error: error.message })
+  }
+})
+
 // Listar materiais do usuário
 app.get('/api/materiais/:user_id', async (c) => {
   const { DB } = c.env

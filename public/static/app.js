@@ -9563,19 +9563,68 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
   
   const qtdTexto = quantidade ? ` (${quantidade} itens)` : '';
   
-  // Mostrar loading - TEMA CORRIGIDO
+  // v70: NOVO LOADING COM BARRA DE PROGRESSO ANIMADA
+  const etapas = [
+    { label: 'Analisando tópico...', icon: 'fa-search', pct: 10 },
+    { label: 'Configurando parâmetros de IA...', icon: 'fa-cog', pct: 20 },
+    { label: 'Gerando conteúdo com Gemini...', icon: 'fa-brain', pct: 35 },
+    { label: 'Processando resposta...', icon: 'fa-spinner', pct: 60 },
+    { label: 'Formatando conteúdo...', icon: 'fa-file-alt', pct: 80 },
+    { label: 'Salvando automaticamente...', icon: 'fa-save', pct: 95 }
+  ];
+  
+  const tipoDescricao = {
+    'teoria': 'a teoria completa',
+    'exercicios': `${quantidade || 10} exercícios`,
+    'resumo': 'o resumo esquematizado',
+    'flashcards': `${quantidade || 15} flashcards`
+  }[tipo] || 'o conteúdo';
+  
   const loadingHtml = `
-    <div id="loading-conteudo" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl p-8 max-w-md text-center">
-        <div class="animate-spin w-16 h-16 border-4 border-[#122D6A] border-t-transparent rounded-full mx-auto mb-4"></div>
-        <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-2">Gerando conteúdo com IA...</h3>
-        <p class="${themes[currentTheme].textSecondary}">Aguarde, estamos preparando ${
-          tipo === 'teoria' ? 'a teoria completa' :
-          tipo === 'exercicios' ? `${quantidade || 10} exercícios` :
-          tipo === 'resumo' ? 'o resumo esquematizado' :
-          `${quantidade || 15} flashcards`
-        } para você.</p>
-        <p class="text-sm ${themes[currentTheme].textSecondary} mt-2">Isso pode levar alguns segundos...</p>
+    <div id="loading-conteudo" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl p-6 max-w-md w-full">
+        <!-- Header com ícone animado -->
+        <div class="text-center mb-5">
+          <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center mb-4 relative">
+            <i class="fas fa-robot text-white text-3xl animate-pulse"></i>
+            <div class="absolute -top-1 -right-1 w-6 h-6 bg-green-400 rounded-full flex items-center justify-center animate-bounce">
+              <i class="fas fa-bolt text-white text-xs"></i>
+            </div>
+          </div>
+          <h3 class="text-xl font-bold ${themes[currentTheme].text}">Gerando ${tipoDescricao}</h3>
+          <p class="text-sm ${themes[currentTheme].textSecondary} mt-1">Modelo: Gemini 2.5 Flash</p>
+        </div>
+        
+        <!-- Barra de progresso -->
+        <div class="mb-4">
+          <div class="flex justify-between text-xs ${themes[currentTheme].textSecondary} mb-1">
+            <span id="loading-etapa-texto">Iniciando...</span>
+            <span id="loading-percentual">0%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+            <div id="loading-barra-progresso" class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] transition-all duration-700 ease-out" style="width: 0%"></div>
+          </div>
+        </div>
+        
+        <!-- Etapas -->
+        <div id="loading-etapas-lista" class="space-y-2 mb-4">
+          ${etapas.map((e, i) => `
+            <div id="loading-etapa-${i}" class="flex items-center gap-3 text-sm ${themes[currentTheme].textSecondary} opacity-40 transition-all duration-300">
+              <div class="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center flex-shrink-0" id="loading-etapa-icon-${i}">
+                <i class="fas ${e.icon} text-xs"></i>
+              </div>
+              <span>${e.label}</span>
+            </div>
+          `).join('')}
+        </div>
+        
+        <!-- Dica -->
+        <div class="text-center">
+          <p class="text-xs ${themes[currentTheme].textSecondary} italic">
+            <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
+            Isso pode levar de 10 a 60 segundos dependendo do tamanho
+          </p>
+        </div>
       </div>
     </div>
   `;
@@ -9583,6 +9632,50 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
   const loadingDiv = document.createElement('div');
   loadingDiv.innerHTML = loadingHtml;
   document.body.appendChild(loadingDiv.firstElementChild);
+  
+  // v70: Animação da barra de progresso
+  let etapaAtual = 0;
+  const progressInterval = setInterval(() => {
+    if (etapaAtual < etapas.length) {
+      const etapa = etapas[etapaAtual];
+      
+      // Atualizar barra
+      const barra = document.getElementById('loading-barra-progresso');
+      const textoEtapa = document.getElementById('loading-etapa-texto');
+      const percentual = document.getElementById('loading-percentual');
+      
+      if (barra) barra.style.width = etapa.pct + '%';
+      if (textoEtapa) textoEtapa.textContent = etapa.label;
+      if (percentual) percentual.textContent = etapa.pct + '%';
+      
+      // Marcar etapa como ativa
+      const etapaEl = document.getElementById(`loading-etapa-${etapaAtual}`);
+      const iconEl = document.getElementById(`loading-etapa-icon-${etapaAtual}`);
+      if (etapaEl) {
+        etapaEl.classList.remove('opacity-40');
+        etapaEl.classList.add('opacity-100', 'font-medium');
+      }
+      if (iconEl) {
+        iconEl.classList.remove('border-gray-300');
+        iconEl.classList.add('border-[#122D6A]', 'bg-[#122D6A]', 'text-white');
+      }
+      
+      // Marcar etapa anterior como concluída
+      if (etapaAtual > 0) {
+        const prevIconEl = document.getElementById(`loading-etapa-icon-${etapaAtual - 1}`);
+        if (prevIconEl) {
+          prevIconEl.innerHTML = '<i class="fas fa-check text-xs"></i>';
+          prevIconEl.classList.add('bg-green-500', 'border-green-500');
+          prevIconEl.classList.remove('bg-[#122D6A]', 'border-[#122D6A]');
+        }
+      }
+      
+      etapaAtual++;
+    }
+  }, tipo === 'teoria' ? 8000 : 3000); // Teoria demora mais
+  
+  // Guardar o interval para limpar depois
+  window._loadingProgressInterval = progressInterval;
   
   try {
     // Obter configurações da IA do localStorage
@@ -9616,7 +9709,11 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       }
     });
     
-    // Remover loading
+    // Remover loading e limpar interval de progresso
+    if (window._loadingProgressInterval) {
+      clearInterval(window._loadingProgressInterval);
+      window._loadingProgressInterval = null;
+    }
     document.getElementById('loading-conteudo')?.remove();
     
     if (response.data.success) {
@@ -9670,6 +9767,10 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       showToast('Erro ao gerar conteúdo: ' + (response.data.error || 'Erro no servidor. Tente novamente.'), 'error');
     }
   } catch (error) {
+    if (window._loadingProgressInterval) {
+      clearInterval(window._loadingProgressInterval);
+      window._loadingProgressInterval = null;
+    }
     document.getElementById('loading-conteudo')?.remove();
     console.error('Erro ao gerar conteúdo:', error);
     
@@ -9678,7 +9779,7 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
     const errorDetails = error.response?.data?.details || '';
     
     if (error.response?.status === 429 || errorMsg.includes('rate') || errorMsg.includes('indisponível')) {
-      showToast('🕐 API ocupada. Aguarde 1-2 minutos e tente novamente.', 'warning');
+      showToast('API ocupada. Aguarde 1-2 minutos e tente novamente.', 'warning');
     } else {
       showToast('Erro ao gerar conteúdo: ' + errorMsg, 'error');
     }
@@ -10106,7 +10207,8 @@ window.regenerarConteudoComFeedback = async function() {
       timeout: 120000 // 2 minutos para geração de conteúdo
     });
     
-    // Fechar loading
+    // Fechar loading e limpar interval
+    if (window._regenProgressInterval) { clearInterval(window._regenProgressInterval); window._regenProgressInterval = null; }
     document.getElementById('modal-loading-regeneracao')?.remove();
     
     console.log('✅ Resposta da regeneração:', response.data);
@@ -10133,6 +10235,7 @@ window.regenerarConteudoComFeedback = async function() {
     }
   } catch (error) {
     // Fechar loading em caso de erro
+    if (window._regenProgressInterval) { clearInterval(window._regenProgressInterval); window._regenProgressInterval = null; }
     document.getElementById('modal-loading-regeneracao')?.remove();
     
     console.error('Erro ao regenerar:', error);
@@ -10151,84 +10254,72 @@ function mostrarLoadingRegeneracao(topico, tipo, feedback, extensao = 'longo') {
   }[tipo] || tipo;
   
   const extensaoLabel = {
-    'curto': '📄 Curto',
-    'medio': '📋 Médio',
-    'longo': '📑 Longo',
-    'completo': '📚 Completo'
-  }[extensao] || '📑 Longo';
+    'curto': 'Curto',
+    'medio': 'Médio',
+    'longo': 'Longo',
+    'completo': 'Completo'
+  }[extensao] || 'Longo';
   
   const modalHtml = `
     <div id="modal-loading-regeneracao" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
-        <!-- Animação de loading -->
-        <div class="relative w-24 h-24 mx-auto mb-6">
-          <div class="absolute inset-0 border-4 border-emerald-200 rounded-full"></div>
-          <div class="absolute inset-0 border-4 border-emerald-600 rounded-full border-t-transparent animate-spin"></div>
-          <div class="absolute inset-0 flex items-center justify-center">
-            <i class="fas fa-magic text-2xl text-emerald-600 animate-pulse"></i>
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <!-- Header -->
+        <div class="text-center mb-4">
+          <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mb-3 relative">
+            <i class="fas fa-magic text-white text-2xl animate-pulse"></i>
+          </div>
+          <h3 class="text-lg font-bold text-gray-800">Regenerando ${tipoLabel}</h3>
+          <p class="text-sm text-gray-500">${topico}</p>
+        </div>
+        
+        <!-- Barra de progresso -->
+        <div class="mb-4">
+          <div class="flex justify-between text-xs text-gray-500 mb-1">
+            <span id="regen-etapa-texto">Analisando feedback...</span>
+            <span id="regen-percentual">5%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+            <div id="regen-barra-progresso" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 transition-all duration-700 ease-out" style="width: 5%"></div>
           </div>
         </div>
         
-        <!-- Título -->
-        <h3 class="text-xl font-bold text-gray-800 mb-2">
-          Regenerando ${tipoLabel}
-        </h3>
-        
-        <!-- Tópico -->
-        <p class="text-gray-600 mb-4">
-          <i class="fas fa-book-open mr-2"></i>
-          ${topico}
-        </p>
-        
-        <!-- Feedback sendo aplicado -->
-        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-          <p class="text-sm text-amber-800">
-            <i class="fas fa-lightbulb mr-2"></i>
-            <strong>Aplicando sua sugestão:</strong>
-          </p>
-          <p class="text-xs text-amber-700 mt-1 italic">"${feedback.substring(0, 100)}${feedback.length > 100 ? '...' : ''}"</p>
+        <!-- Feedback -->
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-3 text-xs">
+          <p class="text-amber-800"><i class="fas fa-lightbulb mr-1"></i> <strong>Sua sugestão:</strong></p>
+          <p class="text-amber-700 mt-1 italic">"${feedback.substring(0, 100)}${feedback.length > 100 ? '...' : ''}"</p>
         </div>
         
-        <!-- Tamanho selecionado -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-4 inline-block">
-          <span class="text-sm text-blue-800">
-            <i class="fas fa-text-height mr-1"></i>
-            Tamanho: <strong>${extensaoLabel}</strong>
-          </span>
+        <div class="flex items-center justify-center gap-2 text-xs text-gray-400">
+          <span>Tamanho: <strong>${extensaoLabel}</strong></span>
+          <span>|</span>
+          <span><i class="fas fa-clock mr-1"></i>10-60s</span>
         </div>
-        
-        <!-- Mensagens de progresso -->
-        <div id="loading-progress-messages" class="space-y-2 text-sm text-gray-500">
-          <p class="animate-pulse"><i class="fas fa-cog fa-spin mr-2"></i>Analisando feedback...</p>
-        </div>
-        
-        <!-- Tempo estimado -->
-        <p class="text-xs text-gray-400 mt-4">
-          <i class="fas fa-clock mr-1"></i>
-          Aguarde a IA processar...
-        </p>
       </div>
     </div>
   `;
   
   document.body.insertAdjacentHTML('beforeend', modalHtml);
   
-  // Simular progresso com mensagens
-  const mensagens = [
-    { tempo: 3000, texto: '<i class="fas fa-brain fa-spin mr-2"></i>Entendendo suas melhorias...' },
-    { tempo: 6000, texto: '<i class="fas fa-pen-fancy fa-spin mr-2"></i>Reescrevendo conteúdo...' },
-    { tempo: 10000, texto: '<i class="fas fa-check-double fa-spin mr-2"></i>Aplicando melhorias...' },
-    { tempo: 15000, texto: '<i class="fas fa-sparkles fa-spin mr-2"></i>Finalizando...' }
+  // v70: Barra de progresso animada para regeneração
+  const regenEtapas = [
+    { label: 'Entendendo melhorias...', pct: 20 },
+    { label: 'Reescrevendo conteúdo...', pct: 45 },
+    { label: 'Aplicando feedback...', pct: 70 },
+    { label: 'Finalizando...', pct: 90 }
   ];
-  
-  mensagens.forEach(({ tempo, texto }) => {
-    setTimeout(() => {
-      const container = document.getElementById('loading-progress-messages');
-      if (container) {
-        container.innerHTML = `<p class="animate-pulse">${texto}</p>`;
-      }
-    }, tempo);
-  });
+  let regenIdx = 0;
+  window._regenProgressInterval = setInterval(() => {
+    if (regenIdx < regenEtapas.length) {
+      const etapa = regenEtapas[regenIdx];
+      const barra = document.getElementById('regen-barra-progresso');
+      const texto = document.getElementById('regen-etapa-texto');
+      const pct = document.getElementById('regen-percentual');
+      if (barra) barra.style.width = etapa.pct + '%';
+      if (texto) texto.textContent = etapa.label;
+      if (pct) pct.textContent = etapa.pct + '%';
+      regenIdx++;
+    }
+  }, 5000);
 }
 
 // Função para fechar modal de conteúdo gerado e voltar ao dashboard
@@ -10267,49 +10358,60 @@ window.copiarConteudoGerado = function() {
 }
 
 // Função para salvar conteúdo gerado na biblioteca de materiais
+// v70: REESCRITA COMPLETA - Evita duplicação, trata material_id do auto-save
 window.salvarConteudoGerado = async function() {
-  console.log('💾 v68: Iniciando salvarConteudoGerado...');
-  console.log('💾 v68: dados:', window.conteudoAtualDados);
-  console.log('💾 v68: conteudo length:', window.conteudoGeradoOriginal?.length);
+  console.log('💾 v70: Iniciando salvarConteudoGerado...');
   
   const dados = window.conteudoAtualDados;
   const conteudo = window.conteudoGeradoOriginal;
   
   if (!dados) {
-    console.error('💾 v68: Dados não encontrados');
-    showToast('Erro: dados do conteúdo não encontrados. Tente gerar novamente.', 'error');
+    showToast('Erro: dados do conteúdo não encontrados.', 'error');
     return;
   }
   
   if (!conteudo) {
-    console.error('💾 v68: Conteúdo não encontrado');
-    showToast('Erro: conteúdo não encontrado. Tente gerar novamente.', 'error');
+    showToast('Erro: conteúdo não encontrado.', 'error');
     return;
   }
   
   if (!currentUser?.id) {
-    console.error('💾 v68: Usuário não autenticado');
     showToast('Erro: usuário não autenticado', 'error');
     return;
   }
   
-  // ✅ v68: Se já tem material_id, significa que já foi salvo automaticamente
+  // v70: Se já tem material_id, conteúdo já foi salvo automaticamente pelo backend
   if (dados.material_id) {
-    console.log('💾 v68: Conteúdo já foi salvo automaticamente (ID:', dados.material_id, ')');
-    showToast('✅ Conteúdo já está salvo na sua biblioteca!', 'success');
-    
-    // Atualizar botão
-    const btnSalvar = document.querySelector('button[onclick="salvarConteudoGerado()"]');
-    if (btnSalvar) {
-      btnSalvar.innerHTML = '<i class="fas fa-check"></i> Salvo';
-      btnSalvar.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
-      btnSalvar.classList.add('bg-gray-400', 'cursor-not-allowed');
-      btnSalvar.onclick = null;
-    }
+    console.log('💾 v70: Conteúdo já salvo automaticamente (ID:', dados.material_id, ')');
+    showToast('Conteúdo já está salvo na sua biblioteca!', 'success');
+    _marcarBotaoSalvoV70();
     return;
   }
   
-  // Criar título baseado no tipo e tópico
+  // v70: Verificar se já existe um material salvo para evitar duplicação
+  try {
+    const buscaExistente = await axios.get('/api/materiais/buscar', {
+      params: {
+        user_id: currentUser.id,
+        disciplina_id: dados.disciplina_id || null,
+        topico_id: dados.topico_id || null,
+        tipo: dados.tipo
+      }
+    });
+    
+    if (buscaExistente.data?.found && buscaExistente.data.material) {
+      const materialExistente = buscaExistente.data.material;
+      console.log('💾 v70: Material já existe no banco (ID:', materialExistente.id, ')');
+      dados.material_id = materialExistente.id;
+      showToast('Conteúdo já está salvo na sua biblioteca!', 'success');
+      _marcarBotaoSalvoV70();
+      return;
+    }
+  } catch (e) {
+    console.warn('💾 v70: Erro ao verificar existência:', e.message);
+  }
+  
+  // v70: Realmente precisa salvar - criar título e enviar
   const tipoLabels = {
     'teoria': 'Teoria',
     'exercicios': 'Exercícios',
@@ -10317,12 +10419,11 @@ window.salvarConteudoGerado = async function() {
     'flashcards': 'Flashcards'
   };
   const tipoLabel = tipoLabels[dados.tipo] || 'Conteúdo';
-  const titulo = `${tipoLabel} - ${dados.topico_nome || dados.disciplina_nome || 'Material'}`;
+  const titulo = `${tipoLabel}: ${dados.topico_nome || dados.disciplina_nome || 'Material'}`;
   
-  console.log('💾 v68: Salvando novo material:', { titulo, tipo: dados.tipo, user_id: currentUser.id });
+  console.log('💾 v70: Salvando novo material:', { titulo, tipo: dados.tipo });
   
   try {
-    // Salvar na biblioteca de materiais
     const response = await axios.post('/api/materiais', {
       user_id: currentUser.id,
       disciplina_id: dados.disciplina_id || null,
@@ -10333,30 +10434,29 @@ window.salvarConteudoGerado = async function() {
       tags: `${dados.disciplina_nome || ''},${dados.topico_nome || ''},${dados.tipo},gerado`
     });
     
-    console.log('💾 v68: Resposta do servidor:', response.data);
-    
     if (response.data.success) {
-      showToast('✅ Conteúdo salvo na sua biblioteca de materiais!', 'success');
-      
-      // Atualizar o material_id nos dados para não salvar novamente
       dados.material_id = response.data.id;
-      
-      // Atualizar botão para mostrar que foi salvo
-      const btnSalvar = document.querySelector('button[onclick="salvarConteudoGerado()"]');
-      if (btnSalvar) {
-        btnSalvar.innerHTML = '<i class="fas fa-check"></i> Salvo';
-        btnSalvar.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
-        btnSalvar.classList.add('bg-gray-400', 'cursor-not-allowed');
-        btnSalvar.onclick = null;
-      }
+      showToast('Conteúdo salvo na sua biblioteca!', 'success');
+      _marcarBotaoSalvoV70();
     } else {
-      console.error('💾 v68: Erro na resposta:', response.data);
-      showToast('Erro ao salvar conteúdo: ' + (response.data.error || 'Erro desconhecido'), 'error');
+      showToast('Erro ao salvar: ' + (response.data.error || 'Erro desconhecido'), 'error');
     }
   } catch (error) {
-    console.error('💾 v68: Erro ao salvar:', error);
+    console.error('💾 v70: Erro ao salvar:', error);
     const errorMsg = error.response?.data?.error || error.message || 'Erro desconhecido';
     showToast('Erro ao salvar: ' + errorMsg, 'error');
+  }
+}
+
+// v70: Helper para marcar botão como salvo
+function _marcarBotaoSalvoV70() {
+  const btnSalvar = document.querySelector('button[onclick="salvarConteudoGerado()"]');
+  if (btnSalvar) {
+    btnSalvar.innerHTML = '<i class="fas fa-check"></i> Salvo';
+    btnSalvar.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+    btnSalvar.classList.add('bg-gray-400', 'cursor-not-allowed');
+    btnSalvar.disabled = true;
+    btnSalvar.onclick = null;
   }
 }
 
@@ -17625,156 +17725,146 @@ async function processarResumoPersonalizado(metaId) {
   }
 }
 
-// Ver conteúdo gerado - v66: Melhor tratamento de visualização vs geração
+// Ver conteúdo gerado - v70: NOVA ABORDAGEM - busca por meta_id E por disciplina/topico
 window.verConteudoGerado = async function(metaId, tipo) {
-  console.log(`👁️ v66: Verificando ${tipo} da meta ${metaId}`);
+  console.log(`👁️ v70: Verificando ${tipo} da meta ${metaId}`);
   
-  // Buscar dados do conteúdo da API
+  const meta = window.metaAtual || { topico_nome: 'Tópico', disciplina_nome: 'Disciplina' };
+  console.log(`👁️ v70: Meta atual:`, meta);
+  
   try {
-    const response = await axios.get(`/api/conteudos/meta/${metaId}`, {
-      headers: { 'X-User-ID': currentUser?.id || localStorage.getItem('userId') }
-    });
-    const data = response.data;
-    console.log(`👁️ v66: Dados da API:`, data);
-    
-    window.conteudosMetaCache[metaId] = data;
-    
-    const tipoInfo = data.tipos_sources?.[tipo];
-    const conteudoId = data.tipos_gerados?.[tipo];
-    
-    console.log(`👁️ v66: conteudoId=${conteudoId}, tipoInfo=`, tipoInfo);
-    
-    if (!conteudoId) {
-      // Se não tem conteúdo, abrir modal para gerar
-      console.log(`🆕 v66: Conteúdo ${tipo} não existe, abrindo modal para gerar...`);
-      
-      // Buscar informações da meta
-      const meta = window.metaAtual || { topico_nome: 'Tópico', disciplina_nome: 'Disciplina' };
-      
-      // Para exercicios e flashcards, abrir modal de quantidade
-      if (tipo === 'exercicios' || tipo === 'flashcards') {
-        // Criar modal rápido de quantidade
-        const modalHtml = `
-          <div id="modal-quantidade-rapida" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-sm w-full p-5">
-              <div class="text-center mb-4">
-                <div class="w-14 h-14 mx-auto rounded-full bg-gradient-to-br ${tipo === 'exercicios' ? 'from-green-500 to-emerald-600' : 'from-blue-500 to-indigo-600'} flex items-center justify-center mb-3">
-                  <i class="fas ${tipo === 'exercicios' ? 'fa-tasks' : 'fa-clone'} text-white text-xl"></i>
-                </div>
-                <h3 class="text-lg font-bold ${themes[currentTheme].text}">
-                  Gerar ${tipo === 'exercicios' ? 'Exercícios' : 'Flashcards'}
-                </h3>
-                <p class="text-sm ${themes[currentTheme].textSecondary} mt-1">${meta.topico_nome || 'Tópico'}</p>
-              </div>
-              
-              <div class="mb-4">
-                <label class="block text-sm font-medium ${themes[currentTheme].text} mb-2 text-center">
-                  Quantos ${tipo === 'exercicios' ? 'exercícios' : 'flashcards'} deseja gerar?
-                </label>
-                <div class="flex items-center gap-3">
-                  <input type="range" id="quantidade-rapida-slider" min="5" max="20" value="${tipo === 'exercicios' ? '10' : '15'}" 
-                         class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
-                         oninput="document.getElementById('quantidade-rapida-valor').textContent = this.value">
-                  <span id="quantidade-rapida-valor" class="text-2xl font-bold text-[#122D6A] w-10 text-center">${tipo === 'exercicios' ? '10' : '15'}</span>
-                </div>
-                <p class="text-xs ${themes[currentTheme].textSecondary} mt-2 text-center">
-                  Entre 5 e 20 ${tipo === 'exercicios' ? 'questões' : 'cards'}
-                </p>
-              </div>
-              
-              <div class="flex gap-2">
-                <button onclick="document.getElementById('modal-quantidade-rapida').remove()"
-                        class="flex-1 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition font-medium">
-                  Cancelar
-                </button>
-                <button onclick="confirmarGeracaoRapida('${tipo}', ${metaId || 'null'}, '${(meta.topico_id || '').toString().replace(/'/g, "\\'")}', '${(meta.topico_nome || '').replace(/'/g, "\\'")}', '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}')"
-                        class="flex-1 py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition font-semibold flex items-center justify-center gap-2">
-                  <i class="fas fa-magic"></i> Gerar
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        return;
-      }
-      
-      // Para teoria e resumo, gerar diretamente
-      await window.executarGeracaoConteudo(
-        meta.topico_id || null, 
-        meta.topico_nome, 
-        meta.disciplina_nome, 
-        tipo, 
-        null, 
-        metaId
-      );
-      return;
-    }
-    
-    const source = tipoInfo?.source || 'materiais_salvos';
-    console.log(`📚 v66: Conteúdo encontrado: ID=${conteudoId}, source=${source}`);
-    
-    // Buscar material diretamente de materiais_salvos (mais confiável)
+    // ESTRATÉGIA v70: Buscar conteúdo de MÚLTIPLAS fontes
     let material = null;
     
+    // 1. Tentar buscar pelo meta_id na API
     try {
-      console.log(`📚 v66: Buscando material ID=${conteudoId} de ${source}...`);
-      const materialRes = await axios.get(`/api/materiais/ver/${conteudoId}`);
-      material = materialRes.data;
-      console.log(`📚 v66: Material encontrado:`, material?.titulo, material?.tipo);
-    } catch (e) {
-      console.warn(`⚠️ v66: Material não encontrado em materiais_salvos (ID=${conteudoId}):`, e.message);
+      const response = await axios.get(`/api/conteudos/meta/${metaId}`, {
+        headers: { 'X-User-ID': currentUser?.id || localStorage.getItem('userId') }
+      });
+      const data = response.data;
+      console.log(`👁️ v70: Dados da meta API:`, data);
       
-      // Fallback: tentar conteudo_estudo
-      if (source === 'conteudo_estudo') {
+      window.conteudosMetaCache[metaId] = data;
+      
+      const conteudoId = data.tipos_gerados?.[tipo];
+      if (conteudoId) {
+        console.log(`📚 v70: Conteúdo encontrado por meta_id: ID=${conteudoId}`);
         try {
-          const conteudoRes = await axios.get(`/api/conteudos/${conteudoId}`);
-          const conteudoData = conteudoRes.data;
-          
-          if (conteudoData?.conteudo?.material_id) {
-            const materialRes2 = await axios.get(`/api/materiais/ver/${conteudoData.conteudo.material_id}`);
-            material = materialRes2.data;
-          } else if (conteudoData?.conteudo?.texto) {
-            material = {
-              conteudo: conteudoData.conteudo.texto,
-              topico_nome: conteudoData.topicos?.[0]?.nome || 'Conteúdo',
-              disciplina_nome: conteudoData.disciplina_nome,
-              tipo: conteudoData.tipo
-            };
-          }
-        } catch (e2) {
-          console.error('⚠️ v66: Erro ao buscar conteudo_estudo:', e2);
+          const materialRes = await axios.get(`/api/materiais/ver/${conteudoId}`);
+          material = materialRes.data;
+        } catch (e) {
+          console.warn(`⚠️ v70: Material ID=${conteudoId} não encontrado:`, e.message);
         }
+      }
+    } catch (e) {
+      console.warn(`⚠️ v70: Erro ao buscar conteudos/meta:`, e.message);
+    }
+    
+    // 2. FALLBACK v70: Se não encontrou por meta_id, buscar por disciplina/topico
+    if (!material && (meta.topico_id || meta.disciplina_id)) {
+      console.log(`🔍 v70: Buscando por disciplina_id=${meta.disciplina_id}, topico_id=${meta.topico_id}, tipo=${tipo}`);
+      try {
+        const busca = await axios.get(`/api/materiais/buscar`, {
+          params: {
+            user_id: currentUser?.id || 1,
+            disciplina_id: meta.disciplina_id || null,
+            topico_id: meta.topico_id || null,
+            tipo: tipo
+          }
+        });
+        if (busca.data?.material) {
+          material = busca.data.material;
+          console.log(`📚 v70: Material encontrado por disciplina/topico: ID=${material.id}, titulo=${material.titulo}`);
+        }
+      } catch (e) {
+        console.warn(`⚠️ v70: Busca por disciplina/topico falhou:`, e.message);
       }
     }
     
-    if (!material) {
-      showToast('Não foi possível carregar o conteúdo', 'error');
+    // 3. Se encontrou material, exibir
+    if (material && material.conteudo) {
+      console.log(`✅ v70: Exibindo material existente: ID=${material.id}, tipo=${material.tipo}`);
+      
+      const dadosMaterial = {
+        conteudo: material.conteudo,
+        topico_nome: material.topico_nome || material.titulo || meta.topico_nome || 'Conteúdo',
+        disciplina_nome: material.disciplina_nome || meta.disciplina_nome || 'Geral',
+        disciplina_id: material.disciplina_id || meta.disciplina_id,
+        topico_id: material.topico_id || meta.topico_id,
+        tipo: material.tipo || tipo,
+        material_id: material.id,
+        caracteres: material.conteudo ? material.conteudo.length : 0,
+        gerado_em: material.created_at
+      };
+      
+      if (tipo === 'exercicios') {
+        exibirExerciciosInterativos(dadosMaterial);
+      } else if (tipo === 'flashcards') {
+        exibirFlashcardsVisuais(dadosMaterial);
+      } else {
+        exibirConteudoGerado(dadosMaterial);
+      }
       return;
     }
     
-    // Exibir baseado no tipo
-    // v69: Dados completos para todas as funções de exibição
-    const dadosMaterial = {
-      conteudo: material.conteudo,
-      topico_nome: material.topico_nome || material.titulo || 'Conteúdo',
-      disciplina_nome: material.disciplina_nome || 'Geral',
-      disciplina_id: material.disciplina_id,
-      topico_id: material.topico_id,
-      tipo: material.tipo || tipo,
-      material_id: material.id,
-      caracteres: material.conteudo ? material.conteudo.length : 0,
-      gerado_em: material.created_at
-    };
+    // 4. Não encontrou - abrir modal para gerar
+    console.log(`🆕 v70: Conteúdo ${tipo} não existe, abrindo modal para gerar...`);
     
-    if (tipo === 'exercicios') {
-      exibirExerciciosInterativos(dadosMaterial);
-    } else if (tipo === 'flashcards') {
-      exibirFlashcardsVisuais(dadosMaterial);
-    } else {
-      // Teoria ou Resumo - exibição padrão
-      exibirConteudoGerado(dadosMaterial);
+    if (tipo === 'exercicios' || tipo === 'flashcards') {
+      const modalHtml = `
+        <div id="modal-quantidade-rapida" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-sm w-full p-5">
+            <div class="text-center mb-4">
+              <div class="w-14 h-14 mx-auto rounded-full bg-gradient-to-br ${tipo === 'exercicios' ? 'from-green-500 to-emerald-600' : 'from-blue-500 to-indigo-600'} flex items-center justify-center mb-3">
+                <i class="fas ${tipo === 'exercicios' ? 'fa-tasks' : 'fa-clone'} text-white text-xl"></i>
+              </div>
+              <h3 class="text-lg font-bold ${themes[currentTheme].text}">
+                Gerar ${tipo === 'exercicios' ? 'Exercícios' : 'Flashcards'}
+              </h3>
+              <p class="text-sm ${themes[currentTheme].textSecondary} mt-1">${meta.topico_nome || 'Tópico'}</p>
+            </div>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium ${themes[currentTheme].text} mb-2 text-center">
+                Quantos ${tipo === 'exercicios' ? 'exercícios' : 'flashcards'} deseja gerar?
+              </label>
+              <div class="flex items-center gap-3">
+                <input type="range" id="quantidade-rapida-slider" min="5" max="20" value="${tipo === 'exercicios' ? '10' : '15'}" 
+                       class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
+                       oninput="document.getElementById('quantidade-rapida-valor').textContent = this.value">
+                <span id="quantidade-rapida-valor" class="text-2xl font-bold text-[#122D6A] w-10 text-center">${tipo === 'exercicios' ? '10' : '15'}</span>
+              </div>
+              <p class="text-xs ${themes[currentTheme].textSecondary} mt-2 text-center">
+                Entre 5 e 20 ${tipo === 'exercicios' ? 'questões' : 'cards'}
+              </p>
+            </div>
+            
+            <div class="flex gap-2">
+              <button onclick="document.getElementById('modal-quantidade-rapida').remove()"
+                      class="flex-1 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition font-medium">
+                Cancelar
+              </button>
+              <button onclick="confirmarGeracaoRapida('${tipo}', ${metaId || 'null'}, '${(meta.topico_id || '').toString().replace(/'/g, "\\'")}', '${(meta.topico_nome || '').replace(/'/g, "\\'")}', '${(meta.disciplina_nome || '').replace(/'/g, "\\'")}')"
+                      class="flex-1 py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition font-semibold flex items-center justify-center gap-2">
+                <i class="fas fa-magic"></i> Gerar
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      return;
     }
+    
+    // Para teoria e resumo, gerar diretamente
+    await window.executarGeracaoConteudo(
+      meta.topico_id || null, 
+      meta.topico_nome, 
+      meta.disciplina_nome, 
+      tipo, 
+      null, 
+      metaId
+    );
   } catch (error) {
     console.error('Erro ao abrir conteúdo:', error);
     showToast('Erro ao carregar conteúdo', 'error');
