@@ -22767,9 +22767,23 @@ let simuladoConfig = {
 // Abrir modal de configuração do simulado
 window.abrirModalSimulado = async function() {
   try {
-    // Buscar disciplinas do usuário
-    const disciplinasRes = await axios.get(`/api/user-disciplinas/${currentUser.id}`);
-    const disciplinas = disciplinasRes.data || [];
+    // ✅ CORREÇÃO v72: Buscar disciplinas do PLANO ATIVO (não todas do usuário)
+    const planoAtivo = window.planoAtivo || window.currentPlano;
+    let disciplinas = [];
+    
+    if (planoAtivo?.id) {
+      const disciplinasRes = await axios.get(`/api/planos/${planoAtivo.id}/disciplinas`);
+      disciplinas = (disciplinasRes.data || []).map(d => ({
+        ...d,
+        disciplina_id: d.disciplina_id || d.id // Garantir compatibilidade
+      }));
+      console.log(`✅ Simulado: ${disciplinas.length} disciplinas do plano ativo ${planoAtivo.id}`);
+    } else {
+      // Fallback: buscar todas do usuário se não houver plano ativo
+      const disciplinasRes = await axios.get(`/api/user-disciplinas/${currentUser.id}`);
+      disciplinas = disciplinasRes.data || [];
+      console.warn('⚠️ Simulado: plano ativo não encontrado, usando todas as disciplinas');
+    }
     
     // Resetar config
     simuladoConfig = {
