@@ -12884,44 +12884,70 @@ app.get('/api/conteudo/:conteudo_id', async (c) => {
   const format = c.req.query('format') || 'json' // json, markdown, html
 
   try {
-    const conteudo = await DB.prepare(`
+    // v69: Tentar primeiro em materiais_salvos (fonte principal)
+    let conteudo: any = await DB.prepare(`
+      SELECT m.*, d.nome as disciplina_nome, t.nome as topico_nome
+      FROM materiais_salvos m
+      LEFT JOIN disciplinas d ON m.disciplina_id = d.id
+      LEFT JOIN topicos_edital t ON m.topico_id = t.id
+      WHERE m.id = ?
+    `).bind(conteudo_id).first()
+
+    if (conteudo) {
+      const conteudoObj = {
+        ...conteudo,
+        topicos: conteudo.topico_nome ? [{ id: conteudo.topico_id, nome: conteudo.topico_nome }] : [],
+        objetivos: [],
+        disciplina_nome: conteudo.disciplina_nome || 'Geral'
+      }
+
+      if (format === 'json') return c.json(conteudoObj)
+      if (format === 'markdown' || format === 'md') {
+        const markdown = gerarMarkdown(conteudoObj)
+        return c.text(markdown, 200, {
+          'Content-Type': 'text/markdown; charset=utf-8',
+          'Content-Disposition': `attachment; filename="conteudo_${conteudo_id}_${(conteudoObj.disciplina_nome || 'material').replace(/\s+/g, '_')}.md"`
+        })
+      }
+      if (format === 'html') {
+        const html = gerarHTML(conteudoObj)
+        return c.html(html)
+      }
+      return c.json(conteudoObj)
+    }
+
+    // Fallback: buscar em conteudo_estudo
+    const conteudoEstudo: any = await DB.prepare(`
       SELECT c.*, d.nome as disciplina_nome
       FROM conteudo_estudo c
-      JOIN disciplinas d ON c.disciplina_id = d.id
+      LEFT JOIN disciplinas d ON c.disciplina_id = d.id
       WHERE c.id = ?
     `).bind(conteudo_id).first()
 
-    if (!conteudo) {
+    if (!conteudoEstudo) {
       return c.json({ error: 'Conteúdo não encontrado' }, 404)
     }
 
     const conteudoObj = {
-      ...conteudo,
-      topicos: conteudo.topicos ? JSON.parse(conteudo.topicos as string) : [],
-      objetivos: conteudo.objetivos ? JSON.parse(conteudo.objetivos as string) : [],
-      conteudo: conteudo.conteudo ? JSON.parse(conteudo.conteudo as string) : {}
+      ...conteudoEstudo,
+      topicos: conteudoEstudo.topicos ? JSON.parse(conteudoEstudo.topicos as string) : [],
+      objetivos: conteudoEstudo.objetivos ? JSON.parse(conteudoEstudo.objetivos as string) : [],
+      conteudo: conteudoEstudo.conteudo ? JSON.parse(conteudoEstudo.conteudo as string) : {},
+      disciplina_nome: conteudoEstudo.disciplina_nome || 'Geral'
     }
 
-    // Formato JSON (padrão)
-    if (format === 'json') {
-      return c.json(conteudoObj)
-    }
-
-    // Formato Markdown para download
+    if (format === 'json') return c.json(conteudoObj)
     if (format === 'markdown' || format === 'md') {
       const markdown = gerarMarkdown(conteudoObj)
       return c.text(markdown, 200, {
         'Content-Type': 'text/markdown; charset=utf-8',
-        'Content-Disposition': `attachment; filename="conteudo_${conteudo_id}_${conteudoObj.disciplina_nome.replace(/\s+/g, '_')}.md"`
+        'Content-Disposition': `attachment; filename="conteudo_${conteudo_id}_${(conteudoObj.disciplina_nome || 'material').replace(/\s+/g, '_')}.md"`
       })
     }
-
-    // Formato HTML para visualização
     if (format === 'html') {
       const html = gerarHTML(conteudoObj)
       return c.html(html)
     }
-
     return c.json(conteudoObj)
   } catch (error) {
     console.error('Erro ao buscar conteúdo:', error)
@@ -12937,31 +12963,39 @@ app.get('/api/conteudos/usuario/:user_id', async (c) => {
   const offset = parseInt(c.req.query('offset') || '0')
 
   try {
+    // v69: Buscar de materiais_salvos (fonte principal) ao invés de conteudo_estudo
+    // pois materiais_salvos SEMPRE recebe o conteúdo gerado, independente de meta_id
     const { results: conteudos } = await DB.prepare(`
       SELECT 
-        c.id,
-        c.tipo,
-        c.disciplina_id,
-        c.topicos,
-        c.created_at,
+        m.id,
+        m.tipo,
+        m.disciplina_id,
+        m.topico_id,
+        m.titulo,
+        m.created_at,
         d.nome as disciplina_nome,
-        m.data as data_estudo
-      FROM conteudo_estudo c
-      LEFT JOIN disciplinas d ON c.disciplina_id = d.id
-      LEFT JOIN metas_diarias m ON c.meta_id = m.id
-      WHERE c.user_id = ?
-      ORDER BY c.created_at DESC
+        t.nome as topico_nome
+      FROM materiais_salvos m
+      LEFT JOIN disciplinas d ON m.disciplina_id = d.id
+      LEFT JOIN topicos_edital t ON m.topico_id = t.id
+      WHERE m.user_id = ?
+      ORDER BY m.created_at DESC
       LIMIT ? OFFSET ?
     `).bind(user_id, limit, offset).all()
 
+    // Contar total
+    const countResult: any = await DB.prepare(`
+      SELECT COUNT(*) as total FROM materiais_salvos WHERE user_id = ?
+    `).bind(user_id).first()
+
     const conteudosFormatados = conteudos.map((c: any) => ({
       ...c,
-      topicos: c.topicos ? JSON.parse(c.topicos) : []
+      topicos: c.topico_nome ? [{ id: c.topico_id, nome: c.topico_nome }] : []
     }))
 
     return c.json({
       conteudos: conteudosFormatados,
-      total: conteudos.length,
+      total: countResult?.total || conteudos.length,
       limit,
       offset
     })
@@ -14546,11 +14580,56 @@ app.get('/api/conteudos/:id', async (c) => {
   const id = c.req.param('id')
   const format = c.req.query('format') || 'json'
 
-  // Buscar conteúdo com JOIN para pegar nome da disciplina
-  const conteudo = await DB.prepare(`
+  // v69: Tentar materiais_salvos primeiro
+  let conteudo: any = await DB.prepare(`
+    SELECT m.*, d.nome as disciplina_nome, t.nome as topico_nome
+    FROM materiais_salvos m
+    LEFT JOIN disciplinas d ON d.id = m.disciplina_id
+    LEFT JOIN topicos_edital t ON t.id = m.topico_id
+    WHERE m.id = ?
+  `).bind(id).first()
+
+  if (conteudo) {
+    const resultado = {
+      ...conteudo,
+      topicos: conteudo.topico_nome ? [{ id: conteudo.topico_id, nome: conteudo.topico_nome }] : [],
+      objetivos: [],
+      topicos_edital: [],
+      disciplina_nome: conteudo.disciplina_nome || 'Geral'
+    }
+
+    if (format === 'txt') {
+      const txt = gerarTXT(resultado)
+      const nomeArquivo = `${resultado.disciplina_nome}_${conteudo.tipo}_${new Date().toISOString().split('T')[0]}.txt`
+      return new Response(txt, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${nomeArquivo}"`
+        }
+      })
+    }
+    if (format === 'markdown') {
+      const md = gerarMarkdown(resultado)
+      const nomeArquivo = `${resultado.disciplina_nome}_${conteudo.tipo}_${new Date().toISOString().split('T')[0]}.md`
+      return new Response(md, {
+        headers: {
+          'Content-Type': 'text/markdown; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${nomeArquivo}"`
+        }
+      })
+    }
+    if (format === 'html') {
+      const html = gerarHTML(resultado)
+      return c.html(html)
+    }
+    return c.json(resultado)
+  }
+
+  // Fallback: buscar de conteudo_estudo
+  conteudo = await DB.prepare(`
     SELECT ce.*, d.nome as disciplina_nome
     FROM conteudo_estudo ce
-    JOIN disciplinas d ON d.id = ce.disciplina_id
+    LEFT JOIN disciplinas d ON d.id = ce.disciplina_id
     WHERE ce.id = ?
   `).bind(id).first()
 
@@ -14559,26 +14638,33 @@ app.get('/api/conteudos/:id', async (c) => {
   }
 
   // 🆕 Buscar tópicos do edital vinculados
-  const { results: topicosVinculados } = await DB.prepare(`
-    SELECT te.id, te.nome, te.categoria, te.peso, te.ordem
-    FROM conteudo_topicos ct
-    JOIN topicos_edital te ON ct.topico_id = te.id
-    WHERE ct.conteudo_id = ?
-    ORDER BY te.ordem
-  `).bind(id).all()
+  let topicosVinculados: any[] = []
+  try {
+    const { results } = await DB.prepare(`
+      SELECT te.id, te.nome, te.categoria, te.peso, te.ordem
+      FROM conteudo_topicos ct
+      JOIN topicos_edital te ON ct.topico_id = te.id
+      WHERE ct.conteudo_id = ?
+      ORDER BY te.ordem
+    `).bind(id).all()
+    topicosVinculados = results || []
+  } catch (e) {
+    // tabela conteudo_topicos pode não existir
+  }
 
   const resultado = {
     ...conteudo,
-    conteudo: JSON.parse(conteudo.conteudo),
-    topicos: JSON.parse(conteudo.topicos),
-    objetivos: JSON.parse(conteudo.objetivos),
-    topicos_edital: topicosVinculados || []
+    conteudo: conteudo.conteudo ? JSON.parse(conteudo.conteudo as string) : {},
+    topicos: conteudo.topicos ? JSON.parse(conteudo.topicos as string) : [],
+    objetivos: conteudo.objetivos ? JSON.parse(conteudo.objetivos as string) : [],
+    topicos_edital: topicosVinculados,
+    disciplina_nome: conteudo.disciplina_nome || 'Geral'
   }
 
   // Suporte a diferentes formatos
   if (format === 'txt') {
     const txt = gerarTXT(resultado)
-    const nomeArquivo = `${conteudo.disciplina_nome || 'conteudo'}_${conteudo.tipo}_${new Date().toISOString().split('T')[0]}.txt`
+    const nomeArquivo = `${resultado.disciplina_nome}_${conteudo.tipo}_${new Date().toISOString().split('T')[0]}.txt`
     return new Response(txt, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
@@ -14589,7 +14675,7 @@ app.get('/api/conteudos/:id', async (c) => {
   
   if (format === 'markdown') {
     const md = gerarMarkdown(resultado)
-    const nomeArquivo = `${conteudo.disciplina_nome || 'conteudo'}_${conteudo.tipo}_${new Date().toISOString().split('T')[0]}.md`
+    const nomeArquivo = `${resultado.disciplina_nome}_${conteudo.tipo}_${new Date().toISOString().split('T')[0]}.md`
     return new Response(md, {
       headers: {
         'Content-Type': 'text/markdown; charset=utf-8',
@@ -14607,7 +14693,7 @@ app.get('/api/conteudos/:id', async (c) => {
 })
 
 // GET /api/conteudos/tipos/:disciplina_id/:topico_id - Buscar tipos de conteúdo gerados
-// Retorna quais tipos (teoria, exercicios, resumo, flashcards) foram gerados para um tópico
+// v69: Buscar de materiais_salvos (fonte principal) ao invés de conteudo_estudo
 app.get('/api/conteudos/tipos/:disciplina_id/:topico_id', async (c) => {
   const { DB } = c.env
   const disciplina_id = parseInt(c.req.param('disciplina_id'))
@@ -14615,31 +14701,21 @@ app.get('/api/conteudos/tipos/:disciplina_id/:topico_id', async (c) => {
   const user_id = c.req.query('user_id')
 
   try {
-    // Buscar conteúdos que contêm este tópico (nos topicos JSON)
+    // Buscar de materiais_salvos (onde TUDO é salvo)
     const { results } = await DB.prepare(`
       SELECT DISTINCT tipo, id, created_at
-      FROM conteudo_estudo 
-      WHERE disciplina_id = ? 
+      FROM materiais_salvos 
+      WHERE (disciplina_id = ? OR topico_id = ?)
       AND user_id = ?
-      AND topicos LIKE ?
       ORDER BY created_at DESC
-    `).bind(disciplina_id, user_id, `%"id":${topico_id}%`).all()
-
-    // Também buscar por meta_id se houver
-    const { results: byMeta } = await DB.prepare(`
-      SELECT DISTINCT ce.tipo, ce.id, ce.created_at
-      FROM conteudo_estudo ce
-      JOIN metas_semana ms ON ce.meta_id = ms.id
-      WHERE ms.disciplina_id = ?
-      AND ce.user_id = ?
-    `).bind(disciplina_id, user_id).all()
+    `).bind(disciplina_id, topico_id, user_id).all()
 
     // Combinar resultados únicos
-    const tiposMap: Record<string, { id: number, created_at: string }> = {}
+    const tiposMap: Record<string, { id: number, created_at: string, source: string }> = {}
     
-    for (const r of [...results, ...byMeta]) {
-      if (!tiposMap[r.tipo]) {
-        tiposMap[r.tipo] = { id: r.id as number, created_at: r.created_at as string }
+    for (const r of results) {
+      if (!tiposMap[r.tipo as string]) {
+        tiposMap[r.tipo as string] = { id: r.id as number, created_at: r.created_at as string, source: 'materiais_salvos' }
       }
     }
 

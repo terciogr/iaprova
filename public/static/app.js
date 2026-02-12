@@ -9213,35 +9213,25 @@ window.visualizarMaterialDireto = async function(materialId, tipo) {
     document.getElementById('modal-materiais-topico')?.remove();
     
     // Abrir visualização específica por tipo
+    // ✅ v69: Sempre passar objeto completo para todas as funções de exibição
+    const dadosExibicao = {
+      topico_nome: material.topico_nome || material.titulo || 'Conteúdo',
+      disciplina_nome: material.disciplina_nome || 'Geral',
+      disciplina_id: material.disciplina_id,
+      topico_id: material.topico_id,
+      tipo: material.tipo || tipo,
+      conteudo: material.conteudo,
+      caracteres: material.conteudo ? material.conteudo.length : 0,
+      gerado_em: material.created_at,
+      material_id: material.id
+    };
+    
     if (tipo === 'exercicios') {
-      const questoes = parseQuestoes(material.conteudo);
-      if (questoes && questoes.length > 0) {
-        exibirExerciciosInterativos(questoes, material.disciplina_nome, material.topico_nome);
-      } else {
-        showToast('Não foi possível processar as questões', 'error');
-      }
+      exibirExerciciosInterativos(dadosExibicao);
     } else if (tipo === 'flashcards') {
-      // ✅ CORREÇÃO: Passar objeto com dados completos para exibirFlashcardsVisuais
-      // (a função espera { conteudo, topico_nome, disciplina_nome, ... })
-      exibirFlashcardsVisuais({
-        topico_nome: material.topico_nome || 'Flashcards',
-        disciplina_nome: material.disciplina_nome || '',
-        disciplina_id: material.disciplina_id,
-        topico_id: material.topico_id,
-        tipo: 'flashcards',
-        conteudo: material.conteudo,
-        material_id: material.id
-      });
+      exibirFlashcardsVisuais(dadosExibicao);
     } else {
-      // Teoria ou Resumo - exibir normalmente
-      exibirConteudoGerado({
-        topico_nome: material.topico_nome,
-        disciplina_nome: material.disciplina_nome,
-        tipo: material.tipo,
-        conteudo: material.conteudo,
-        caracteres: material.conteudo.length,
-        gerado_em: material.created_at
-      });
+      exibirConteudoGerado(dadosExibicao);
     }
   } catch (error) {
     console.error('Erro ao visualizar material:', error);
@@ -9711,11 +9701,21 @@ window.exibirConteudoGerado = function(data) {
   // Pequeno delay para garantir que o DOM foi atualizado
   setTimeout(() => {}, 10);
   
-  // Material já foi salvo automaticamente no backend (material_id)
-  console.log('✅ Exibindo conteúdo:', { tipo, topico_nome, disciplina_nome, material_id, regenerado });
+  // ✅ v69: Guardar dados para salvar (assim como exibirFlashcardsVisuais faz)
+  window.conteudoGeradoOriginal = typeof conteudo === 'string' ? conteudo : (conteudo?.texto || JSON.stringify(conteudo) || '');
+  window.conteudoAtualDados = {
+    topico_nome,
+    disciplina_nome,
+    disciplina_id,
+    topico_id,
+    tipo: tipo || 'teoria',
+    material_id
+  };
+  
+  console.log('✅ v69 Exibindo conteúdo:', { tipo, topico_nome, disciplina_nome, material_id, regenerado });
   
   // Garantir que conteudo é string
-  const conteudoTexto = typeof conteudo === 'string' ? conteudo : (conteudo?.texto || JSON.stringify(conteudo) || '');
+  const conteudoTexto = window.conteudoGeradoOriginal;
   
   // ✅ Tratar tipo exercicios_texto (quando não conseguiu parsear como interativo)
   const tipoFinal = tipo === 'exercicios_texto' ? 'exercicios' : tipo;
@@ -9929,10 +9929,14 @@ window.exibirConteudoGerado = function(data) {
         
         <!-- Footer fixo -->
         <div class="p-4 border-t ${themes[currentTheme].border} flex-shrink-0 flex gap-3 justify-end">
+          ${material_id ? `
+          <button class="px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed flex items-center gap-2" disabled>
+            <i class="fas fa-check"></i>Salvo
+          </button>` : `
           <button onclick="salvarConteudoGerado()"
                   class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition flex items-center gap-2">
             <i class="fas fa-save"></i>Salvar
-          </button>
+          </button>`}
           <button onclick="copiarConteudoGerado()"
                   class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex items-center gap-2">
             <i class="fas fa-copy"></i>Copiar
@@ -17750,29 +17754,26 @@ window.verConteudoGerado = async function(metaId, tipo) {
     }
     
     // Exibir baseado no tipo
+    // v69: Dados completos para todas as funções de exibição
+    const dadosMaterial = {
+      conteudo: material.conteudo,
+      topico_nome: material.topico_nome || material.titulo || 'Conteúdo',
+      disciplina_nome: material.disciplina_nome || 'Geral',
+      disciplina_id: material.disciplina_id,
+      topico_id: material.topico_id,
+      tipo: material.tipo || tipo,
+      material_id: material.id,
+      caracteres: material.conteudo ? material.conteudo.length : 0,
+      gerado_em: material.created_at
+    };
+    
     if (tipo === 'exercicios') {
-      exibirExerciciosInterativos({
-        conteudo: material.conteudo,
-        topico_nome: material.topico_nome || material.titulo,
-        disciplina_nome: material.disciplina_nome,
-        disciplina_id: material.disciplina_id,
-        topico_id: material.topico_id
-      });
+      exibirExerciciosInterativos(dadosMaterial);
     } else if (tipo === 'flashcards') {
-      exibirFlashcardsVisuais({
-        conteudo: material.conteudo,
-        topico_nome: material.topico_nome || material.titulo,
-        disciplina_nome: material.disciplina_nome
-      });
+      exibirFlashcardsVisuais(dadosMaterial);
     } else {
       // Teoria ou Resumo - exibição padrão
-      exibirConteudoGerado({
-        conteudo: material.conteudo,
-        topico_nome: material.topico_nome || material.titulo,
-        disciplina_nome: material.disciplina_nome,
-        tipo: material.tipo || tipo,
-        material_id: material.id
-      });
+      exibirConteudoGerado(dadosMaterial);
     }
   } catch (error) {
     console.error('Erro ao abrir conteúdo:', error);
@@ -22977,36 +22978,28 @@ window.visualizarMaterial = async function(materialId) {
       return;
     }
     
+    // v69: Dados completos para todas as funções
+    const dados = {
+      topico_nome: material.topico_nome || material.titulo || 'Conteúdo',
+      disciplina_nome: material.disciplina_nome || 'Geral',
+      conteudo: material.conteudo,
+      disciplina_id: material.disciplina_id,
+      topico_id: material.topico_id,
+      tipo: material.tipo,
+      material_id: material.id,
+      caracteres: material.conteudo?.length || 0,
+      gerado_em: material.created_at
+    };
+    
     // Exibir conforme o tipo
     if (material.tipo === 'exercicios') {
-      // Usar o sistema de exercícios interativos
-      exibirExerciciosInterativos({
-        topico_nome: material.topico_nome || material.titulo,
-        disciplina_nome: material.disciplina_nome || 'Geral',
-        conteudo: material.conteudo,
-        disciplina_id: material.disciplina_id,
-        topico_id: material.topico_id
-      });
+      exibirExerciciosInterativos(dados);
     } else if (material.tipo === 'flashcards') {
-      // Usar o sistema de flashcards visuais
-      exibirFlashcardsVisuais({
-        topico_nome: material.topico_nome || material.titulo,
-        disciplina_nome: material.disciplina_nome || 'Geral',
-        conteudo: material.conteudo
-      });
+      exibirFlashcardsVisuais(dados);
     } else if (material.arquivo_url) {
-      // Abrir arquivo em nova aba
       window.open(material.arquivo_url, '_blank');
     } else {
-      // Exibir conteúdo em modal
-      exibirConteudoGerado({
-        topico_nome: material.topico_nome || material.titulo,
-        disciplina_nome: material.disciplina_nome || 'Geral',
-        tipo: material.tipo,
-        conteudo: material.conteudo,
-        caracteres: material.conteudo?.length || 0,
-        gerado_em: material.created_at
-      });
+      exibirConteudoGerado(dados);
     }
   } catch (error) {
     console.error('Erro ao visualizar material:', error);
