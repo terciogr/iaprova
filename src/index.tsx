@@ -1806,7 +1806,8 @@ app.get('/api/subscription/status/:userId', async (c) => {
   try {
     const user = await DB.prepare(`
       SELECT id, email, trial_started_at, trial_expires_at, subscription_status, 
-             subscription_plan, subscription_expires_at, payment_id, payment_date, created_at
+             subscription_plan, subscription_expires_at, payment_id, payment_date, created_at,
+             is_premium, premium_expires_at
       FROM users WHERE id = ?
     `).bind(userId).first() as any
     
@@ -1815,12 +1816,10 @@ app.get('/api/subscription/status/:userId', async (c) => {
     }
     
     const now = new Date()
-    let status = user.subscription_status || 'new'
-    let daysRemaining = 0
-    let isActive = false
-    let needsPayment = false
     
-    // Se é admin, sempre tem acesso
+    // ═══════════════════════════════════════════════
+    // 1. ADMIN — acesso ilimitado
+    // ═══════════════════════════════════════════════
     if (user.email === 'terciogomesrabelo@gmail.com') {
       return c.json({
         status: 'admin',
@@ -1830,6 +1829,76 @@ app.get('/api/subscription/status/:userId', async (c) => {
         message: 'Acesso administrativo ilimitado'
       })
     }
+    
+    // ═══════════════════════════════════════════════
+    // 2. PREMIUM (dado por admin OU por pagamento)
+    //    Verifica is_premium=1 com premium_expires_at válido
+    //    OU subscription_status='active' com subscription_expires_at válido
+    // ═══════════════════════════════════════════════
+    
+    // 2a. Verificar is_premium (campo direto, inclui premium dado por admin)
+    if (user.is_premium === 1) {
+      // Se tem data de expiração, verificar se ainda é válida
+      if (user.premium_expires_at) {
+        const premExpires = new Date(user.premium_expires_at)
+        if (premExpires > now) {
+          const daysRemaining = Math.ceil((premExpires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          return c.json({
+            status: 'active',
+            isActive: true,
+            needsPayment: false,
+            plan: user.subscription_plan || 'premium',
+            expiresAt: user.premium_expires_at,
+            daysRemaining,
+            message: `Premium ativo — ${daysRemaining} dias restantes`
+          })
+        } else {
+          // Premium expirou — revogar
+          console.log(`⏰ Premium expirou para usuário ${userId}, revogando...`)
+          await DB.prepare(`
+            UPDATE users SET is_premium = 0, subscription_status = 'expired' WHERE id = ?
+          `).bind(userId).run()
+          // Continuar para verificar trial
+        }
+      } else {
+        // is_premium=1 sem data de expiração → acesso ilimitado (dado manualmente pelo admin sem prazo)
+        return c.json({
+          status: 'active',
+          isActive: true,
+          needsPayment: false,
+          plan: user.subscription_plan || 'premium',
+          daysRemaining: 999,
+          message: 'Premium ativo (sem expiração)'
+        })
+      }
+    }
+    
+    // 2b. Verificar subscription_status (pagamento via Mercado Pago)
+    if (user.subscription_status === 'active' && user.subscription_expires_at) {
+      const subExpires = new Date(user.subscription_expires_at)
+      if (subExpires > now) {
+        const daysRemaining = Math.ceil((subExpires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        return c.json({
+          status: 'active',
+          isActive: true,
+          needsPayment: false,
+          plan: user.subscription_plan,
+          expiresAt: user.subscription_expires_at,
+          daysRemaining,
+          message: `Assinatura ${user.subscription_plan} ativa`
+        })
+      } else {
+        // Assinatura paga expirou — revogar
+        console.log(`⏰ Assinatura paga expirou para usuário ${userId}, revogando...`)
+        await DB.prepare(`
+          UPDATE users SET subscription_status = 'expired', is_premium = 0 WHERE id = ?
+        `).bind(userId).run()
+      }
+    }
+    
+    // ═══════════════════════════════════════════════
+    // 3. TRIAL — 7 dias gratuitos
+    // ═══════════════════════════════════════════════
     
     // Se nunca iniciou trial, iniciar agora
     if (!user.trial_started_at) {
@@ -1855,32 +1924,11 @@ app.get('/api/subscription/status/:userId', async (c) => {
       })
     }
     
-    // Verificar se tem assinatura ativa
-    if (user.subscription_status === 'active' && user.subscription_expires_at) {
-      const subExpires = new Date(user.subscription_expires_at)
-      if (subExpires > now) {
-        daysRemaining = Math.ceil((subExpires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        return c.json({
-          status: 'active',
-          isActive: true,
-          needsPayment: false,
-          plan: user.subscription_plan,
-          expiresAt: user.subscription_expires_at,
-          daysRemaining,
-          message: `Assinatura ${user.subscription_plan} ativa`
-        })
-      } else {
-        // Assinatura expirou
-        await DB.prepare(`UPDATE users SET subscription_status = 'expired' WHERE id = ?`).bind(userId).run()
-        status = 'expired'
-      }
-    }
-    
-    // Verificar trial
+    // Verificar trial ativo
     if (user.trial_expires_at) {
       const trialExpires = new Date(user.trial_expires_at)
       if (trialExpires > now) {
-        daysRemaining = Math.ceil((trialExpires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        const daysRemaining = Math.ceil((trialExpires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         return c.json({
           status: 'trial',
           isActive: true,
@@ -1892,7 +1940,10 @@ app.get('/api/subscription/status/:userId', async (c) => {
       }
     }
     
-    // Trial expirou e não tem assinatura
+    // ═══════════════════════════════════════════════
+    // 4. EXPIRADO — trial acabou, sem premium, sem assinatura
+    //    Deve pagar para continuar
+    // ═══════════════════════════════════════════════
     return c.json({
       status: 'expired',
       isActive: false,

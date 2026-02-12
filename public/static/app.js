@@ -7732,73 +7732,82 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
         <!-- CARDS DE AÇÕES: Data, Disciplinas, Progresso, Simulados, Desempenho, Calendário -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3 mb-4">
           
-          <!-- Card Contagem Regressiva / Data da Prova -->
-          ${contagemRegressiva ? `
-            ${contagemRegressiva.passada ? `
+          <!-- Card Contagem Regressiva / Data da Prova — v73: Olá, nome -->
+          ${(() => {
+            const primeiroNome = (currentUser.name || currentUser.email?.split('@')[0] || 'Estudante').split(' ')[0];
+            
+            if (contagemRegressiva) {
+              if (contagemRegressiva.passada) {
+                return `
               <div onclick="abrirModalEditarDataProva()" class="cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-gray-400 hover:shadow-xl transition-all">
-                <div class="flex items-center gap-2 md:gap-4">
+                <div class="flex items-center gap-2 md:gap-3">
                   <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
                     <i class="fas fa-check text-white text-sm md:text-xl"></i>
                   </div>
                   <div class="text-left flex-1 min-w-0">
-                    <div class="flex items-baseline gap-1 md:gap-2">
-                      <span class="text-base md:text-xl font-bold ${themes[currentTheme].text}">Prova Realizada</span>
-                    </div>
-                    <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5 md:mt-1">
-                      ${contagemRegressiva.dataFormatada}
+                    <p class="text-xs md:text-sm font-semibold ${themes[currentTheme].text} truncate">Olá, ${primeiroNome}!</p>
+                    <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">
+                      Prova realizada em ${contagemRegressiva.dataFormatada}
                     </p>
                   </div>
                   <i class="fas fa-pen text-xs ${themes[currentTheme].textSecondary} group-hover:text-gray-500 transition-colors"></i>
                 </div>
-              </div>
-            ` : contagemRegressiva.hoje ? `
+              </div>`;
+              } else if (contagemRegressiva.hoje) {
+                return `
               <div class="group ${themes[currentTheme].card} rounded-xl border-2 border-[#2A4A9F] p-2 md:p-4 hover:shadow-xl transition-all animate-pulse">
-                <div class="flex items-center gap-2 md:gap-4">
+                <div class="flex items-center gap-2 md:gap-3">
                   <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center shadow-lg flex-shrink-0">
                     <i class="fas fa-trophy text-white text-sm md:text-xl"></i>
                   </div>
                   <div class="text-left flex-1 min-w-0">
-                    <div class="flex items-baseline gap-1 md:gap-2">
-                      <span class="text-base md:text-xl font-bold text-[#2A4A9F]">DIA DA PROVA!</span>
-                    </div>
-                    <p class="text-[10px] md:text-xs text-[#2A4A9F] mt-0.5 md:mt-1 font-semibold">
-                      🎯 Boa sorte!
+                    <p class="text-xs md:text-sm font-semibold text-[#2A4A9F] truncate">Olá, ${primeiroNome}!</p>
+                    <p class="text-[10px] md:text-xs text-[#2A4A9F] mt-0.5 font-bold">
+                      🎯 Hoje é o dia da prova!
                     </p>
                   </div>
                 </div>
-              </div>
-            ` : `
-              <div onclick="abrirModalEditarDataProva()" class="cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#122D6A] hover:shadow-xl transition-all">
-                <div class="flex items-center gap-2 md:gap-4">
-                  <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
+              </div>`;
+              } else {
+                // Dias restantes até a prova
+                const urgente = contagemRegressiva.urgente;
+                const muitoUrgente = contagemRegressiva.muitoUrgente;
+                const corBorda = muitoUrgente ? 'border-red-400' : urgente ? 'border-amber-400' : themes[currentTheme].border;
+                const corBg = muitoUrgente ? 'from-red-500 to-red-700' : urgente ? 'from-amber-500 to-orange-600' : 'from-[#122D6A] to-[#2A4A9F]';
+                
+                return `
+              <div onclick="abrirModalEditarDataProva()" class="cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 ${corBorda} p-2 md:p-4 hover:border-[#122D6A] hover:shadow-xl transition-all">
+                <div class="flex items-center gap-2 md:gap-3">
+                  <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br ${corBg} flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
                     <span class="text-white text-sm md:text-xl font-bold">${contagemRegressiva.dias}</span>
                   </div>
                   <div class="text-left flex-1 min-w-0">
-                    <div class="flex items-baseline gap-1 md:gap-2">
-                      <span class="text-xl md:text-3xl font-bold ${themes[currentTheme].text}">${contagemRegressiva.semanas > 0 ? contagemRegressiva.semanas + 'sem ' + contagemRegressiva.diasRestantes + 'd' : contagemRegressiva.dias + 'd'}</span>
-                    </div>
+                    <p class="text-xs md:text-sm font-semibold ${themes[currentTheme].text} truncate">Olá, ${primeiroNome}!</p>
                     <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">
-                      Prova: ${contagemRegressiva.dataFormatada}
+                      ${muitoUrgente ? '⚡' : urgente ? '⏰' : '📅'} Faltam <strong>${contagemRegressiva.dias} dias</strong> para sua prova
                     </p>
                   </div>
                 </div>
-              </div>
-            `}
-          ` : `
+              </div>`;
+              }
+            } else {
+              // Sem data de prova definida
+              return `
             <div onclick="abrirModalEditarDataProva()" class="cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 border-dashed ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#122D6A] hover:shadow-xl transition-all">
-              <div class="flex items-center gap-2 md:gap-4">
+              <div class="flex items-center gap-2 md:gap-3">
                 <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0 group-hover:from-[#122D6A] group-hover:to-[#2A4A9F]">
                   <i class="fas fa-calendar-plus text-white text-sm md:text-xl"></i>
                 </div>
                 <div class="text-left flex-1 min-w-0">
-                  <div class="flex items-baseline gap-1 md:gap-2">
-                    <span class="text-xl md:text-3xl font-bold ${themes[currentTheme].text}">—</span>
-                  </div>
-                  <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">Prova</p>
+                  <p class="text-xs md:text-sm font-semibold ${themes[currentTheme].text} truncate">Olá, ${primeiroNome}!</p>
+                  <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">
+                    Defina a data da sua prova
+                  </p>
                 </div>
               </div>
-            </div>
-          `}
+            </div>`;
+            }
+          })()}
           
           <!-- Botão Disciplinas -->
           <button onclick="renderPortfolioDisciplinas()" class="group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#122D6A] hover:shadow-xl transition-all">
