@@ -15229,9 +15229,19 @@ app.post('/api/backup/google-drive/save', async (c) => {
       const errorMsg = folderSearchResult.error.message || ''
       if (errorMsg.includes('has not been used') || errorMsg.includes('disabled')) {
         return c.json({ 
-          error: 'A API do Google Drive não está habilitada. Entre em contato com o suporte.',
-          details: 'API do Google Drive precisa ser ativada no console do Google Cloud.'
+          error: 'A API do Google Drive precisa ser habilitada no projeto Google Cloud.',
+          details: 'API do Google Drive precisa ser ativada no console do Google Cloud.',
+          needsReauth: true
         }, 503)
+      }
+      
+      // Escopos insuficientes
+      if (errorMsg.includes('insufficient') || errorMsg.includes('scope') || errorMsg.includes('Forbidden')) {
+        return c.json({ 
+          error: 'Permissões insuficientes. Reconecte com Google Drive.',
+          needsReauth: true,
+          details: errorMsg
+        }, 403)
       }
       
       return c.json({ 
@@ -15410,8 +15420,26 @@ app.post('/api/backup/google-drive/load', async (c) => {
     const folderSearchResult = await folderSearchResponse.json() as any
     
     if (folderSearchResult.error) {
-      console.error('Erro ao buscar pasta:', folderSearchResult.error)
-      return c.json({ error: 'Erro ao acessar Google Drive' }, 500)
+      console.error('Erro ao buscar pasta (load):', folderSearchResult.error)
+      const errorMsg = folderSearchResult.error.message || ''
+      
+      if (errorMsg.includes('has not been used') || errorMsg.includes('disabled')) {
+        return c.json({ 
+          error: 'A API do Google Drive precisa ser habilitada.',
+          needsReauth: true,
+          details: errorMsg
+        }, 503)
+      }
+      
+      if (errorMsg.includes('insufficient') || errorMsg.includes('scope') || errorMsg.includes('Forbidden')) {
+        return c.json({ 
+          error: 'Permissões insuficientes. Reconecte com Google Drive.',
+          needsReauth: true,
+          details: errorMsg
+        }, 403)
+      }
+      
+      return c.json({ error: 'Erro ao acessar Google Drive', needsReauth: true, details: errorMsg }, 500)
     }
     
     if (!folderSearchResult.files?.length) {
@@ -15459,6 +15487,191 @@ app.post('/api/backup/google-drive/load', async (c) => {
   } catch (error: any) {
     console.error('Erro ao carregar do Google Drive:', error)
     return c.json({ error: error.message }, 500)
+  }
+})
+
+// ============== DIAGNÓSTICO GOOGLE DRIVE (v74) ==============
+
+// Endpoint para verificar se Google Drive está funcionando (testa token, API e permissões)
+app.post('/api/backup/google-drive/diagnose', async (c) => {
+  const { DB } = c.env
+  const { user_id } = await c.req.json()
+  
+  const diagnostico: any = {
+    timestamp: new Date().toISOString(),
+    etapas: [],
+    resumo: '',
+    acaoNecessaria: ''
+  }
+  
+  try {
+    // Etapa 1: Verificar se o usuário tem tokens Google
+    const user = await DB.prepare(`
+      SELECT google_access_token, google_refresh_token, google_token_expires, google_email, google_id
+      FROM users WHERE id = ?
+    `).bind(user_id).first() as any
+    
+    if (!user?.google_access_token) {
+      diagnostico.etapas.push({ etapa: 'Conta Google', status: 'erro', msg: 'Conta Google não conectada' })
+      diagnostico.resumo = 'Sua conta Google não está conectada.'
+      diagnostico.acaoNecessaria = 'conectar_google'
+      return c.json(diagnostico)
+    }
+    
+    diagnostico.etapas.push({ 
+      etapa: 'Conta Google', 
+      status: 'ok', 
+      msg: `Conectado como ${user.google_email || 'usuário Google'}` 
+    })
+    
+    // Etapa 2: Verificar validade do token
+    let accessToken = user.google_access_token
+    const tokenExpirado = new Date(user.google_token_expires) < new Date()
+    
+    if (tokenExpirado) {
+      diagnostico.etapas.push({ etapa: 'Token', status: 'aviso', msg: 'Token expirado, tentando renovar...' })
+      
+      if (!user.google_refresh_token) {
+        diagnostico.etapas.push({ etapa: 'Renovação', status: 'erro', msg: 'Sem refresh token. Necessário reconectar.' })
+        diagnostico.resumo = 'Sua sessão expirou e não pode ser renovada.'
+        diagnostico.acaoNecessaria = 'reconectar_google'
+        return c.json(diagnostico)
+      }
+      
+      const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = c.env as any
+      try {
+        const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: GOOGLE_CLIENT_ID,
+            client_secret: GOOGLE_CLIENT_SECRET,
+            refresh_token: user.google_refresh_token,
+            grant_type: 'refresh_token'
+          })
+        })
+        const refreshResult = await refreshResponse.json() as any
+        
+        if (refreshResult.error) {
+          diagnostico.etapas.push({ etapa: 'Renovação', status: 'erro', msg: `Falha ao renovar: ${refreshResult.error}` })
+          diagnostico.resumo = 'Não foi possível renovar o token. Reconecte sua conta Google.'
+          diagnostico.acaoNecessaria = 'reconectar_google'
+          return c.json(diagnostico)
+        }
+        
+        accessToken = refreshResult.access_token
+        const newExpires = new Date(Date.now() + refreshResult.expires_in * 1000).toISOString()
+        await DB.prepare('UPDATE users SET google_access_token = ?, google_token_expires = ? WHERE id = ?')
+          .bind(accessToken, newExpires, user_id).run()
+        
+        diagnostico.etapas.push({ etapa: 'Renovação', status: 'ok', msg: 'Token renovado com sucesso' })
+      } catch (e: any) {
+        diagnostico.etapas.push({ etapa: 'Renovação', status: 'erro', msg: `Erro: ${e.message}` })
+        diagnostico.resumo = 'Erro na renovação do token.'
+        diagnostico.acaoNecessaria = 'reconectar_google'
+        return c.json(diagnostico)
+      }
+    } else {
+      diagnostico.etapas.push({ etapa: 'Token', status: 'ok', msg: 'Token válido' })
+    }
+    
+    // Etapa 3: Testar acesso ao Google Drive API
+    try {
+      const testResponse = await fetch(
+        'https://www.googleapis.com/drive/v3/about?fields=user',
+        { headers: { 'Authorization': `Bearer ${accessToken}` } }
+      )
+      const testResult = await testResponse.json() as any
+      
+      if (testResult.error) {
+        const errorMsg = testResult.error.message || ''
+        
+        if (errorMsg.includes('has not been used') || errorMsg.includes('disabled')) {
+          diagnostico.etapas.push({ 
+            etapa: 'Google Drive API', 
+            status: 'erro', 
+            msg: 'API do Google Drive NÃO está habilitada no projeto Google Cloud.' 
+          })
+          diagnostico.resumo = 'A API do Google Drive precisa ser habilitada pelo administrador no Google Cloud Console.'
+          diagnostico.acaoNecessaria = 'habilitar_api'
+          return c.json(diagnostico)
+        }
+        
+        if (errorMsg.includes('insufficient') || errorMsg.includes('scope') || errorMsg.includes('Forbidden')) {
+          diagnostico.etapas.push({ 
+            etapa: 'Google Drive API', 
+            status: 'erro', 
+            msg: 'Permissões insuficientes. Sua conta não tem acesso ao Drive.' 
+          })
+          diagnostico.resumo = 'Sua conta Google não tem permissão para acessar o Drive. Reconecte com as permissões corretas.'
+          diagnostico.acaoNecessaria = 'reconectar_google'
+          return c.json(diagnostico)
+        }
+        
+        diagnostico.etapas.push({ etapa: 'Google Drive API', status: 'erro', msg: errorMsg })
+        diagnostico.resumo = `Erro ao acessar Google Drive: ${errorMsg}`
+        diagnostico.acaoNecessaria = 'reconectar_google'
+        return c.json(diagnostico)
+      }
+      
+      diagnostico.etapas.push({ 
+        etapa: 'Google Drive API', 
+        status: 'ok', 
+        msg: `Acesso confirmado para ${testResult.user?.displayName || testResult.user?.emailAddress || 'usuário'}` 
+      })
+    } catch (e: any) {
+      diagnostico.etapas.push({ etapa: 'Google Drive API', status: 'erro', msg: `Erro de rede: ${e.message}` })
+      diagnostico.resumo = 'Não foi possível conectar ao Google Drive.'
+      diagnostico.acaoNecessaria = 'tentar_novamente'
+      return c.json(diagnostico)
+    }
+    
+    // Etapa 4: Verificar pasta de backups
+    try {
+      const folderResponse = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=name='IAprova Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+        { headers: { 'Authorization': `Bearer ${accessToken}` } }
+      )
+      const folderResult = await folderResponse.json() as any
+      
+      if (folderResult.files?.length > 0) {
+        diagnostico.etapas.push({ etapa: 'Pasta de Backup', status: 'ok', msg: 'Pasta "IAprova Backups" encontrada' })
+        
+        // Verificar se há backups
+        const folderId = folderResult.files[0].id
+        const searchResponse = await fetch(
+          `https://www.googleapis.com/drive/v3/files?q=name contains 'iaprova_backup' and '${folderId}' in parents and trashed=false&orderBy=modifiedTime desc&fields=files(id,name,modifiedTime,size)&pageSize=1`,
+          { headers: { 'Authorization': `Bearer ${accessToken}` } }
+        )
+        const searchResult = await searchResponse.json() as any
+        
+        if (searchResult.files?.length > 0) {
+          const file = searchResult.files[0]
+          diagnostico.etapas.push({ 
+            etapa: 'Backup Existente', 
+            status: 'ok', 
+            msg: `Último backup: ${file.name} (${new Date(file.modifiedTime).toLocaleString('pt-BR')})` 
+          })
+        } else {
+          diagnostico.etapas.push({ etapa: 'Backup Existente', status: 'aviso', msg: 'Nenhum backup encontrado ainda' })
+        }
+      } else {
+        diagnostico.etapas.push({ etapa: 'Pasta de Backup', status: 'aviso', msg: 'Pasta será criada no primeiro backup' })
+      }
+    } catch (e: any) {
+      diagnostico.etapas.push({ etapa: 'Pasta de Backup', status: 'aviso', msg: `Não foi possível verificar: ${e.message}` })
+    }
+    
+    diagnostico.resumo = 'Google Drive está funcionando corretamente!'
+    diagnostico.acaoNecessaria = 'nenhuma'
+    return c.json(diagnostico)
+    
+  } catch (error: any) {
+    console.error('Erro no diagnóstico:', error)
+    diagnostico.etapas.push({ etapa: 'Geral', status: 'erro', msg: error.message })
+    diagnostico.resumo = 'Erro inesperado no diagnóstico.'
+    diagnostico.acaoNecessaria = 'tentar_novamente'
+    return c.json(diagnostico)
   }
 })
 

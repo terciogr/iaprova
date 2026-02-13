@@ -1553,6 +1553,22 @@ async function loginComGoogle() {
 }
 window.loginComGoogle = loginComGoogle;
 
+// v73: Reconectar Google com permissões do Drive (force consent + scopes)
+window.reconectarGoogleDrive = async function() {
+  try {
+    showToast('🔑 Reconectando com Google Drive...', 'info');
+    const response = await axios.get('/api/auth/google?force_drive=true');
+    if (response.data.authUrl) {
+      window.location.href = response.data.authUrl;
+    } else {
+      showToast('Google OAuth não está configurado', 'error');
+    }
+  } catch (error) {
+    console.error('Erro ao reconectar Google Drive:', error);
+    showToast('Erro ao conectar. Tente novamente.', 'error');
+  }
+};
+
 // ============== TELA DE VERIFICAÇÃO DE EMAIL ==============
 function renderEmailVerification(email, message, showResend = false) {
   document.getElementById('app').innerHTML = `
@@ -14115,19 +14131,28 @@ window.abrirAdministracao = async function() {
         <div class="mb-6">
           <h4 class="font-semibold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
             <i class="fab fa-google-drive text-yellow-500"></i>Google Drive
+            ${!googleStatus.tokenValid ? '<span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full ml-2">Token expirado</span>' : '<span class="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full ml-2">Conectado</span>'}
           </h4>
           <div class="grid grid-cols-2 gap-3">
             <button onclick="salvarNoDrive()" 
-              class="p-4 rounded-xl border-2 border-dashed border-yellow-200 hover:border-yellow-400 hover:bg-yellow-50 transition-all text-center">
-              <i class="fas fa-cloud-upload-alt text-yellow-500 text-2xl mb-2"></i>
+              class="p-4 rounded-xl border-2 border-dashed border-yellow-200 hover:border-yellow-400 hover:bg-yellow-50 transition-all text-center group">
+              <i class="fas fa-cloud-upload-alt text-yellow-500 text-2xl mb-2 group-hover:scale-110 transition-transform"></i>
               <p class="font-medium ${themes[currentTheme].text} text-sm">Salvar no Drive</p>
               <p class="${themes[currentTheme].textMuted} text-xs">Backup na nuvem</p>
             </button>
             <button onclick="carregarDoDrive()" 
-              class="p-4 rounded-xl border-2 border-dashed border-blue-200 hover:border-[#2A4A9F] hover:bg-blue-50 transition-all text-center">
-              <i class="fas fa-cloud-download-alt text-[#1A3A7F] text-2xl mb-2"></i>
+              class="p-4 rounded-xl border-2 border-dashed border-blue-200 hover:border-[#2A4A9F] hover:bg-blue-50 transition-all text-center group">
+              <i class="fas fa-cloud-download-alt text-[#1A3A7F] text-2xl mb-2 group-hover:scale-110 transition-transform"></i>
               <p class="font-medium ${themes[currentTheme].text} text-sm">Carregar do Drive</p>
               <p class="${themes[currentTheme].textMuted} text-xs">Restaurar da nuvem</p>
+            </button>
+          </div>
+          <div class="flex gap-2 mt-3">
+            <button onclick="diagnosticarGoogleDrive()" class="flex-1 px-3 py-2 text-xs border ${themes[currentTheme].border} ${themes[currentTheme].textSecondary} rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+              <i class="fas fa-stethoscope mr-1"></i>Diagnosticar
+            </button>
+            <button onclick="reconectarGoogleDrive()" class="flex-1 px-3 py-2 text-xs border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 transition">
+              <i class="fas fa-sync-alt mr-1"></i>Reconectar Drive
             </button>
           </div>
           ${googleStatus.lastSync ? `
@@ -16108,62 +16133,326 @@ window.importarDados = function() {
   input.click();
 };
 
-// Salvar no Google Drive
+// Salvar no Google Drive - v74 com modal de progresso animado
 window.salvarNoDrive = async function() {
+  // Criar modal de progresso
+  const etapas = [
+    { id: 1, msg: 'Verificando conexão com Google...', icone: 'fa-key', duracao: 1500 },
+    { id: 2, msg: 'Gerando backup dos seus dados...', icone: 'fa-database', duracao: 2000 },
+    { id: 3, msg: 'Conectando ao Google Drive...', icone: 'fa-cloud', duracao: 1500 },
+    { id: 4, msg: 'Criando pasta de backup...', icone: 'fa-folder-plus', duracao: 1000 },
+    { id: 5, msg: 'Enviando backup para a nuvem...', icone: 'fa-cloud-upload-alt', duracao: 2500 },
+    { id: 6, msg: 'Finalizando sincronização...', icone: 'fa-check-circle', duracao: 1000 }
+  ];
+  
+  const overlay = document.createElement('div');
+  overlay.id = 'modal-drive-progresso';
+  overlay.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] backdrop-blur-sm';
+  overlay.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 relative overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700">
+        <div id="drive-barra" class="h-full bg-gradient-to-r from-yellow-400 via-yellow-500 to-green-500 transition-all duration-500 ease-out" style="width: 0%"></div>
+      </div>
+      <div class="text-center mb-5 mt-2">
+        <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center mb-3">
+          <i class="fab fa-google-drive text-white text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-bold ${themes[currentTheme].text}">Salvando no Google Drive</h3>
+        <p class="${themes[currentTheme].textSecondary} text-sm">Aguarde enquanto sincronizamos seus dados</p>
+      </div>
+      <div id="drive-etapas" class="space-y-2">
+        ${etapas.map(e => `
+          <div id="drive-etapa-${e.id}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 opacity-40">
+            <div class="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+              <i class="fas ${e.icone} text-gray-400 text-xs" id="drive-icone-${e.id}"></i>
+            </div>
+            <span class="${themes[currentTheme].textSecondary} text-sm">${e.msg}</span>
+          </div>
+        `).join('')}
+      </div>
+      <p id="drive-status" class="${themes[currentTheme].textMuted} text-xs text-center mt-4">Iniciando...</p>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  
+  // Animação de etapas
+  let etapaAtual = 0;
+  const avancarEtapa = () => {
+    if (etapaAtual < etapas.length) {
+      const e = etapas[etapaAtual];
+      const div = document.getElementById(`drive-etapa-${e.id}`);
+      const icone = document.getElementById(`drive-icone-${e.id}`);
+      const barra = document.getElementById('drive-barra');
+      const status = document.getElementById('drive-status');
+      
+      if (div) {
+        div.classList.remove('opacity-40');
+        div.classList.add('opacity-100', 'bg-yellow-50', 'dark:bg-yellow-900/20');
+        if (icone) {
+          icone.className = 'fas fa-spinner fa-spin text-yellow-500 text-xs';
+        }
+      }
+      
+      // Completar etapa anterior
+      if (etapaAtual > 0) {
+        const prevE = etapas[etapaAtual - 1];
+        const prevDiv = document.getElementById(`drive-etapa-${prevE.id}`);
+        const prevIcone = document.getElementById(`drive-icone-${prevE.id}`);
+        if (prevDiv) {
+          prevDiv.classList.remove('bg-yellow-50', 'dark:bg-yellow-900/20');
+          prevDiv.classList.add('bg-green-50', 'dark:bg-green-900/20');
+        }
+        if (prevIcone) {
+          prevIcone.className = 'fas fa-check text-green-500 text-xs';
+        }
+      }
+      
+      const progresso = Math.round(((etapaAtual + 1) / etapas.length) * 95);
+      if (barra) barra.style.width = `${progresso}%`;
+      if (status) status.textContent = `Etapa ${etapaAtual + 1} de ${etapas.length}`;
+      
+      etapaAtual++;
+    }
+  };
+  
+  // Iniciar animação gradual
+  avancarEtapa();
+  const intervalo = setInterval(() => avancarEtapa(), 1800);
+  
   try {
-    showToast('⏳ Salvando no Google Drive...', 'info');
-    
     const response = await axios.post('/api/backup/google-drive/save', {
       user_id: currentUser.id
-    });
+    }, { timeout: 60000 });
+    
+    clearInterval(intervalo);
     
     if (response.data.needsReauth) {
-      showToast('🔑 Reconecte sua conta Google', 'warning');
-      loginComGoogle();
+      document.getElementById('modal-drive-progresso')?.remove();
+      showToast('🔑 Reconecte sua conta Google com permissões do Drive', 'warning');
+      reconectarGoogleDrive();
       return;
     }
     
+    // Completar todas as etapas
+    etapas.forEach(e => {
+      const div = document.getElementById(`drive-etapa-${e.id}`);
+      const icone = document.getElementById(`drive-icone-${e.id}`);
+      if (div) {
+        div.classList.remove('opacity-40', 'bg-yellow-50', 'dark:bg-yellow-900/20');
+        div.classList.add('opacity-100', 'bg-green-50', 'dark:bg-green-900/20');
+      }
+      if (icone) icone.className = 'fas fa-check text-green-500 text-xs';
+    });
+    
+    const barra = document.getElementById('drive-barra');
+    const status = document.getElementById('drive-status');
+    if (barra) barra.style.width = '100%';
+    if (status) status.innerHTML = '<i class="fas fa-check-circle text-green-500 mr-1"></i>Backup salvo com sucesso!';
+    
+    await new Promise(r => setTimeout(r, 1500));
+    document.getElementById('modal-drive-progresso')?.remove();
     showToast('✅ Backup salvo no Google Drive!', 'success');
-    abrirAdministracao(); // Recarregar modal
+    abrirAdministracao();
   } catch (error) {
+    clearInterval(intervalo);
     console.error('Erro ao salvar no Drive:', error);
+    
+    document.getElementById('modal-drive-progresso')?.remove();
     
     const errorData = error.response?.data;
     const status = error.response?.status;
     
-    // Mensagens específicas por tipo de erro
-    if (status === 503 || errorData?.details?.includes('API')) {
-      showToast('⚠️ Google Drive temporariamente indisponível. Tente novamente mais tarde.', 'warning', 8000);
+    if (status === 503) {
+      await mostrarErroDrive(
+        'API do Google Drive não habilitada',
+        'A API do Google Drive precisa ser ativada no Google Cloud Console pelo administrador. Você pode tentar reconectar para solicitar as permissões novamente.',
+        'habilitar_api'
+      );
     } else if (status === 401 || errorData?.needsReauth) {
-      showToast('🔑 Sessão expirada. Reconecte sua conta Google.', 'warning');
-      loginComGoogle();
+      await mostrarErroDrive(
+        'Sessão expirada',
+        'Sua sessão com o Google expirou. Reconecte sua conta para continuar salvando no Drive.',
+        'reconectar_google'
+      );
+    } else if (status === 403) {
+      await mostrarErroDrive(
+        'Permissões insuficientes',
+        'Sua conta Google não tem permissão para acessar o Drive. Reconecte com as permissões corretas.',
+        'reconectar_google'
+      );
     } else if (status === 400) {
-      showToast('⚠️ Conecte sua conta Google primeiro.', 'warning');
+      await mostrarErroDrive(
+        'Conta Google não conectada',
+        'Conecte sua conta Google primeiro nas configurações para usar o backup na nuvem.',
+        'conectar_google'
+      );
     } else {
-      showToast('❌ Erro ao salvar no Drive. Tente novamente.', 'error');
+      showToast('❌ Erro ao salvar no Drive: ' + (errorData?.error || 'Tente novamente.'), 'error');
     }
   }
 };
 
-// Carregar do Google Drive
+// Modal de erro do Drive com ações
+async function mostrarErroDrive(titulo, mensagem, acao) {
+  const modal = document.createElement('div');
+  modal.id = 'modal-drive-erro';
+  modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] backdrop-blur-sm';
+  
+  let botaoAcao = '';
+  if (acao === 'reconectar_google' || acao === 'habilitar_api') {
+    botaoAcao = `
+      <button onclick="document.getElementById('modal-drive-erro')?.remove(); reconectarGoogleDrive();" 
+        class="flex-1 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-blue-700 transition-all">
+        <i class="fas fa-sync-alt mr-1"></i>Reconectar Google
+      </button>
+    `;
+  } else if (acao === 'conectar_google') {
+    botaoAcao = `
+      <button onclick="document.getElementById('modal-drive-erro')?.remove(); loginComGoogle();" 
+        class="flex-1 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-blue-700 transition-all">
+        <i class="fab fa-google mr-1"></i>Conectar Google
+      </button>
+    `;
+  }
+  
+  modal.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-sm w-full mx-4 p-6">
+      <div class="text-center mb-4">
+        <div class="w-16 h-16 mx-auto rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-3">
+          <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-bold ${themes[currentTheme].text}">${titulo}</h3>
+        <p class="${themes[currentTheme].textSecondary} text-sm mt-2">${mensagem}</p>
+      </div>
+      <div class="flex gap-2 mt-4">
+        <button onclick="document.getElementById('modal-drive-erro')?.remove();" 
+          class="flex-1 px-4 py-2.5 border ${themes[currentTheme].border} ${themes[currentTheme].text} rounded-xl font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+          Fechar
+        </button>
+        ${botaoAcao}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+// Carregar do Google Drive - v74 com modal de progresso animado
 window.carregarDoDrive = async function() {
+  const etapas = [
+    { id: 1, msg: 'Verificando conexão com Google...', icone: 'fa-key', duracao: 1500 },
+    { id: 2, msg: 'Acessando Google Drive...', icone: 'fa-cloud', duracao: 1500 },
+    { id: 3, msg: 'Buscando pasta de backups...', icone: 'fa-folder-open', duracao: 1000 },
+    { id: 4, msg: 'Localizando último backup...', icone: 'fa-search', duracao: 1500 },
+    { id: 5, msg: 'Baixando dados do Drive...', icone: 'fa-cloud-download-alt', duracao: 2000 },
+    { id: 6, msg: 'Preparando restauração...', icone: 'fa-check-circle', duracao: 1000 }
+  ];
+  
+  const overlay = document.createElement('div');
+  overlay.id = 'modal-drive-load';
+  overlay.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] backdrop-blur-sm';
+  overlay.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 relative overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700">
+        <div id="drive-load-barra" class="h-full bg-gradient-to-r from-blue-400 via-blue-500 to-green-500 transition-all duration-500 ease-out" style="width: 0%"></div>
+      </div>
+      <div class="text-center mb-5 mt-2">
+        <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center mb-3">
+          <i class="fas fa-cloud-download-alt text-white text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-bold ${themes[currentTheme].text}">Carregando do Google Drive</h3>
+        <p class="${themes[currentTheme].textSecondary} text-sm">Buscando seu backup na nuvem</p>
+      </div>
+      <div id="drive-load-etapas" class="space-y-2">
+        ${etapas.map(e => `
+          <div id="drive-load-etapa-${e.id}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 opacity-40">
+            <div class="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+              <i class="fas ${e.icone} text-gray-400 text-xs" id="drive-load-icone-${e.id}"></i>
+            </div>
+            <span class="${themes[currentTheme].textSecondary} text-sm">${e.msg}</span>
+          </div>
+        `).join('')}
+      </div>
+      <p id="drive-load-status" class="${themes[currentTheme].textMuted} text-xs text-center mt-4">Iniciando...</p>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  
+  // Animação de etapas
+  let etapaAtual = 0;
+  const avancarEtapa = () => {
+    if (etapaAtual < etapas.length) {
+      const e = etapas[etapaAtual];
+      const div = document.getElementById(`drive-load-etapa-${e.id}`);
+      const icone = document.getElementById(`drive-load-icone-${e.id}`);
+      const barra = document.getElementById('drive-load-barra');
+      const statusEl = document.getElementById('drive-load-status');
+      
+      if (div) {
+        div.classList.remove('opacity-40');
+        div.classList.add('opacity-100', 'bg-blue-50', 'dark:bg-blue-900/20');
+        if (icone) icone.className = 'fas fa-spinner fa-spin text-blue-500 text-xs';
+      }
+      
+      if (etapaAtual > 0) {
+        const prevE = etapas[etapaAtual - 1];
+        const prevDiv = document.getElementById(`drive-load-etapa-${prevE.id}`);
+        const prevIcone = document.getElementById(`drive-load-icone-${prevE.id}`);
+        if (prevDiv) {
+          prevDiv.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
+          prevDiv.classList.add('bg-green-50', 'dark:bg-green-900/20');
+        }
+        if (prevIcone) prevIcone.className = 'fas fa-check text-green-500 text-xs';
+      }
+      
+      const progresso = Math.round(((etapaAtual + 1) / etapas.length) * 95);
+      if (barra) barra.style.width = `${progresso}%`;
+      if (statusEl) statusEl.textContent = `Etapa ${etapaAtual + 1} de ${etapas.length}`;
+      
+      etapaAtual++;
+    }
+  };
+  
+  avancarEtapa();
+  const intervalo = setInterval(() => avancarEtapa(), 1500);
+  
   try {
-    showToast('⏳ Buscando backup no Google Drive...', 'info');
-    
     const response = await axios.post('/api/backup/google-drive/load', {
       user_id: currentUser.id
-    });
+    }, { timeout: 60000 });
+    
+    clearInterval(intervalo);
     
     if (response.data.needsReauth) {
-      showToast('🔑 Reconecte sua conta Google', 'warning');
-      loginComGoogle();
+      document.getElementById('modal-drive-load')?.remove();
+      showToast('🔑 Reconecte sua conta Google com permissões do Drive', 'warning');
+      reconectarGoogleDrive();
       return;
     }
     
     if (!response.data.backup) {
+      document.getElementById('modal-drive-load')?.remove();
       showToast('📭 Nenhum backup encontrado no Drive', 'warning');
       return;
     }
+    
+    // Completar todas as etapas
+    etapas.forEach(e => {
+      const div = document.getElementById(`drive-load-etapa-${e.id}`);
+      const icone = document.getElementById(`drive-load-icone-${e.id}`);
+      if (div) {
+        div.classList.remove('opacity-40', 'bg-blue-50', 'dark:bg-blue-900/20');
+        div.classList.add('opacity-100', 'bg-green-50', 'dark:bg-green-900/20');
+      }
+      if (icone) icone.className = 'fas fa-check text-green-500 text-xs';
+    });
+    
+    const barra = document.getElementById('drive-load-barra');
+    const statusEl = document.getElementById('drive-load-status');
+    if (barra) barra.style.width = '100%';
+    if (statusEl) statusEl.innerHTML = '<i class="fas fa-check-circle text-green-500 mr-1"></i>Backup encontrado!';
+    
+    await new Promise(r => setTimeout(r, 1000));
+    document.getElementById('modal-drive-load')?.remove();
     
     const backup = response.data.backup;
     const fileInfo = response.data.fileInfo;
@@ -16174,38 +16463,179 @@ window.carregarDoDrive = async function() {
       `Arquivo: ${fileInfo.name}\n` +
       `Modificado: ${new Date(fileInfo.modifiedTime).toLocaleString('pt-BR')}\n\n` +
       `• ${backup.stats?.diasEstudados || 0} dias de histórico\n` +
-      `• ${backup.stats?.totalMetas || 0} metas`,
+      `• ${backup.stats?.totalMetas || 0} metas\n` +
+      `• ${backup.stats?.totalPlanos || 0} planos\n` +
+      `• ${backup.stats?.totalSimulados || 0} simulados`,
       { title: 'Restaurar do Drive', confirmText: 'Restaurar', type: 'warning' }
     );
     
     if (!confirmar) return;
     
-    showToast('⏳ Restaurando dados...', 'info');
+    // Modal de importação
+    const importHtml = `
+      <div id="modal-drive-import" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]">
+        <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-sm w-full mx-4 text-center shadow-2xl">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+            <i class="fas fa-spinner fa-spin text-green-500 text-2xl"></i>
+          </div>
+          <h3 class="text-lg font-bold ${themes[currentTheme].text} mb-2">Restaurando Backup</h3>
+          <p class="${themes[currentTheme].textSecondary} text-sm">Importando seus dados...</p>
+          <div class="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-green-500 to-green-600 animate-pulse" style="width: 70%"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', importHtml);
     
     const importResponse = await axios.post(`/api/backup/import/${currentUser.id}`, {
       backup,
       mode: 'merge'
-    });
+    }, { timeout: 60000 });
     
-    showToast('✅ Backup restaurado do Google Drive!', 'success');
+    document.getElementById('modal-drive-import')?.remove();
+    showToast(`✅ Backup restaurado! ${importResponse.data.stats?.inserted || 0} registros importados.`, 'success', 5000);
     fecharModalAdmin();
     renderDashboard();
   } catch (error) {
+    clearInterval(intervalo);
     console.error('Erro ao carregar do Drive:', error);
+    
+    document.getElementById('modal-drive-load')?.remove();
+    document.getElementById('modal-drive-import')?.remove();
     
     const errorData = error.response?.data;
     const status = error.response?.status;
     
-    // Mensagens específicas por tipo de erro
-    if (status === 503 || errorData?.details?.includes('API')) {
-      showToast('⚠️ Google Drive temporariamente indisponível. Tente novamente mais tarde.', 'warning', 8000);
+    if (status === 503) {
+      await mostrarErroDrive(
+        'API do Google Drive não habilitada',
+        'A API do Google Drive precisa ser ativada no Google Cloud Console pelo administrador.',
+        'habilitar_api'
+      );
     } else if (status === 401 || errorData?.needsReauth) {
-      showToast('🔑 Sessão expirada. Reconecte sua conta Google.', 'warning');
-      loginComGoogle();
+      await mostrarErroDrive(
+        'Sessão expirada',
+        'Sua sessão com o Google expirou. Reconecte sua conta para carregar do Drive.',
+        'reconectar_google'
+      );
+    } else if (status === 403) {
+      await mostrarErroDrive(
+        'Permissões insuficientes',
+        'Sua conta Google não tem permissão para acessar o Drive. Reconecte com as permissões corretas.',
+        'reconectar_google'
+      );
     } else if (status === 400) {
-      showToast('⚠️ Conecte sua conta Google primeiro.', 'warning');
+      await mostrarErroDrive(
+        'Conta Google não conectada',
+        'Conecte sua conta Google primeiro nas configurações.',
+        'conectar_google'
+      );
+    } else if (status === 404) {
+      showToast('📭 Nenhum backup encontrado no Google Drive. Salve um primeiro.', 'warning');
     } else {
-      showToast('❌ Erro ao carregar do Drive. Tente novamente.', 'error');
+      showToast('❌ Erro ao carregar do Drive: ' + (errorData?.error || 'Tente novamente.'), 'error');
+    }
+  }
+};
+
+// Diagnosticar Google Drive - v74
+window.diagnosticarGoogleDrive = async function() {
+  const modal = document.createElement('div');
+  modal.id = 'modal-drive-diagnostico';
+  modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] backdrop-blur-sm';
+  modal.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6">
+      <div class="text-center mb-5">
+        <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center mb-3">
+          <i class="fas fa-stethoscope text-white text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-bold ${themes[currentTheme].text}">Diagnóstico Google Drive</h3>
+        <p class="${themes[currentTheme].textSecondary} text-sm">Verificando a conexão...</p>
+      </div>
+      <div id="diag-resultados" class="space-y-2">
+        <div class="flex items-center justify-center py-8">
+          <i class="fas fa-spinner fa-spin text-purple-500 text-3xl"></i>
+        </div>
+      </div>
+      <div class="mt-4 flex justify-center">
+        <button onclick="document.getElementById('modal-drive-diagnostico')?.remove();" class="px-6 py-2 border ${themes[currentTheme].border} ${themes[currentTheme].text} rounded-xl text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+          Fechar
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  try {
+    const response = await axios.post('/api/backup/google-drive/diagnose', {
+      user_id: currentUser.id
+    }, { timeout: 30000 });
+    
+    const diag = response.data;
+    const resultDiv = document.getElementById('diag-resultados');
+    if (!resultDiv) return;
+    
+    const statusIcone = {
+      'ok': '<i class="fas fa-check-circle text-green-500"></i>',
+      'aviso': '<i class="fas fa-exclamation-circle text-yellow-500"></i>',
+      'erro': '<i class="fas fa-times-circle text-red-500"></i>'
+    };
+    
+    const statusBg = {
+      'ok': 'bg-green-50 dark:bg-green-900/20',
+      'aviso': 'bg-yellow-50 dark:bg-yellow-900/20',
+      'erro': 'bg-red-50 dark:bg-red-900/20'
+    };
+    
+    let html = diag.etapas.map(e => `
+      <div class="flex items-start gap-3 px-3 py-2.5 rounded-lg ${statusBg[e.status] || ''}">
+        <div class="mt-0.5">${statusIcone[e.status] || ''}</div>
+        <div>
+          <p class="font-medium ${themes[currentTheme].text} text-sm">${e.etapa}</p>
+          <p class="${themes[currentTheme].textSecondary} text-xs">${e.msg}</p>
+        </div>
+      </div>
+    `).join('');
+    
+    // Resumo
+    const corResumo = diag.acaoNecessaria === 'nenhuma' ? 'text-green-600' : 'text-orange-600';
+    html += `
+      <div class="mt-3 p-3 rounded-lg border ${themes[currentTheme].border}">
+        <p class="font-semibold ${corResumo} text-sm"><i class="fas ${diag.acaoNecessaria === 'nenhuma' ? 'fa-check-circle' : 'fa-exclamation-triangle'} mr-1"></i>${diag.resumo}</p>
+      </div>
+    `;
+    
+    // Botão de ação
+    if (diag.acaoNecessaria === 'reconectar_google' || diag.acaoNecessaria === 'habilitar_api') {
+      html += `
+        <button onclick="document.getElementById('modal-drive-diagnostico')?.remove(); reconectarGoogleDrive();" 
+          class="w-full mt-3 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium text-sm hover:from-blue-600 hover:to-blue-700 transition-all">
+          <i class="fas fa-sync-alt mr-1"></i>Reconectar Google Drive
+        </button>
+      `;
+    } else if (diag.acaoNecessaria === 'conectar_google') {
+      html += `
+        <button onclick="document.getElementById('modal-drive-diagnostico')?.remove(); loginComGoogle();" 
+          class="w-full mt-3 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium text-sm hover:from-blue-600 hover:to-blue-700 transition-all">
+          <i class="fab fa-google mr-1"></i>Conectar Conta Google
+        </button>
+      `;
+    }
+    
+    resultDiv.innerHTML = html;
+    
+  } catch (error) {
+    console.error('Erro no diagnóstico:', error);
+    const resultDiv = document.getElementById('diag-resultados');
+    if (resultDiv) {
+      resultDiv.innerHTML = `
+        <div class="text-center py-4">
+          <i class="fas fa-times-circle text-red-500 text-3xl mb-2"></i>
+          <p class="${themes[currentTheme].text} font-medium">Erro ao executar diagnóstico</p>
+          <p class="${themes[currentTheme].textSecondary} text-sm mt-1">${error.response?.data?.error || error.message || 'Tente novamente'}</p>
+        </div>
+      `;
     }
   }
 };
