@@ -13055,7 +13055,34 @@ window.renderDashboardSimulados = async function() {
                 </button>
               </div>
             ` : `
-              <div class="overflow-x-auto">
+              <!-- Mobile: Cards -->
+              <div class="md:hidden space-y-3">
+                ${simulados.map(sim => {
+                  const data = new Date(sim.data_realizacao).toLocaleDateString('pt-BR');
+                  const percentualClass = sim.percentual_acerto >= 70 ? 'text-green-600' : sim.percentual_acerto >= 50 ? 'text-amber-600' : 'text-red-600';
+                  const bgClass = sim.percentual_acerto >= 70 ? 'border-green-200' : sim.percentual_acerto >= 50 ? 'border-amber-200' : 'border-red-200';
+                  let discTexto = 'Múltiplas';
+                  try { discTexto = JSON.parse(sim.disciplinas || '[]').join(', '); } catch(e) { discTexto = sim.disciplinas || 'Múltiplas'; }
+                  
+                  return `
+                    <div class="${themes[currentTheme].card} p-3 rounded-xl border-l-4 ${bgClass} border ${themes[currentTheme].border}" onclick="verDetalhesSimulado(${sim.id})">
+                      <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs ${themes[currentTheme].textSecondary}">${data}</span>
+                        <span class="text-lg font-bold ${percentualClass}">${sim.percentual_acerto}%</span>
+                      </div>
+                      <p class="text-xs ${themes[currentTheme].textSecondary} truncate mb-1.5">${discTexto}</p>
+                      <div class="flex items-center gap-3 text-xs ${themes[currentTheme].textSecondary}">
+                        <span><i class="fas fa-list-ol mr-1"></i>${sim.total_questoes} questões</span>
+                        <span><i class="fas fa-check mr-1"></i>${sim.acertos} acertos</span>
+                        ${sim.tempo_gasto ? `<span><i class="fas fa-clock mr-1"></i>${sim.tempo_gasto}</span>` : ''}
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+              
+              <!-- Desktop: Tabela -->
+              <div class="hidden md:block overflow-x-auto">
                 <table class="w-full">
                   <thead>
                     <tr class="border-b ${themes[currentTheme].border}">
@@ -22260,15 +22287,18 @@ window.exibirExerciciosInterativos = function(data) {
   }
   
   // Inicializar estado
+  // ✅ v75: Preservar flag de simulado para salvar no histórico
   exercicioAtual = {
     questoes,
     respostas: {},
-    verificadas: {}, // Inicializar objeto de verificação
+    verificadas: {},
     disciplinaId: disciplina_id,
     topicoId: topico_id,
     topicoNome: topico_nome,
     disciplinaNome: disciplina_nome,
-    tempoInicio: Date.now()
+    tempoInicio: Date.now(),
+    _isSimulado: data._isSimulado || false,
+    _simuladoDisciplinas: data._simuladoDisciplinas || []
   };
   
   renderExercicioModal(0);
@@ -22512,59 +22542,56 @@ function renderExercicioModal(questaoIndex) {
   document.getElementById('modal-exercicios')?.remove();
   
   const modalHtml = `
-    <div id="modal-exercicios" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <!-- Header -->
-        <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-4 rounded-t-2xl">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm opacity-75">${exercicioAtual.disciplinaNome}</p>
-              <h2 class="text-lg font-bold">${exercicioAtual.topicoNome}</h2>
+    <div id="modal-exercicios" class="fixed inset-0 bg-black/40 z-50 flex flex-col md:items-center md:justify-center md:p-4">
+      <div class="${themes[currentTheme].card} md:rounded-2xl shadow-2xl w-full md:max-w-3xl h-full md:h-auto md:max-h-[90vh] flex flex-col">
+        <!-- Header responsivo -->
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-3 md:p-4 md:rounded-t-2xl flex-shrink-0">
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0 flex-1">
+              <p class="text-xs md:text-sm opacity-75 truncate">${exercicioAtual.disciplinaNome}</p>
+              <h2 class="text-sm md:text-lg font-bold truncate">${exercicioAtual.topicoNome}</h2>
             </div>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 md:gap-4 flex-shrink-0">
               <div class="text-right">
-                <p class="text-2xl font-bold">${questaoIndex + 1}<span class="text-base opacity-75">/${total}</span></p>
-                <p class="text-xs opacity-75">${verificadasCount} verificadas</p>
+                <p class="text-lg md:text-2xl font-bold">${questaoIndex + 1}<span class="text-xs md:text-base opacity-75">/${total}</span></p>
+                <p class="text-[10px] md:text-xs opacity-75">${verificadasCount} verificadas</p>
               </div>
-              <button onclick="fecharExercicios()" class="p-2 hover:bg-white/20 rounded-lg transition" title="Fechar">
-                <i class="fas fa-times text-lg"></i>
+              <button onclick="fecharExercicios()" class="p-1.5 md:p-2 hover:bg-white/20 rounded-lg transition" title="Fechar">
+                <i class="fas fa-times text-base md:text-lg"></i>
               </button>
             </div>
           </div>
           <!-- Barra de progresso -->
-          <div class="mt-3 h-2 bg-white/20 rounded-full overflow-hidden">
+          <div class="mt-2 md:mt-3 h-1.5 md:h-2 bg-white/20 rounded-full overflow-hidden">
             <div class="h-full bg-white rounded-full transition-all" style="width: ${Math.round((verificadasCount / total) * 100)}%"></div>
           </div>
         </div>
         
-        <!-- Questão -->
-        <div class="flex-1 overflow-y-auto p-6 ${themes[currentTheme].bg}">
-          <div class="mb-6">
-            <span class="inline-block px-3 py-1 bg-[#122D6A] text-white rounded-full text-sm font-medium mb-3">
+        <!-- Questão - responsivo -->
+        <div class="flex-1 overflow-y-auto p-3 md:p-6 ${themes[currentTheme].bg}">
+          <div class="mb-4 md:mb-6">
+            <span class="inline-block px-2.5 py-0.5 md:px-3 md:py-1 bg-[#122D6A] text-white rounded-full text-xs md:text-sm font-medium mb-2 md:mb-3">
               Questão ${questao.id}
             </span>
-            <p class="text-lg ${themes[currentTheme].text} leading-relaxed">${questao.pergunta}</p>
+            <p class="text-sm md:text-lg ${themes[currentTheme].text} leading-relaxed">${questao.pergunta}</p>
           </div>
           
-          <!-- Alternativas com tema correto -->
-          <div class="space-y-3" id="alternativas-container">
+          <!-- Alternativas responsivas -->
+          <div class="space-y-2 md:space-y-3" id="alternativas-container">
             ${questao.alternativas.map((alt, idx) => {
               let btnClass = 'bg-white border-gray-200 hover:border-[#122D6A] hover:bg-[#122D6A]/5';
               let circleClass = 'bg-gray-100 text-gray-700';
               let textClass = 'text-gray-800';
               
               if (respostaAtual === alt.letra && !jaVerificada) {
-                // Selecionada mas não verificada ainda
                 btnClass = 'bg-blue-50 border-[#122D6A]';
                 circleClass = 'bg-[#122D6A] text-white';
               } else if (jaVerificada) {
                 if (alt.letra === questao.correta) {
-                  // Alternativa correta (sempre verde após verificar)
                   btnClass = 'bg-green-50 border-green-500';
                   circleClass = 'bg-green-500 text-white';
                   textClass = 'text-green-800';
                 } else if (respostaAtual === alt.letra) {
-                  // Usuário marcou esta, mas está errada
                   btnClass = 'bg-red-50 border-red-500';
                   circleClass = 'bg-red-500 text-white';
                   textClass = 'text-red-800';
@@ -22575,13 +22602,13 @@ function renderExercicioModal(questaoIndex) {
                 <button 
                   onclick="${jaVerificada ? '' : `selecionarAlternativa(${questao.id}, '${alt.letra}')`}"
                   id="alt-${questao.id}-${alt.letra}"
-                  class="w-full p-4 border-2 rounded-xl text-left transition-all flex items-start gap-3 ${btnClass} ${jaVerificada ? 'cursor-default' : 'cursor-pointer'}">
-                  <span class="flex-shrink-0 w-8 h-8 rounded-full ${circleClass} flex items-center justify-center font-bold uppercase">
-                    ${jaVerificada && alt.letra === questao.correta ? '<i class="fas fa-check text-sm"></i>' : 
-                      jaVerificada && respostaAtual === alt.letra && alt.letra !== questao.correta ? '<i class="fas fa-times text-sm"></i>' : 
+                  class="w-full p-2.5 md:p-4 border-2 rounded-xl text-left transition-all flex items-start gap-2 md:gap-3 ${btnClass} ${jaVerificada ? 'cursor-default' : 'cursor-pointer'}">
+                  <span class="flex-shrink-0 w-7 h-7 md:w-8 md:h-8 rounded-full ${circleClass} flex items-center justify-center font-bold uppercase text-xs md:text-sm">
+                    ${jaVerificada && alt.letra === questao.correta ? '<i class="fas fa-check text-xs"></i>' : 
+                      jaVerificada && respostaAtual === alt.letra && alt.letra !== questao.correta ? '<i class="fas fa-times text-xs"></i>' : 
                       alt.letra}
                   </span>
-                  <span class="${textClass}">${alt.texto}</span>
+                  <span class="text-sm md:text-base ${textClass}">${alt.texto}</span>
                 </button>
               `;
             }).join('')}
@@ -22606,13 +22633,13 @@ function renderExercicioModal(questaoIndex) {
           ` : ''}
         </div>
         
-        <!-- Footer - Navegação -->
-        <div class="p-4 border-t ${themes[currentTheme].border} flex-shrink-0 ${themes[currentTheme].card}">
-          <div class="flex gap-3">
+        <!-- Footer - Navegação responsiva -->
+        <div class="p-2.5 md:p-4 border-t ${themes[currentTheme].border} flex-shrink-0 ${themes[currentTheme].card} safe-area-bottom">
+          <div class="flex gap-2 md:gap-3">
             ${questaoIndex > 0 ? `
               <button onclick="navegarQuestaoExercicio(${questaoIndex - 1})"
-                      class="px-5 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition font-medium">
-                <i class="fas fa-chevron-left mr-2"></i>Anterior
+                      class="px-3 md:px-5 py-2.5 md:py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition font-medium text-xs md:text-sm">
+                <i class="fas fa-chevron-left md:mr-2"></i><span class="hidden md:inline">Anterior</span>
               </button>
             ` : ''}
             
@@ -22621,20 +22648,20 @@ function renderExercicioModal(questaoIndex) {
             <!-- Botão Verificar Resposta -->
             ${!jaVerificada && respostaAtual ? `
               <button onclick="verificarResposta(${questaoIndex})"
-                      class="px-5 py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition font-medium">
-                <i class="fas fa-search mr-2"></i>Verificar Resposta
+                      class="px-3 md:px-5 py-2.5 md:py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition font-medium text-xs md:text-sm">
+                <i class="fas fa-search mr-1 md:mr-2"></i>Verificar
               </button>
             ` : ''}
             
             ${questaoIndex < total - 1 ? `
               <button onclick="navegarQuestaoExercicio(${questaoIndex + 1})"
-                      class="px-5 py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition font-medium">
-                Próxima<i class="fas fa-chevron-right ml-2"></i>
+                      class="px-3 md:px-5 py-2.5 md:py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition font-medium text-xs md:text-sm">
+                <span class="hidden md:inline">Próxima</span><span class="md:hidden">Próx</span><i class="fas fa-chevron-right ml-1 md:ml-2"></i>
               </button>
             ` : `
               <button onclick="finalizarExercicios()"
-                      class="px-5 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition font-medium ${verificadasCount < total ? 'opacity-60' : ''}">
-                <i class="fas fa-flag-checkered mr-2"></i>Finalizar
+                      class="px-3 md:px-5 py-2.5 md:py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition font-medium text-xs md:text-sm ${verificadasCount < total ? 'opacity-60' : ''}">
+                <i class="fas fa-flag-checkered mr-1 md:mr-2"></i>Finalizar
               </button>
             `}
           </div>
@@ -22735,6 +22762,35 @@ window.finalizarExercicios = async function() {
     console.error('Erro ao salvar resultado:', error);
   }
   
+  // ✅ v75: Se veio de um simulado, salvar também no histórico de simulados
+  if (exercicioAtual._isSimulado) {
+    try {
+      const minutos = Math.floor(tempoSegundos / 60);
+      const segs = tempoSegundos % 60;
+      const tempoFormatado = `${String(minutos).padStart(2, '0')}:${String(segs).padStart(2, '0')}`;
+      
+      await axios.post('/api/simulados/salvar', {
+        user_id: currentUser.id,
+        disciplinas: exercicioAtual._simuladoDisciplinas || [disciplinaNome],
+        topicos: [],
+        total_questoes: questoes.length,
+        acertos,
+        percentual_acerto: percentual,
+        tempo_gasto: tempoFormatado,
+        questoes_detalhes: resultados.map((r, idx) => ({
+          numero: idx + 1,
+          disciplina: r.disciplina || disciplinaNome,
+          resposta_usuario: r.respostaUsuario,
+          resposta_correta: r.correta,
+          correto: r.acertou
+        }))
+      });
+      console.log('✅ Simulado salvo no histórico');
+    } catch (error) {
+      console.error('Erro ao salvar simulado no histórico:', error);
+    }
+  }
+  
   // Mostrar tela de resultado
   renderResultadoExercicios(resultados, acertos, questoes.length, percentual, tempoSegundos);
 }
@@ -22751,26 +22807,26 @@ function renderResultadoExercicios(resultados, acertos, total, percentual, tempo
   const color = getResultColor(percentual);
   
   const modalHtml = `
-    <div id="modal-resultado-exercicios" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-4xl my-4">
+    <div id="modal-resultado-exercicios" class="fixed inset-0 bg-black/50 z-50 flex flex-col md:items-center md:justify-center md:p-4 overflow-y-auto">
+      <div class="${themes[currentTheme].card} md:rounded-2xl shadow-2xl w-full md:max-w-4xl md:my-4">
         <!-- Header com resultado -->
-        <div class="bg-gradient-to-r from-${color}-600 to-${color}-500 text-white p-8 rounded-t-2xl text-center">
-          <div class="text-6xl mb-4">${percentual >= 70 ? '🎉' : percentual >= 50 ? '👍' : '📖'}</div>
-          <h2 class="text-3xl font-bold mb-2">${getResultMsg(percentual)}</h2>
-          <p class="text-lg opacity-90">${exercicioAtual.topicoNome}</p>
+        <div class="bg-gradient-to-r from-${color}-600 to-${color}-500 text-white p-5 md:p-8 md:rounded-t-2xl text-center">
+          <div class="text-4xl md:text-6xl mb-3 md:mb-4">${percentual >= 70 ? '🎉' : percentual >= 50 ? '👍' : '📖'}</div>
+          <h2 class="text-xl md:text-3xl font-bold mb-1 md:mb-2">${getResultMsg(percentual)}</h2>
+          <p class="text-sm md:text-lg opacity-90 truncate px-4">${exercicioAtual.topicoNome}</p>
           
-          <div class="flex justify-center gap-8 mt-6">
+          <div class="flex justify-center gap-4 md:gap-8 mt-4 md:mt-6">
             <div class="text-center">
-              <div class="text-4xl font-bold">${percentual}%</div>
-              <div class="text-sm opacity-75">Aproveitamento</div>
+              <div class="text-2xl md:text-4xl font-bold">${percentual}%</div>
+              <div class="text-[10px] md:text-sm opacity-75">Aproveitamento</div>
             </div>
             <div class="text-center">
-              <div class="text-4xl font-bold">${acertos}/${total}</div>
-              <div class="text-sm opacity-75">Acertos</div>
+              <div class="text-2xl md:text-4xl font-bold">${acertos}/${total}</div>
+              <div class="text-[10px] md:text-sm opacity-75">Acertos</div>
             </div>
             <div class="text-center">
-              <div class="text-4xl font-bold">${minutos}:${segundos.toString().padStart(2, '0')}</div>
-              <div class="text-sm opacity-75">Tempo</div>
+              <div class="text-2xl md:text-4xl font-bold">${minutos}:${segundos.toString().padStart(2, '0')}</div>
+              <div class="text-[10px] md:text-sm opacity-75">Tempo</div>
             </div>
           </div>
         </div>
@@ -23610,12 +23666,15 @@ window.gerarSimulado = async function() {
     
     if (response.data.success) {
       // Exibir simulado como exercício interativo
+      // ✅ v75: Marcar como simulado para salvar no histórico
       exibirExerciciosInterativos({
         topico_nome: 'Simulado Personalizado',
         disciplina_nome: disciplinasSelecionadas.map(d => d.nome).join(', '),
         conteudo: response.data.conteudo,
         disciplina_id: null,
-        topico_id: null
+        topico_id: null,
+        _isSimulado: true,
+        _simuladoDisciplinas: disciplinasSelecionadas.map(d => d.nome)
       });
       
       showToast(`✅ Simulado gerado com ${response.data.questoes_geradas} questões!`, 'success');
@@ -24253,94 +24312,94 @@ function renderSimuladoQuestao() {
   
   document.getElementById('app').innerHTML = `
     <div class="min-h-screen ${themes[currentTheme].bg}">
-      <!-- Header fixo -->
+      <!-- Header fixo responsivo -->
       <div class="sticky top-0 z-50 ${themes[currentTheme].card} shadow-lg border-b ${themes[currentTheme].border}">
-        <div class="max-w-4xl mx-auto px-4 py-3">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
+        <div class="max-w-4xl mx-auto px-3 md:px-4 py-2 md:py-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 md:gap-4 min-w-0">
               <button onclick="confirmarSairSimulado()" 
-                class="text-gray-500 hover:text-red-500 transition">
-                <i class="fas fa-times text-xl"></i>
+                class="text-gray-500 hover:text-red-500 transition flex-shrink-0">
+                <i class="fas fa-times text-lg md:text-xl"></i>
               </button>
-              <div>
-                <h1 class="font-bold ${themes[currentTheme].text}">Simulado ${simuladoAtual.tipo.charAt(0).toUpperCase() + simuladoAtual.tipo.slice(1)}</h1>
-                <p class="${themes[currentTheme].textSecondary} text-sm">${respondidas}/${totalQuestoes} respondidas</p>
+              <div class="min-w-0">
+                <h1 class="font-bold ${themes[currentTheme].text} text-sm md:text-base truncate">Simulado ${simuladoAtual.tipo.charAt(0).toUpperCase() + simuladoAtual.tipo.slice(1)}</h1>
+                <p class="${themes[currentTheme].textSecondary} text-xs md:text-sm">${respondidas}/${totalQuestoes} respondidas</p>
               </div>
             </div>
             
             <!-- Timer -->
-            <div id="timer-simulado" class="flex items-center gap-2 bg-[#6BB6FF]/10 dark:bg-[#0D1F4D]/30 px-4 py-2 rounded-lg">
-              <i class="fas fa-clock text-[#122D6A]"></i>
-              <span class="font-mono font-bold text-[#122D6A]" id="tempo-restante">--:--</span>
+            <div id="timer-simulado" class="flex items-center gap-1.5 md:gap-2 bg-[#6BB6FF]/10 dark:bg-[#0D1F4D]/30 px-2.5 md:px-4 py-1.5 md:py-2 rounded-lg flex-shrink-0">
+              <i class="fas fa-clock text-[#122D6A] text-xs md:text-sm"></i>
+              <span class="font-mono font-bold text-[#122D6A] text-sm md:text-base" id="tempo-restante">--:--</span>
             </div>
           </div>
           
           <!-- Barra de progresso -->
-          <div class="mt-3 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div class="mt-2 md:mt-3 h-1.5 md:h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <div class="h-full bg-[#122D6A] transition-all duration-300" style="width: ${progresso}%"></div>
           </div>
         </div>
       </div>
       
-      <!-- Conteúdo da questão -->
-      <div class="max-w-4xl mx-auto px-4 py-6">
+      <!-- Conteúdo da questão - responsivo -->
+      <div class="max-w-4xl mx-auto px-3 md:px-4 py-4 md:py-6">
         <!-- Info da questão -->
-        <div class="flex items-center justify-between mb-4">
-          <span class="px-3 py-1 bg-[#6BB6FF]/10 dark:bg-[#0D1F4D]/30 text-[#0D1F4D] dark:text-[#7BC4FF] rounded-full text-sm font-medium">
+        <div class="flex items-center justify-between mb-3 md:mb-4 gap-2">
+          <span class="px-2 md:px-3 py-0.5 md:py-1 bg-[#6BB6FF]/10 dark:bg-[#0D1F4D]/30 text-[#0D1F4D] dark:text-[#7BC4FF] rounded-full text-xs md:text-sm font-medium truncate">
             ${questao.disciplina}
           </span>
-          <span class="px-3 py-1 ${questao.dificuldade === 'facil' ? 'bg-[#2A4A9F]/10 text-green-700' : questao.dificuldade === 'dificil' ? 'bg-red-100 text-red-700' : 'bg-[#4A90E2]/10 text-yellow-700'} rounded-full text-xs">
+          <span class="px-2 md:px-3 py-0.5 md:py-1 ${questao.dificuldade === 'facil' ? 'bg-[#2A4A9F]/10 text-green-700' : questao.dificuldade === 'dificil' ? 'bg-red-100 text-red-700' : 'bg-[#4A90E2]/10 text-yellow-700'} rounded-full text-[10px] md:text-xs flex-shrink-0">
             ${questao.dificuldade === 'facil' ? 'Fácil' : questao.dificuldade === 'dificil' ? 'Difícil' : 'Médio'}
           </span>
         </div>
         
         <!-- Número e enunciado -->
-        <div class="${themes[currentTheme].card} p-6 rounded-xl shadow-lg border ${themes[currentTheme].border} mb-6">
-          <div class="flex items-start gap-4">
-            <div class="w-10 h-10 bg-[#122D6A] text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+        <div class="${themes[currentTheme].card} p-3 md:p-6 rounded-xl shadow-lg border ${themes[currentTheme].border} mb-4 md:mb-6">
+          <div class="flex items-start gap-2.5 md:gap-4">
+            <div class="w-8 h-8 md:w-10 md:h-10 bg-[#122D6A] text-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-sm md:text-base">
               ${questaoNum}
             </div>
-            <p class="${themes[currentTheme].text} text-lg leading-relaxed">${questao.enunciado}</p>
+            <p class="${themes[currentTheme].text} text-sm md:text-lg leading-relaxed">${questao.enunciado}</p>
           </div>
         </div>
         
-        <!-- Alternativas -->
-        <div class="space-y-3 mb-6">
+        <!-- Alternativas responsivas -->
+        <div class="space-y-2 md:space-y-3 mb-4 md:mb-6">
           ${Object.entries(questao.alternativas).map(([letra, texto]) => `
             <button onclick="selecionarResposta('${letra}')" 
-              class="w-full text-left p-4 rounded-xl border-2 transition-all ${respostaSelecionada === letra 
+              class="w-full text-left p-2.5 md:p-4 rounded-xl border-2 transition-all ${respostaSelecionada === letra 
                 ? 'border-[#122D6A] bg-blue-50 dark:bg-blue-900/40 shadow-md' 
                 : `${themes[currentTheme].card} border ${themes[currentTheme].border} hover:border-[#122D6A] hover:bg-blue-50/50`}">
-              <div class="flex items-start gap-3">
-                <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-sm ${respostaSelecionada === letra 
+              <div class="flex items-start gap-2 md:gap-3">
+                <div class="w-7 h-7 md:w-9 md:h-9 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-xs md:text-sm ${respostaSelecionada === letra 
                   ? 'bg-[#122D6A] text-white shadow-lg' 
                   : `${themes[currentTheme].bgAlt} border ${themes[currentTheme].border} ${themes[currentTheme].text}`}">
                   ${letra}
                 </div>
-                <span class="${themes[currentTheme].text}">${texto}</span>
+                <span class="${themes[currentTheme].text} text-sm md:text-base">${texto}</span>
               </div>
             </button>
           `).join('')}
         </div>
         
-        <!-- Navegação entre questões -->
-        <div class="flex items-center justify-between">
+        <!-- Navegação entre questões - responsiva -->
+        <div class="flex items-center justify-between gap-2">
           <button onclick="navegarQuestao(-1)" 
             ${simuladoAtual.questaoAtual === 0 ? 'disabled' : ''}
-            class="px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${simuladoAtual.questaoAtual === 0 
+            class="px-3 md:px-4 py-2 md:py-2.5 rounded-lg flex items-center gap-1 md:gap-2 font-medium transition-all text-xs md:text-sm ${simuladoAtual.questaoAtual === 0 
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' 
               : 'bg-white text-[#122D6A] border-2 border-[#122D6A] hover:bg-[#122D6A] hover:text-white'}">
-            <i class="fas fa-arrow-left"></i> Anterior
+            <i class="fas fa-arrow-left"></i> <span class="hidden md:inline">Anterior</span>
           </button>
           
-          <div class="flex gap-1.5 overflow-x-auto max-w-[200px] md:max-w-none">
+          <div class="flex gap-1 md:gap-1.5 overflow-x-auto max-w-[150px] md:max-w-none">
             ${simuladoAtual.questoes.slice(Math.max(0, simuladoAtual.questaoAtual - 3), Math.min(totalQuestoes, simuladoAtual.questaoAtual + 4)).map((q, idx) => {
               const realIdx = Math.max(0, simuladoAtual.questaoAtual - 3) + idx;
               const respondida = simuladoAtual.respostas[realIdx] !== undefined;
               const atual = realIdx === simuladoAtual.questaoAtual;
               return `
                 <button onclick="irParaQuestao(${realIdx})" 
-                  class="w-9 h-9 rounded-full text-sm font-bold transition-all shadow-sm ${atual 
+                  class="w-7 h-7 md:w-9 md:h-9 rounded-full text-[10px] md:text-sm font-bold transition-all shadow-sm flex-shrink-0 ${atual 
                     ? 'bg-[#122D6A] text-white ring-2 ring-cyan-300' 
                     : respondida 
                       ? 'bg-emerald-500 text-white' 
@@ -24353,13 +24412,13 @@ function renderSimuladoQuestao() {
           
           ${simuladoAtual.questaoAtual === totalQuestoes - 1 ? `
             <button onclick="finalizarSimulado()" 
-              class="px-4 py-2 bg-green-600 text-white rounded-lg flex items-center gap-2 hover:bg-green-700">
-              Finalizar <i class="fas fa-check"></i>
+              class="px-3 md:px-4 py-2 bg-green-600 text-white rounded-lg flex items-center gap-1 md:gap-2 hover:bg-green-700 text-xs md:text-sm">
+              <span class="hidden md:inline">Finalizar</span><span class="md:hidden">Fim</span> <i class="fas fa-check"></i>
             </button>
           ` : `
             <button onclick="navegarQuestao(1)" 
-              class="px-4 py-2 bg-[#122D6A] text-white rounded-lg flex items-center gap-2 hover:bg-[#0D1F4D]">
-              Próxima <i class="fas fa-arrow-right"></i>
+              class="px-3 md:px-4 py-2 bg-[#122D6A] text-white rounded-lg flex items-center gap-1 md:gap-2 hover:bg-[#0D1F4D] text-xs md:text-sm">
+              <span class="hidden md:inline">Próxima</span><span class="md:hidden">Próx</span> <i class="fas fa-arrow-right"></i>
             </button>
           `}
         </div>
