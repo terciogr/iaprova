@@ -20142,6 +20142,394 @@ app.get('/api/bancas/:nome', async (c) => {
   }
 })
 
+// ============== REENGAJAMENTO - EMAIL MARKETING ==============
+
+// Preview: listar usuários elegíveis para reengajamento (>7 dias sem premium)
+app.get('/api/admin/reengajamento/preview', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    // Buscar usuários que:
+    // 1. trial_expires_at < agora (trial expirado)
+    // 2. is_premium = 0 ou NULL
+    // 3. subscription_status != 'active'
+    // 4. trial_expires_at <= agora - 7 dias
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    
+    const users = await DB.prepare(`
+      SELECT id, name, email, trial_started_at, trial_expires_at, subscription_status,
+             created_at
+      FROM users 
+      WHERE email_verified = 1
+        AND (is_premium = 0 OR is_premium IS NULL)
+        AND (subscription_status IS NULL OR subscription_status IN ('expired', 'trial', ''))
+        AND trial_expires_at IS NOT NULL
+        AND trial_expires_at <= ?
+      ORDER BY trial_expires_at DESC
+    `).bind(sevenDaysAgo).all()
+    
+    // Verificar quais já receberam email de reengajamento recentemente (últimos 15 dias)
+    const recentEmails = await DB.prepare(`
+      SELECT email_to FROM email_history 
+      WHERE email_type = 'reengajamento' 
+        AND created_at >= datetime('now', '-15 days')
+        AND status = 'sent'
+    `).all()
+    
+    const recentSet = new Set((recentEmails.results || []).map((r: any) => r.email_to))
+    
+    const eligible = (users.results || []).map((u: any) => {
+      const diasSemPremium = Math.floor((Date.now() - new Date(u.trial_expires_at).getTime()) / (1000 * 60 * 60 * 24))
+      return {
+        ...u,
+        dias_sem_premium: diasSemPremium,
+        ja_recebeu_recente: recentSet.has(u.email)
+      }
+    })
+    
+    return c.json({
+      total_elegiveis: eligible.length,
+      novos: eligible.filter((u: any) => !u.ja_recebeu_recente).length,
+      ja_contactados: eligible.filter((u: any) => u.ja_recebeu_recente).length,
+      usuarios: eligible
+    })
+  } catch (error: any) {
+    console.error('Erro ao buscar usuários para reengajamento:', error)
+    return c.json({ error: 'Erro ao buscar usuários elegíveis' }, 500)
+  }
+})
+
+// Enviar emails de reengajamento
+app.post('/api/admin/reengajamento/enviar', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const body = await c.req.json()
+    const { user_ids, enviar_para_todos, email_teste } = body
+    
+    const RESEND_API_KEY = c.env.RESEND_API_KEY || 'seu_resend_api_key_aqui'
+    const FROM_EMAIL = c.env.FROM_EMAIL || 'noreply@iaprova.app'
+    const APP_URL = c.env.APP_URL || 'https://iaprova.pages.dev'
+    
+    if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
+      return c.json({ error: 'RESEND_API_KEY não configurada' }, 400)
+    }
+    
+    let targetUsers: any[] = []
+    
+    // Modo teste: enviar para email específico
+    if (email_teste) {
+      const user = await DB.prepare('SELECT id, name, email FROM users WHERE email = ?').bind(email_teste).first()
+      if (user) {
+        targetUsers = [user]
+      } else {
+        // Criar entrada fictícia para teste
+        targetUsers = [{ id: 0, name: 'Usuário Teste', email: email_teste }]
+      }
+    } else if (enviar_para_todos) {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      const users = await DB.prepare(`
+        SELECT id, name, email FROM users 
+        WHERE email_verified = 1
+          AND (is_premium = 0 OR is_premium IS NULL)
+          AND (subscription_status IS NULL OR subscription_status IN ('expired', 'trial', ''))
+          AND trial_expires_at IS NOT NULL
+          AND trial_expires_at <= ?
+          AND email NOT IN (
+            SELECT email_to FROM email_history 
+            WHERE email_type = 'reengajamento' 
+              AND created_at >= datetime('now', '-15 days')
+              AND status = 'sent'
+          )
+      `).bind(sevenDaysAgo).all()
+      targetUsers = users.results || []
+    } else if (user_ids && user_ids.length > 0) {
+      const placeholders = user_ids.map(() => '?').join(',')
+      const users = await DB.prepare(`SELECT id, name, email FROM users WHERE id IN (${placeholders})`).bind(...user_ids).all()
+      targetUsers = users.results || []
+    }
+    
+    if (targetUsers.length === 0) {
+      return c.json({ error: 'Nenhum usuário elegível encontrado' }, 400)
+    }
+    
+    const results = { enviados: 0, falhas: 0, detalhes: [] as any[] }
+    
+    for (const user of targetUsers) {
+      try {
+        const nome = user.name || 'Concurseiro(a)'
+        const feedbackUrl = `${APP_URL}?feedback=reengajamento&uid=${user.id}`
+        const premiumUrl = `${APP_URL}?upgrade=true`
+        
+        const emailHtml = gerarEmailReengajamento(nome, feedbackUrl, premiumUrl, APP_URL)
+        
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: FROM_EMAIL,
+            to: [user.email],
+            subject: '💎 Sentimos sua falta! Sua aprovação está a um passo — Oferta especial IAprova',
+            html: emailHtml,
+          }),
+        })
+        
+        const result = await response.json() as any
+        
+        if (result.id) {
+          results.enviados++
+          results.detalhes.push({ email: user.email, status: 'sent', resend_id: result.id })
+          
+          await logEmailSent(DB, user.email, 'reengajamento', 
+            'Sentimos sua falta! Sua aprovação está a um passo', 
+            'sent', user.id, undefined, { resend_id: result.id })
+        } else {
+          results.falhas++
+          const errorMsg = result.message || JSON.stringify(result)
+          results.detalhes.push({ email: user.email, status: 'failed', error: errorMsg })
+          
+          await logEmailSent(DB, user.email, 'reengajamento',
+            'Sentimos sua falta! Sua aprovação está a um passo',
+            'failed', user.id, errorMsg)
+        }
+      } catch (err: any) {
+        results.falhas++
+        results.detalhes.push({ email: user.email, status: 'failed', error: err.message })
+      }
+    }
+    
+    return c.json({
+      success: true,
+      total_processados: targetUsers.length,
+      ...results
+    })
+  } catch (error: any) {
+    console.error('Erro no reengajamento:', error)
+    return c.json({ error: 'Erro ao enviar emails de reengajamento' }, 500)
+  }
+})
+
+// Endpoint público para receber feedback vindo do email de reengajamento
+app.post('/api/feedback/reengajamento', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    const body = await c.req.json()
+    const { user_id, rating, message, motivo } = body
+    
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS user_feedbacks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        rating INTEGER,
+        feedback_type TEXT DEFAULT 'suggestion',
+        message TEXT NOT NULL,
+        page_context TEXT,
+        is_read INTEGER DEFAULT 0,
+        admin_response TEXT,
+        responded_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    
+    const fullMessage = motivo 
+      ? `[REENGAJAMENTO] Motivo: ${motivo}\n\nMensagem: ${message || '(sem mensagem adicional)'}`
+      : `[REENGAJAMENTO] ${message}`
+    
+    await DB.prepare(`
+      INSERT INTO user_feedbacks (user_id, rating, feedback_type, message, page_context)
+      VALUES (?, ?, 'reengajamento', ?, 'email_reengajamento')
+    `).bind(user_id || 0, rating || null, fullMessage).run()
+    
+    return c.json({ 
+      success: true, 
+      message: 'Obrigado pelo seu feedback! Sua opinião é muito importante para melhorarmos o IAprova.' 
+    })
+  } catch (error: any) {
+    console.error('Erro ao salvar feedback de reengajamento:', error)
+    return c.json({ error: 'Erro ao salvar feedback' }, 500)
+  }
+})
+
+// Função para gerar o HTML do email de reengajamento
+function gerarEmailReengajamento(nome: string, feedbackUrl: string, premiumUrl: string, appUrl: string): string {
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentimos sua falta - IAprova</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #E8EDF5;">
+  <table cellpadding="0" cellspacing="0" width="100%" style="background-color: #E8EDF5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(18, 45, 106, 0.12); overflow: hidden;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #122D6A 0%, #1A3A7F 50%, #2A4A9F 100%); padding: 40px 30px; text-align: center;">
+              <table cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center">
+                    <div style="width: 70px; height: 70px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 16px; line-height: 70px; font-size: 36px;">
+                      &#128142;
+                    </div>
+                    <h1 style="color: #ffffff; font-size: 26px; margin: 0 0 8px 0; font-weight: 700;">
+                      Sentimos sua falta, ${nome}!
+                    </h1>
+                    <p style="color: #B8C5E8; font-size: 15px; margin: 0;">
+                      Sua aprovação no concurso ainda está ao seu alcance
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 36px 30px;">
+              
+              <!-- Mensagem pessoal -->
+              <p style="color: #374151; font-size: 16px; line-height: 1.7; margin: 0 0 20px 0;">
+                Olá, <strong>${nome}</strong>! &#128075;
+              </p>
+              <p style="color: #374151; font-size: 16px; line-height: 1.7; margin: 0 0 20px 0;">
+                Percebemos que faz um tempo desde sua última visita ao <strong>IAprova</strong>. 
+                Sabemos como a jornada de preparação para concursos pode ser desafiadora, e queremos que saiba: 
+                <strong>estamos aqui para te ajudar a conquistar sua aprovação!</strong>
+              </p>
+              
+              <!-- Enquanto você esteve fora -->
+              <div style="background: linear-gradient(135deg, #F0F4FF 0%, #E8EDF5 100%); border-radius: 12px; padding: 24px; margin: 24px 0; border-left: 4px solid #1A3A7F;">
+                <h2 style="color: #122D6A; font-size: 18px; margin: 0 0 16px 0;">
+                  &#127775; Enquanto você esteve fora, evoluímos muito:
+                </h2>
+                <table cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td style="padding: 8px 0; color: #374151; font-size: 14px;">
+                      &#129302; <strong>IA Avançada</strong> — Conteúdos personalizados com Inteligência Artificial de última geração
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #374151; font-size: 14px;">
+                      &#128218; <strong>Simulados Inteligentes</strong> — Questões adaptativas por disciplina e nível de dificuldade
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #374151; font-size: 14px;">
+                      &#128202; <strong>Dashboard Completo</strong> — Acompanhe seu progresso com gráficos detalhados
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #374151; font-size: 14px;">
+                      &#128197; <strong>Planos de Estudo Personalizados</strong> — Cronograma adaptado à sua prova e disponibilidade
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #374151; font-size: 14px;">
+                      &#128172; <strong>Chat com IA</strong> — Tire dúvidas em tempo real como se tivesse um professor particular
+                    </td>
+                  </tr>
+                </table>
+              </div>
+              
+              <!-- Prova social / Urgência -->
+              <div style="background: #FFF8E1; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
+                <p style="color: #92400E; font-size: 15px; margin: 0 0 8px 0; font-weight: 600;">
+                  &#9203; Não deixe o tempo passar!
+                </p>
+                <p style="color: #78350F; font-size: 14px; margin: 0; line-height: 1.6;">
+                  A cada dia sem estudar, os outros candidatos avançam. Com o <strong>IAprova Premium</strong>, 
+                  você estuda de forma <em>inteligente e eficiente</em>, otimizando cada minuto do seu tempo.
+                </p>
+              </div>
+              
+              <!-- CTA Premium -->
+              <table cellpadding="0" cellspacing="0" width="100%" style="margin: 28px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${premiumUrl}" 
+                       style="display: inline-block; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: #ffffff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-size: 17px; font-weight: 700; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);">
+                      &#128081; Quero voltar a estudar com o IAprova Premium
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-top: 12px;">
+                    <p style="color: #6B7280; font-size: 13px; margin: 0;">
+                      Acesso ilimitado a todos os recursos por um preço acessível
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Separador -->
+              <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 32px 0;">
+              
+              <!-- Seção de Feedback -->
+              <div style="background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%); border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
+                <h3 style="color: #5B21B6; font-size: 17px; margin: 0 0 12px 0;">
+                  &#128591; Sua opinião vale ouro para nós!
+                </h3>
+                <p style="color: #6D28D9; font-size: 14px; line-height: 1.7; margin: 0 0 16px 0;">
+                  Algo ficou abaixo das suas expectativas? Alguma funcionalidade que sentiu falta?
+                  <br>Queremos ouvir você! Seu feedback nos ajuda a construir o melhor sistema de preparação para concursos do Brasil.
+                </p>
+                <a href="${feedbackUrl}" 
+                   style="display: inline-block; background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%); color: #ffffff; padding: 12px 32px; border-radius: 10px; text-decoration: none; font-size: 15px; font-weight: 600; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);">
+                  &#9997;&#65039; Enviar meu feedback
+                </a>
+                <p style="color: #8B5CF6; font-size: 12px; margin: 12px 0 0 0;">
+                  Leva menos de 1 minuto — e faz toda a diferença!
+                </p>
+              </div>
+              
+              <!-- Mensagem final -->
+              <p style="color: #374151; font-size: 15px; line-height: 1.7; margin: 24px 0 0 0;">
+                Estamos torcendo por você, <strong>${nome}</strong>! &#128170;
+                <br>Sua aprovação é o nosso objetivo.
+              </p>
+              <p style="color: #6B7C93; font-size: 14px; margin: 16px 0 0 0;">
+                Com carinho,<br>
+                <strong>Equipe IAprova</strong> &#127891;
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background: #F8FAFC; padding: 24px 30px; text-align: center; border-top: 1px solid #E2E8F0;">
+              <p style="color: #94A3B8; font-size: 12px; margin: 0 0 8px 0;">
+                <a href="${appUrl}" style="color: #1A3A7F; text-decoration: none; font-weight: 600;">IAprova</a> — Preparação Inteligente para Concursos
+              </p>
+              <p style="color: #CBD5E1; font-size: 11px; margin: 0;">
+                Você recebeu este email porque possui uma conta no IAprova.
+                <br>Se não deseja mais receber nossos emails, basta responder com "cancelar".
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+}
+
 // ============== ARQUIVOS PWA ==============
 // Servir manifest.json
 app.get('/manifest.json', async (c) => {

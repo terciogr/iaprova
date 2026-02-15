@@ -594,6 +594,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 500);
   
+  // ✅ v76: Verificar se veio de link de feedback (reengajamento email)
+  setTimeout(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('feedback') === 'reengajamento') {
+      const uid = urlParams.get('uid') || '0';
+      if (typeof abrirFeedbackReengajamento === 'function') {
+        abrirFeedbackReengajamento(parseInt(uid));
+      }
+      // Limpar URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    if (urlParams.get('upgrade') === 'true') {
+      // Abrir modal de assinatura se disponível
+      if (typeof abrirMinhaAssinatura === 'function') {
+        abrirMinhaAssinatura();
+      }
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, 1000);
+  
   // Adicionar botão de emergência "Voltar ao Login"
   addEmergencyBackButton();
 });
@@ -14612,6 +14632,10 @@ window.abrirPainelAdmin = async function() {
                 <i class="fas fa-key text-red-500 text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Chaves API</p>
               </button>
+              <button onclick="abrirReengajamento()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-orange-50 dark:hover:bg-orange-900/20 transition text-center relative">
+                <i class="fas fa-paper-plane text-orange-500 text-xl mb-1"></i>
+                <p class="text-xs ${themes[currentTheme].text} font-medium">Reengajamento</p>
+              </button>
             </div>
           </div>
         </div>
@@ -15973,6 +15997,360 @@ window.verFeedbacksAdmin = async function() {
   } catch (error) {
     console.error('Erro ao carregar feedbacks:', error);
     showToast('❌ Erro ao carregar feedbacks', 'error');
+  }
+};
+
+// ============== REENGAJAMENTO EMAIL MARKETING (Admin) ==============
+window.abrirReengajamento = async function() {
+  try {
+    showToast('📧 Carregando dados de reengajamento...', 'info');
+    
+    const response = await axios.get('/api/admin/reengajamento/preview', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    const data = response.data;
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-reengajamento';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4';
+    modal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="bg-gradient-to-r from-orange-500 to-amber-600 p-5 text-white flex-shrink-0">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <i class="fas fa-paper-plane text-2xl"></i>
+              </div>
+              <div>
+                <h2 class="text-xl font-bold">Reengajamento por Email</h2>
+                <p class="text-orange-100 text-sm">Campanha para usuários sem Premium há +7 dias</p>
+              </div>
+            </div>
+            <button onclick="document.getElementById('modal-reengajamento')?.remove()" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">
+              <i class="fas fa-times text-lg"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="p-5 overflow-y-auto flex-1">
+          <!-- Stats -->
+          <div class="grid grid-cols-3 gap-3 mb-5">
+            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 text-center">
+              <p class="text-2xl font-bold text-blue-600">${data.total_elegiveis}</p>
+              <p class="text-xs text-blue-500">Total elegíveis</p>
+            </div>
+            <div class="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 text-center">
+              <p class="text-2xl font-bold text-green-600">${data.novos}</p>
+              <p class="text-xs text-green-500">Novos (não contactados)</p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 text-center">
+              <p class="text-2xl font-bold text-gray-500">${data.ja_contactados}</p>
+              <p class="text-xs text-gray-400">Já contactados (15d)</p>
+            </div>
+          </div>
+          
+          <!-- Ações -->
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4 mb-5">
+            <h3 class="font-bold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+              <i class="fas fa-bolt text-yellow-500"></i> Ações
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button onclick="enviarReengajamentoTeste()" 
+                class="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition border border-blue-200 dark:border-blue-800 text-left">
+                <div class="flex items-center gap-2 mb-1">
+                  <i class="fas fa-vial text-blue-500"></i>
+                  <span class="font-semibold text-blue-700 dark:text-blue-300 text-sm">Email de Teste</span>
+                </div>
+                <p class="text-xs text-blue-500 dark:text-blue-400">Envia para terciogomesrabelo@gmail.com</p>
+              </button>
+              <button onclick="enviarReengajamentoTodos()" 
+                class="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition border border-orange-200 dark:border-orange-800 text-left ${data.novos === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+                <div class="flex items-center gap-2 mb-1">
+                  <i class="fas fa-paper-plane text-orange-500"></i>
+                  <span class="font-semibold text-orange-700 dark:text-orange-300 text-sm">Enviar para Todos</span>
+                </div>
+                <p class="text-xs text-orange-500 dark:text-orange-400">${data.novos} usuários não contactados</p>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Lista de usuários -->
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
+            <h3 class="font-bold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+              <i class="fas fa-users text-purple-500"></i> 
+              Usuários Elegíveis (${data.total_elegiveis})
+            </h3>
+            <div class="space-y-2 max-h-60 overflow-y-auto">
+              ${data.usuarios.length === 0 ? `
+                <div class="text-center py-6">
+                  <i class="fas fa-check-circle text-green-500 text-3xl mb-2"></i>
+                  <p class="${themes[currentTheme].textSecondary}">Nenhum usuário elegível! Todos estão ativos ou já foram contactados.</p>
+                </div>
+              ` : data.usuarios.map(u => `
+                <div class="flex items-center justify-between p-3 rounded-lg ${u.ja_recebeu_recente ? 'bg-gray-50 dark:bg-gray-800/30 opacity-60' : 'bg-white dark:bg-gray-800/50'} border ${themes[currentTheme].border}">
+                  <div class="flex-1 min-w-0">
+                    <p class="font-medium ${themes[currentTheme].text} text-sm truncate">${u.name || 'Sem nome'}</p>
+                    <p class="text-xs ${themes[currentTheme].textSecondary} truncate">${u.email}</p>
+                  </div>
+                  <div class="flex items-center gap-2 flex-shrink-0 ml-3">
+                    <span class="text-xs px-2 py-1 rounded-full ${u.dias_sem_premium > 30 ? 'bg-red-100 text-red-700' : u.dias_sem_premium > 14 ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}">
+                      ${u.dias_sem_premium}d sem premium
+                    </span>
+                    ${u.ja_recebeu_recente ? '<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500"><i class="fas fa-check mr-1"></i>Enviado</span>' : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          
+          <!-- Resultado do envio -->
+          <div id="resultado-reengajamento" class="hidden mt-4"></div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+  } catch (error) {
+    console.error('Erro ao carregar reengajamento:', error);
+    showToast('❌ Erro ao carregar dados de reengajamento', 'error');
+  }
+};
+
+window.enviarReengajamentoTeste = async function() {
+  if (!confirm('Enviar email de reengajamento de TESTE para terciogomesrabelo@gmail.com?')) return;
+  
+  try {
+    showToast('📤 Enviando email de teste...', 'info');
+    
+    const response = await axios.post('/api/admin/reengajamento/enviar', 
+      { email_teste: 'terciogomesrabelo@gmail.com' },
+      { headers: { 'X-User-ID': currentUser.id } }
+    );
+    
+    const result = response.data;
+    const container = document.getElementById('resultado-reengajamento');
+    if (container) {
+      container.classList.remove('hidden');
+      container.innerHTML = `
+        <div class="p-4 rounded-xl ${result.enviados > 0 ? 'bg-green-50 dark:bg-green-900/20 border border-green-200' : 'bg-red-50 dark:bg-red-900/20 border border-red-200'}">
+          <p class="font-bold ${result.enviados > 0 ? 'text-green-700' : 'text-red-700'} mb-1">
+            <i class="fas ${result.enviados > 0 ? 'fa-check-circle' : 'fa-times-circle'} mr-1"></i>
+            ${result.enviados > 0 ? 'Email de teste enviado com sucesso!' : 'Falha ao enviar email de teste'}
+          </p>
+          <p class="text-xs ${result.enviados > 0 ? 'text-green-600' : 'text-red-600'}">
+            ${result.detalhes?.map(d => `${d.email}: ${d.status} ${d.error ? '- ' + d.error : ''}`).join('<br>') || ''}
+          </p>
+        </div>
+      `;
+    }
+    
+    showToast(result.enviados > 0 ? '✅ Email de teste enviado!' : '❌ Falha no envio', result.enviados > 0 ? 'success' : 'error');
+  } catch (error) {
+    console.error('Erro ao enviar email teste:', error);
+    showToast('❌ Erro ao enviar email de teste', 'error');
+  }
+};
+
+window.enviarReengajamentoTodos = async function() {
+  if (!confirm('⚠️ ATENÇÃO: Isso vai enviar emails de reengajamento para TODOS os usuários elegíveis que ainda não foram contactados nos últimos 15 dias.\n\nDeseja continuar?')) return;
+  
+  try {
+    showToast('📤 Enviando emails de reengajamento...', 'info');
+    
+    const response = await axios.post('/api/admin/reengajamento/enviar', 
+      { enviar_para_todos: true },
+      { headers: { 'X-User-ID': currentUser.id } }
+    );
+    
+    const result = response.data;
+    const container = document.getElementById('resultado-reengajamento');
+    if (container) {
+      container.classList.remove('hidden');
+      container.innerHTML = `
+        <div class="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200">
+          <p class="font-bold text-green-700 mb-2">
+            <i class="fas fa-check-circle mr-1"></i>
+            Campanha Finalizada!
+          </p>
+          <div class="grid grid-cols-3 gap-2 text-center mb-2">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
+              <p class="text-lg font-bold text-blue-600">${result.total_processados}</p>
+              <p class="text-xs text-gray-500">Processados</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
+              <p class="text-lg font-bold text-green-600">${result.enviados}</p>
+              <p class="text-xs text-gray-500">Enviados</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-2">
+              <p class="text-lg font-bold text-red-600">${result.falhas}</p>
+              <p class="text-xs text-gray-500">Falhas</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    showToast(`✅ ${result.enviados} emails enviados, ${result.falhas} falhas`, 'success');
+  } catch (error) {
+    console.error('Erro ao enviar reengajamento:', error);
+    showToast('❌ Erro ao enviar emails de reengajamento', 'error');
+  }
+};
+
+// ============== MODAL FEEDBACK VIA EMAIL (Reengajamento) ==============
+window.abrirFeedbackReengajamento = function(userId) {
+  const modal = document.createElement('div');
+  modal.id = 'modal-feedback-reengajamento';
+  modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4';
+  modal.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+      <div class="bg-gradient-to-r from-purple-600 to-purple-700 p-5 text-white">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+            <i class="fas fa-comment-dots text-2xl"></i>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold">Sua opinião importa!</h2>
+            <p class="text-purple-200 text-sm">Conte-nos como podemos melhorar</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="p-5">
+        <p class="${themes[currentTheme].textSecondary} text-sm mb-4">
+          Agradecemos por dedicar um momento para nos ajudar a melhorar o IAprova. Seu feedback será analisado diretamente pelo nosso time.
+        </p>
+        
+        <!-- Motivo -->
+        <label class="block font-medium ${themes[currentTheme].text} text-sm mb-2">O que motivou sua saída?</label>
+        <div class="grid grid-cols-2 gap-2 mb-4" id="motivos-feedback">
+          <button onclick="selecionarMotivoReengajamento(this, 'Preço alto')" class="p-2 rounded-lg border ${themes[currentTheme].border} text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 transition ${themes[currentTheme].text}">
+            <i class="fas fa-tag mr-1 text-purple-500"></i> Preço alto
+          </button>
+          <button onclick="selecionarMotivoReengajamento(this, 'Faltou funcionalidade')" class="p-2 rounded-lg border ${themes[currentTheme].border} text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 transition ${themes[currentTheme].text}">
+            <i class="fas fa-puzzle-piece mr-1 text-purple-500"></i> Faltou funcionalidade
+          </button>
+          <button onclick="selecionarMotivoReengajamento(this, 'Bugs/problemas')" class="p-2 rounded-lg border ${themes[currentTheme].border} text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 transition ${themes[currentTheme].text}">
+            <i class="fas fa-bug mr-1 text-purple-500"></i> Bugs/problemas
+          </button>
+          <button onclick="selecionarMotivoReengajamento(this, 'Pouco tempo')" class="p-2 rounded-lg border ${themes[currentTheme].border} text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 transition ${themes[currentTheme].text}">
+            <i class="fas fa-clock mr-1 text-purple-500"></i> Pouco tempo
+          </button>
+          <button onclick="selecionarMotivoReengajamento(this, 'Encontrei alternativa')" class="p-2 rounded-lg border ${themes[currentTheme].border} text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 transition ${themes[currentTheme].text}">
+            <i class="fas fa-exchange-alt mr-1 text-purple-500"></i> Encontrei alternativa
+          </button>
+          <button onclick="selecionarMotivoReengajamento(this, 'Outro motivo')" class="p-2 rounded-lg border ${themes[currentTheme].border} text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 transition ${themes[currentTheme].text}">
+            <i class="fas fa-ellipsis-h mr-1 text-purple-500"></i> Outro motivo
+          </button>
+        </div>
+        
+        <!-- Avaliação -->
+        <label class="block font-medium ${themes[currentTheme].text} text-sm mb-2">Como avalia sua experiência? (1-5)</label>
+        <div class="flex gap-2 mb-4" id="estrelas-reengajamento">
+          ${[1,2,3,4,5].map(i => `
+            <button onclick="selecionarEstrelaReengajamento(${i})" class="w-10 h-10 rounded-full border-2 border-gray-200 hover:border-yellow-400 transition flex items-center justify-center text-gray-300 hover:text-yellow-400 text-lg" data-rating="${i}">
+              <i class="fas fa-star"></i>
+            </button>
+          `).join('')}
+        </div>
+        
+        <!-- Mensagem -->
+        <label class="block font-medium ${themes[currentTheme].text} text-sm mb-2">Tem algo a mais para nos contar?</label>
+        <textarea id="msg-feedback-reengajamento" rows="3" 
+          class="w-full rounded-lg border ${themes[currentTheme].border} p-3 text-sm ${themes[currentTheme].text} ${themes[currentTheme].card} resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          placeholder="Sua opinião nos ajuda a melhorar..."></textarea>
+        
+        <div class="flex gap-3 mt-4">
+          <button onclick="document.getElementById('modal-feedback-reengajamento')?.remove()" 
+            class="flex-1 py-2.5 px-4 rounded-lg border ${themes[currentTheme].border} ${themes[currentTheme].text} hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm font-medium">
+            Cancelar
+          </button>
+          <button onclick="enviarFeedbackReengajamento(${userId || 0})" 
+            class="flex-1 py-2.5 px-4 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800 transition text-sm font-medium shadow-lg">
+            <i class="fas fa-paper-plane mr-1"></i> Enviar Feedback
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+};
+
+let feedbackReengajamentoMotivo = '';
+let feedbackReengajamentoRating = 0;
+
+window.selecionarMotivoReengajamento = function(btn, motivo) {
+  feedbackReengajamentoMotivo = motivo;
+  document.querySelectorAll('#motivos-feedback button').forEach(b => {
+    b.classList.remove('bg-purple-100', 'dark:bg-purple-900/30', 'border-purple-500', 'font-semibold');
+  });
+  btn.classList.add('bg-purple-100', 'dark:bg-purple-900/30', 'border-purple-500', 'font-semibold');
+};
+
+window.selecionarEstrelaReengajamento = function(rating) {
+  feedbackReengajamentoRating = rating;
+  document.querySelectorAll('#estrelas-reengajamento button').forEach((btn, i) => {
+    if (i < rating) {
+      btn.classList.add('text-yellow-400', 'border-yellow-400');
+      btn.classList.remove('text-gray-300', 'border-gray-200');
+    } else {
+      btn.classList.remove('text-yellow-400', 'border-yellow-400');
+      btn.classList.add('text-gray-300', 'border-gray-200');
+    }
+  });
+};
+
+window.enviarFeedbackReengajamento = async function(userId) {
+  const message = document.getElementById('msg-feedback-reengajamento')?.value || '';
+  
+  if (!feedbackReengajamentoMotivo && !message) {
+    showToast('Selecione um motivo ou escreva uma mensagem', 'warning');
+    return;
+  }
+  
+  try {
+    showToast('📤 Enviando feedback...', 'info');
+    
+    await axios.post('/api/feedback/reengajamento', {
+      user_id: userId || (currentUser?.id || 0),
+      rating: feedbackReengajamentoRating || null,
+      motivo: feedbackReengajamentoMotivo,
+      message: message
+    });
+    
+    document.getElementById('modal-feedback-reengajamento')?.remove();
+    
+    // Mostrar agradecimento
+    const thankModal = document.createElement('div');
+    thankModal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4';
+    thankModal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-sm w-full p-8 text-center">
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-heart text-green-500 text-3xl"></i>
+        </div>
+        <h2 class="text-xl font-bold ${themes[currentTheme].text} mb-2">Muito obrigado!</h2>
+        <p class="${themes[currentTheme].textSecondary} text-sm mb-4">
+          Seu feedback foi registrado e será analisado pela nossa equipe. Cada opinião nos ajuda a construir um IAprova melhor!
+        </p>
+        <button onclick="this.closest('.fixed').remove()" 
+          class="py-2 px-6 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium hover:from-green-600 hover:to-emerald-700 transition">
+          Fechar
+        </button>
+      </div>
+    `;
+    document.body.appendChild(thankModal);
+    setTimeout(() => thankModal.remove(), 8000);
+    
+    showToast('💚 Obrigado pelo seu feedback!', 'success');
+    
+    // Reset
+    feedbackReengajamentoMotivo = '';
+    feedbackReengajamentoRating = 0;
+  } catch (error) {
+    console.error('Erro ao enviar feedback:', error);
+    showToast('❌ Erro ao enviar feedback. Tente novamente.', 'error');
   }
 };
 
