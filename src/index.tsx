@@ -20178,8 +20178,8 @@ app.get('/api/admin/reengajamento/preview', async (c) => {
     // 1. trial_expires_at < agora (trial expirado)
     // 2. is_premium = 0 ou NULL
     // 3. subscription_status != 'active'
-    // 4. trial_expires_at <= agora - 7 dias
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    // ✅ v79-fix: Enviar assim que trial expirar (não esperar 7 dias)
+    const now = new Date().toISOString()
     
     const users = await DB.prepare(`
       SELECT id, name, email, trial_started_at, trial_expires_at, subscription_status,
@@ -20191,13 +20191,12 @@ app.get('/api/admin/reengajamento/preview', async (c) => {
         AND trial_expires_at IS NOT NULL
         AND trial_expires_at <= ?
       ORDER BY trial_expires_at DESC
-    `).bind(sevenDaysAgo).all()
+    `).bind(now).all()
     
-    // Verificar quais já receberam email de reengajamento recentemente (últimos 15 dias)
+    // Verificar quais já receberam email de reengajamento (qualquer vez)
     const recentEmails = await DB.prepare(`
-      SELECT email_to FROM email_history 
+      SELECT DISTINCT email_to FROM email_history 
       WHERE email_type = 'reengajamento' 
-        AND created_at >= datetime('now', '-15 days')
         AND status = 'sent'
     `).all()
     
@@ -20256,7 +20255,8 @@ app.post('/api/admin/reengajamento/enviar', async (c) => {
         targetUsers = [{ id: 0, name: 'Usuário Teste', email: email_teste }]
       }
     } else if (enviar_para_todos) {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      // ✅ v79-fix: Trial expirado = elegível (sem esperar 7 dias)
+      const now = new Date().toISOString()
       const users = await DB.prepare(`
         SELECT id, name, email FROM users 
         WHERE email_verified = 1
@@ -20267,10 +20267,9 @@ app.post('/api/admin/reengajamento/enviar', async (c) => {
           AND email NOT IN (
             SELECT email_to FROM email_history 
             WHERE email_type = 'reengajamento' 
-              AND created_at >= datetime('now', '-15 days')
               AND status = 'sent'
           )
-      `).bind(sevenDaysAgo).all()
+      `).bind(now).all()
       targetUsers = users.results || []
     } else if (user_ids && user_ids.length > 0) {
       const placeholders = user_ids.map(() => '?').join(',')
@@ -20646,9 +20645,10 @@ app.post('/api/cron/reengajamento', async (c) => {
     // Buscar usuários elegíveis:
     // 1. Email verificado
     // 2. Não é premium
-    // 3. Trial expirado há mais de 7 dias (ou cadastro há mais de 7 dias sem trial)
+    // 3. Trial expirado (ou cadastro sem trial)
     // 4. NÃO recebeu email de reengajamento anteriormente (nunca enviar 2x automático)
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    // ✅ v79-fix: Enviar assim que trial expirar
+    const now = new Date().toISOString()
     
     const users = await DB.prepare(`
       SELECT u.id, u.name, u.email, u.created_at, u.trial_expires_at
@@ -20666,7 +20666,7 @@ app.post('/api/cron/reengajamento', async (c) => {
         )
       ORDER BY u.created_at ASC
       LIMIT 20
-    `).bind(sevenDaysAgo, sevenDaysAgo).all()
+    `).bind(now, now).all()
     
     const targetUsers = users.results || []
     
@@ -20853,8 +20853,8 @@ app.get('/api/admin/cron/status', async (c) => {
       WHERE email_type = 'reengajamento' AND metadata LIKE '%admin_manual%'
     `).first() as any
     
-    // Usuários elegíveis agora
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    // Usuários elegíveis agora (trial expirado + nunca recebeu email)
+    const now = new Date().toISOString()
     const eligible = await DB.prepare(`
       SELECT COUNT(*) as total FROM users u
       WHERE u.email_verified = 1
@@ -20868,7 +20868,7 @@ app.get('/api/admin/cron/status', async (c) => {
           SELECT DISTINCT eh.email_to FROM email_history eh 
           WHERE eh.email_type = 'reengajamento' AND eh.status = 'sent'
         )
-    `).bind(sevenDaysAgo, sevenDaysAgo).first() as any
+    `).bind(now, now).first() as any
     
     return c.json({
       ultima_execucao_cron: lastCron?.created_at || null,
