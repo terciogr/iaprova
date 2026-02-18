@@ -3840,6 +3840,7 @@ app.get('/api/admin/users', async (c) => {
     const offset = (page - 1) * limit
     
     // ✅ CORREÇÃO v11: Incluir payment_id e payment_date na listagem
+    // ✅ v78: Incluir contagem de acessos (site_visits) por usuário
     let query = `
       SELECT 
         u.id, u.name, u.email, u.email_verified, u.is_premium, 
@@ -3848,6 +3849,9 @@ app.get('/api/admin/users', async (c) => {
         u.payment_id, u.payment_date,
         COUNT(DISTINCT pe.id) as total_planos,
         COUNT(DISTINCT md.id) as total_metas,
+        -- ✅ v78: Total de acessos ao sistema
+        (SELECT COUNT(*) FROM site_visits sv WHERE sv.user_id = u.id) as total_acessos,
+        (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id) as ultimo_acesso,
         -- ✅ Calcular is_premium_real considerando subscription ativa
         CASE 
           WHEN u.is_premium = 1 THEN 1

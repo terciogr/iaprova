@@ -13282,45 +13282,59 @@ window.renderGraficoSimulados = function(semanas, percentuais, metaPercentual) {
   });
 }
 
-// ✅ v77: Gráfico de acertos por disciplina (barras horizontais) + cards
+// ✅ v78: Gráfico de acertos por disciplina - CORRIGIDO campo 'correto'
 window.renderGraficoDisciplinas = function(simulados) {
   const container = document.getElementById('container-desempenho-disciplinas');
   if (!container) return;
   
   // Calcular acertos por disciplina
   const desempenhoDisciplinas = {};
+  
   simulados.forEach(sim => {
     try {
       const detalhes = typeof sim.questoes_detalhes === 'string' ? JSON.parse(sim.questoes_detalhes) : (sim.questoes_detalhes || []);
       if (Array.isArray(detalhes) && detalhes.length > 0) {
+        // Detectar se todas as questões têm a mesma disciplina concatenada
+        const discValues = detalhes.map(q => q.disciplina || '').filter(d => d);
+        const uniqueDiscs = [...new Set(discValues)];
+        const allSameDisc = uniqueDiscs.length === 1 && uniqueDiscs[0].includes(',');
+        
         detalhes.forEach(q => {
-          const disc = q.disciplina || 'Geral';
-          if (!desempenhoDisciplinas[disc]) {
-            desempenhoDisciplinas[disc] = { total: 0, acertos: 0 };
+          let discRaw = q.disciplina || 'Geral';
+          let discs = [discRaw];
+          
+          // Se todas as questões têm a MESMA string concatenada de disciplinas,
+          // significa que o campo disciplina contém as disciplinas do simulado, não da questão individual
+          // Nesse caso usar "Múltiplas Disciplinas" como rótulo único
+          if (allSameDisc && discRaw.includes(',')) {
+            discs = ['Múltiplas Disciplinas'];
           }
-          desempenhoDisciplinas[disc].total++;
-          if (q.acertou || q.correta === q.resposta || q.correct) {
-            desempenhoDisciplinas[disc].acertos++;
-          }
+          // Se NÃO é o caso acima mas tem vírgula (disciplinas diferentes por questão mas com sub-áreas), manter como está
+          
+          // Verificar acerto: campo 'correto' pode vir como boolean, inteiro (0/1), ou string
+          const acertou = q.correto === true || q.correto === 1 || q.correto === '1' || q.correto === 'true' ||
+                          q.acertou === true || q.acertou === 1 || q.acertou === '1' ||
+                          q.correct === true || q.correct === 1 || q.correct === '1' ||
+                          (q.resposta_usuario && q.resposta_correta && 
+                           String(q.resposta_usuario).toLowerCase().trim() === String(q.resposta_correta).toLowerCase().trim());
+          
+          // Distribuir para cada disciplina
+          discs.forEach(disc => {
+            if (!desempenhoDisciplinas[disc]) {
+              desempenhoDisciplinas[disc] = { total: 0, acertos: 0 };
+            }
+            desempenhoDisciplinas[disc].total++;
+            if (acertou) {
+              desempenhoDisciplinas[disc].acertos++;
+            }
+          });
         });
       }
-    } catch(e) {}
+    } catch(e) { console.warn('Erro ao parsear detalhes:', e); }
   });
   
-  // Fallback se nenhum detalhe foi encontrado
-  if (Object.keys(desempenhoDisciplinas).length === 0) {
-    simulados.forEach(sim => {
-      try {
-        let discs = typeof sim.disciplinas === 'string' ? JSON.parse(sim.disciplinas) : [sim.disciplinas || 'Geral'];
-        if (!Array.isArray(discs)) discs = [discs];
-        discs.forEach(disc => {
-          if (disc && !desempenhoDisciplinas[disc]) {
-            desempenhoDisciplinas[disc] = { total: sim.total_questoes || 0, acertos: sim.acertos || 0 };
-          }
-        });
-      } catch(e) {}
-    });
-  }
+  // Se nenhum detalhe foi encontrado, não mostrar nada (evita dados falsos)
+  if (Object.keys(desempenhoDisciplinas).length === 0) return;
   
   const disciplinas = Object.entries(desempenhoDisciplinas)
     .map(([nome, d]) => ({
@@ -15207,12 +15221,17 @@ window.verListaUsuarios = async function() {
                 <th class="p-2 text-center ${themes[currentTheme].text}">Premium</th>
                 <th class="p-2 text-center ${themes[currentTheme].text}">Plano</th>
                 <th class="p-2 text-center ${themes[currentTheme].text}">Data Pag.</th>
+                <th class="p-2 text-center ${themes[currentTheme].text}">Acessos</th>
+                <th class="p-2 text-center ${themes[currentTheme].text}">Último Acesso</th>
                 <th class="p-2 text-center ${themes[currentTheme].text}">Ações</th>
               </tr>
             </thead>
             <tbody>
               ${users.map(u => {
                 const paymentDate = u.payment_date ? new Date(u.payment_date).toLocaleDateString('pt-BR') : '-';
+                const totalAcessos = u.total_acessos || 0;
+                const ultimoAcessoStr = u.ultimo_acesso ? new Date(u.ultimo_acesso).toLocaleDateString('pt-BR') : 'Nunca';
+                const acessosClass = totalAcessos >= 50 ? 'bg-green-100 text-green-700' : totalAcessos >= 10 ? 'bg-blue-100 text-blue-700' : totalAcessos >= 1 ? 'bg-gray-100 text-gray-600' : 'bg-red-50 text-red-400';
                 const planLabel = u.subscription_plan === 'anual' ? 'Anual' : (u.subscription_plan === 'mensal' ? 'Mensal' : '-');
                 const statusClass = u.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500';
                 return `
@@ -15230,6 +15249,10 @@ window.verListaUsuarios = async function() {
                     <span class="px-2 py-1 ${statusClass} rounded-full text-xs">${planLabel}</span>
                   </td>
                   <td class="p-2 text-center ${themes[currentTheme].textSecondary} text-xs">${paymentDate}</td>
+                  <td class="p-2 text-center">
+                    <span class="px-2 py-0.5 ${acessosClass} rounded-full text-xs font-medium">${totalAcessos}</span>
+                  </td>
+                  <td class="p-2 text-center ${themes[currentTheme].textSecondary} text-xs">${ultimoAcessoStr}</td>
                   <td class="p-2 text-center">
                     <div class="flex items-center justify-center gap-1">
                       <button onclick="editarUsuarioAdmin(${u.id}, '${(u.name || '').replace(/'/g, "\\'")}', '${u.email}', ${(u.is_premium_real || u.is_premium) ? 1 : 0})" 
