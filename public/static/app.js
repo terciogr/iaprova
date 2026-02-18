@@ -15219,55 +15219,98 @@ window.verListaUsuarios = async function() {
                 <th class="p-2 text-left ${themes[currentTheme].text}">Email</th>
                 <th class="p-2 text-center ${themes[currentTheme].text}">Verificado</th>
                 <th class="p-2 text-center ${themes[currentTheme].text}">Premium</th>
-                <th class="p-2 text-center ${themes[currentTheme].text}">Plano</th>
-                <th class="p-2 text-center ${themes[currentTheme].text}">Data Pag.</th>
+                <th class="p-2 text-center ${themes[currentTheme].text}">Cadastro</th>
+                <th class="p-2 text-center ${themes[currentTheme].text}">Trial</th>
                 <th class="p-2 text-center ${themes[currentTheme].text}">Acessos</th>
-                <th class="p-2 text-center ${themes[currentTheme].text}">Último Acesso</th>
                 <th class="p-2 text-center ${themes[currentTheme].text}">Ações</th>
               </tr>
             </thead>
             <tbody>
               ${users.map(u => {
-                const paymentDate = u.payment_date ? new Date(u.payment_date).toLocaleDateString('pt-BR') : '-';
                 const totalAcessos = u.total_acessos || 0;
-                const ultimoAcessoStr = u.ultimo_acesso ? new Date(u.ultimo_acesso).toLocaleDateString('pt-BR') : 'Nunca';
                 const acessosClass = totalAcessos >= 50 ? 'bg-green-100 text-green-700' : totalAcessos >= 10 ? 'bg-blue-100 text-blue-700' : totalAcessos >= 1 ? 'bg-gray-100 text-gray-600' : 'bg-red-50 text-red-400';
-                const planLabel = u.subscription_plan === 'anual' ? 'Anual' : (u.subscription_plan === 'mensal' ? 'Mensal' : '-');
-                const statusClass = u.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500';
+                
+                // Data de cadastro
+                const cadastroDate = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '-';
+                const diasCadastro = u.created_at ? Math.floor((Date.now() - new Date(u.created_at).getTime()) / (1000*60*60*24)) : 0;
+                
+                // Trial: calcular dias restantes
+                let trialLabel = '';
+                let trialClass = '';
+                const isPremium = u.is_premium_real || u.is_premium;
+                if (isPremium) {
+                  trialLabel = '<i class="fas fa-crown text-yellow-500"></i>';
+                  trialClass = 'bg-yellow-50 text-yellow-700';
+                } else if (u.trial_expires_at) {
+                  const trialExpires = new Date(u.trial_expires_at);
+                  const diasRestantes = Math.ceil((trialExpires.getTime() - Date.now()) / (1000*60*60*24));
+                  if (diasRestantes > 0) {
+                    trialLabel = diasRestantes + 'd';
+                    trialClass = diasRestantes > 3 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700';
+                  } else {
+                    trialLabel = 'Expirado ' + Math.abs(diasRestantes) + 'd';
+                    trialClass = 'bg-red-100 text-red-600';
+                  }
+                } else {
+                  // Sem trial, usar data de cadastro (7 dias de trial padrão)
+                  if (u.created_at) {
+                    const diasDesde = Math.floor((Date.now() - new Date(u.created_at).getTime()) / (1000*60*60*24));
+                    const diasRestantes = 7 - diasDesde;
+                    if (diasRestantes > 0) {
+                      trialLabel = diasRestantes + 'd';
+                      trialClass = diasRestantes > 3 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700';
+                    } else {
+                      trialLabel = 'Expirado ' + Math.abs(diasRestantes) + 'd';
+                      trialClass = 'bg-red-100 text-red-600';
+                    }
+                  } else {
+                    trialLabel = '-';
+                    trialClass = 'bg-gray-100 text-gray-500';
+                  }
+                }
+                
+                // Verificar se já recebeu email de reengajamento
+                const jaRecebeuEmail = u.ultimo_email_reengajamento ? true : false;
+                const emailIcon = jaRecebeuEmail ? 'fa-check text-green-500' : 'fa-paper-plane text-orange-500';
+                const emailTitle = jaRecebeuEmail ? 'Já recebeu em ' + new Date(u.ultimo_email_reengajamento).toLocaleDateString('pt-BR') + ' (reenviar)' : 'Enviar email de reengajamento';
+                
                 return `
                 <tr class="border-b ${themes[currentTheme].border} hover:bg-blue-50/50" id="user-row-${u.id}">
                   <td class="p-2 ${themes[currentTheme].textSecondary}">${u.id}</td>
-                  <td class="p-2 ${themes[currentTheme].text} font-medium">${u.name || '-'}</td>
+                  <td class="p-2 ${themes[currentTheme].text} font-medium text-xs">${u.name || '-'}</td>
                   <td class="p-2 ${themes[currentTheme].textSecondary} text-xs">${u.email}</td>
                   <td class="p-2 text-center">
                     ${u.email_verified ? '<i class="fas fa-check-circle text-green-500"></i>' : '<i class="fas fa-times-circle text-red-400"></i>'}
                   </td>
                   <td class="p-2 text-center" id="premium-status-${u.id}">
-                    ${(u.is_premium_real || u.is_premium) ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs"><i class="fas fa-crown mr-1"></i>Premium</span>' : '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs">Free</span>'}
+                    ${isPremium ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs"><i class="fas fa-crown mr-1"></i>PRO</span>' : '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs">Free</span>'}
+                  </td>
+                  <td class="p-2 text-center text-xs ${themes[currentTheme].textSecondary}">
+                    <div>${cadastroDate}</div>
+                    <div class="text-[10px] opacity-60">${diasCadastro}d atrás</div>
                   </td>
                   <td class="p-2 text-center">
-                    <span class="px-2 py-1 ${statusClass} rounded-full text-xs">${planLabel}</span>
+                    <span class="px-2 py-0.5 ${trialClass} rounded-full text-xs font-medium">${trialLabel}</span>
                   </td>
-                  <td class="p-2 text-center ${themes[currentTheme].textSecondary} text-xs">${paymentDate}</td>
                   <td class="p-2 text-center">
-                    <span class="px-2 py-0.5 ${acessosClass} rounded-full text-xs font-medium">${totalAcessos}</span>
+                    <span class="px-2 py-0.5 ${acessosClass} rounded-full text-xs font-medium" title="Último: ${u.ultimo_acesso ? new Date(u.ultimo_acesso).toLocaleDateString('pt-BR') : 'Nunca'}">${totalAcessos}</span>
                   </td>
-                  <td class="p-2 text-center ${themes[currentTheme].textSecondary} text-xs">${ultimoAcessoStr}</td>
                   <td class="p-2 text-center">
                     <div class="flex items-center justify-center gap-1">
-                      <button onclick="editarUsuarioAdmin(${u.id}, '${(u.name || '').replace(/'/g, "\\'")}', '${u.email}', ${(u.is_premium_real || u.is_premium) ? 1 : 0})" 
+                      <button onclick="editarUsuarioAdmin(${u.id}, '${(u.name || '').replace(/'/g, "\\'")}', '${u.email}', ${isPremium ? 1 : 0})" 
                         class="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Editar">
                         <i class="fas fa-edit"></i>
                       </button>
-                      <button onclick="togglePremiumAdmin(${u.id}, ${(u.is_premium_real || u.is_premium) ? 0 : 1})" 
-                        class="p-1.5 ${(u.is_premium_real || u.is_premium) ? 'text-gray-500 hover:bg-gray-50' : 'text-yellow-500 hover:bg-yellow-50'} rounded" 
-                        title="${(u.is_premium_real || u.is_premium) ? 'Remover Premium' : 'Dar Premium'}">
-                        <i class="fas ${(u.is_premium_real || u.is_premium) ? 'fa-user-minus' : 'fa-crown'}"></i>
+                      <button onclick="togglePremiumAdmin(${u.id}, ${isPremium ? 0 : 1})" 
+                        class="p-1.5 ${isPremium ? 'text-gray-500 hover:bg-gray-50' : 'text-yellow-500 hover:bg-yellow-50'} rounded" 
+                        title="${isPremium ? 'Remover Premium' : 'Dar Premium'}">
+                        <i class="fas ${isPremium ? 'fa-user-minus' : 'fa-crown'}"></i>
                       </button>
+                      ${!isPremium ? '<button onclick="enviarEmailIndividual(' + u.id + ', \\'' + u.email.replace(/'/g, "\\\\'") + '\\')" class="p-1.5 text-orange-500 hover:bg-orange-50 rounded" title="' + emailTitle + '"><i class="fas ' + emailIcon + '"></i></button>' : ''}
                       ${u.email !== 'terciogomesrabelo@gmail.com' ? `
                         <button onclick="deletarUsuarioAdmin(${u.id}, '${u.email}', ${u.email_verified ? 'true' : 'false'})" 
                           class="p-1.5 ${u.email_verified ? 'text-gray-300 cursor-not-allowed' : 'text-red-500 hover:bg-red-50'} rounded" 
-                          title="${u.email_verified ? 'Não pode deletar (email verificado)' : 'Deletar'}">
+                          title="${u.email_verified ? 'Não pode deletar (verificado)' : 'Deletar'}">
                           <i class="fas fa-trash"></i>
                         </button>
                       ` : ''}
@@ -15281,7 +15324,9 @@ window.verListaUsuarios = async function() {
         <div class="p-3 border-t ${themes[currentTheme].border} flex-shrink-0 text-center">
           <p class="text-xs ${themes[currentTheme].textMuted}">
             <i class="fas fa-info-circle mr-1"></i>
-            Clique nos ícones para gerenciar cada usuário. <span class="text-red-500">Apenas usuários sem email verificado podem ser excluídos.</span>
+            <i class="fas fa-paper-plane text-orange-400 mx-1"></i>= Enviar email reengajamento | 
+            <i class="fas fa-check text-green-400 mx-1"></i>= Já recebeu email | 
+            <span class="text-red-500">Lixeira vermelha = pode excluir</span>
           </p>
         </div>
       </div>
@@ -15498,6 +15543,42 @@ window.deletarUsuarioAdmin = async function(userId, email, emailVerified) {
     } else {
       showToast('❌ ' + errorMsg, 'error');
     }
+  }
+};
+
+// ✅ v79: Enviar email de reengajamento individual (admin)
+window.enviarEmailIndividual = async function(userId, email) {
+  const confirmed = await showConfirm(
+    'Enviar email de reengajamento para:\n\n' + email + '\n\nO email inclui oferta especial e link para feedback.',
+    { type: 'info', title: 'Enviar Email', confirmText: 'Enviar', cancelText: 'Cancelar' }
+  );
+  
+  if (!confirmed) return;
+  
+  try {
+    showToast('📤 Enviando email...', 'info');
+    const response = await axios.post('/api/admin/reengajamento/enviar-individual', 
+      { user_id: userId },
+      { headers: { 'X-User-ID': currentUser.id } }
+    );
+    
+    if (response.data.success) {
+      showToast('✅ Email enviado com sucesso para ' + email, 'success');
+      // Atualizar o ícone do botão para indicar que já foi enviado
+      const row = document.getElementById('user-row-' + userId);
+      if (row) {
+        const emailBtn = row.querySelector('.text-orange-500');
+        if (emailBtn) {
+          emailBtn.innerHTML = '<i class="fas fa-check text-green-500"></i>';
+          emailBtn.title = 'Email enviado agora!';
+          emailBtn.classList.remove('text-orange-500');
+          emailBtn.classList.add('text-green-500');
+        }
+      }
+    }
+  } catch (error) {
+    const msg = error.response?.data?.error || 'Erro ao enviar email';
+    showToast('❌ ' + msg, 'error');
   }
 };
 

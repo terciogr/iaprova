@@ -3841,17 +3841,21 @@ app.get('/api/admin/users', async (c) => {
     
     // ✅ CORREÇÃO v11: Incluir payment_id e payment_date na listagem
     // ✅ v78: Incluir contagem de acessos (site_visits) por usuário
+    // ✅ v79: Incluir trial info e último email de reengajamento
     let query = `
       SELECT 
         u.id, u.name, u.email, u.email_verified, u.is_premium, 
         u.premium_expires_at, u.created_at, u.auth_provider,
         u.subscription_status, u.subscription_plan, u.subscription_expires_at,
         u.payment_id, u.payment_date,
+        u.trial_started_at, u.trial_expires_at,
         COUNT(DISTINCT pe.id) as total_planos,
         COUNT(DISTINCT md.id) as total_metas,
         -- ✅ v78: Total de acessos ao sistema
         (SELECT COUNT(*) FROM site_visits sv WHERE sv.user_id = u.id) as total_acessos,
         (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id) as ultimo_acesso,
+        -- ✅ v79: Último email de reengajamento enviado
+        (SELECT MAX(eh.created_at) FROM email_history eh WHERE eh.email_to = u.email AND eh.email_type = 'reengajamento' AND eh.status = 'sent') as ultimo_email_reengajamento,
         -- ✅ Calcular is_premium_real considerando subscription ativa
         CASE 
           WHEN u.is_premium = 1 THEN 1
@@ -20616,6 +20620,272 @@ self.addEventListener('fetch', (event) => {
   return new Response(swContent, {
     headers: { 'Content-Type': 'application/javascript' }
   })
+})
+
+app.post('/api/cron/reengajamento', async (c) => {
+  const { DB } = c.env
+  
+  // Verificar autenticação: CRON_SECRET header ou admin login
+  const cronSecret = c.req.header('X-Cron-Secret') || c.req.query('secret')
+  const expectedSecret = (c.env as any).CRON_SECRET || 'iaprova-cron-2026'
+  const isAdminUser = await isAdmin(c)
+  
+  if (cronSecret !== expectedSecret && !isAdminUser) {
+    return c.json({ error: 'Não autorizado' }, 401)
+  }
+  
+  try {
+    const RESEND_API_KEY = (c.env as any).RESEND_API_KEY || 'seu_resend_api_key_aqui'
+    const FROM_EMAIL = (c.env as any).FROM_EMAIL || 'noreply@iaprova.app'
+    const APP_URL = (c.env as any).APP_URL || 'https://iaprova.pages.dev'
+    
+    if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
+      return c.json({ error: 'RESEND_API_KEY não configurada', skipped: true }, 200)
+    }
+    
+    // Buscar usuários elegíveis:
+    // 1. Email verificado
+    // 2. Não é premium
+    // 3. Trial expirado há mais de 7 dias (ou cadastro há mais de 7 dias sem trial)
+    // 4. NÃO recebeu email de reengajamento anteriormente (nunca enviar 2x automático)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    
+    const users = await DB.prepare(`
+      SELECT u.id, u.name, u.email, u.created_at, u.trial_expires_at
+      FROM users u
+      WHERE u.email_verified = 1
+        AND (u.is_premium = 0 OR u.is_premium IS NULL)
+        AND (u.subscription_status IS NULL OR u.subscription_status IN ('expired', 'trial', ''))
+        AND (
+          (u.trial_expires_at IS NOT NULL AND u.trial_expires_at <= ?)
+          OR (u.trial_expires_at IS NULL AND u.created_at <= ?)
+        )
+        AND u.email NOT IN (
+          SELECT DISTINCT eh.email_to FROM email_history eh 
+          WHERE eh.email_type = 'reengajamento' AND eh.status = 'sent'
+        )
+      ORDER BY u.created_at ASC
+      LIMIT 20
+    `).bind(sevenDaysAgo, sevenDaysAgo).all()
+    
+    const targetUsers = users.results || []
+    
+    if (targetUsers.length === 0) {
+      console.log('🕐 CRON reengajamento: Nenhum usuário elegível encontrado')
+      return c.json({ 
+        success: true, 
+        message: 'Nenhum usuário elegível para reengajamento',
+        total_processados: 0,
+        enviados: 0,
+        falhas: 0,
+        executado_em: new Date().toISOString()
+      })
+    }
+    
+    const results = { enviados: 0, falhas: 0, detalhes: [] as any[] }
+    
+    for (const user of targetUsers as any[]) {
+      try {
+        const nome = user.name || 'Concurseiro(a)'
+        const feedbackUrl = `${APP_URL}?feedback=reengajamento&uid=${user.id}`
+        const premiumUrl = `${APP_URL}?upgrade=true`
+        
+        const emailHtml = gerarEmailReengajamento(nome, feedbackUrl, premiumUrl, APP_URL)
+        
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: FROM_EMAIL,
+            to: [user.email],
+            subject: '💎 Sentimos sua falta! Sua aprovação está a um passo — Oferta especial IAprova',
+            html: emailHtml,
+          }),
+        })
+        
+        const result = await response.json() as any
+        
+        if (result.id) {
+          results.enviados++
+          results.detalhes.push({ email: user.email, status: 'sent', resend_id: result.id })
+          
+          await logEmailSent(DB, user.email, 'reengajamento', 
+            'CRON: Sentimos sua falta! Sua aprovação está a um passo', 
+            'sent', user.id, undefined, { resend_id: result.id, source: 'cron_daily' })
+        } else {
+          results.falhas++
+          const errorMsg = result.message || JSON.stringify(result)
+          results.detalhes.push({ email: user.email, status: 'failed', error: errorMsg })
+          
+          await logEmailSent(DB, user.email, 'reengajamento',
+            'CRON: Sentimos sua falta',
+            'failed', user.id, errorMsg, { source: 'cron_daily' })
+        }
+        
+        // Pausa entre emails para evitar rate limit (100ms)
+        await new Promise(resolve => setTimeout(resolve, 100))
+      } catch (err: any) {
+        results.falhas++
+        results.detalhes.push({ email: user.email, status: 'failed', error: err.message })
+      }
+    }
+    
+    console.log(`📧 CRON reengajamento: ${results.enviados} enviados, ${results.falhas} falhas de ${targetUsers.length} elegíveis`)
+    
+    return c.json({
+      success: true,
+      total_processados: targetUsers.length,
+      ...results,
+      executado_em: new Date().toISOString()
+    })
+  } catch (error: any) {
+    console.error('❌ Erro no CRON reengajamento:', error)
+    return c.json({ error: 'Erro ao executar CRON de reengajamento', details: error.message }, 500)
+  }
+})
+
+// ✅ v79: Envio manual individual de email de reengajamento (admin)
+app.post('/api/admin/reengajamento/enviar-individual', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const { user_id } = await c.req.json()
+    
+    if (!user_id) {
+      return c.json({ error: 'user_id é obrigatório' }, 400)
+    }
+    
+    const RESEND_API_KEY = (c.env as any).RESEND_API_KEY || 'seu_resend_api_key_aqui'
+    const FROM_EMAIL = (c.env as any).FROM_EMAIL || 'noreply@iaprova.app'
+    const APP_URL = (c.env as any).APP_URL || 'https://iaprova.pages.dev'
+    
+    if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
+      return c.json({ error: 'RESEND_API_KEY não configurada' }, 400)
+    }
+    
+    const user = await DB.prepare('SELECT id, name, email FROM users WHERE id = ?').bind(user_id).first() as any
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404)
+    }
+    
+    const nome = user.name || 'Concurseiro(a)'
+    const feedbackUrl = `${APP_URL}?feedback=reengajamento&uid=${user.id}`
+    const premiumUrl = `${APP_URL}?upgrade=true`
+    
+    const emailHtml = gerarEmailReengajamento(nome, feedbackUrl, premiumUrl, APP_URL)
+    
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [user.email],
+        subject: '💎 Sentimos sua falta! Sua aprovação está a um passo — Oferta especial IAprova',
+        html: emailHtml,
+      }),
+    })
+    
+    const result = await response.json() as any
+    
+    if (result.id) {
+      await logEmailSent(DB, user.email, 'reengajamento', 
+        'MANUAL: Sentimos sua falta! Sua aprovação está a um passo', 
+        'sent', user.id, undefined, { resend_id: result.id, source: 'admin_manual' })
+      
+      return c.json({ 
+        success: true, 
+        message: `Email enviado com sucesso para ${user.email}`,
+        resend_id: result.id
+      })
+    } else {
+      const errorMsg = result.message || JSON.stringify(result)
+      await logEmailSent(DB, user.email, 'reengajamento',
+        'MANUAL: Sentimos sua falta',
+        'failed', user.id, errorMsg, { source: 'admin_manual' })
+      
+      return c.json({ error: `Falha ao enviar: ${errorMsg}` }, 500)
+    }
+  } catch (error: any) {
+    console.error('Erro ao enviar reengajamento individual:', error)
+    return c.json({ error: 'Erro ao enviar email' }, 500)
+  }
+})
+
+// ✅ v79: Status do CRON - ver quando foi a última execução
+app.get('/api/admin/cron/status', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    // Última execução do cron (último email de tipo reengajamento com source cron)
+    const lastCron = await DB.prepare(`
+      SELECT created_at, metadata FROM email_history 
+      WHERE email_type = 'reengajamento' AND metadata LIKE '%cron_daily%'
+      ORDER BY created_at DESC LIMIT 1
+    `).first() as any
+    
+    // Total de emails enviados por cron
+    const cronStats = await DB.prepare(`
+      SELECT 
+        COUNT(*) as total_enviados,
+        SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as enviados_ok,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as enviados_falha
+      FROM email_history 
+      WHERE email_type = 'reengajamento' AND metadata LIKE '%cron_daily%'
+    `).first() as any
+    
+    // Total de emails manuais
+    const manualStats = await DB.prepare(`
+      SELECT COUNT(*) as total FROM email_history 
+      WHERE email_type = 'reengajamento' AND metadata LIKE '%admin_manual%'
+    `).first() as any
+    
+    // Usuários elegíveis agora
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const eligible = await DB.prepare(`
+      SELECT COUNT(*) as total FROM users u
+      WHERE u.email_verified = 1
+        AND (u.is_premium = 0 OR u.is_premium IS NULL)
+        AND (u.subscription_status IS NULL OR u.subscription_status IN ('expired', 'trial', ''))
+        AND (
+          (u.trial_expires_at IS NOT NULL AND u.trial_expires_at <= ?)
+          OR (u.trial_expires_at IS NULL AND u.created_at <= ?)
+        )
+        AND u.email NOT IN (
+          SELECT DISTINCT eh.email_to FROM email_history eh 
+          WHERE eh.email_type = 'reengajamento' AND eh.status = 'sent'
+        )
+    `).bind(sevenDaysAgo, sevenDaysAgo).first() as any
+    
+    return c.json({
+      ultima_execucao_cron: lastCron?.created_at || null,
+      cron: {
+        total_enviados: cronStats?.total_enviados || 0,
+        enviados_ok: cronStats?.enviados_ok || 0,
+        enviados_falha: cronStats?.enviados_falha || 0
+      },
+      manuais: manualStats?.total || 0,
+      elegiveis_agora: eligible?.total || 0,
+      cron_url: '/api/cron/reengajamento',
+      instrucoes: 'Configure no cron-job.org ou Cloudflare Workers para chamar POST /api/cron/reengajamento com header X-Cron-Secret diariamente'
+    })
+  } catch (error: any) {
+    console.error('Erro ao buscar status do CRON:', error)
+    return c.json({ error: 'Erro ao buscar status' }, 500)
+  }
 })
 
 // ============== ROTA CATCH-ALL (SPA) ==============
