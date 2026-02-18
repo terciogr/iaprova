@@ -15306,7 +15306,7 @@ window.verListaUsuarios = async function() {
                         title="${isPremium ? 'Remover Premium' : 'Dar Premium'}">
                         <i class="fas ${isPremium ? 'fa-user-minus' : 'fa-crown'}"></i>
                       </button>
-                      ${!isPremium ? '<button onclick="enviarEmailIndividual(' + u.id + ', \\'' + u.email.replace(/'/g, "\\\\'") + '\\')" class="p-1.5 text-orange-500 hover:bg-orange-50 rounded" title="' + emailTitle + '"><i class="fas ' + emailIcon + '"></i></button>' : ''}
+                      ${!isPremium ? ('<button onclick="enviarEmailIndividual(' + u.id + ',\'' + u.email.replace(/'/g, '') + '\')" class="p-1.5 text-orange-500 hover:bg-orange-50 rounded" title="' + emailTitle + '"><i class="fas ' + emailIcon + '"></i></button>') : ''}
                       ${u.email !== 'terciogomesrabelo@gmail.com' ? `
                         <button onclick="deletarUsuarioAdmin(${u.id}, '${u.email}', ${u.email_verified ? 'true' : 'false'})" 
                           class="p-1.5 ${u.email_verified ? 'text-gray-300 cursor-not-allowed' : 'text-red-500 hover:bg-red-50'} rounded" 
