@@ -20725,8 +20725,8 @@ app.post('/api/cron/reengajamento', async (c) => {
             'failed', user.id, errorMsg, { source: 'cron_daily' })
         }
         
-        // Pausa entre emails para evitar rate limit (100ms)
-        await new Promise(resolve => setTimeout(resolve, 100))
+        // Pausa entre emails para evitar rate limit Resend (max 2/s)
+        await new Promise(resolve => setTimeout(resolve, 1500))
       } catch (err: any) {
         results.falhas++
         results.detalhes.push({ email: user.email, status: 'failed', error: err.message })
