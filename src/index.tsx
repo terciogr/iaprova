@@ -4604,55 +4604,68 @@ app.delete('/api/admin/users/:id', async (c) => {
     }
     
     // ═══════════════════════════════════════════════════════════════
-    // ✅ v54 BATCH: EXCLUSÃO EM CASCATA COM BATCH
+    // ✅ v77 FIX: EXCLUSÃO ROBUSTA — desabilita FK e limpa tudo
     // ═══════════════════════════════════════════════════════════════
     
-    console.log(`🗑️ v54 BATCH: Excluindo dados do usuário ${userId}...`)
+    console.log(`🗑️ v77: Excluindo dados do usuário ${userId}...`)
     
-    // BATCH 1: Tabelas de metas, progresso e estudo
-    try {
-      await DB.batch([
-        DB.prepare('DELETE FROM metas_diarias WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM metas_semana WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM user_topicos_progresso WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM conteudo_estudo WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM conteudo_topicos WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM historico_estudos WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM exercicios_resultados WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM simulados_historico WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM flashcards WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM revisoes WHERE user_id = ?').bind(userId),
-      ])
-    } catch (e: any) { console.warn('Batch 1 (metas/estudo):', e.message) }
+    // Desabilitar foreign keys temporariamente para evitar SQLITE_CONSTRAINT
+    await DB.prepare('PRAGMA foreign_keys = OFF').run()
     
-    // BATCH 2: Materiais e dependentes de planos
-    try {
-      await DB.batch([
-        DB.prepare('DELETE FROM materiais_salvos WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM progresso_materiais WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM disciplina_documentos WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM semanas_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)').bind(userId),
-        DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)').bind(userId),
-        DB.prepare('DELETE FROM planos_estudo WHERE user_id = ?').bind(userId),
-      ])
-    } catch (e: any) { console.warn('Batch 2 (materiais/planos):', e.message) }
+    // Lista exaustiva de tabelas com user_id
+    const tabelasUsuario = [
+      'metas_diarias', 'metas_semana', 'user_topicos_progresso',
+      'conteudo_estudo', 'conteudo_topicos', 'historico_estudos',
+      'exercicios_resultados', 'simulados_historico', 'flashcards', 'revisoes',
+      'materiais_salvos', 'progresso_materiais', 'disciplina_documentos',
+      'topicos_edital', 'user_disciplinas', 'interviews', 'desempenho',
+      'user_subscriptions', 'user_feedbacks', 'conteudo_feedback',
+      'email_history', 'site_visits', 'payment_history',
+      'google_oauth_tokens', 'password_reset_tokens'
+    ]
     
-    // BATCH 3: Editais, tópicos, disciplinas, entrevistas, assinatura
+    // Deletar de cada tabela individualmente (evita batch FK errors)
+    for (const tabela of tabelasUsuario) {
+      try {
+        await DB.prepare(`DELETE FROM ${tabela} WHERE user_id = ?`).bind(userId).run()
+      } catch (e: any) { 
+        // Tabela pode não existir ou não ter coluna user_id — ignorar
+        console.warn(`  ⚠️ ${tabela}: ${e.message}`)
+      }
+    }
+    
+    // Tabelas com email reference
     try {
-      await DB.batch([
-        DB.prepare('DELETE FROM topicos_edital WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM edital_topicos WHERE edital_disciplina_id IN (SELECT id FROM edital_disciplinas WHERE edital_id IN (SELECT id FROM editais WHERE user_id = ?))').bind(userId),
-        DB.prepare('DELETE FROM edital_disciplinas WHERE edital_id IN (SELECT id FROM editais WHERE user_id = ?)').bind(userId),
-        DB.prepare('DELETE FROM editais WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM user_disciplinas WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM interviews WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM desempenho WHERE user_id = ?').bind(userId),
-        DB.prepare('DELETE FROM user_subscriptions WHERE user_id = ?').bind(userId),
-      ])
-    } catch (e: any) { console.warn('Batch 3 (editais/user):', e.message) }
+      await DB.prepare('DELETE FROM email_history WHERE email_to = ?').bind(user.email).run()
+    } catch (e: any) { console.warn('email_history by email:', e.message) }
+    
+    // Tabelas dependentes de planos
+    try {
+      await DB.prepare('DELETE FROM semanas_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)').bind(userId).run()
+    } catch (e: any) { console.warn('semanas_estudo:', e.message) }
+    try {
+      await DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id IN (SELECT id FROM planos_estudo WHERE user_id = ?)').bind(userId).run()
+    } catch (e: any) { console.warn('ciclos_estudo:', e.message) }
+    try {
+      await DB.prepare('DELETE FROM planos_estudo WHERE user_id = ?').bind(userId).run()
+    } catch (e: any) { console.warn('planos_estudo:', e.message) }
+    
+    // Editais em cascata
+    try {
+      await DB.prepare('DELETE FROM edital_topicos WHERE edital_disciplina_id IN (SELECT id FROM edital_disciplinas WHERE edital_id IN (SELECT id FROM editais WHERE user_id = ?))').bind(userId).run()
+    } catch (e: any) { console.warn('edital_topicos:', e.message) }
+    try {
+      await DB.prepare('DELETE FROM edital_disciplinas WHERE edital_id IN (SELECT id FROM editais WHERE user_id = ?)').bind(userId).run()
+    } catch (e: any) { console.warn('edital_disciplinas:', e.message) }
+    try {
+      await DB.prepare('DELETE FROM editais WHERE user_id = ?').bind(userId).run()
+    } catch (e: any) { console.warn('editais:', e.message) }
     
     // FINAL: Deletar o usuário
     const userResult = await DB.prepare('DELETE FROM users WHERE id = ?').bind(userId).run()
+    
+    // Reabilitar foreign keys
+    await DB.prepare('PRAGMA foreign_keys = ON').run()
     
     if (userResult.meta?.changes === 0) {
       return c.json({ error: 'Usuário não encontrado ou já foi deletado' }, 404)

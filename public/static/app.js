@@ -13061,6 +13061,9 @@ window.renderDashboardSimulados = async function() {
             </div>
           </div>
           
+          <!-- v77: Desempenho por Disciplina (populado via JS depois) -->
+          <div id="container-desempenho-disciplinas"></div>
+          
           <!-- Histórico Detalhado -->
           <div class="${themes[currentTheme].card} p-6 rounded-xl border ${themes[currentTheme].border}">
             <h2 class="text-xl font-bold ${themes[currentTheme].text} mb-4">Histórico de Simulados</h2>
@@ -13145,10 +13148,11 @@ window.renderDashboardSimulados = async function() {
       </div>
     `;
     
-    // Renderizar gráfico se houver dados
+    // Renderizar gráficos se houver dados
     if (simulados.length > 0) {
       setTimeout(() => {
         renderGraficoSimulados(semanas, percentuais, metaPercentual);
+        renderGraficoDisciplinas(simulados);
       }, 100);
     }
     
@@ -13272,6 +13276,163 @@ window.renderGraficoSimulados = function(semanas, percentuais, metaPercentual) {
           grid: {
             display: false
           }
+        }
+      }
+    }
+  });
+}
+
+// ✅ v77: Gráfico de acertos por disciplina (barras horizontais) + cards
+window.renderGraficoDisciplinas = function(simulados) {
+  const container = document.getElementById('container-desempenho-disciplinas');
+  if (!container) return;
+  
+  // Calcular acertos por disciplina
+  const desempenhoDisciplinas = {};
+  simulados.forEach(sim => {
+    try {
+      const detalhes = typeof sim.questoes_detalhes === 'string' ? JSON.parse(sim.questoes_detalhes) : (sim.questoes_detalhes || []);
+      if (Array.isArray(detalhes) && detalhes.length > 0) {
+        detalhes.forEach(q => {
+          const disc = q.disciplina || 'Geral';
+          if (!desempenhoDisciplinas[disc]) {
+            desempenhoDisciplinas[disc] = { total: 0, acertos: 0 };
+          }
+          desempenhoDisciplinas[disc].total++;
+          if (q.acertou || q.correta === q.resposta || q.correct) {
+            desempenhoDisciplinas[disc].acertos++;
+          }
+        });
+      }
+    } catch(e) {}
+  });
+  
+  // Fallback se nenhum detalhe foi encontrado
+  if (Object.keys(desempenhoDisciplinas).length === 0) {
+    simulados.forEach(sim => {
+      try {
+        let discs = typeof sim.disciplinas === 'string' ? JSON.parse(sim.disciplinas) : [sim.disciplinas || 'Geral'];
+        if (!Array.isArray(discs)) discs = [discs];
+        discs.forEach(disc => {
+          if (disc && !desempenhoDisciplinas[disc]) {
+            desempenhoDisciplinas[disc] = { total: sim.total_questoes || 0, acertos: sim.acertos || 0 };
+          }
+        });
+      } catch(e) {}
+    });
+  }
+  
+  const disciplinas = Object.entries(desempenhoDisciplinas)
+    .map(([nome, d]) => ({
+      nome: nome,
+      nomeShort: nome.length > 25 ? nome.substring(0, 22) + '...' : nome,
+      total: d.total,
+      acertos: d.acertos,
+      percentual: d.total > 0 ? Math.round((d.acertos / d.total) * 100) : 0
+    }))
+    .sort((a, b) => b.percentual - a.percentual);
+  
+  if (disciplinas.length === 0) return;
+  
+  const totalQ = disciplinas.reduce((a, d) => a + d.total, 0);
+  const totalA = disciplinas.reduce((a, d) => a + d.acertos, 0);
+  const pGeral = totalQ > 0 ? Math.round((totalA / totalQ) * 100) : 0;
+  const pGeralClass = pGeral >= 70 ? 'bg-green-100 text-green-700' : pGeral >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700';
+  
+  // Gerar cards HTML
+  let cardsHtml = '';
+  disciplinas.forEach(d => {
+    const corClass = d.percentual >= 70 ? 'from-green-500 to-emerald-600' : d.percentual >= 50 ? 'from-amber-500 to-yellow-600' : 'from-red-500 to-rose-600';
+    const bgClass = d.percentual >= 70 ? 'bg-green-50 dark:bg-green-900/10' : d.percentual >= 50 ? 'bg-amber-50 dark:bg-amber-900/10' : 'bg-red-50 dark:bg-red-900/10';
+    const textClass = d.percentual >= 70 ? 'text-green-700' : d.percentual >= 50 ? 'text-amber-700' : 'text-red-700';
+    cardsHtml += '<div class="' + bgClass + ' rounded-xl p-3 border ' + themes[currentTheme].border + '">' +
+      '<div class="flex items-center justify-between mb-2">' +
+        '<p class="font-semibold ' + themes[currentTheme].text + ' text-sm truncate flex-1 mr-2">' + d.nome + '</p>' +
+        '<span class="font-bold ' + textClass + ' text-lg">' + d.percentual + '%</span>' +
+      '</div>' +
+      '<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-1.5">' +
+        '<div class="h-2.5 rounded-full bg-gradient-to-r ' + corClass + '" style="width: ' + d.percentual + '%"></div>' +
+      '</div>' +
+      '<p class="text-xs ' + themes[currentTheme].textSecondary + '">' + d.acertos + '/' + d.total + ' questoes corretas</p>' +
+    '</div>';
+  });
+  
+  const chartHeight = Math.max(250, disciplinas.length * 52);
+  
+  container.innerHTML = '<div class="' + themes[currentTheme].card + ' p-6 rounded-xl border ' + themes[currentTheme].border + ' mb-6">' +
+    '<div class="flex items-center justify-between mb-5">' +
+      '<div>' +
+        '<h2 class="text-xl font-bold ' + themes[currentTheme].text + '"><i class="fas fa-chart-pie mr-2 text-[#4A90D9]"></i>Desempenho por Disciplina</h2>' +
+        '<p class="text-sm ' + themes[currentTheme].textSecondary + '">Acertos detalhados em cada disciplina</p>' +
+      '</div>' +
+      '<div class="flex items-center gap-2 px-3 py-1.5 rounded-full ' + pGeralClass + '">' +
+        '<i class="fas fa-percentage text-xs"></i>' +
+        '<span class="font-bold text-sm">' + pGeral + '% geral</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="mb-5" style="height: ' + chartHeight + 'px;"><canvas id="chart-disciplinas"></canvas></div>' +
+    '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">' + cardsHtml + '</div>' +
+  '</div>';
+  
+  // Renderizar gráfico Chart.js
+  const ctx = document.getElementById('chart-disciplinas');
+  if (!ctx) return;
+  
+  const cores = disciplinas.map(d => 
+    d.percentual >= 70 ? 'rgba(34, 197, 94, 0.8)' : 
+    d.percentual >= 50 ? 'rgba(245, 158, 11, 0.8)' : 
+    'rgba(239, 68, 68, 0.8)'
+  );
+  const bordas = disciplinas.map(d => 
+    d.percentual >= 70 ? 'rgb(34, 197, 94)' : 
+    d.percentual >= 50 ? 'rgb(245, 158, 11)' : 
+    'rgb(239, 68, 68)'
+  );
+  
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: disciplinas.map(d => d.nomeShort),
+      datasets: [{
+        label: 'Acertos (%)',
+        data: disciplinas.map(d => d.percentual),
+        backgroundColor: cores,
+        borderColor: bordas,
+        borderWidth: 1,
+        borderRadius: 6,
+        barThickness: 28
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          callbacks: {
+            label: function(context) {
+              const d = disciplinas[context.dataIndex];
+              return d.acertos + '/' + d.total + ' questoes (' + d.percentual + '%)';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            callback: function(v) { return v + '%'; },
+            font: { size: 11 }
+          },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        y: {
+          ticks: { font: { size: 12 } },
+          grid: { display: false }
         }
       }
     }
@@ -20333,6 +20494,15 @@ function toggleChat() {
   }
 }
 
+// ✅ v77: Enviar sugestão rápida do chat
+window.enviarSugestaoChat = function(texto) {
+  const input = document.getElementById('chatInput');
+  if (input) {
+    input.value = texto;
+    sendChatMessage();
+  }
+};
+
 async function sendChatMessage() {
   const input = document.getElementById('chatInput');
   const message = input.value.trim();
@@ -20421,16 +20591,38 @@ function renderChatButton() {
       
       <!-- Mensagens -->
       <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-[#E8EDF5] to-white">
-        <div class="mr-auto max-w-[80%]">
+        <div class="mr-auto max-w-[85%]">
           <div class="bg-white text-gray-800 rounded-2xl rounded-tl-sm px-4 py-3 shadow-md border border-blue-100">
-            <p class="text-sm">
-              👋 Oi! Eu sou a <b>Lilu</b>, sua assistente de estudos! <br><br>
-              Estou aqui para te ajudar com:<br>
-              💡 Dúvidas sobre o sistema<br>
-              📚 Suas disciplinas e planos<br>
-              🎯 Dicas de estudo<br>
-              ✨ O que você precisar!
+            <p class="text-sm mb-3">
+              Oi! Sou a <b>Lilu</b>, sua assistente de estudos aqui no IAprova! 😊
+              <br><br>Veja como posso te ajudar:
             </p>
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="enviarSugestaoChat('Quais disciplinas devo priorizar?')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-blue-100 hover:bg-blue-50 hover:border-blue-300 transition-all group">
+                <i class="fas fa-book text-[#122D6A] text-base group-hover:scale-110 transition-transform"></i>
+                <span class="text-[11px] text-gray-600 font-medium text-center leading-tight">Disciplinas</span>
+              </button>
+              <button onclick="enviarSugestaoChat('Me ajude a montar um cronograma de estudos')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-blue-100 hover:bg-blue-50 hover:border-blue-300 transition-all group">
+                <i class="fas fa-calendar-alt text-[#122D6A] text-base group-hover:scale-110 transition-transform"></i>
+                <span class="text-[11px] text-gray-600 font-medium text-center leading-tight">Cronograma</span>
+              </button>
+              <button onclick="enviarSugestaoChat('Me dê dicas para melhorar nos simulados')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-blue-100 hover:bg-blue-50 hover:border-blue-300 transition-all group">
+                <i class="fas fa-chart-line text-[#122D6A] text-base group-hover:scale-110 transition-transform"></i>
+                <span class="text-[11px] text-gray-600 font-medium text-center leading-tight">Simulados</span>
+              </button>
+              <button onclick="enviarSugestaoChat('Como funciona o plano de estudos?')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-blue-100 hover:bg-blue-50 hover:border-blue-300 transition-all group">
+                <i class="fas fa-info-circle text-[#122D6A] text-base group-hover:scale-110 transition-transform"></i>
+                <span class="text-[11px] text-gray-600 font-medium text-center leading-tight">Sobre</span>
+              </button>
+              <button onclick="enviarSugestaoChat('Me explique sobre técnicas de memorização')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-blue-100 hover:bg-blue-50 hover:border-blue-300 transition-all group">
+                <i class="fas fa-brain text-[#122D6A] text-base group-hover:scale-110 transition-transform"></i>
+                <span class="text-[11px] text-gray-600 font-medium text-center leading-tight">Técnicas</span>
+              </button>
+              <button onclick="enviarSugestaoChat('Quais são as novidades do concurso mais recente?')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-blue-100 hover:bg-blue-50 hover:border-blue-300 transition-all group">
+                <i class="fas fa-newspaper text-[#122D6A] text-base group-hover:scale-110 transition-transform"></i>
+                <span class="text-[11px] text-gray-600 font-medium text-center leading-tight">Notícias</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
