@@ -589,7 +589,7 @@ async function logEmailSent(
 async function sendPasswordResetEmail(email: string, token: string, name: string, env?: any): Promise<boolean> {
   // Obter configurações do ambiente
   const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
-  const FROM_EMAIL = env?.FROM_EMAIL || 'noreply@iaprova.app';
+  const FROM_EMAIL = env?.FROM_EMAIL || 'IAprova - Preparação para Concursos <noreply@iaprova.app>';
   
   // URL de reset - usar APP_URL do ambiente ou fallback
   const APP_URL = env?.APP_URL || 'https://iaprova.app';
@@ -799,7 +799,7 @@ async function sendPasswordResetEmail(email: string, token: string, name: string
 async function sendVerificationEmail(email: string, token: string, name: string, env?: any): Promise<boolean> {
   // Obter configurações do ambiente
   const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
-  const FROM_EMAIL = env?.FROM_EMAIL || 'noreply@iaprova.app';
+  const FROM_EMAIL = env?.FROM_EMAIL || 'IAprova - Preparação para Concursos <noreply@iaprova.app>';
   const APP_URL = env?.APP_URL || 'https://iaprova.app';
   
   // URL de verificação
@@ -1062,7 +1062,7 @@ async function sendVerificationEmail(email: string, token: string, name: string,
 // Função para enviar email de boas-vindas após verificação (usando Resend)
 async function sendWelcomeEmail(email: string, name: string, env?: any): Promise<boolean> {
   const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
-  const FROM_EMAIL = env?.FROM_EMAIL || 'noreply@iaprova.app';
+  const FROM_EMAIL = env?.FROM_EMAIL || 'IAprova - Preparação para Concursos <noreply@iaprova.app>';
   const APP_URL = env?.APP_URL || 'https://iaprova.app';
   
   // Verificar se tem API key configurada
@@ -1328,7 +1328,7 @@ async function sendPaymentConfirmationEmail(
   env?: any
 ): Promise<boolean> {
   const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui';
-  const FROM_EMAIL = env?.FROM_EMAIL || 'noreply@iaprova.app';
+  const FROM_EMAIL = env?.FROM_EMAIL || 'IAprova - Preparação para Concursos <noreply@iaprova.app>';
   const APP_URL = env?.APP_URL || 'https://iaprova.app';
   
   // Verificar se tem API key configurada
@@ -20236,7 +20236,7 @@ app.post('/api/admin/reengajamento/enviar', async (c) => {
     const { user_ids, enviar_para_todos, email_teste } = body
     
     const RESEND_API_KEY = c.env.RESEND_API_KEY || 'seu_resend_api_key_aqui'
-    const FROM_EMAIL = c.env.FROM_EMAIL || 'noreply@iaprova.app'
+    const FROM_EMAIL = c.env.FROM_EMAIL || 'IAprova - Preparação para Concursos <noreply@iaprova.app>'
     const APP_URL = c.env.APP_URL || 'https://iaprova.pages.dev'
     
     if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
@@ -20635,7 +20635,7 @@ app.post('/api/cron/reengajamento', async (c) => {
   
   try {
     const RESEND_API_KEY = (c.env as any).RESEND_API_KEY || 'seu_resend_api_key_aqui'
-    const FROM_EMAIL = (c.env as any).FROM_EMAIL || 'noreply@iaprova.app'
+    const FROM_EMAIL = (c.env as any).FROM_EMAIL || 'IAprova - Preparação para Concursos <noreply@iaprova.app>'
     const APP_URL = (c.env as any).APP_URL || 'https://iaprova.pages.dev'
     
     if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
@@ -20763,7 +20763,7 @@ app.post('/api/admin/reengajamento/enviar-individual', async (c) => {
     }
     
     const RESEND_API_KEY = (c.env as any).RESEND_API_KEY || 'seu_resend_api_key_aqui'
-    const FROM_EMAIL = (c.env as any).FROM_EMAIL || 'noreply@iaprova.app'
+    const FROM_EMAIL = (c.env as any).FROM_EMAIL || 'IAprova - Preparação para Concursos <noreply@iaprova.app>'
     const APP_URL = (c.env as any).APP_URL || 'https://iaprova.pages.dev'
     
     if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
