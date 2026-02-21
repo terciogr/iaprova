@@ -5220,6 +5220,7 @@ Enfermagem: Técnicas de enfermagem, biossegurança..."
 
 function selecionarArea(area) {
   interviewData.area_geral = area;
+  interviewData.sem_edital = true; // Marcar que não tem edital para carregar disciplinas da área
   renderEntrevistaStep2();
 }
 
@@ -5609,35 +5610,491 @@ async function renderEntrevistaStep3() {
     disciplinasFiltradas = [];
   } else {
     // 🔄 FALLBACK LEGÍTIMO: Usuário ESCOLHEU continuar sem edital
-    // Carregar apenas disciplinas básicas universais (Português, RL, Informática)
-    console.log('📚 Usuário escolheu continuar sem edital. Carregando disciplinas básicas...');
+    // ✅ v81: Carregar disciplinas PRÉ-DEFINIDAS com tópicos completos por área
+    console.log('📚 Carregando disciplinas pré-definidas para área:', interviewData.area_geral || 'genérica');
     
-    try {
-      const response = await axios.get('/api/disciplinas');
-      disciplinasDisponiveis = response.data;
-      
-      // ✅ CORREÇÃO v52: Carregar APENAS disciplinas básicas + da área específica
-      // NÃO carregar TODAS as disciplinas genéricas
-      const disciplinasBasicas = disciplinasDisponiveis.filter(d => d.area === 'basico');
-      
-      let disciplinasArea = [];
-      if (interviewData.area_geral) {
-        disciplinasArea = disciplinasDisponiveis.filter(d => d.area === interviewData.area_geral);
-      } else if (interviewData.cargo) {
-        const areaDetectada = detectarAreaPorCargo(interviewData.cargo);
-        if (areaDetectada) {
-          interviewData.area_geral = areaDetectada;
-          disciplinasArea = disciplinasDisponiveis.filter(d => d.area === areaDetectada);
-        }
-      }
-      
-      // NÃO incluir 'geral' - essas são disciplinas genéricas demais
-      disciplinasFiltradas = [...disciplinasBasicas, ...disciplinasArea];
-      console.log(`📋 ${disciplinasFiltradas.length} disciplinas básicas/área carregadas`);
-    } catch (error) {
-      console.error('Erro ao carregar disciplinas:', error);
-      disciplinasFiltradas = [];
-    }
+    // ═══════════════════════════════════════════════════════════════
+    // MAPEAMENTO COMPLETO: Disciplinas + Tópicos por Área de Concurso
+    // ═══════════════════════════════════════════════════════════════
+    var disciplinasPorArea = {
+      // ════════ DISCIPLINAS BÁSICAS (comuns a todas as áreas) ════════
+      _basicas: [
+        { nome: 'Lingua Portuguesa', topicos: [
+          'Interpretacao e compreensao de textos', 'Tipologia e generos textuais', 'Ortografia oficial',
+          'Acentuacao grafica', 'Emprego do sinal indicativo de crase', 'Classes de palavras',
+          'Sintaxe da oracao e do periodo', 'Concordancia nominal e verbal', 'Regencia nominal e verbal',
+          'Pontuacao', 'Colocacao pronominal', 'Significacao das palavras (sinonimos, antonimos, homonimos, paronimos)',
+          'Redacao oficial (conforme Manual de Redacao da Presidencia)'
+        ]},
+        { nome: 'Raciocinio Logico-Matematico', topicos: [
+          'Logica proposicional', 'Proposicoes simples e compostas', 'Tabelas-verdade',
+          'Equivalencias logicas', 'Diagramas logicos', 'Logica de argumentacao',
+          'Raciocinio sequencial', 'Analise combinatoria basica', 'Probabilidade',
+          'Razao e proporcao', 'Regra de tres simples e composta', 'Porcentagem',
+          'Conjuntos e operacoes', 'Geometria basica', 'Principio da contagem'
+        ]},
+        { nome: 'Informatica', topicos: [
+          'Conceitos de hardware e software', 'Sistemas operacionais (Windows, Linux)',
+          'Microsoft Office (Word, Excel, PowerPoint)', 'LibreOffice',
+          'Redes de computadores e Internet', 'Navegadores e correio eletronico',
+          'Seguranca da informacao', 'Computacao em nuvem', 'Banco de dados basico',
+          'Governo Digital e LGPD (Lei Geral de Protecao de Dados)'
+        ]},
+        { nome: 'Nocoes de Direito Constitucional', topicos: [
+          'Principios fundamentais da CF/88', 'Direitos e garantias fundamentais',
+          'Direitos sociais', 'Nacionalidade e direitos politicos',
+          'Organizacao politico-administrativa do Estado', 'Administracao Publica (arts. 37 a 41)',
+          'Poder Legislativo', 'Poder Executivo', 'Poder Judiciario',
+          'Ordem social', 'Controle de constitucionalidade', 'Remedios constitucionais'
+        ]},
+        { nome: 'Nocoes de Direito Administrativo', topicos: [
+          'Principios da Administracao Publica', 'Organizacao administrativa (direta e indireta)',
+          'Poderes administrativos', 'Atos administrativos', 'Licitacoes e contratos (Lei 14.133/2021)',
+          'Servicos publicos', 'Servidores publicos', 'Responsabilidade civil do Estado',
+          'Controle da Administracao Publica', 'Improbidade administrativa (Lei 8.429/92)',
+          'Processo administrativo (Lei 9.784/99)', 'Bens publicos'
+        ]}
+      ],
+
+      // ════════ FISCAL ════════
+      fiscal: [
+        { nome: 'Direito Tributario', topicos: [
+          'Sistema Tributario Nacional', 'Competencia tributaria', 'Limitacoes ao poder de tributar',
+          'Impostos federais, estaduais e municipais', 'Obrigacao tributaria',
+          'Credito tributario (constituicao, suspensao, extincao, exclusao)', 'Lancamento tributario',
+          'Administracao tributaria', 'Fiscalizacao', 'Divida ativa',
+          'Certidoes negativas', 'Codigo Tributario Nacional (CTN)', 'Responsabilidade tributaria',
+          'Simples Nacional', 'ICMS, ISS, IPTU, ITBI, IPVA', 'Processo administrativo tributario'
+        ]},
+        { nome: 'Contabilidade Geral', topicos: [
+          'Escrituracao contabil', 'Livros contabeis', 'Balancete de verificacao',
+          'Balanco patrimonial', 'Demonstracao do resultado do exercicio (DRE)',
+          'Demonstracao dos fluxos de caixa (DFC)', 'Demonstracao das mutacoes do patrimonio liquido (DMPL)',
+          'Principios de contabilidade', 'Pronunciamentos contabeis (CPC)',
+          'Ativo imobilizado e intangivel', 'Provisoes e contingencias',
+          'Receitas e despesas', 'Estoques', 'Instrumentos financeiros',
+          'Consolidacao das demonstracoes contabeis'
+        ]},
+        { nome: 'Contabilidade Publica', topicos: [
+          'Orcamento publico', 'Plano Plurianual (PPA)', 'Lei de Diretrizes Orcamentarias (LDO)',
+          'Lei Orcamentaria Anual (LOA)', 'Creditos adicionais', 'Receita publica',
+          'Despesa publica', 'Restos a pagar', 'Despesas de exercicios anteriores',
+          'Lei de Responsabilidade Fiscal (LC 101/2000)', 'MCASP e PCASP',
+          'Demonstracoes contabeis do setor publico', 'NBC TSP',
+          'Balanco orcamentario, financeiro e patrimonial', 'Variações patrimoniais'
+        ]},
+        { nome: 'Auditoria', topicos: [
+          'Normas de auditoria', 'Planejamento de auditoria', 'Procedimentos de auditoria',
+          'Amostragem em auditoria', 'Evidencias de auditoria', 'Papeis de trabalho',
+          'Parecer e relatorio de auditoria', 'Auditoria interna vs externa',
+          'Controle interno', 'Riscos de auditoria',
+          'Auditoria governamental', 'Tribunais de Contas', 'Fraudes e erros'
+        ]},
+        { nome: 'Legislacao Tributaria', topicos: [
+          'Legislacao do ICMS', 'Legislacao do ISS', 'Legislacao do IPTU e ITBI',
+          'Legislacao do IPVA', 'Regulamento do Imposto de Renda',
+          'Legislacao da Contribuicao Social', 'PIS/COFINS', 'IPI',
+          'Simples Nacional (LC 123/2006)', 'Codigo Tributario do estado/municipio',
+          'Substituicao tributaria', 'Nota fiscal eletronica'
+        ]},
+        { nome: 'Administracao Financeira e Orcamentaria (AFO)', topicos: [
+          'Orcamento publico: conceitos e principios', 'Ciclo orcamentario',
+          'PPA, LDO e LOA', 'Creditos adicionais', 'Classificacoes orcamentarias',
+          'Receita e despesa publica', 'Programacao financeira',
+          'LRF - Lei de Responsabilidade Fiscal', 'Divida publica',
+          'SIAFI e sistemas de orcamento', 'Transferencias constitucionais'
+        ]},
+        { nome: 'Economia e Financas Publicas', topicos: [
+          'Microeconomia: oferta, demanda e equilibrio', 'Elasticidades',
+          'Estruturas de mercado', 'Macroeconomia: PIB, inflacao, desemprego',
+          'Politica fiscal e monetaria', 'Balanco de pagamentos',
+          'Financas publicas: tributacao e distribuicao de renda',
+          'Federalismo fiscal', 'Deficit e divida publica',
+          'Politica cambial', 'Economia do setor publico'
+        ]},
+        { nome: 'Analise de Dados e TI', topicos: [
+          'Conceitos de analise de dados', 'Estatistica descritiva',
+          'Probabilidade e distribuicoes', 'Amostragem', 'Visualizacao de dados',
+          'Banco de dados e SQL basico', 'Big Data e inteligencia artificial',
+          'Governanca de TI', 'LGPD aplicada', 'Seguranca da informacao'
+        ]}
+      ],
+
+      // ════════ POLICIAL ════════
+      policial: [
+        { nome: 'Direito Penal', topicos: [
+          'Principios do Direito Penal', 'Aplicacao da lei penal no tempo e espaco',
+          'Crime: conceito, elementos, classificacao', 'Fato tipico',
+          'Ilicitude e causas de exclusao', 'Culpabilidade', 'Dolo e culpa',
+          'Tentativa e consumacao', 'Concurso de crimes', 'Concurso de pessoas',
+          'Penas: especie, aplicacao, dosimetria', 'Crimes contra a pessoa',
+          'Crimes contra o patrimonio', 'Crimes contra a dignidade sexual',
+          'Crimes contra a Administracao Publica', 'Crimes contra a fe publica',
+          'Lei de Drogas (Lei 11.343/2006)', 'Crimes hediondos (Lei 8.072/1990)'
+        ]},
+        { nome: 'Direito Processual Penal', topicos: [
+          'Principios do processo penal', 'Inquerito policial', 'Acao penal publica e privada',
+          'Jurisdicao e competencia', 'Provas: conceito, especies, obtencao',
+          'Prisao em flagrante', 'Prisao preventiva', 'Prisao temporaria',
+          'Liberdade provisoria', 'Medidas cautelares', 'Habeas corpus',
+          'Citacao, intimacao e notificacao', 'Procedimentos (ordinario, sumario, sumarissimo)',
+          'Juizados Especiais Criminais (Lei 9.099/95)', 'Tribunal do Juri',
+          'Recursos no processo penal', 'Execucao penal (Lei 7.210/84)'
+        ]},
+        { nome: 'Legislacao Penal Especial', topicos: [
+          'Estatuto do Desarmamento (Lei 10.826/2003)', 'Crimes de transito (CTB - Lei 9.503/97)',
+          'Lei Maria da Penha (Lei 11.340/2006)', 'Lei de Tortura (Lei 9.455/97)',
+          'Crimes ambientais (Lei 9.605/98)', 'Abuso de autoridade (Lei 13.869/2019)',
+          'Organizacoes criminosas (Lei 12.850/2013)', 'Lavagem de dinheiro (Lei 9.613/98)',
+          'Interceptacao telefonica (Lei 9.296/96)', 'Estatuto da Crianca e Adolescente (ECA)',
+          'Estatuto do Idoso (Lei 10.741/2003)', 'Crimes ciberneticos (Lei 12.737/2012)',
+          'Lei de Migracoes (Lei 13.445/2017)'
+        ]},
+        { nome: 'Direitos Humanos', topicos: [
+          'Teoria geral dos direitos humanos', 'Geracoes/dimensoes dos direitos humanos',
+          'Declaracao Universal dos Direitos Humanos (1948)', 'Pacto de San Jose da Costa Rica',
+          'Convencao contra a Tortura', 'Sistema Interamericano de Direitos Humanos',
+          'Corte Interamericana', 'Comissao Interamericana', 'Direitos humanos na CF/88',
+          'Protecao a mulher, crianca, idoso e deficiente', 'Racismo e discriminacao',
+          'Uso progressivo da forca', 'Principios da atuacao policial'
+        ]},
+        { nome: 'Criminologia', topicos: [
+          'Conceito e objeto da Criminologia', 'Teorias sociologicas do crime',
+          'Teorias biologicas e psicologicas', 'Vitimologia', 'Prevencao criminal',
+          'Politica criminal', 'Criminalidade organizada', 'Reincidencia e ressocializacao',
+          'Cifra negra da criminalidade', 'Delinquencia juvenil'
+        ]},
+        { nome: 'Seguranca Publica', topicos: [
+          'Art. 144 da CF/88 - Orgaos de seguranca publica',
+          'Policia Federal: atribuicoes', 'Policia Rodoviaria Federal',
+          'Policias Civis', 'Policias Militares e Corpos de Bombeiros',
+          'Policia Penal', 'Guardas municipais',
+          'Sistema Unico de Seguranca Publica (SUSP)', 'SINESP',
+          'Politica Nacional de Seguranca Publica', 'Uso da forca e armas de fogo',
+          'Inteligencia policial', 'Investigacao criminal'
+        ]},
+        { nome: 'Medicina Legal', topicos: [
+          'Conceitos e classificacao', 'Traumatologia forense (mecanica, fisica, quimica, biologica)',
+          'Tanatologia forense', 'Sexologia forense', 'Toxicologia forense',
+          'Antropologia forense', 'Psiquiatria forense', 'Documentos medico-legais',
+          'Pericia e peritos', 'Identificacao humana'
+        ]},
+        { nome: 'Legislacao de Transito', topicos: [
+          'Codigo de Transito Brasileiro (CTB)', 'Sistema Nacional de Transito',
+          'Normas gerais de circulacao e conduta', 'Sinalizacao de transito',
+          'Habilitacao', 'Infracoes e penalidades', 'Medidas administrativas',
+          'Crimes de transito', 'Registro e licenciamento de veiculos',
+          'Direcao defensiva'
+        ]}
+      ],
+
+      // ════════ TRIBUNAIS ════════
+      tribunais: [
+        { nome: 'Direito Civil', topicos: [
+          'Lei de Introducao as Normas do Direito Brasileiro (LINDB)', 'Pessoa natural e juridica',
+          'Bens', 'Fato juridico, ato juridico e negocio juridico', 'Prescricao e decadencia',
+          'Obrigacoes: modalidades, transmissao, adimplemento, inadimplemento',
+          'Contratos em geral', 'Contratos em especie', 'Responsabilidade civil',
+          'Posse e propriedade', 'Direito de familia', 'Direito das sucessoes',
+          'Direitos reais', 'Registro publico', 'Tutela e curatela'
+        ]},
+        { nome: 'Direito Processual Civil', topicos: [
+          'Principios do processo civil', 'Normas fundamentais do CPC/2015',
+          'Jurisdicao e competencia', 'Partes e procuradores', 'Litisconsorcio e intervencao de terceiros',
+          'Atos processuais', 'Tutela provisoria (urgencia e evidencia)', 'Formacao do processo',
+          'Citacao, intimacao e notificacao', 'Peticao inicial e contestacao',
+          'Provas no processo civil', 'Sentenca e coisa julgada', 'Recursos',
+          'Cumprimento de sentenca', 'Execucao de titulo extrajudicial',
+          'Procedimentos especiais', 'Juizados Especiais Civeis'
+        ]},
+        { nome: 'Direito do Trabalho', topicos: [
+          'Principios do Direito do Trabalho', 'Relacao de emprego e relacao de trabalho',
+          'Contrato individual de trabalho', 'Alteracao, suspensao e interrupcao do contrato',
+          'Rescisao do contrato de trabalho', 'Aviso previo', 'Jornada de trabalho',
+          'Salario e remuneracao', 'FGTS', 'Ferias', 'Seguranca e medicina do trabalho',
+          'Trabalho da mulher e do menor', 'Direito coletivo do trabalho',
+          'Organizacao sindical', 'Convencao e acordo coletivo'
+        ]},
+        { nome: 'Direito Processual do Trabalho', topicos: [
+          'Principios do processo trabalhista', 'Organizacao da Justica do Trabalho',
+          'Competencia da Justica do Trabalho', 'Acoes trabalhistas',
+          'Peticao inicial e defesa', 'Audiencia trabalhista', 'Provas',
+          'Sentenca e recursos', 'Execucao trabalhista', 'Procedimento sumarissimo',
+          'Dissidios individuais e coletivos', 'Mandado de seguranca',
+          'Habeas corpus na Justica do Trabalho'
+        ]},
+        { nome: 'Direito Penal (area Tribunais)', topicos: [
+          'Principios do Direito Penal', 'Aplicacao da lei penal', 'Crime e seus elementos',
+          'Ilicitude e culpabilidade', 'Penas', 'Crimes contra a pessoa',
+          'Crimes contra o patrimonio', 'Crimes contra a Administracao Publica',
+          'Crimes contra a fe publica', 'Crimes contra a dignidade sexual'
+        ]},
+        { nome: 'Direito Processual Penal (area Tribunais)', topicos: [
+          'Principios do processo penal', 'Inquerito policial', 'Acao penal',
+          'Jurisdicao e competencia', 'Provas', 'Prisao e liberdade provisoria',
+          'Procedimentos', 'Recursos', 'Habeas corpus',
+          'Juizados Especiais Criminais'
+        ]},
+        { nome: 'Direito Eleitoral', topicos: [
+          'Direitos politicos na CF/88', 'Partidos politicos', 'Alistamento eleitoral',
+          'Elegibilidade e inelegibilidade', 'Registro de candidatura',
+          'Propaganda eleitoral', 'Votacao e apuracao', 'Recursos eleitorais',
+          'Crimes eleitorais', 'Acoes eleitorais', 'Organizacao da Justica Eleitoral'
+        ]},
+        { nome: 'Administracao Publica e Gestao', topicos: [
+          'Nocoes de Administracao Publica', 'Gestao de pessoas no setor publico',
+          'Gestao de processos', 'Gestao de projetos', 'Qualidade no setor publico',
+          'Arquivologia: principios e legislacao', 'Classificacao e avaliacao de documentos',
+          'Protocolo e tramitacao', 'Nocoes de Administracao de materiais',
+          'Gestao por competencias', 'Administracao de recursos humanos'
+        ]},
+        { nome: 'Regimento Interno e Organizacao Judiciaria', topicos: [
+          'Estrutura do Poder Judiciario', 'Orgaos do tribunal (composicao e competencia)',
+          'Estatuto da Magistratura (LOMAN)', 'Funcoes essenciais a Justica',
+          'Ministerio Publico', 'Defensoria Publica', 'Advocacia publica',
+          'Corregedoria', 'Conselho Nacional de Justica (CNJ)',
+          'Resolucoes e atos normativos', 'Organizacao judiciaria do estado/regiao'
+        ]}
+      ],
+
+      // ════════ ADMINISTRATIVO ════════
+      administrativo: [
+        { nome: 'Administracao Publica', topicos: [
+          'Modelos de Administracao Publica (patrimonialista, burocratico, gerencial)',
+          'Reforma do Estado e governanca publica', 'Planejamento estrategico',
+          'Gestao por resultados', 'Gestao de processos', 'Gestao de projetos',
+          'Qualidade no setor publico', 'Administracao de materiais e logistica',
+          'Gestao de pessoas no setor publico', 'Gestao por competencias',
+          'Administracao orcamentaria e financeira', 'Transparencia e accountability'
+        ]},
+        { nome: 'Administracao Geral', topicos: [
+          'Teorias da Administracao', 'Processo administrativo (PODC)', 'Planejamento',
+          'Organizacao', 'Direcao', 'Controle', 'Motivacao', 'Lideranca',
+          'Comunicacao organizacional', 'Cultura organizacional',
+          'Gestao de conflitos', 'Tomada de decisao', 'Estruturas organizacionais'
+        ]},
+        { nome: 'Gestao de Pessoas', topicos: [
+          'Recrutamento e selecao', 'Treinamento e desenvolvimento',
+          'Avaliacao de desempenho', 'Gestao por competencias', 'Clima organizacional',
+          'Qualidade de vida no trabalho', 'Remuneracao e beneficios',
+          'Relacoes de trabalho', 'Lideranca e motivacao',
+          'Gestao de equipes', 'Legislacao trabalhista aplicada'
+        ]},
+        { nome: 'Etica no Servico Publico', topicos: [
+          'Decreto 1.171/1994 (Codigo de Etica do Servidor Publico)',
+          'Lei 8.112/1990 (Regime Juridico dos Servidores Federais)',
+          'Deveres e proibicoes do servidor', 'Responsabilidades do servidor',
+          'Processo administrativo disciplinar', 'Sindicancia',
+          'Improbidade administrativa (Lei 8.429/92)', 'Conflito de interesses',
+          'Nepotismo', 'Lei de Acesso a Informacao (Lei 12.527/2011)',
+          'Lei Anticorrupcao (Lei 12.846/2013)'
+        ]},
+        { nome: 'Lei 8.112/1990 - Regime Juridico', topicos: [
+          'Provimento e vacancia', 'Direitos e vantagens', 'Ferias e licencas',
+          'Remuneracao', 'Estabilidade', 'Estagio probatorio',
+          'Acumulacao de cargos', 'Remocao e redistribuicao',
+          'Regime disciplinar', 'Penalidades', 'Processo administrativo disciplinar',
+          'Seguridade social do servidor'
+        ]},
+        { nome: 'Arquivologia', topicos: [
+          'Conceitos fundamentais de arquivologia', 'Teoria das tres idades',
+          'Classificacao de documentos', 'Avaliacao e destinacao de documentos',
+          'Tabela de temporalidade', 'Protocolo: recebimento, classificacao, registro e tramitacao',
+          'Legislacao arquivistica', 'Preservacao e conservacao de documentos',
+          'Gestao eletronica de documentos (GED)', 'Digitalizacao',
+          'SIGAD e e-ARQ Brasil'
+        ]},
+        { nome: 'Nocoes de Contabilidade Publica', topicos: [
+          'Conceitos e campo de aplicacao', 'Orcamento publico',
+          'Receita e despesa publica', 'Creditos adicionais',
+          'Restos a pagar', 'LRF (Lei de Responsabilidade Fiscal)',
+          'Balanco orcamentario', 'Balanco financeiro', 'Balanco patrimonial',
+          'Demonstracao das variacoes patrimoniais'
+        ]},
+        { nome: 'Redacao Oficial', topicos: [
+          'Manual de Redacao da Presidencia da Republica',
+          'Principios da redacao oficial', 'Oficio', 'Memorando', 'Requerimento',
+          'Ata', 'Relatorio', 'Parecer', 'Despacho', 'Exposicao de motivos',
+          'Mensagem', 'Padroes de editais e portarias', 'Linguagem e formalidade'
+        ]}
+      ],
+
+      // ════════ SAUDE ════════
+      saude: [
+        { nome: 'Legislacao do SUS', topicos: [
+          'Constituicao Federal - art. 196 a 200 (Saude)', 'Lei 8.080/1990 (Lei Organica da Saude)',
+          'Lei 8.142/1990 (Participacao da comunidade)', 'Principios do SUS (universalidade, integralidade, equidade)',
+          'Diretrizes do SUS (descentralizacao, regionalizacao, hierarquizacao)',
+          'Decreto 7.508/2011', 'RENASES e RENAME', 'Pacto pela Saude',
+          'Redes de Atencao a Saude (RAS)', 'Politica Nacional de Atencao Basica (PNAB)',
+          'Financiamento do SUS', 'Controle social e Conselhos de Saude',
+          'NOB/SUS 01/96', 'NOAS/SUS 01/2001', 'Vigilancia em Saude'
+        ]},
+        { nome: 'Saude Publica e Epidemiologia', topicos: [
+          'Epidemiologia: conceitos e indicadores', 'Medidas de frequencia (incidencia e prevalencia)',
+          'Tipos de estudos epidemiologicos', 'Vigilancia epidemiologica',
+          'Doencas de notificacao compulsoria', 'Transicao epidemiologica e demografica',
+          'Determinantes sociais da saude', 'Promocao da saude',
+          'Prevencao de doencas (niveis)', 'Programa Nacional de Imunizacoes (PNI)',
+          'Atencao Primaria a Saude (APS)', 'Estrategia Saude da Familia (ESF)',
+          'Indicadores de saude', 'Politica Nacional de Humanizacao (HumanizaSUS)'
+        ]},
+        { nome: 'Enfermagem (Conhecimentos Especificos)', topicos: [
+          'Sistematizacao da Assistencia de Enfermagem (SAE)', 'Processo de enfermagem',
+          'Semiotecnica e procedimentos de enfermagem', 'Administracao de medicamentos',
+          'Calculo e diluicao de medicamentos', 'Verificacao de sinais vitais',
+          'Curativos e tratamento de feridas', 'Cateterismo vesical e venoso',
+          'Oxigenoterapia', 'Assistencia ao paciente critico',
+          'Central de material esterilizado (CME)', 'Seguranca do paciente',
+          'Classificacao de risco', 'Acolhimento'
+        ]},
+        { nome: 'Saude da Mulher', topicos: [
+          'Pre-natal de baixo e alto risco', 'Assistencia ao parto e puerperio',
+          'Aleitamento materno', 'Planejamento familiar', 'Doencas ginecologicas',
+          'Prevencao do cancer de colo de utero e mama', 'Climatério',
+          'Violencia contra a mulher', 'IST na mulher'
+        ]},
+        { nome: 'Saude da Crianca e Adolescente', topicos: [
+          'Crescimento e desenvolvimento infantil', 'Aleitamento materno e alimentacao complementar',
+          'Imunizacao na infancia', 'Doencas prevalentes na infancia (AIDPI)',
+          'Atencao a saude do recem-nascido', 'Triagem neonatal',
+          'Saude do adolescente', 'ECA e saude', 'Programa Saude na Escola'
+        ]},
+        { nome: 'Urgencia e Emergencia', topicos: [
+          'Suporte Basico de Vida (BLS)', 'Suporte Avancado de Vida (ACLS/ATLS)',
+          'Classificacao de risco (Protocolo de Manchester)', 'Politica Nacional de Urgencia e Emergencia',
+          'Atendimento ao politraumatizado', 'Emergencias cardiovasculares',
+          'Emergencias respiratorias', 'Emergencias neurologicas',
+          'Choque: tipos e manejo', 'Queimaduras', 'Intoxicacoes agudas',
+          'SAMU e rede de urgencia'
+        ]},
+        { nome: 'Saude Mental', topicos: [
+          'Politica Nacional de Saude Mental', 'Reforma Psiquiatrica (Lei 10.216/2001)',
+          'CAPS (Centros de Atencao Psicossocial)', 'Rede de Atencao Psicossocial (RAPS)',
+          'Transtornos mentais comuns', 'Dependencia quimica e reducao de danos',
+          'Crise e urgencia psiquiatrica', 'Reabilitacao psicossocial',
+          'Matriciamento em saude mental'
+        ]},
+        { nome: 'Biosseguranca e Controle de Infeccao', topicos: [
+          'Precaucoes padrao e especificas', 'Lavagem das maos e higienizacao',
+          'Equipamentos de protecao individual (EPI)', 'Gerenciamento de residuos em saude',
+          'Esterilizacao e desinfeccao', 'Prevencao de IRAS',
+          'NR-32 (Seguranca no trabalho em saude)', 'Acidentes com material biologico',
+          'CCIH (Comissao de Controle de Infeccao Hospitalar)'
+        ]},
+        { nome: 'Etica e Legislacao Profissional', topicos: [
+          'Codigo de Etica de Enfermagem (COFEN)', 'Codigo de Etica Medica (CFM)',
+          'Lei do Exercicio Profissional', 'COFEN/COREN: legislacao e resolucoes',
+          'Responsabilidade profissional', 'Bioetica: principios',
+          'Sigilo profissional', 'Direitos do paciente', 'Consentimento informado',
+          'Notificacao compulsoria', 'Deontologia'
+        ]},
+        { nome: 'Farmacologia Basica', topicos: [
+          'Farmacocinetica e farmacodinamica', 'Vias de administracao de medicamentos',
+          'Interacoes medicamentosas', 'Efeitos adversos', 'Antibioticos',
+          'Anti-inflamatorios', 'Analgesicos e antipireticos', 'Anti-hipertensivos',
+          'Antidiabeticos', 'Psicotropicos', 'Calculos de dosagem'
+        ]}
+      ],
+
+      // ════════ EDUCACAO ════════
+      educacao: [
+        { nome: 'Legislacao Educacional', topicos: [
+          'Constituicao Federal - capitulo da Educacao (arts. 205 a 214)',
+          'LDB (Lei 9.394/96)', 'Plano Nacional de Educacao (PNE)',
+          'ECA - Estatuto da Crianca e Adolescente (capitulo IV)',
+          'Diretrizes Curriculares Nacionais (DCN)', 'Base Nacional Comum Curricular (BNCC)',
+          'FUNDEB (Lei 14.113/2020)', 'Politica Nacional de Educacao Especial',
+          'Lei 13.146/2015 (Estatuto da Pessoa com Deficiencia)',
+          'Lei 10.639/2003 (Ensino de Historia Afro)', 'Lei 11.645/2008 (Ensino de Historia Indigena)',
+          'Resolucoes do CNE', 'Regimento escolar'
+        ]},
+        { nome: 'Conhecimentos Pedagogicos', topicos: [
+          'Teorias da aprendizagem (Piaget, Vygotsky, Wallon, Ausubel)',
+          'Tendencias pedagogicas na educacao brasileira', 'Pedagogia historico-critica',
+          'Pedagogia de Paulo Freire', 'Construtivismo e sociointeracionismo',
+          'Projeto politico-pedagogico (PPP)', 'Gestao democratica na escola',
+          'Planejamento educacional', 'Interdisciplinaridade e transversalidade',
+          'Competencias e habilidades', 'Taxonomia de Bloom',
+          'Educacao integral', 'Metodologias ativas'
+        ]},
+        { nome: 'Didatica e Praticas de Ensino', topicos: [
+          'Planejamento de aula', 'Objetivos de aprendizagem', 'Selecao de conteudos',
+          'Metodologias de ensino', 'Recursos didaticos', 'Tecnologias na educacao',
+          'Relacao professor-aluno', 'Gestao de sala de aula', 'Motivacao e engajamento',
+          'Transposicao didatica', 'Sequencias didaticas', 'Aprendizagem baseada em projetos'
+        ]},
+        { nome: 'Avaliacao da Aprendizagem', topicos: [
+          'Tipos de avaliacao (diagnostica, formativa, somativa)',
+          'Instrumentos de avaliacao', 'Criterios e indicadores',
+          'Avaliacao qualitativa e quantitativa', 'Avaliacao institucional',
+          'Avaliacoes externas (SAEB, Prova Brasil, ENEM, IDEB)',
+          'Recuperacao e reforco escolar', 'Conselho de classe',
+          'Portfolio e autoavaliacao', 'Avaliacao inclusiva'
+        ]},
+        { nome: 'Curriculo', topicos: [
+          'Teorias do curriculo', 'BNCC: estrutura e competencias gerais',
+          'Organizacao curricular por areas de conhecimento', 'Curriculo e cultura',
+          'Curriculo oculto', 'Temas contemporaneos transversais',
+          'Adaptacao curricular', 'Curriculo e diversidade',
+          'Curriculo e tecnologia', 'Curriculo integrado'
+        ]},
+        { nome: 'Educacao Inclusiva e Especial', topicos: [
+          'Politica Nacional de Educacao Especial na perspectiva inclusiva',
+          'Atendimento Educacional Especializado (AEE)', 'Sala de recursos multifuncionais',
+          'Adaptacoes curriculares e pedagogicas', 'Deficiencia intelectual, fisica e sensorial',
+          'Transtorno do Espectro Autista (TEA)', 'Altas habilidades/superdotacao',
+          'TDAH e dificuldades de aprendizagem', 'Acessibilidade na escola',
+          'Tecnologia assistiva', 'Plano de Desenvolvimento Individual (PDI)'
+        ]},
+        { nome: 'Psicologia da Educacao', topicos: [
+          'Desenvolvimento humano (fases)', 'Teorias do desenvolvimento (Piaget, Vygotsky, Erikson)',
+          'Inteligencias multiplas (Gardner)', 'Inteligencia emocional',
+          'Dificuldades de aprendizagem', 'Relacao afetividade e cognição',
+          'Bullying e violencia escolar', 'Adolescencia e juventude',
+          'Mediacão de conflitos', 'Saude mental do professor'
+        ]},
+        { nome: 'Gestao Escolar', topicos: [
+          'Gestao democratica (LDB art. 14)', 'Projeto Politico-Pedagogico',
+          'Conselho escolar', 'Gestao pedagogica', 'Gestao administrativa e financeira',
+          'PDDE (Programa Dinheiro Direto na Escola)', 'Prestacao de contas',
+          'Lideranca escolar', 'Supervisao e coordenacao pedagogica',
+          'Calendario e organizacao escolar'
+        ]},
+        { nome: 'Fundamentos da Educacao', topicos: [
+          'Historia da educacao brasileira', 'Filosofia da educacao',
+          'Sociologia da educacao', 'Educacao e trabalho', 'Educacao popular',
+          'Educacao de jovens e adultos (EJA)', 'Educacao a distancia (EAD)',
+          'Educacao do campo', 'Educacao indigena e quilombola',
+          'Educacao e direitos humanos', 'Educacao ambiental'
+        ]}
+      ]
+    };
+
+    // ✅ Montar lista de disciplinas com tópicos para a área selecionada
+    var areaAtual = interviewData.area_geral || '';
+    var disciplinasBasicasArea = disciplinasPorArea._basicas || [];
+    var disciplinasEspecificasArea = disciplinasPorArea[areaAtual] || [];
+    
+    // Combinar básicas + específicas da área
+    var todasDisciplinas = [...disciplinasBasicasArea, ...disciplinasEspecificasArea];
+    
+    // Gerar IDs temporários baseados no índice (serão mapeados ao salvar)
+    disciplinasFiltradas = todasDisciplinas.map(function(d, idx) {
+      return {
+        id: 90000 + idx, // IDs temporários altos para não conflitar
+        nome: d.nome,
+        descricao: 'Disciplina pre-carregada da area ' + (areaAtual || 'geral') + ' (' + d.topicos.length + ' topicos)',
+        area: areaAtual || 'basico',
+        peso: null,
+        total_topicos: d.topicos.length,
+        topicos: d.topicos.map(function(t) { return { nome: t }; }),
+        _is_predefined: true // Flag para saber que é pré-definida
+      };
+    });
+    
+    console.log('📋 ' + disciplinasFiltradas.length + ' disciplinas pre-definidas carregadas para area: ' + areaAtual);
+    console.log('📊 Disciplinas:', disciplinasFiltradas.map(function(d) { return d.nome + ' (' + d.total_topicos + ' topicos)'; }).join(', '));
   }
 
   document.getElementById('app').innerHTML = `
@@ -6601,34 +7058,34 @@ Sintaxe da oração e do período"></textarea>
     e.preventDefault();
     
     // ✅ NOVA LÓGICA: Mapear apenas disciplinas com checkbox "select_" marcado
-    console.log('🔍 DEBUG - disciplinasFiltradas:', disciplinasFiltradas.map(d => `${d.nome} (ID: ${d.id})`));
+    console.log('🔍 DEBUG - disciplinasFiltradas:', disciplinasFiltradas.map(d => `${d.nome} (ID: ${d.id}, predefined: ${!!d._is_predefined})`));
     
-    interviewData.disciplinas = disciplinasFiltradas
-      .filter(disc => {
-        const selectCheckbox = document.getElementById(`select_${disc.id}`);
-        const isSelected = selectCheckbox?.checked;
-        console.log(`  - ${disc.nome}: selecionado = ${isSelected}, ID = ${disc.id}, checkbox existe = ${!!selectCheckbox}`);
-        return isSelected; // Incluir apenas se foi selecionada
-      })
+    // ✅ v81: Separar disciplinas pré-definidas (sem ID real) das do banco
+    var disciplinasSelecionadas = disciplinasFiltradas.filter(disc => {
+      const selectCheckbox = document.getElementById(`select_${disc.id}`);
+      return selectCheckbox?.checked;
+    });
+    
+    // Separar: pré-definidas vão como custom, do banco vão como padrão
+    var discDoBanco = disciplinasSelecionadas.filter(d => !d._is_predefined);
+    var discPreDefinidas = disciplinasSelecionadas.filter(d => d._is_predefined);
+    
+    console.log('📋 Disciplinas do banco:', discDoBanco.length, '| Pré-definidas:', discPreDefinidas.length);
+    
+    interviewData.disciplinas = discDoBanco
       .map(disc => {
-        // ✅ CORREÇÃO v20.9: Validar que disc.id existe e não é null/undefined
         if (!disc.id || disc.id === 0) {
-          console.error(`❌ ERRO: Disciplina "${disc.nome}" sem ID válido:`, disc);
-          return null; // Será filtrado depois
+          console.error('Disciplina sem ID valido:', disc.nome);
+          return null;
         }
         
-        // Buscar valores dos campos
         const dominioSlider = document.getElementById(`dominio_${disc.id}`);
         const pesoInput = document.getElementById(`peso_${disc.id}`);
-        
-        // ✅ NOVO: Usar slider de domínio (0-10)
         const nivel_dominio = parseInt(dominioSlider?.value || 0);
-        // Derivar valores para compatibilidade
-        const ja_estudou = nivel_dominio > 0; // Se conhece algo, já estudou
+        const ja_estudou = nivel_dominio > 0;
         const nivel_atual = nivel_dominio;
-        const dificuldade = nivel_dominio <= 3; // Se domínio é baixo, tem dificuldade
+        const dificuldade = nivel_dominio <= 3;
         
-        // Peso: usar valor do input se existir e não for readonly, senão usar peso do edital
         let peso = null;
         if (pesoInput) {
           if (pesoInput.readOnly) {
@@ -6640,32 +7097,58 @@ Sintaxe da oração e do período"></textarea>
           peso = disc.peso || null;
         }
         
-        console.log(`    → Mapeado: dominio=${nivel_dominio}, peso=${peso}`);
-        
         return {
           disciplina_id: disc.id,
-          nivel_dominio, // ✅ NOVO: Nível de domínio 0-10
+          nivel_dominio,
           ja_estudou,
           nivel_atual,
           dificuldade,
           peso
         };
       })
-      .filter(d => d !== null); // Remover disciplinas com ID inválido
+      .filter(d => d !== null);
+    
+    // ✅ v81: Converter disciplinas pré-definidas em disciplinasCustom com tópicos
+    var preDefinedAsCustom = discPreDefinidas.map(disc => {
+      const dominioSlider = document.getElementById(`dominio_${disc.id}`);
+      const pesoInput = document.getElementById(`peso_${disc.id}`);
+      const nivel_dominio = parseInt(dominioSlider?.value || 0);
+      
+      return {
+        nome: disc.nome,
+        area: disc.area || interviewData.area_geral || 'geral',
+        custom: true,
+        _is_predefined: true,
+        ja_estudou: nivel_dominio > 0,
+        nivel_atual: nivel_dominio,
+        nivel_dominio: nivel_dominio,
+        dificuldade: nivel_dominio <= 3,
+        peso: parseInt(pesoInput?.value) || null,
+        topicos: (disc.topicos || []).map(t => typeof t === 'string' ? t : t.nome)
+      };
+    });
+    
+    // Adicionar pré-definidas ao array de disciplinas custom existente
     
     // Adicionar disciplinas personalizadas (todas são selecionadas automaticamente)
-    interviewData.disciplinasCustom = window.disciplinasCustom.map(disc => ({
-      nome: disc.nome,
-      area: disc.area,
-      custom: true,
-      ja_estudou: false,  // Disciplina nova, nunca estudou
-      nivel_atual: 0,
-      dificuldade: false
-    }));
+    interviewData.disciplinasCustom = [
+      ...window.disciplinasCustom.map(disc => ({
+        nome: disc.nome,
+        area: disc.area,
+        custom: true,
+        ja_estudou: false,
+        nivel_atual: 0,
+        dificuldade: false
+      })),
+      ...preDefinedAsCustom
+    ];
+    
+    console.log('📋 FRONTEND - disciplinasCustom total:', interviewData.disciplinasCustom.length, 
+      '(manuais:', window.disciplinasCustom.length, '+ pre-definidas:', preDefinedAsCustom.length, ')');
     
     // ✅ LOG DEBUG: Mostrar disciplinas que serão enviadas
-    console.log('📋 FRONTEND - Disciplinas selecionadas:', interviewData.disciplinas.map(d => `ID ${d.disciplina_id}`).join(', '));
-    console.log('📊 FRONTEND - Total de disciplinas:', interviewData.disciplinas.length);
+    console.log('📋 FRONTEND - Disciplinas padrao:', interviewData.disciplinas.map(d => `ID ${d.disciplina_id}`).join(', '));
+    console.log('📊 FRONTEND - Total disciplinas:', interviewData.disciplinas.length + interviewData.disciplinasCustom.length);
     
     // Validar que pelo menos 1 disciplina foi selecionada (padrão OU personalizada)
     const totalDisciplinas = interviewData.disciplinas.length + interviewData.disciplinasCustom.length;

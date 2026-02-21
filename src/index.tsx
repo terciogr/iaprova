@@ -10886,13 +10886,17 @@ app.post('/api/interviews', async (c) => {
   const data = await c.req.json()
 
   try {
-    // Validar que há disciplinas
-    if (!data.disciplinas || data.disciplinas.length === 0) {
+    // Validar que há disciplinas (padrão OU personalizadas/pré-definidas)
+    const totalDisc = (data.disciplinas?.length || 0) + (data.disciplinasCustom?.length || 0)
+    if (totalDisc === 0) {
       return c.json({ 
         error: 'Você precisa selecionar pelo menos uma disciplina para continuar',
         code: 'NO_DISCIPLINES'
       }, 400)
     }
+    
+    // Garantir que data.disciplinas é um array
+    if (!data.disciplinas) data.disciplinas = []
 
     // Validar que o usuário existe
     const userExists = await DB.prepare('SELECT id FROM users WHERE id = ?')
@@ -10944,9 +10948,9 @@ app.post('/api/interviews', async (c) => {
 
     // 🆕 PROCESSAR DISCIPLINAS PERSONALIZADAS (criar no banco se não existem) - v54 BATCH
     if (data.disciplinasCustom && data.disciplinasCustom.length > 0) {
-      console.log(`📚 v54 BATCH: Processando ${data.disciplinasCustom.length} disciplinas personalizadas...`)
+      console.log(`📚 v81 BATCH: Processando ${data.disciplinasCustom.length} disciplinas personalizadas/pré-definidas...`)
       
-      // Buscar todas em batch
+      // Buscar todas em batch (primeiro por nome+area exato)
       const batchBuscaCustom = data.disciplinasCustom.map((disc: any) =>
         DB.prepare('SELECT id FROM disciplinas WHERE nome = ? AND area = ?').bind(disc.nome, disc.area)
       )
@@ -10970,7 +10974,7 @@ app.post('/api/interviews', async (c) => {
       if (discParaCriarCustom.length > 0) {
         const batchCriarCustom = discParaCriarCustom.map((disc: any) =>
           DB.prepare('INSERT INTO disciplinas (nome, area, descricao) VALUES (?, ?, ?)')
-            .bind(disc.nome, disc.area, 'Disciplina personalizada criada pelo usuário')
+            .bind(disc.nome, disc.area, disc._is_predefined ? 'Disciplina pré-definida da área ' + disc.area : 'Disciplina personalizada criada pelo usuário')
         )
         const resCriarCustom = await DB.batch(batchCriarCustom)
         resCriarCustom.forEach((r: any, i: number) => {
@@ -10980,13 +10984,56 @@ app.post('/api/interviews', async (c) => {
         })
       }
       
+      // ✅ v81: Criar tópicos para disciplinas pré-definidas que têm tópicos
+      const topicosParaCriar: { discId: number, topicos: string[] }[] = []
+      for (const disc of data.disciplinasCustom) {
+        if (disc.disciplina_id && disc.topicos && disc.topicos.length > 0) {
+          // Verificar se já tem tópicos no banco
+          const existingTopics = await DB.prepare(
+            'SELECT COUNT(*) as count FROM topicos_edital WHERE disciplina_id = ?'
+          ).bind(disc.disciplina_id).first() as any
+          
+          if (!existingTopics || existingTopics.count === 0) {
+            topicosParaCriar.push({ discId: disc.disciplina_id, topicos: disc.topicos })
+          } else {
+            console.log(`ℹ️ Disciplina ID ${disc.disciplina_id} já tem ${existingTopics.count} tópicos`)
+          }
+        }
+      }
+      
+      if (topicosParaCriar.length > 0) {
+        console.log(`📝 Criando tópicos para ${topicosParaCriar.length} disciplinas...`)
+        
+        // Criar tópicos em batches (máx 50 por batch para evitar limite)
+        const allTopicStmts: any[] = []
+        for (const item of topicosParaCriar) {
+          item.topicos.forEach((nome: string, idx: number) => {
+            allTopicStmts.push(
+              DB.prepare('INSERT OR IGNORE INTO topicos_edital (disciplina_id, nome, categoria, ordem, peso) VALUES (?, ?, ?, ?, ?)')
+                .bind(item.discId, nome, 'conteudo', idx + 1, 1)
+            )
+          })
+        }
+        
+        // Executar em batches de 40
+        for (let b = 0; b < allTopicStmts.length; b += 40) {
+          const batch = allTopicStmts.slice(b, b + 40)
+          await DB.batch(batch)
+        }
+        
+        const totalTopicos = topicosParaCriar.reduce((sum, item) => sum + item.topicos.length, 0)
+        console.log(`✅ ${totalTopicos} tópicos criados para ${topicosParaCriar.length} disciplinas`)
+      }
+      
       for (const disc of data.disciplinasCustom) {
         // Adicionar à lista de disciplinas padrão para processar junto
         data.disciplinas.push({
           disciplina_id: disc.disciplina_id,
           ja_estudou: disc.ja_estudou || false,
           nivel_atual: disc.nivel_atual || 0,
-          dificuldade: disc.dificuldade || false
+          nivel_dominio: disc.nivel_dominio || 0,
+          dificuldade: disc.dificuldade || false,
+          peso: disc.peso || null
         })
       }
     }
@@ -11029,13 +11076,34 @@ app.post('/api/interviews', async (c) => {
       if (planoExistenteAuto) {
         console.log(`🔄 Plano "${nomePlanoAuto}" já existe (ID ${planoExistenteAuto.id}). Substituindo...`)
         
-        // Deletar dados relacionados ao plano antigo (batch)
-        await DB.batch([
-          DB.prepare('DELETE FROM metas_diarias WHERE plano_id = ?').bind(planoExistenteAuto.id),
-          DB.prepare('DELETE FROM ciclos_estudo WHERE plano_id = ?').bind(planoExistenteAuto.id),
-          DB.prepare('DELETE FROM semanas_estudo WHERE plano_id = ?').bind(planoExistenteAuto.id),
-          DB.prepare('DELETE FROM planos_estudo WHERE id = ?').bind(planoExistenteAuto.id)
-        ])
+        const planoAntigoId = planoExistenteAuto.id
+        
+        // ✅ v82: Exclusão completa respeitando FKs - mesma lógica de DELETE /api/planos/:plano_id
+        const tabelasParaLimpar = [
+          { nome: 'conteudo_topicos', query: `DELETE FROM conteudo_topicos WHERE topico_id IN (SELECT id FROM topicos_edital WHERE plano_id = ?)` },
+          { nome: 'materiais_salvos', query: `DELETE FROM materiais_salvos WHERE topico_id IN (SELECT id FROM topicos_edital WHERE plano_id = ?)` },
+          { nome: 'user_topicos_progresso_via_topico', query: `DELETE FROM user_topicos_progresso WHERE topico_id IN (SELECT id FROM topicos_edital WHERE plano_id = ?)` },
+          { nome: 'topicos_edital', query: `DELETE FROM topicos_edital WHERE plano_id = ?` },
+          { nome: 'user_topicos_progresso_via_plano', query: `DELETE FROM user_topicos_progresso WHERE plano_id = ?` },
+          { nome: 'conteudo_estudo', query: `DELETE FROM conteudo_estudo WHERE meta_id IN (SELECT id FROM metas_diarias WHERE plano_id = ?)` },
+          { nome: 'exercicios_resultados', query: `DELETE FROM exercicios_resultados WHERE meta_id IN (SELECT id FROM metas_diarias WHERE plano_id = ?)` },
+          { nome: 'historico_estudos', query: `DELETE FROM historico_estudos WHERE plano_id = ?` },
+          { nome: 'simulados_historico', query: `DELETE FROM simulados_historico WHERE plano_id = ?` },
+          { nome: 'metas_semana', query: `DELETE FROM metas_semana WHERE semana_id IN (SELECT id FROM semanas_estudo WHERE plano_id = ?)` },
+          { nome: 'semanas_estudo', query: `DELETE FROM semanas_estudo WHERE plano_id = ?` },
+          { nome: 'metas_diarias', query: `DELETE FROM metas_diarias WHERE plano_id = ?` },
+          { nome: 'ciclos_estudo', query: `DELETE FROM ciclos_estudo WHERE plano_id = ?` },
+        ]
+        
+        for (const tabela of tabelasParaLimpar) {
+          try {
+            await DB.prepare(tabela.query).bind(planoAntigoId).run()
+          } catch (e: any) {
+            console.log(`  ⚠️ ${tabela.nome}: ${e.message?.substring(0, 60) || 'erro'}`)
+          }
+        }
+        
+        await DB.prepare('DELETE FROM planos_estudo WHERE id = ?').bind(planoAntigoId).run()
         
         console.log(`✅ Plano antigo ${planoExistenteAuto.id} removido`)
       }
@@ -11047,27 +11115,29 @@ app.post('/api/interviews', async (c) => {
       const discIds = data.disciplinas.filter((d: any) => d.disciplina_id).map((d: any) => d.disciplina_id)
       
       if (discIds.length === 0) {
-        throw new Error('Nenhuma disciplina válida foi selecionada')
+        console.log('ℹ️ Nenhuma disciplina padrão (com ID) - todas vieram como custom/pré-definidas')
       }
       
       // PASSO 1: Buscar TODAS as disciplinas por ID direto (batch)
-      const batchBuscaDisc = discIds.map((id: number) =>
-        DB.prepare('SELECT id, nome, area FROM disciplinas WHERE id = ?').bind(id)
-      )
-      const resBuscaDisc = await DB.batch(batchBuscaDisc)
-      
-      // Mapear quais foram encontradas e quais não
       const discEncontradas = new Map<number, any>()
       const discNaoEncontradas: number[] = []
       
-      resBuscaDisc.forEach((r: any, i: number) => {
-        const rows = r.results || []
-        if (rows.length > 0) {
-          discEncontradas.set(discIds[i], rows[0])
-        } else {
-          discNaoEncontradas.push(discIds[i])
-        }
-      })
+      if (discIds.length > 0) {
+        const batchBuscaDisc = discIds.map((id: number) =>
+          DB.prepare('SELECT id, nome, area FROM disciplinas WHERE id = ?').bind(id)
+        )
+        const resBuscaDisc = await DB.batch(batchBuscaDisc)
+        
+        // Mapear quais foram encontradas e quais não
+        resBuscaDisc.forEach((r: any, i: number) => {
+          const rows = r.results || []
+          if (rows.length > 0) {
+            discEncontradas.set(discIds[i], rows[0])
+          } else {
+            discNaoEncontradas.push(discIds[i])
+          }
+        })
+      }
       
       // PASSO 2: Para as não encontradas, buscar em edital_disciplinas (batch)
       if (discNaoEncontradas.length > 0) {
@@ -11252,13 +11322,14 @@ app.post('/api/interviews', async (c) => {
         diagnostico: diagnosticoCompleto, // ✅ CORREÇÃO: Usar diagnóstico completo com disciplinas validadas
         message: 'Entrevista e plano criados com sucesso!'
       })
-    } catch (planError) {
+    } catch (planError: any) {
       console.error('❌ Erro ao criar plano automático:', planError)
       // Retorna a entrevista mesmo se o plano falhar
       return c.json({ 
         interview_id, 
         diagnostico, // Em caso de erro, usar diagnóstico antigo como fallback
-        warning: 'Entrevista criada, mas houve erro ao criar o plano. Use POST /api/planos para criar manualmente.'
+        warning: 'Entrevista criada, mas houve erro ao criar o plano. Use POST /api/planos para criar manualmente.',
+        planError: planError?.message || String(planError)
       })
     }
   } catch (error) {
