@@ -6196,45 +6196,46 @@ async function renderEntrevistaStep3() {
                    data-selected="false"
                    onclick="toggleDisciplinaByCard(${disc.id})">
                 
-                <div class="flex items-center gap-3">
+                <div class="flex items-start gap-2 md:gap-3">
                   <!-- Checkbox -->
                   <input type="checkbox" id="select_${disc.id}" 
                     onclick="event.stopPropagation()"
                     onchange="toggleDisciplinaSelection(${disc.id})"
-                    class="w-5 h-5 text-[#1A3A7F] rounded focus:ring-[#1A3A7F] flex-shrink-0">
+                    class="w-5 h-5 mt-0.5 text-[#1A3A7F] rounded focus:ring-[#1A3A7F] flex-shrink-0">
                   
-                  <!-- Nome + Tópicos -->
+                  <!-- Nome + Meta (layout empilhado no mobile) -->
                   <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                      <span class="font-medium text-gray-900 truncate">${disc.nome}</span>
-                      <span class="text-xs text-gray-400 flex-shrink-0">(${disc.total_topicos || disc.topicos?.length || 0} tópicos)</span>
+                    <!-- Linha 1: Nome completo (sem truncar no mobile) -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="font-medium text-gray-900 text-sm md:text-base break-words">${disc.nome}</span>
+                    </div>
+                    <!-- Linha 2: Tópicos + Peso (compacto) -->
+                    <div class="flex items-center gap-2 mt-1 flex-wrap">
+                      <span class="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">${disc.total_topicos || disc.topicos?.length || 0} tópicos</span>
                       ${(disc.total_topicos || disc.topicos?.length || 0) > 0 ? `
                         <button type="button" onclick="event.stopPropagation();toggleTopicos(${disc.id})" 
-                          class="text-xs text-[#1A3A7F] hover:text-[#0D1F4D] flex items-center gap-1" title="Ver/editar tópicos">
-                          <i class="fas fa-eye text-xs"></i>
+                          class="text-xs text-[#1A3A7F] hover:text-[#0D1F4D] flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded" title="Ver/editar tópicos">
+                          <i class="fas fa-eye text-[10px]"></i> <span class="hidden md:inline">Ver</span>
                         </button>
                       ` : ''}
+                      <div class="flex items-center gap-1 ml-auto" onclick="event.stopPropagation()">
+                        ${disc.peso ? `
+                          <span class="text-xs text-[#2A4A9F] font-medium">Peso:</span>
+                          <input type="number" id="peso_${disc.id}" 
+                            min="1" max="20" 
+                            value="${disc.peso}"
+                            class="w-12 px-1 py-0.5 text-xs text-center border border-green-300 rounded bg-green-50 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            title="Peso extraído do edital (editável)">
+                        ` : `
+                          <span class="text-xs text-gray-400">Peso:</span>
+                          <input type="number" id="peso_${disc.id}" 
+                            min="1" max="20" 
+                            placeholder="-"
+                            class="w-12 px-1 py-0.5 text-xs text-center border border-gray-200 rounded focus:ring-2 focus:ring-[#1A3A7F] focus:border-[#1A3A7F]"
+                            title="Informe o peso (opcional)">
+                        `}
+                      </div>
                     </div>
-                    ${disc.descricao ? `<p class="text-xs text-gray-500 truncate">${disc.descricao}</p>` : ''}
-                  </div>
-                  
-                  <!-- Peso (editável) -->
-                  <div class="flex items-center gap-1 flex-shrink-0" onclick="event.stopPropagation()">
-                    ${disc.peso ? `
-                      <span class="text-xs text-[#2A4A9F] font-medium">Peso:</span>
-                      <input type="number" id="peso_${disc.id}" 
-                        min="1" max="20" 
-                        value="${disc.peso}"
-                        class="w-14 px-2 py-1 text-sm text-center border border-green-300 rounded bg-green-50 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        title="Peso extraído do edital (editável)">
-                    ` : `
-                      <span class="text-xs text-gray-400">Peso:</span>
-                      <input type="number" id="peso_${disc.id}" 
-                        min="1" max="20" 
-                        placeholder="-"
-                        class="w-14 px-2 py-1 text-sm text-center border border-gray-200 rounded focus:ring-2 focus:ring-[#1A3A7F] focus:border-[#1A3A7F]"
-                        title="Informe o peso (opcional)">
-                    `}
                   </div>
                 </div>
                 
