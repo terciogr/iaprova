@@ -7214,9 +7214,10 @@ async function finalizarEntrevista() {
   }
   
   try {
-    // Validação final
-    if (!interviewData.disciplinas || interviewData.disciplinas.length === 0) {
-      showModal(' Por favor, selecione pelo menos uma disciplina antes de continuar.\n\nMarque "Já estudei" ou "Tenho dificuldade" em ao menos uma matéria.');
+    // Validação final - considerar AMBAS as listas (padrão + custom/pré-definidas)
+    const totalDiscFinal = (interviewData.disciplinas?.length || 0) + (interviewData.disciplinasCustom?.length || 0);
+    if (totalDiscFinal === 0) {
+      showModal(' Por favor, selecione pelo menos uma disciplina antes de continuar.\n\nMarque a checkbox ao lado da disciplina que deseja estudar.');
       return;
     }
 

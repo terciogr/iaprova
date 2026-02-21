@@ -10962,8 +10962,8 @@ app.post('/api/interviews', async (c) => {
       resBuscaCustom.forEach((r: any, i: number) => {
         const rows = r.results || []
         if (rows.length > 0) {
-          data.disciplinasCustom[i].disciplina_id = rows[0].id
-          console.log(`ℹ️ Disciplina "${data.disciplinasCustom[i].nome}" já existia (ID ${rows[0].id})`)
+          data.disciplinasCustom[i].disciplina_id = Number(rows[0].id)
+          console.log(`ℹ️ Disciplina "${data.disciplinasCustom[i].nome}" já existia (ID ${rows[0].id}, type: ${typeof rows[0].id})`)
         } else {
           discParaCriarCustom.push(data.disciplinasCustom[i])
           discParaCriarIndices.push(i)
@@ -10979,8 +10979,8 @@ app.post('/api/interviews', async (c) => {
         const resCriarCustom = await DB.batch(batchCriarCustom)
         resCriarCustom.forEach((r: any, i: number) => {
           const idx = discParaCriarIndices[i]
-          data.disciplinasCustom[idx].disciplina_id = r.meta?.last_row_id
-          console.log(`✅ Disciplina "${data.disciplinasCustom[idx].nome}" criada com ID ${r.meta?.last_row_id}`)
+          data.disciplinasCustom[idx].disciplina_id = Number(r.meta?.last_row_id)
+          console.log(`✅ Disciplina "${data.disciplinasCustom[idx].nome}" criada com ID ${r.meta?.last_row_id} (type: ${typeof r.meta?.last_row_id})`)
         })
       }
       
@@ -11027,8 +11027,15 @@ app.post('/api/interviews', async (c) => {
       
       for (const disc of data.disciplinasCustom) {
         // Adicionar à lista de disciplinas padrão para processar junto
+        // ✅ v83-fix: Garantir Number() cast para evitar type mismatch
+        const discId = Number(disc.disciplina_id)
+        if (!discId || isNaN(discId)) {
+          console.log(`⚠️ Disciplina custom "${disc.nome}" sem ID válido, pulando`)
+          continue
+        }
         data.disciplinas.push({
-          disciplina_id: disc.disciplina_id,
+          disciplina_id: discId,
+          nome: disc.nome,
           ja_estudou: disc.ja_estudou || false,
           nivel_atual: disc.nivel_atual || 0,
           nivel_dominio: disc.nivel_dominio || 0,
@@ -11038,8 +11045,8 @@ app.post('/api/interviews', async (c) => {
       }
     }
 
-    // Gerar diagnóstico
-    const diagnostico = await gerarDiagnostico(DB, data.user_id, interview_id)
+    // ⚠️ DIAGNÓSTICO será gerado DEPOIS de user_disciplinas ser criado (veja abaixo)
+    let diagnostico: any = null
 
     // 🆕 CRIAR PLANO AUTOMATICAMENTE
     try {
@@ -11062,6 +11069,12 @@ app.post('/api/interviews', async (c) => {
       // Se não existe e já tem 3 planos, bloquear
       if (!planoExistenteAuto && planosExistentes.length >= MAX_PLANOS) {
         console.log(`⚠️ Usuário ${data.user_id} já atingiu o limite de ${MAX_PLANOS} planos`)
+        // ✅ v83-fix: Gerar diagnóstico mesmo quando limite é atingido
+        diagnostico = await gerarDiagnostico(DB, data.user_id, interview_id)
+        // Se diagnóstico vazio (user_disciplinas pode não existir ainda), gerar baseado em data
+        if (!diagnostico || diagnostico.prioridades?.length === 0) {
+          diagnostico = gerarDiagnosticoFromData(data)
+        }
         return c.json({
           success: true,
           interview: { id: interview_id },
@@ -11109,10 +11122,11 @@ app.post('/api/interviews', async (c) => {
       }
       
       // ✅ v54 BATCH: Processar disciplinas em batch para evitar limite de 50 subrequests
-      console.log(`📋 Disciplinas recebidas do frontend:`, data.disciplinas.map((d: any) => `ID ${d.disciplina_id}`).join(', '))
+      console.log(`📋 Disciplinas recebidas do frontend (${data.disciplinas.length}):`, data.disciplinas.map((d: any) => `ID ${d.disciplina_id} (type: ${typeof d.disciplina_id})`).join(', '))
       
       const disciplinasProcessadas: any[] = []
-      const discIds = data.disciplinas.filter((d: any) => d.disciplina_id).map((d: any) => d.disciplina_id)
+      // ✅ v83-fix: Garantir Number() cast em todos os IDs para evitar mismatch de tipo
+      const discIds = data.disciplinas.filter((d: any) => d.disciplina_id).map((d: any) => Number(d.disciplina_id))
       
       if (discIds.length === 0) {
         console.log('ℹ️ Nenhuma disciplina padrão (com ID) - todas vieram como custom/pré-definidas')
@@ -11209,9 +11223,16 @@ app.post('/api/interviews', async (c) => {
       }
       
       // PASSO 3: Garantir registros em user_disciplinas (batch)
-      const discIdsValidos = [...discEncontradas.entries()].map(([origId, disc]) => ({
-        origId, disc, discData: data.disciplinas.find((d: any) => d.disciplina_id === origId)
-      })).filter(item => item.discData)
+      // ✅ v83-fix: Usar Number() para comparação segura (evitar BigInt vs number ou string vs number)
+      const discIdsValidos = [...discEncontradas.entries()].map(([origId, disc]) => {
+        const discData = data.disciplinas.find((d: any) => Number(d.disciplina_id) === Number(origId))
+        if (!discData) {
+          console.log(`⚠️ origId ${origId} (${typeof origId}) não encontrado em data.disciplinas. IDs disponíveis:`, data.disciplinas.map((d: any) => `${d.disciplina_id}(${typeof d.disciplina_id})`).join(','))
+        }
+        return { origId, disc, discData }
+      }).filter(item => item.discData)
+      
+      console.log(`📊 PASSO 3: discEncontradas=${discEncontradas.size}, discIdsValidos=${discIdsValidos.length}`)
       
       // Buscar user_disciplinas existentes (batch)
       const batchBuscaUserDisc = discIdsValidos.map(item =>
@@ -11234,7 +11255,12 @@ app.post('/api/interviews', async (c) => {
       })
       if (batchInsertUserDisc.length > 0) {
         await DB.batch(batchInsertUserDisc)
+        console.log(`✅ ${batchInsertUserDisc.length} registros user_disciplinas criados`)
       }
+      
+      // ✅ v83-fix: Gerar diagnóstico AQUI, DEPOIS de user_disciplinas existir no banco
+      diagnostico = await gerarDiagnostico(DB, data.user_id, interview_id)
+      console.log(`📊 Diagnóstico gerado: ${diagnostico.nivel_geral}, ${diagnostico.prioridades?.length || 0} prioridades`)
       
       // Montar disciplinasProcessadas
       for (const item of discIdsValidos) {
@@ -11324,10 +11350,14 @@ app.post('/api/interviews', async (c) => {
       })
     } catch (planError: any) {
       console.error('❌ Erro ao criar plano automático:', planError)
+      // ✅ v83-fix: Gerar diagnóstico de fallback se não foi gerado ainda
+      if (!diagnostico || diagnostico.prioridades?.length === 0) {
+        diagnostico = gerarDiagnosticoFromData(data)
+      }
       // Retorna a entrevista mesmo se o plano falhar
       return c.json({ 
         interview_id, 
-        diagnostico, // Em caso de erro, usar diagnóstico antigo como fallback
+        diagnostico,
         warning: 'Entrevista criada, mas houve erro ao criar o plano. Use POST /api/planos para criar manualmente.',
         planError: planError?.message || String(planError)
       })
@@ -17416,6 +17446,59 @@ function gerarRecomendacao(interview: any, disciplinas: any[], nivelGeral: strin
   }
   
   return `Nível avançado! Foque em: 20% revisão de conceitos, 50% resolução intensiva de questões e 30% em pontos fracos identificados.`
+}
+
+// ✅ v83-fix: Gerar diagnóstico baseado nos dados da entrevista (sem consultar DB)
+// Usado quando user_disciplinas ainda não existem (ex: limitReached antes de criar)
+function gerarDiagnosticoFromData(data: any) {
+  const allDisc = [
+    ...(data.disciplinas || []),
+    ...(data.disciplinasCustom || [])
+  ]
+  
+  if (allDisc.length === 0) {
+    return {
+      nivel_geral: 'Sem dados',
+      prioridades: [],
+      lacunas: [],
+      recomendacao: 'Nenhuma disciplina foi selecionada.'
+    }
+  }
+  
+  const nivelMedio = allDisc.reduce((sum: number, d: any) => sum + (d.nivel_atual || d.nivel_dominio || 0), 0) / allDisc.length
+  let nivelGeral = 'Iniciante'
+  if (nivelMedio >= 7) nivelGeral = 'Avançado'
+  else if (nivelMedio >= 4) nivelGeral = 'Intermediário'
+  
+  const prioridades = allDisc
+    .filter((d: any) => !d.ja_estudou || (d.nivel_atual || d.nivel_dominio || 0) < 6 || d.dificuldade)
+    .map((d: any) => ({
+      disciplina_id: d.disciplina_id || 0,
+      nome: d.nome || 'Disciplina',
+      peso: calcularPeso({ ...d, nivel_atual: d.nivel_atual || d.nivel_dominio || 0 }),
+      razao: gerarRazaoPrioridade({ ...d, nivel_atual: d.nivel_atual || d.nivel_dominio || 0 })
+    }))
+    .sort((a, b) => b.peso - a.peso)
+    .slice(0, 5)
+  
+  const lacunas = allDisc.filter((d: any) => !d.ja_estudou).map((d: any) => d.nome || 'Disciplina')
+  
+  const tempoDia = data.tempo_disponivel_dia || 120
+  let recomendacao = `Com ${tempoDia} minutos por dia e ${allDisc.length} disciplinas, mantenha consistência.`
+  if (nivelGeral === 'Iniciante') {
+    recomendacao = `Com ${tempoDia} minutos por dia, foque em construir uma base sólida. Comece pelas disciplinas que nunca estudou.`
+  } else if (nivelGeral === 'Intermediário') {
+    recomendacao = `Você já tem uma base. Distribua: 40% teoria, 40% exercícios e 20% revisão.`
+  }
+  
+  return {
+    nivel_geral: nivelGeral,
+    prioridades,
+    lacunas,
+    recomendacao,
+    nivel_medio: Math.round(nivelMedio * 10) / 10,
+    total_disciplinas: allDisc.length
+  }
 }
 
 function gerarDiagnosticoCompleto(interview: any, disciplinas: any[]) {

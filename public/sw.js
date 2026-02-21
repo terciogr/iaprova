@@ -1,7 +1,7 @@
-// IAprova Service Worker v3.0 - Atualização de ícones e configurações
-const CACHE_NAME = 'iaprova-v68';
-const STATIC_CACHE = 'iaprova-static-v68';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v68';
+// IAprova Service Worker v3.1 - Network First para app.js
+const CACHE_NAME = 'iaprova-v83';
+const STATIC_CACHE = 'iaprova-static-v83';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v83';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
@@ -80,7 +80,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Estratégia: Cache First para assets estáticos
+  // ✅ v83: NETWORK FIRST para app.js (sempre buscar a versão mais recente)
+  if (url.pathname === '/static/app.js') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(STATIC_CACHE).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(request).then((cachedResponse) => {
+            return cachedResponse || new Response('// app.js offline', { headers: { 'Content-Type': 'application/javascript' } });
+          });
+        })
+    );
+    return;
+  }
+  
+  // Estratégia: Cache First para assets estáticos (exceto app.js)
   if (request.destination === 'style' || 
       request.destination === 'script' || 
       request.destination === 'image' ||
