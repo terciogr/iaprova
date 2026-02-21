@@ -20888,6 +20888,162 @@ app.get('/api/admin/cron/status', async (c) => {
   }
 })
 
+// ═══════════════════════════════════════════════════════════════
+// ✅ v80: ANALYTICS ADMIN - Conteúdos gerados + Feedbacks globais
+// ═══════════════════════════════════════════════════════════════
+app.get('/api/admin/analytics', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    // ═══ 1. CONTEÚDOS GERADOS POR TIPO (totais) ═══
+    const conteudoTotais = await DB.prepare(`
+      SELECT 
+        tipo,
+        COUNT(*) as total
+      FROM conteudo_estudo
+      GROUP BY tipo
+      ORDER BY total DESC
+    `).all()
+    
+    // ═══ 2. CONTEÚDOS POR DIA (últimos 30 dias, agrupado por tipo e data) ═══
+    const conteudoPorDia = await DB.prepare(`
+      SELECT 
+        DATE(created_at) as dia,
+        tipo,
+        COUNT(*) as total
+      FROM conteudo_estudo
+      WHERE created_at >= datetime('now', '-30 days')
+      GROUP BY dia, tipo
+      ORDER BY dia ASC
+    `).all()
+    
+    // ═══ 3. FLASHCARDS GERADOS (totais e por dia) ═══
+    const flashcardsTotais = await DB.prepare(`
+      SELECT COUNT(*) as total FROM flashcards
+    `).first() as any
+    
+    const flashcardsPorDia = await DB.prepare(`
+      SELECT 
+        DATE(created_at) as dia,
+        COUNT(*) as total
+      FROM flashcards
+      WHERE created_at >= datetime('now', '-30 days')
+      GROUP BY dia
+      ORDER BY dia ASC
+    `).all()
+    
+    // ═══ 4. SIMULADOS GERADOS (totais e por dia) ═══
+    const simuladosTotais = await DB.prepare(`
+      SELECT COUNT(*) as total FROM simulados_historico
+    `).first() as any
+    
+    const simuladosPorDia = await DB.prepare(`
+      SELECT 
+        DATE(data_realizacao) as dia,
+        COUNT(*) as total
+      FROM simulados_historico
+      WHERE data_realizacao >= datetime('now', '-30 days')
+      GROUP BY dia
+      ORDER BY dia ASC
+    `).all()
+    
+    // ═══ 5. EXERCÍCIOS (resultados) ═══
+    const exerciciosTotais = await DB.prepare(`
+      SELECT COUNT(*) as total FROM exercicios_resultados
+    `).first() as any
+    
+    const exerciciosPorDia = await DB.prepare(`
+      SELECT 
+        DATE(created_at) as dia,
+        COUNT(*) as total
+      FROM exercicios_resultados
+      WHERE created_at >= datetime('now', '-30 days')
+      GROUP BY dia
+      ORDER BY dia ASC
+    `).all()
+    
+    // ═══ 6. REVISÕES ═══
+    const revisoesTotais = await DB.prepare(`
+      SELECT COUNT(*) as total FROM revisoes
+    `).first() as any
+    
+    // ═══ 7. FEEDBACKS - Totais por tipo ═══
+    const feedbacksPorTipo = await DB.prepare(`
+      SELECT 
+        feedback_type,
+        COUNT(*) as total,
+        ROUND(AVG(rating), 1) as media_rating
+      FROM user_feedbacks
+      GROUP BY feedback_type
+      ORDER BY total DESC
+    `).all()
+    
+    // ═══ 8. FEEDBACKS - Por dia (últimos 30 dias) ═══
+    const feedbacksPorDia = await DB.prepare(`
+      SELECT 
+        DATE(created_at) as dia,
+        feedback_type,
+        COUNT(*) as total
+      FROM user_feedbacks
+      WHERE created_at >= datetime('now', '-30 days')
+      GROUP BY dia, feedback_type
+      ORDER BY dia ASC
+    `).all()
+    
+    // ═══ 9. FEEDBACKS - Lista completa (últimos 100) ═══
+    const feedbacksLista = await DB.prepare(`
+      SELECT 
+        f.id, f.user_id, f.rating, f.feedback_type, f.message, 
+        f.page_context, f.is_read, f.admin_response, f.responded_at,
+        f.created_at,
+        u.name as user_name, u.email as user_email
+      FROM user_feedbacks f
+      LEFT JOIN users u ON u.id = f.user_id
+      ORDER BY f.created_at DESC
+      LIMIT 100
+    `).all()
+    
+    // ═══ 10. FEEDBACKS - Estatísticas gerais ═══
+    const feedbacksStats = await DB.prepare(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as nao_lidos,
+        SUM(CASE WHEN is_read = 1 THEN 1 ELSE 0 END) as lidos,
+        ROUND(AVG(rating), 1) as media_geral,
+        SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) as positivos,
+        SUM(CASE WHEN rating <= 2 THEN 1 ELSE 0 END) as negativos
+      FROM user_feedbacks
+    `).first() as any
+    
+    return c.json({
+      conteudos: {
+        totais: conteudoTotais.results || [],
+        por_dia: conteudoPorDia.results || [],
+        flashcards_total: flashcardsTotais?.total || 0,
+        flashcards_por_dia: flashcardsPorDia.results || [],
+        simulados_total: simuladosTotais?.total || 0,
+        simulados_por_dia: simuladosPorDia.results || [],
+        exercicios_total: exerciciosTotais?.total || 0,
+        exercicios_por_dia: exerciciosPorDia.results || [],
+        revisoes_total: revisoesTotais?.total || 0
+      },
+      feedbacks: {
+        stats: feedbacksStats || {},
+        por_tipo: feedbacksPorTipo.results || [],
+        por_dia: feedbacksPorDia.results || [],
+        lista: feedbacksLista.results || []
+      }
+    })
+  } catch (error: any) {
+    console.error('Erro analytics admin:', error)
+    return c.json({ error: 'Erro ao buscar analytics', details: error.message }, 500)
+  }
+})
+
 // ============== ROTA CATCH-ALL (SPA) ==============
 // IMPORTANTE: Esta rota deve vir por ÚLTIMO, após todas as outras rotas de API e arquivos estáticos
 // Ela captura qualquer URL não definida anteriormente e retorna o HTML do SPA

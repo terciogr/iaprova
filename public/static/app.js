@@ -14811,6 +14811,10 @@ window.abrirPainelAdmin = async function() {
                 <i class="fas fa-paper-plane text-orange-500 text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Reengajamento</p>
               </button>
+              <button onclick="abrirAnalyticsAdmin()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-violet-50 dark:hover:bg-violet-900/20 transition text-center">
+                <i class="fas fa-chart-pie text-violet-500 text-xl mb-1"></i>
+                <p class="text-xs ${themes[currentTheme].text} font-medium">Analytics</p>
+              </button>
             </div>
           </div>
         </div>
@@ -14846,6 +14850,366 @@ window.fecharPainelAdmin = function() {
 window.atualizarDashboardAdmin = function() {
   fecharPainelAdmin();
   abrirPainelAdmin();
+};
+
+// ============== ANALYTICS ADMIN (Conteúdos + Feedbacks) ==============
+window.abrirAnalyticsAdmin = async function() {
+  if (!isCurrentUserAdmin()) {
+    showToast('Acesso negado', 'error');
+    return;
+  }
+  
+  // Loading
+  const loadingEl = document.createElement('div');
+  loadingEl.id = 'analytics-loading';
+  loadingEl.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[10001]';
+  loadingEl.innerHTML = '<div class="' + themes[currentTheme].card + ' p-6 rounded-xl text-center"><i class="fas fa-spinner fa-spin text-4xl text-violet-500 mb-4"></i><p class="' + themes[currentTheme].text + '">Carregando analytics...</p></div>';
+  document.body.appendChild(loadingEl);
+  
+  try {
+    const response = await axios.get('/api/admin/analytics', {
+      headers: { 'X-User-ID': currentUser.id }
+    });
+    const data = response.data;
+    
+    document.getElementById('analytics-loading')?.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-analytics-admin';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    modal.innerHTML = `
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-violet-600 to-purple-700 p-5 text-white flex-shrink-0">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <i class="fas fa-chart-pie text-2xl"></i>
+              </div>
+              <div>
+                <h2 class="text-xl font-bold">Analytics da Plataforma</h2>
+                <p class="text-violet-200 text-sm">Conteudos gerados e feedbacks de todos os usuarios</p>
+              </div>
+            </div>
+            <button onclick="document.getElementById('modal-analytics-admin')?.remove()" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">
+              <i class="fas fa-times text-xl"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-5 overflow-y-auto flex-1 space-y-6">
+          
+          <!-- Totais de conteúdo -->
+          <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+            ${(function() {
+              const tipos = data.conteudos?.totais || [];
+              const tipoMap = {};
+              tipos.forEach(t => { tipoMap[t.tipo] = t.total; });
+              const items = [
+                { label: 'Teoria', icon: 'fa-book', color: 'blue', val: tipoMap['teoria'] || 0 },
+                { label: 'Exercicios', icon: 'fa-tasks', color: 'green', val: tipoMap['exercicios'] || 0 },
+                { label: 'Resumos', icon: 'fa-sticky-note', color: 'yellow', val: tipoMap['resumo'] || 0 },
+                { label: 'Flashcards', icon: 'fa-clone', color: 'purple', val: data.conteudos?.flashcards_total || 0 },
+                { label: 'Simulados', icon: 'fa-file-alt', color: 'red', val: data.conteudos?.simulados_total || 0 },
+                { label: 'Revisoes', icon: 'fa-redo', color: 'indigo', val: data.conteudos?.revisoes_total || 0 }
+              ];
+              return items.map(i => 
+                '<div class="bg-gradient-to-br from-' + i.color + '-500 to-' + i.color + '-600 rounded-xl p-3 text-white text-center">' +
+                  '<i class="fas ' + i.icon + ' text-lg opacity-80"></i>' +
+                  '<div class="text-2xl font-bold mt-1">' + i.val + '</div>' +
+                  '<div class="text-xs opacity-80">' + i.label + '</div>' +
+                '</div>'
+              ).join('');
+            })()}
+          </div>
+          
+          <!-- Gráfico: Conteúdos ao longo do tempo -->
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
+            <h3 class="font-bold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+              <i class="fas fa-chart-line text-violet-500"></i>
+              Conteudos Gerados ao Longo do Tempo (ultimos 30 dias)
+            </h3>
+            <div style="height: 320px; position: relative;">
+              <canvas id="chart-conteudos-tempo"></canvas>
+            </div>
+          </div>
+          
+          <!-- Gráfico: Feedbacks por tipo -->
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
+            <h3 class="font-bold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+              <i class="fas fa-star text-amber-500"></i>
+              Feedbacks por Tipo
+            </h3>
+            <div class="grid md:grid-cols-2 gap-4">
+              <div style="height: 260px; position: relative;">
+                <canvas id="chart-feedbacks-tipo"></canvas>
+              </div>
+              <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-blue-600">${data.feedbacks?.stats?.total || 0}</div>
+                    <div class="text-xs ${themes[currentTheme].textSecondary}">Total feedbacks</div>
+                  </div>
+                  <div class="bg-green-50 dark:bg-green-900/30 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-green-600">${data.feedbacks?.stats?.media_geral || '-'}</div>
+                    <div class="text-xs ${themes[currentTheme].textSecondary}">Media rating</div>
+                  </div>
+                  <div class="bg-amber-50 dark:bg-amber-900/30 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-amber-600">${data.feedbacks?.stats?.nao_lidos || 0}</div>
+                    <div class="text-xs ${themes[currentTheme].textSecondary}">Nao lidos</div>
+                  </div>
+                  <div class="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-emerald-600">${data.feedbacks?.stats?.positivos || 0}</div>
+                    <div class="text-xs ${themes[currentTheme].textSecondary}">Positivos</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Tabela: Todos os Feedbacks -->
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
+            <h3 class="font-bold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+              <i class="fas fa-list text-purple-500"></i>
+              Todos os Feedbacks (ultimos 100)
+            </h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-100 dark:bg-gray-800 sticky top-0">
+                  <tr>
+                    <th class="p-2 text-left ${themes[currentTheme].text}">Usuario</th>
+                    <th class="p-2 text-center ${themes[currentTheme].text}">Tipo</th>
+                    <th class="p-2 text-center ${themes[currentTheme].text}">Rating</th>
+                    <th class="p-2 text-left ${themes[currentTheme].text}">Mensagem</th>
+                    <th class="p-2 text-left ${themes[currentTheme].text}">Contexto</th>
+                    <th class="p-2 text-center ${themes[currentTheme].text}">Lido</th>
+                    <th class="p-2 text-left ${themes[currentTheme].text}">Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${(data.feedbacks?.lista && data.feedbacks.lista.length > 0) ? data.feedbacks.lista.map(function(f) {
+                    var tipoColors = {
+                      'suggestion': 'bg-blue-100 text-blue-700',
+                      'bug': 'bg-red-100 text-red-700',
+                      'praise': 'bg-green-100 text-green-700',
+                      'complaint': 'bg-orange-100 text-orange-700',
+                      'question': 'bg-purple-100 text-purple-700',
+                      'bom': 'bg-emerald-100 text-emerald-700',
+                      'ruim': 'bg-red-100 text-red-700'
+                    };
+                    var tipoLabels = {
+                      'suggestion': 'Sugestao',
+                      'bug': 'Bug',
+                      'praise': 'Elogio',
+                      'complaint': 'Reclamacao',
+                      'question': 'Pergunta',
+                      'bom': 'Bom',
+                      'ruim': 'Ruim'
+                    };
+                    var tipoClass = tipoColors[f.feedback_type] || 'bg-gray-100 text-gray-700';
+                    var tipoLabel = tipoLabels[f.feedback_type] || f.feedback_type || 'N/A';
+                    var ratingStars = '';
+                    if (f.rating) {
+                      for (var s = 0; s < 5; s++) {
+                        ratingStars += s < f.rating ? '<i class="fas fa-star text-amber-400 text-xs"></i>' : '<i class="far fa-star text-gray-300 text-xs"></i>';
+                      }
+                    } else {
+                      ratingStars = '<span class="text-gray-400 text-xs">-</span>';
+                    }
+                    var dataStr = f.created_at ? new Date(f.created_at).toLocaleDateString('pt-BR') + ' ' + new Date(f.created_at).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '-';
+                    var msgTrunc = (f.message || '').length > 60 ? (f.message || '').substring(0, 60) + '...' : (f.message || '-');
+                    return '<tr class="border-b ' + themes[currentTheme].border + ' hover:bg-gray-50 dark:hover:bg-gray-800">' +
+                      '<td class="p-2 text-xs"><div class="font-medium">' + (f.user_name || 'N/A') + '</div><div class="text-[10px] opacity-60">' + (f.user_email || '') + '</div></td>' +
+                      '<td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs ' + tipoClass + '">' + tipoLabel + '</span></td>' +
+                      '<td class="p-2 text-center">' + ratingStars + '</td>' +
+                      '<td class="p-2 text-xs ' + themes[currentTheme].textSecondary + '" title="' + (f.message || '').replace(/"/g, '&quot;') + '">' + msgTrunc + '</td>' +
+                      '<td class="p-2 text-xs ' + themes[currentTheme].textMuted + '">' + (f.page_context || '-') + '</td>' +
+                      '<td class="p-2 text-center">' + (f.is_read ? '<i class="fas fa-check-circle text-green-500"></i>' : '<i class="fas fa-circle text-amber-400 text-xs"></i>') + '</td>' +
+                      '<td class="p-2 text-xs ' + themes[currentTheme].textSecondary + '">' + dataStr + '</td>' +
+                    '</tr>';
+                  }).join('') : '<tr><td colspan="7" class="p-8 text-center ' + themes[currentTheme].textSecondary + '"><i class="fas fa-comments text-3xl mb-2 opacity-40"></i><p>Nenhum feedback registrado</p></td></tr>'}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // ═══ RENDERIZAR GRÁFICOS ═══
+    
+    // 1. Gráfico de Conteúdos ao longo do tempo (line chart)
+    setTimeout(function() {
+      try {
+        var ctxConteudo = document.getElementById('chart-conteudos-tempo');
+        if (!ctxConteudo) return;
+        
+        // Preparar dados: agrupar por dia e tipo
+        var conteudoPorDia = data.conteudos?.por_dia || [];
+        var flashcardsPorDia = data.conteudos?.flashcards_por_dia || [];
+        var simuladosPorDia = data.conteudos?.simulados_por_dia || [];
+        var exerciciosPorDia = data.conteudos?.exercicios_por_dia || [];
+        
+        // Coletar todas as datas únicas
+        var allDates = new Set();
+        conteudoPorDia.forEach(function(r) { allDates.add(r.dia); });
+        flashcardsPorDia.forEach(function(r) { allDates.add(r.dia); });
+        simuladosPorDia.forEach(function(r) { allDates.add(r.dia); });
+        exerciciosPorDia.forEach(function(r) { allDates.add(r.dia); });
+        
+        // Se não há dados, gerar últimos 7 dias
+        if (allDates.size === 0) {
+          for (var d = 6; d >= 0; d--) {
+            var dt = new Date();
+            dt.setDate(dt.getDate() - d);
+            allDates.add(dt.toISOString().split('T')[0]);
+          }
+        }
+        
+        var sortedDates = Array.from(allDates).sort();
+        var labels = sortedDates.map(function(d) {
+          var parts = d.split('-');
+          return parts[2] + '/' + parts[1];
+        });
+        
+        // Mapear dados por tipo e data
+        var teoriaMap = {};
+        var exerciciosMap = {};
+        var resumoMap = {};
+        var flashcardsMap = {};
+        var simuladosMap = {};
+        
+        conteudoPorDia.forEach(function(r) {
+          if (r.tipo === 'teoria') teoriaMap[r.dia] = (teoriaMap[r.dia] || 0) + r.total;
+          else if (r.tipo === 'exercicios') exerciciosMap[r.dia] = (exerciciosMap[r.dia] || 0) + r.total;
+          else if (r.tipo === 'resumo') resumoMap[r.dia] = (resumoMap[r.dia] || 0) + r.total;
+          else if (r.tipo === 'flashcards') flashcardsMap[r.dia] = (flashcardsMap[r.dia] || 0) + r.total;
+        });
+        flashcardsPorDia.forEach(function(r) {
+          flashcardsMap[r.dia] = (flashcardsMap[r.dia] || 0) + r.total;
+        });
+        simuladosPorDia.forEach(function(r) {
+          simuladosMap[r.dia] = (simuladosMap[r.dia] || 0) + r.total;
+        });
+        exerciciosPorDia.forEach(function(r) {
+          exerciciosMap[r.dia] = (exerciciosMap[r.dia] || 0) + r.total;
+        });
+        
+        var datasets = [
+          { label: 'Teoria', data: sortedDates.map(function(d) { return teoriaMap[d] || 0; }), borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.4 },
+          { label: 'Exercicios', data: sortedDates.map(function(d) { return exerciciosMap[d] || 0; }), borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.4 },
+          { label: 'Resumos', data: sortedDates.map(function(d) { return resumoMap[d] || 0; }), borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.1)', fill: true, tension: 0.4 },
+          { label: 'Flashcards', data: sortedDates.map(function(d) { return flashcardsMap[d] || 0; }), borderColor: '#8B5CF6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.4 },
+          { label: 'Simulados', data: sortedDates.map(function(d) { return simuladosMap[d] || 0; }), borderColor: '#EF4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.4 }
+        ];
+        
+        new Chart(ctxConteudo, {
+          type: 'line',
+          data: { labels: labels, datasets: datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+              legend: { position: 'top', labels: { usePointStyle: true, padding: 15, font: { size: 11 } } },
+              tooltip: {
+                callbacks: {
+                  title: function(items) { return items[0].label; },
+                  label: function(ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y + ' gerados'; }
+                }
+              }
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+              y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } }
+            }
+          }
+        });
+      } catch (e) {
+        console.error('Erro chart conteudos:', e);
+      }
+      
+      // 2. Gráfico de Feedbacks por tipo (doughnut)
+      try {
+        var ctxFeed = document.getElementById('chart-feedbacks-tipo');
+        if (!ctxFeed) return;
+        
+        var feedbackTipos = data.feedbacks?.por_tipo || [];
+        var feedLabels = [];
+        var feedData = [];
+        var feedColors = [];
+        var colorMap = {
+          'suggestion': '#3B82F6',
+          'bug': '#EF4444',
+          'praise': '#10B981',
+          'complaint': '#F97316',
+          'question': '#8B5CF6',
+          'bom': '#10B981',
+          'ruim': '#EF4444'
+        };
+        var labelMap = {
+          'suggestion': 'Sugestao',
+          'bug': 'Bug',
+          'praise': 'Elogio',
+          'complaint': 'Reclamacao',
+          'question': 'Pergunta',
+          'bom': 'Bom',
+          'ruim': 'Ruim'
+        };
+        
+        feedbackTipos.forEach(function(ft) {
+          feedLabels.push(labelMap[ft.feedback_type] || ft.feedback_type);
+          feedData.push(ft.total);
+          feedColors.push(colorMap[ft.feedback_type] || '#6B7280');
+        });
+        
+        if (feedLabels.length === 0) {
+          feedLabels = ['Sem dados'];
+          feedData = [1];
+          feedColors = ['#E5E7EB'];
+        }
+        
+        new Chart(ctxFeed, {
+          type: 'doughnut',
+          data: {
+            labels: feedLabels,
+            datasets: [{
+              data: feedData,
+              backgroundColor: feedColors,
+              borderWidth: 2,
+              borderColor: '#fff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12, font: { size: 11 } } },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx) {
+                    var total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                    var pct = total > 0 ? Math.round((ctx.raw / total) * 100) : 0;
+                    return ctx.label + ': ' + ctx.raw + ' (' + pct + '%)';
+                  }
+                }
+              }
+            }
+          }
+        });
+      } catch (e) {
+        console.error('Erro chart feedbacks:', e);
+      }
+    }, 200);
+    
+  } catch (error) {
+    document.getElementById('analytics-loading')?.remove();
+    console.error('Erro ao carregar analytics:', error);
+    showToast('Erro ao carregar analytics. Tente novamente.', 'error');
+  }
 };
 
 // ============== RELATÓRIO FINANCEIRO ==============
