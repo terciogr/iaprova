@@ -1625,11 +1625,36 @@ app.post('/api/register', async (c) => {
     ).bind(name, email, password, verificationToken).run()
 
     // Enviar email de verificação
+    let emailSent = false
     try {
-      await sendVerificationEmail(email, name, verificationToken, c.env)
-      console.log(`📧 Email de verificação enviado para ${email}`)
-    } catch (emailError) {
+      emailSent = await sendVerificationEmail(email, verificationToken, name, c.env)
+      console.log(`📧 Email de verificação ${emailSent ? 'ENVIADO' : 'NÃO ENVIADO'} para ${email}`)
+      
+      // ✅ v84: Registrar no histórico mesmo quando sendVerificationEmail já registra internamente
+      // Se NÃO foi enviado (retornou false sem exception), registrar como 'failed' 
+      if (!emailSent) {
+        await logEmailSent(
+          DB,
+          email,
+          'verification',
+          '🎯 Ative sua conta no IAprova',
+          'failed',
+          result.meta.last_row_id as number,
+          'Email não enviado - RESEND_API_KEY não configurada ou modo de teste'
+        )
+      }
+    } catch (emailError: any) {
       console.error('⚠️ Erro ao enviar email de verificação:', emailError)
+      // Registrar falha no histórico
+      await logEmailSent(
+        DB,
+        email,
+        'verification',
+        '🎯 Ative sua conta no IAprova',
+        'failed',
+        result.meta.last_row_id as number,
+        emailError?.message || 'Erro desconhecido ao enviar email'
+      )
     }
 
     // Buscar usuário criado
@@ -1639,8 +1664,11 @@ app.post('/api/register', async (c) => {
 
     return c.json({ 
       user: newUser,
-      message: '🎉 Conta criada! Verifique seu email para ativar sua conta.',
-      requiresVerification: true
+      message: emailSent 
+        ? '🎉 Conta criada! Verifique seu email para ativar sua conta.'
+        : '🎉 Conta criada! Verifique seu email (pode estar na pasta spam) ou solicite o reenvio.',
+      requiresVerification: true,
+      emailSent
     })
   } catch (error) {
     console.error('Erro no registro:', error)
@@ -4778,6 +4806,21 @@ app.get('/api/auth/google/callback', async (c) => {
     const tokenExpires = new Date(Date.now() + (tokens.expires_in * 1000)).toISOString()
     
     if (user) {
+      // ✅ v84: Log quando usuário existente é auto-verificado via Google
+      if (!user.email_verified) {
+        console.log(`📧 Usuário ${user.id} (${user.email}) auto-verificado via Google OAuth (era não-verificado)`)
+        try {
+          await logEmailSent(
+            DB,
+            user.email,
+            'auto_verified_google',
+            'Email auto-verificado via Google OAuth',
+            'sent',
+            user.id
+          )
+        } catch (e) { /* não crítico */ }
+      }
+      
       // Atualizar tokens e informações
       await DB.prepare(`
         UPDATE users SET 
@@ -4809,8 +4852,10 @@ app.get('/api/auth/google/callback', async (c) => {
         INSERT INTO users (
           name, email, google_id, google_email, google_picture,
           google_access_token, google_refresh_token, google_token_expires,
-          auth_provider, email_verified, password
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'google', 1, '')
+          auth_provider, email_verified, password,
+          trial_started_at, trial_expires_at, subscription_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'google', 1, '',
+          datetime('now'), datetime('now', '+7 days'), 'trial')
       `).bind(
         googleUser.name || 'Usuário Google',
         googleUser.email,
@@ -4828,6 +4873,28 @@ app.get('/api/auth/google/callback', async (c) => {
         email: googleUser.email 
       }
       console.log(`✅ Novo usuário ${user.id} criado via Google OAuth`)
+      
+      // ✅ v84: Enviar email de boas-vindas para novos usuários Google
+      try {
+        await sendWelcomeEmail(googleUser.email, googleUser.name || 'Usuário', c.env)
+        console.log(`📧 Email de boas-vindas enviado para ${googleUser.email} (Google OAuth)`)
+      } catch (welcomeError) {
+        console.log('⚠️ Erro ao enviar email de boas-vindas Google (não crítico):', welcomeError)
+      }
+      
+      // Registrar no histórico de emails
+      try {
+        await logEmailSent(
+          DB,
+          googleUser.email,
+          'welcome_google',
+          'Bem-vindo ao IAprova!',
+          'sent',
+          user.id as number
+        )
+      } catch (logError) {
+        console.log('⚠️ Erro ao registrar email Google no histórico:', logError)
+      }
     }
     
     // Redirecionar com dados do usuário para /home

@@ -1018,16 +1018,16 @@ window.showInstallInstructions = async function() {
           <p class="text-gray-500 text-sm font-medium mb-3">Benefícios do app:</p>
           <div class="grid grid-cols-2 gap-2">
             <div class="flex items-center gap-2 text-sm text-gray-600">
-              <i class="fas fa-bolt text-yellow-500"></i> Acesso rápido
+              <i class="fas fa-bolt text-[#1A3A7F]"></i> Acesso rápido
             </div>
             <div class="flex items-center gap-2 text-sm text-gray-600">
-              <i class="fas fa-bell text-red-500"></i> Notificações
+              <i class="fas fa-bell text-[#1A3A7F]"></i> Notificações
             </div>
             <div class="flex items-center gap-2 text-sm text-gray-600">
               <i class="fas fa-wifi-slash text-blue-500"></i> Funciona offline
             </div>
             <div class="flex items-center gap-2 text-sm text-gray-600">
-              <i class="fas fa-mobile-alt text-green-500"></i> Tela cheia
+              <i class="fas fa-mobile-alt text-[#1A3A7F]"></i> Tela cheia
             </div>
           </div>
         </div>
@@ -1087,7 +1087,7 @@ function createUnifiedFAB() {
         </span>
         <button 
           onclick="abrirModalFeedback(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          class="w-12 h-12 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Enviar Feedback">
           <i class="fas fa-comment-dots text-lg"></i>
         </button>
@@ -1100,7 +1100,7 @@ function createUnifiedFAB() {
         </span>
         <button 
           onclick="abrirPainelAdmin(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-red-600 to-red-700 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          class="w-12 h-12 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Painel Administrador">
           <i class="fas fa-shield-alt text-lg"></i>
         </button>
@@ -1139,7 +1139,7 @@ function createUnifiedFAB() {
         </span>
         <button 
           onclick="renderPortfolioDisciplinas(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-700 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          class="w-12 h-12 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Gerenciar Disciplinas">
           <i class="fas fa-book text-lg"></i>
         </button>
@@ -1152,7 +1152,7 @@ function createUnifiedFAB() {
         </span>
         <button 
           onclick="window.renderDashboardSimulados(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          class="w-12 h-12 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Simulados">
           <i class="fas fa-clipboard-list text-lg"></i>
         </button>
@@ -1165,7 +1165,7 @@ function createUnifiedFAB() {
         </span>
         <button 
           onclick="renderCalendario(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          class="w-12 h-12 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Calendário de Estudos">
           <i class="fas fa-calendar-alt text-lg"></i>
         </button>
@@ -1178,7 +1178,7 @@ function createUnifiedFAB() {
         </span>
         <button 
           onclick="showInstallInstructions(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          class="w-12 h-12 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
           title="Instalar App">
           <i class="fas fa-download text-lg"></i>
         </button>
@@ -1201,8 +1201,8 @@ function createUnifiedFAB() {
       
       <!-- Indicador de notificação -->
       <span class="absolute flex h-3 w-3 -top-1 -right-1">
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-gradient-to-r from-orange-400 to-pink-500 opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-3 w-3 bg-gradient-to-r from-orange-500 to-pink-600 shadow-lg"></span>
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-gradient-to-r from-[#2A4A9F] to-[#1A3A7F] opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-3 w-3 bg-gradient-to-r from-[#2A4A9F] to-[#122D6A] shadow-lg"></span>
       </span>
       
       <!-- Anel de foco -->
@@ -4797,7 +4797,7 @@ async function mostrarModalRevisaoDisciplinas(data, editalId) {
             <div class="p-3 sm:p-4 overflow-y-auto flex-1" id="listaDisciplinasRevisao">
               ${temSeparacao ? `
                 ${renderAccordeon('📘 Conhecimentos Básicos/Gerais', 'fas fa-book', basicosFiltrados, 'basicos', 'bg-gradient-to-r from-blue-500 to-blue-600')}
-                ${renderAccordeon('📕 Conhecimentos Específicos', 'fas fa-gavel', disciplinasEspecificas, 'especificos', 'bg-gradient-to-r from-purple-500 to-purple-600')}
+                ${renderAccordeon('📕 Conhecimentos Específicos', 'fas fa-gavel', disciplinasEspecificas, 'especificos', 'bg-gradient-to-r from-[#1A3A7F] to-[#2A4A9F]')}
               ` : `
                 ${disciplinasEditadas.map((d, i) => renderDisciplinaItem(d, i)).join('')}
               `}
@@ -6726,7 +6726,7 @@ Conhecimentos Específicos"></textarea>
     modal.innerHTML = `
       <div class="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-slide-up">
         <!-- Header -->
-        <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-4 flex items-center justify-between">
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white p-4 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <i class="fas fa-list-ul text-xl"></i>
             <div>
@@ -11076,7 +11076,7 @@ window.importarTopicosEmLote = function(disciplinaId, disciplinaNome) {
       <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden" onclick="event.stopPropagation()">
         
         <!-- Header -->
-        <div class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 md:p-6">
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white p-4 md:p-6">
           <h3 class="text-lg md:text-xl font-bold flex items-center gap-2">
             <i class="fas fa-file-import"></i>
             Importar Tópicos em Lote
@@ -12249,11 +12249,11 @@ function exibirConteudoTexto(data) {
   const topicoNome = topicos?.[0]?.nome || 'Conteúdo';
   
   const tipoInfo = {
-    'teoria': { label: 'Teoria', icon: 'fa-book', color: 'blue', bgGradient: 'from-blue-600 to-blue-800' },
-    'exercicios': { label: 'Exercícios', icon: 'fa-tasks', color: 'emerald', bgGradient: 'from-emerald-600 to-emerald-800' },
-    'resumo': { label: 'Resumo', icon: 'fa-file-alt', color: 'amber', bgGradient: 'from-amber-500 to-amber-700' },
-    'flashcards': { label: 'Flashcards', icon: 'fa-clone', color: 'cyan', bgGradient: 'from-cyan-500 to-cyan-700' }
-  }[tipo] || { label: 'Conteúdo', icon: 'fa-file', color: 'gray', bgGradient: 'from-gray-600 to-gray-800' };
+    'teoria': { label: 'Teoria', icon: 'fa-book', color: 'blue', bgGradient: 'from-[#122D6A] to-[#1A3A7F]' },
+    'exercicios': { label: 'Exercícios', icon: 'fa-tasks', color: 'blue', bgGradient: 'from-[#1A3A7F] to-[#2A4A9F]' },
+    'resumo': { label: 'Resumo', icon: 'fa-file-alt', color: 'blue', bgGradient: 'from-[#2A4A9F] to-[#3A5AAF]' },
+    'flashcards': { label: 'Flashcards', icon: 'fa-clone', color: 'blue', bgGradient: 'from-[#1A3A7F] to-[#122D6A]' }
+  }[tipo] || { label: 'Conteúdo', icon: 'fa-file', color: 'blue', bgGradient: 'from-[#122D6A] to-[#2A4A9F]' };
   
   // Converter Markdown para HTML
   const htmlContent = texto
@@ -14106,7 +14106,7 @@ window.abrirConfiguracoes = function() {
         // Minha Assinatura
         '<button onclick="abrirMinhaAssinatura()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
           '<div class="flex items-start gap-4">' +
-            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
               '<i class="fas fa-credit-card text-white text-lg"></i>' +
             '</div>' +
             '<div class="flex-1 min-w-0">' +
@@ -14120,7 +14120,7 @@ window.abrirConfiguracoes = function() {
         // Importar/Exportar (antigo Administração)
         '<button onclick="abrirImportarExportar()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
           '<div class="flex items-start gap-4">' +
-            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
               '<i class="fas fa-exchange-alt text-white text-lg"></i>' +
             '</div>' +
             '<div class="flex-1 min-w-0">' +
@@ -14162,7 +14162,7 @@ window.abrirConfiguracoes = function() {
         // Tema e Aparência
         '<button onclick="abrirConfigTema()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
           '<div class="flex items-start gap-4">' +
-            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
               '<i class="fas fa-palette text-white text-lg"></i>' +
             '</div>' +
             '<div class="flex-1 min-w-0">' +
@@ -14181,7 +14181,7 @@ window.abrirConfiguracoes = function() {
         // Instalar App
         '<button onclick="showInstallInstructions()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
           '<div class="flex items-start gap-4">' +
-            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
               '<i class="fas fa-mobile-alt text-white text-lg"></i>' +
             '</div>' +
             '<div class="flex-1 min-w-0">' +
@@ -14197,11 +14197,11 @@ window.abrirConfiguracoes = function() {
       // Admin Section (apenas para admin)
       '<div id="admin-section-config" class="mt-6 hidden">' +
         '<h3 class="text-lg font-semibold ' + themes[currentTheme].text + ' mb-4 flex items-center gap-2">' +
-          '<i class="fas fa-shield-alt text-red-500"></i> Área Administrativa' +
+          '<i class="fas fa-shield-alt text-[#122D6A]"></i> Área Administrativa' +
         '</h3>' +
-        '<button onclick="abrirPainelAdmin()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border-2 border-red-200 hover:border-red-500 hover:shadow-lg transition-all text-left group w-full">' +
+        '<button onclick="abrirPainelAdmin()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border-2 border-[#B8C9E4] hover:border-[#122D6A] hover:shadow-lg transition-all text-left group w-full">' +
           '<div class="flex items-start gap-4">' +
-            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
               '<i class="fas fa-user-shield text-white text-lg"></i>' +
             '</div>' +
             '<div class="flex-1 min-w-0">' +
@@ -14258,7 +14258,7 @@ window.abrirConfigTema = function() {
   modal.innerHTML = '<div class="' + themes[currentTheme].card + ' rounded-2xl shadow-2xl max-w-md w-full p-6">' +
     '<div class="flex items-center justify-between mb-6">' +
       '<div class="flex items-center gap-3">' +
-        '<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">' +
+        '<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] flex items-center justify-center">' +
           '<i class="fas fa-palette text-white"></i>' +
         '</div>' +
         '<h3 class="text-lg font-bold ' + themes[currentTheme].text + '">Tema e Aparência</h3>' +
@@ -14469,7 +14469,7 @@ window.abrirMinhaAssinatura = async function() {
   modal.innerHTML = '<div class="' + themes[currentTheme].card + ' rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">' +
     '<div class="flex items-center justify-between mb-6">' +
       '<div class="flex items-center gap-3">' +
-        '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">' +
+        '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] flex items-center justify-center">' +
           '<i class="fas fa-credit-card text-white text-xl"></i>' +
         '</div>' +
         '<div>' +
@@ -14542,7 +14542,7 @@ window.abrirModalFeedback = function() {
       <!-- Header -->
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] flex items-center justify-center">
             <i class="fas fa-comment-dots text-white text-xl"></i>
           </div>
           <div>
@@ -14612,7 +14612,7 @@ window.abrirModalFeedback = function() {
           Cancelar
         </button>
         <button onclick="enviarFeedback()" 
-          class="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 text-white font-medium hover:from-pink-600 hover:to-rose-700 transition">
+          class="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white font-medium hover:from-[#1A3A7F] hover:to-[#2A4A9F] transition">
           <i class="fas fa-paper-plane mr-2"></i>Enviar
         </button>
       </div>
@@ -14757,7 +14757,7 @@ window.abrirAdministracao = async function() {
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] flex items-center justify-center">
             <i class="fas fa-cog text-white text-xl"></i>
           </div>
           <div>
@@ -14944,7 +14944,7 @@ window.abrirPainelAdmin = async function() {
     modal.innerHTML = `
       <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col">
         <!-- Header -->
-        <div class="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white flex-shrink-0">
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] p-6 text-white flex-shrink-0">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
               <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
@@ -14952,7 +14952,7 @@ window.abrirPainelAdmin = async function() {
               </div>
               <div>
                 <h2 class="text-2xl font-bold">Painel Administrador</h2>
-                <p class="text-red-200 text-sm">Visão gerencial do IAprova</p>
+                <p class="text-blue-200 text-sm">Visão gerencial do IAprova</p>
               </div>
             </div>
             <button onclick="fecharPainelAdmin()" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">
@@ -14978,25 +14978,25 @@ window.abrirPainelAdmin = async function() {
             </div>
             
             <!-- Usuários Premium -->
-            <div class="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl p-4 text-white">
+            <div class="bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] rounded-xl p-4 text-white">
               <div class="flex items-center justify-between mb-2">
                 <i class="fas fa-crown text-2xl opacity-80"></i>
                 <span class="text-3xl font-bold">${stats.users.premium}</span>
               </div>
-              <p class="text-yellow-100 text-sm">Usuários Premium</p>
-              <p class="text-yellow-200 text-xs mt-1">
+              <p class="text-blue-100 text-sm">Usuários Premium</p>
+              <p class="text-blue-200 text-xs mt-1">
                 ${stats.users.total > 0 ? Math.round((stats.users.premium / stats.users.total) * 100) : 0}% da base
               </p>
             </div>
             
             <!-- Planos Ativos -->
-            <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 text-white">
+            <div class="bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-xl p-4 text-white">
               <div class="flex items-center justify-between mb-2">
                 <i class="fas fa-book-open text-2xl opacity-80"></i>
                 <span class="text-3xl font-bold">${stats.planos.active}</span>
               </div>
-              <p class="text-green-100 text-sm">Planos Ativos</p>
-              <p class="text-green-200 text-xs mt-1">
+              <p class="text-blue-100 text-sm">Planos Ativos</p>
+              <p class="text-blue-200 text-xs mt-1">
                 de ${stats.planos.total} total
               </p>
             </div>
@@ -15018,7 +15018,7 @@ window.abrirPainelAdmin = async function() {
           <div class="grid md:grid-cols-2 gap-6 mb-6">
             <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
               <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
-                <i class="fas fa-chart-line text-blue-500"></i>
+                <i class="fas fa-chart-line text-[#1A3A7F]"></i>
                 Crescimento de Usuários
               </h3>
               <div class="space-y-3">
@@ -15060,8 +15060,8 @@ window.abrirPainelAdmin = async function() {
                   <span class="font-bold ${themes[currentTheme].text}">${stats.emails.resend}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-credit-card mr-1 text-green-500"></i>Pagamentos</span>
-                  <span class="font-bold text-green-600">${stats.emails.payment || 0}</span>
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-credit-card mr-1 text-[#1A3A7F]"></i>Pagamentos</span>
+                  <span class="font-bold text-[#1A3A7F]">${stats.emails.payment || 0}</span>
                 </div>
               </div>
             </div>
@@ -15071,7 +15071,7 @@ window.abrirPainelAdmin = async function() {
           <div class="grid md:grid-cols-2 gap-6 mb-6">
             <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
               <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
-                <i class="fas fa-tasks text-green-500"></i>
+                <i class="fas fa-tasks text-[#1A3A7F]"></i>
                 Engajamento (Metas)
               </h3>
               <div class="space-y-3">
@@ -15081,42 +15081,42 @@ window.abrirPainelAdmin = async function() {
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Metas concluídas</span>
-                  <span class="font-bold text-green-600">${stats.metas.completed}</span>
+                  <span class="font-bold text-[#1A3A7F]">${stats.metas.completed}</span>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Taxa de conclusão</span>
-                  <span class="font-bold ${stats.metas.completion_rate >= 50 ? 'text-green-600' : 'text-yellow-600'}">${stats.metas.completion_rate}%</span>
+                  <span class="font-bold ${stats.metas.completion_rate >= 50 ? 'text-[#1A3A7F]' : 'text-[#2A4A9F]'}">${stats.metas.completion_rate}%</span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                  <div class="h-2 rounded-full ${stats.metas.completion_rate >= 50 ? 'bg-green-500' : 'bg-yellow-500'}" style="width: ${stats.metas.completion_rate}%"></div>
+                  <div class="h-2 rounded-full ${stats.metas.completion_rate >= 50 ? 'bg-[#1A3A7F]' : 'bg-[#2A4A9F]'}" style="width: ${stats.metas.completion_rate}%"></div>
                 </div>
               </div>
             </div>
             
             <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
               <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
-                <i class="fas fa-credit-card text-green-500"></i>
+                <i class="fas fa-credit-card text-[#1A3A7F]"></i>
                 Assinaturas Premium
               </h3>
               <div class="space-y-3">
                 <div class="flex justify-between items-center">
-                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-crown mr-1 text-yellow-500"></i>Total Premium</span>
-                  <span class="font-bold text-yellow-600">${stats.subscriptions.total}</span>
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-crown mr-1 text-[#1A3A7F]"></i>Total Premium</span>
+                  <span class="font-bold text-[#1A3A7F]">${stats.subscriptions.total}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-check-circle mr-1 text-green-500"></i>Ativos</span>
-                  <span class="font-bold text-green-600">${stats.subscriptions.active}</span>
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-check-circle mr-1 text-[#1A3A7F]"></i>Ativos</span>
+                  <span class="font-bold text-[#1A3A7F]">${stats.subscriptions.active}</span>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-hourglass-half mr-1 text-blue-500"></i>Em Trial</span>
                   <span class="font-bold text-blue-600">${stats.subscriptions.trial || 0}</span>
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t ${themes[currentTheme].border}">
-                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-dollar-sign mr-1 text-green-500"></i>Receita estimada</span>
-                  <span class="font-bold text-green-600">R$ ${(stats.subscriptions.revenue || 0).toFixed(2)}</span>
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-dollar-sign mr-1 text-[#1A3A7F]"></i>Receita estimada</span>
+                  <span class="font-bold text-[#1A3A7F]">R$ ${(stats.subscriptions.revenue || 0).toFixed(2)}</span>
                 </div>
               </div>
-              <button onclick="verFinanceiro()" class="mt-4 w-full py-2 px-4 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition text-sm font-medium">
+              <button onclick="verFinanceiro()" class="mt-4 w-full py-2 px-4 bg-[#E8EDF5] text-[#122D6A] rounded-lg hover:bg-[#D1DAE8] transition text-sm font-medium">
                 <i class="fas fa-chart-bar mr-1"></i>Ver Detalhes Financeiros
               </button>
             </div>
@@ -15126,7 +15126,7 @@ window.abrirPainelAdmin = async function() {
           <div class="grid md:grid-cols-2 gap-6 mb-6">
             <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
               <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
-                <i class="fas fa-robot text-purple-500"></i>
+                <i class="fas fa-robot text-[#1A3A7F]"></i>
                 Conteúdo Gerado pela IA
               </h3>
               <div class="space-y-3">
@@ -15136,26 +15136,26 @@ window.abrirPainelAdmin = async function() {
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-book mr-1"></i>Teoria</span>
-                  <span class="font-bold text-blue-600">${stats.conteudo?.teoria || 0}</span>
+                  <span class="font-bold text-[#1A3A7F]">${stats.conteudo?.teoria || 0}</span>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-tasks mr-1"></i>Exercícios</span>
-                  <span class="font-bold text-green-600">${stats.conteudo?.exercicios || 0}</span>
+                  <span class="font-bold text-[#1A3A7F]">${stats.conteudo?.exercicios || 0}</span>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-sticky-note mr-1"></i>Resumos</span>
-                  <span class="font-bold text-yellow-600">${stats.conteudo?.resumo || 0}</span>
+                  <span class="font-bold text-[#1A3A7F]">${stats.conteudo?.resumo || 0}</span>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-clone mr-1"></i>Flashcards</span>
-                  <span class="font-bold text-purple-600">${stats.conteudo?.flashcards || 0}</span>
+                  <span class="font-bold text-[#1A3A7F]">${stats.conteudo?.flashcards || 0}</span>
                 </div>
               </div>
             </div>
             
             <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
               <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
-                <i class="fas fa-star text-amber-500"></i>
+                <i class="fas fa-star text-[#1A3A7F]"></i>
                 Feedback de Conteúdo
               </h3>
               <div class="space-y-3">
@@ -15164,30 +15164,30 @@ window.abrirPainelAdmin = async function() {
                   <span class="font-bold ${themes[currentTheme].text} text-lg">${stats.feedback?.total || 0}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-thumbs-up mr-1 text-emerald-500"></i>Avaliações positivas</span>
-                  <span class="font-bold text-emerald-600">${stats.feedback?.positivo || 0}</span>
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-thumbs-up mr-1 text-[#1A3A7F]"></i>Avaliações positivas</span>
+                  <span class="font-bold text-[#1A3A7F]">${stats.feedback?.positivo || 0}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-thumbs-down mr-1 text-red-500"></i>Precisa melhorar</span>
-                  <span class="font-bold text-red-600">${stats.feedback?.negativo || 0}</span>
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-thumbs-down mr-1 text-[#122D6A]"></i>Precisa melhorar</span>
+                  <span class="font-bold text-[#122D6A]">${stats.feedback?.negativo || 0}</span>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Taxa de satisfação</span>
-                  <span class="font-bold ${(stats.feedback?.taxa_satisfacao || 0) >= 70 ? 'text-emerald-600' : (stats.feedback?.taxa_satisfacao || 0) >= 50 ? 'text-yellow-600' : 'text-red-600'}">${stats.feedback?.taxa_satisfacao || 0}%</span>
+                  <span class="font-bold text-[#1A3A7F]">${stats.feedback?.taxa_satisfacao || 0}%</span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                  <div class="h-2 rounded-full ${(stats.feedback?.taxa_satisfacao || 0) >= 70 ? 'bg-emerald-500' : (stats.feedback?.taxa_satisfacao || 0) >= 50 ? 'bg-yellow-500' : 'bg-red-500'}" style="width: ${stats.feedback?.taxa_satisfacao || 0}%"></div>
+                  <div class="h-2 rounded-full bg-[#1A3A7F]" style="width: ${stats.feedback?.taxa_satisfacao || 0}%"></div>
                 </div>
                 
                 <!-- Métricas de Regeneração -->
                 <div class="mt-4 pt-4 border-t ${themes[currentTheme].border}">
                   <div class="flex justify-between items-center mb-2">
-                    <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-sync-alt mr-1 text-purple-500"></i>Regenerações</span>
-                    <span class="font-bold text-purple-600">${stats.feedback?.regeneracoes || 0}</span>
+                    <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-sync-alt mr-1 text-[#1A3A7F]"></i>Regenerações</span>
+                    <span class="font-bold text-[#1A3A7F]">${stats.feedback?.regeneracoes || 0}</span>
                   </div>
                   <div class="flex justify-between items-center">
                     <span class="${themes[currentTheme].textSecondary}">Taxa de regeneração</span>
-                    <span class="font-bold ${(stats.feedback?.taxa_regeneracao || 0) <= 30 ? 'text-emerald-600' : (stats.feedback?.taxa_regeneracao || 0) <= 50 ? 'text-yellow-600' : 'text-red-600'}">${stats.feedback?.taxa_regeneracao || 0}%</span>
+                    <span class="font-bold text-[#1A3A7F]">${stats.feedback?.taxa_regeneracao || 0}%</span>
                   </div>
                   <p class="text-xs ${themes[currentTheme].textMuted} mt-2 italic">
                     <i class="fas fa-info-circle mr-1"></i>
@@ -15195,7 +15195,7 @@ window.abrirPainelAdmin = async function() {
                   </p>
                 </div>
               </div>
-              <button onclick="verFeedbacksAdmin()" class="mt-4 w-full py-2 px-4 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition text-sm font-medium">
+              <button onclick="verFeedbacksAdmin()" class="mt-4 w-full py-2 px-4 bg-[#E8EDF5] text-[#122D6A] rounded-lg hover:bg-[#D1DAE8] transition text-sm font-medium">
                 <i class="fas fa-list mr-1"></i>Ver Todos os Feedbacks
               </button>
             </div>
@@ -15205,13 +15205,13 @@ window.abrirPainelAdmin = async function() {
           <div class="grid md:grid-cols-2 gap-6 mb-6">
             <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
               <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
-                <i class="fas fa-eye text-indigo-500"></i>
+                <i class="fas fa-eye text-[#1A3A7F]"></i>
                 Visitas ao Site
               </h3>
               <div class="space-y-3">
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Visitantes únicos hoje</span>
-                  <span class="font-bold text-indigo-600 text-lg">${stats.visits?.unique_today || 0}</span>
+                  <span class="font-bold text-[#1A3A7F] text-lg">${stats.visits?.unique_today || 0}</span>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Visitantes únicos (7 dias)</span>
@@ -15227,17 +15227,17 @@ window.abrirPainelAdmin = async function() {
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Page views hoje</span>
-                  <span class="font-bold text-green-600">${stats.visits?.page_views_today || 0}</span>
+                  <span class="font-bold text-[#1A3A7F]">${stats.visits?.page_views_today || 0}</span>
                 </div>
               </div>
-              <button onclick="verVisitasDetalhadas()" class="mt-4 w-full py-2 px-4 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition text-sm font-medium">
+              <button onclick="verVisitasDetalhadas()" class="mt-4 w-full py-2 px-4 bg-[#E8EDF5] text-[#122D6A] rounded-lg hover:bg-[#D1DAE8] transition text-sm font-medium">
                 <i class="fas fa-chart-bar mr-1"></i>Ver Relatório Completo
               </button>
             </div>
             
             <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
               <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
-                <i class="fas fa-info-circle text-gray-500"></i>
+                <i class="fas fa-info-circle text-[#1A3A7F]"></i>
                 Informações do Sistema
               </h3>
               <div class="space-y-3">
@@ -15247,7 +15247,7 @@ window.abrirPainelAdmin = async function() {
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Ambiente</span>
-                  <span class="font-bold text-green-600">Produção</span>
+                  <span class="font-bold text-[#1A3A7F]">Produção</span>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Última atualização</span>
@@ -15260,44 +15260,44 @@ window.abrirPainelAdmin = async function() {
           <!-- Ações Rápidas -->
           <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
             <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
-              <i class="fas fa-bolt text-yellow-500"></i>
+              <i class="fas fa-bolt text-[#1A3A7F]"></i>
               Ações Rápidas
             </h3>
             <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <button onclick="verListaUsuarios()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-center">
-                <i class="fas fa-users text-blue-500 text-xl mb-1"></i>
+              <button onclick="verListaUsuarios()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-[#E8EDF5] dark:hover:bg-[#1A3A7F]/20 transition text-center">
+                <i class="fas fa-users text-[#1A3A7F] text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Ver Usuários</p>
               </button>
-              <button onclick="verRelatorioFinanceiro()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition text-center">
-                <i class="fas fa-chart-line text-emerald-500 text-xl mb-1"></i>
+              <button onclick="verRelatorioFinanceiro()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-[#E8EDF5] dark:hover:bg-[#1A3A7F]/20 transition text-center">
+                <i class="fas fa-chart-line text-[#1A3A7F] text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Financeiro</p>
               </button>
-              <button onclick="verHistoricoEmails()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-blue-50 dark:hover:bg-[#1A3A7F]/20 transition text-center">
+              <button onclick="verHistoricoEmails()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-[#E8EDF5] dark:hover:bg-[#1A3A7F]/20 transition text-center">
                 <i class="fas fa-envelope text-[#1A3A7F] text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Histórico Emails</p>
               </button>
-              <button onclick="verPlanosDisponiveis()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition text-center">
-                <i class="fas fa-tags text-yellow-500 text-xl mb-1"></i>
+              <button onclick="verPlanosDisponiveis()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-[#E8EDF5] dark:hover:bg-[#1A3A7F]/20 transition text-center">
+                <i class="fas fa-tags text-[#1A3A7F] text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Planos Preço</p>
               </button>
-              <button onclick="atualizarDashboardAdmin()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-green-50 dark:hover:bg-green-900/20 transition text-center">
-                <i class="fas fa-sync text-green-500 text-xl mb-1"></i>
+              <button onclick="atualizarDashboardAdmin()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-[#E8EDF5] dark:hover:bg-[#1A3A7F]/20 transition text-center">
+                <i class="fas fa-sync text-[#1A3A7F] text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Atualizar</p>
               </button>
-              <button onclick="verFeedbacksUsuarios()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-purple-50 dark:hover:bg-purple-900/20 transition text-center">
-                <i class="fas fa-comment-dots text-purple-500 text-xl mb-1"></i>
+              <button onclick="verFeedbacksUsuarios()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-[#E8EDF5] dark:hover:bg-[#1A3A7F]/20 transition text-center">
+                <i class="fas fa-comment-dots text-[#1A3A7F] text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Feedbacks</p>
               </button>
-              <button onclick="gerenciarChavesAPI()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-red-50 dark:hover:bg-red-900/20 transition text-center">
-                <i class="fas fa-key text-red-500 text-xl mb-1"></i>
+              <button onclick="gerenciarChavesAPI()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-[#E8EDF5] dark:hover:bg-[#1A3A7F]/20 transition text-center">
+                <i class="fas fa-key text-[#1A3A7F] text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Chaves API</p>
               </button>
-              <button onclick="abrirReengajamento()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-orange-50 dark:hover:bg-orange-900/20 transition text-center relative">
-                <i class="fas fa-paper-plane text-orange-500 text-xl mb-1"></i>
+              <button onclick="abrirReengajamento()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-[#E8EDF5] dark:hover:bg-[#1A3A7F]/20 transition text-center relative">
+                <i class="fas fa-paper-plane text-[#1A3A7F] text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Reengajamento</p>
               </button>
-              <button onclick="abrirAnalyticsAdmin()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-violet-50 dark:hover:bg-violet-900/20 transition text-center">
-                <i class="fas fa-chart-pie text-violet-500 text-xl mb-1"></i>
+              <button onclick="abrirAnalyticsAdmin()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-[#E8EDF5] dark:hover:bg-[#1A3A7F]/20 transition text-center">
+                <i class="fas fa-chart-pie text-[#1A3A7F] text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Analytics</p>
               </button>
             </div>
@@ -15713,7 +15713,7 @@ window.verRelatorioFinanceiro = async function(periodo = '30') {
     modal.innerHTML = `
       <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-hidden flex flex-col">
         <!-- Header -->
-        <div class="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white flex-shrink-0">
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] p-6 text-white flex-shrink-0">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
               <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
@@ -15744,13 +15744,13 @@ window.verRelatorioFinanceiro = async function(periodo = '30') {
           <!-- Cards de Métricas Principais -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <!-- MRR -->
-            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white">
+            <div class="bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] rounded-xl p-4 text-white">
               <div class="flex items-center justify-between mb-2">
                 <i class="fas fa-sync-alt text-2xl opacity-80"></i>
                 <span class="text-2xl font-bold">R$ ${(data.metricas.mrr || 0).toFixed(2)}</span>
               </div>
-              <p class="text-emerald-100 text-sm">MRR</p>
-              <p class="text-emerald-200 text-xs">Receita Recorrente Mensal</p>
+              <p class="text-blue-100 text-sm">MRR</p>
+              <p class="text-blue-200 text-xs">Receita Recorrente Mensal</p>
             </div>
             
             <!-- ARR -->
@@ -15764,23 +15764,23 @@ window.verRelatorioFinanceiro = async function(periodo = '30') {
             </div>
             
             <!-- Ticket Médio -->
-            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white">
+            <div class="bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-xl p-4 text-white">
               <div class="flex items-center justify-between mb-2">
                 <i class="fas fa-receipt text-2xl opacity-80"></i>
                 <span class="text-2xl font-bold">R$ ${(data.metricas.ticket_medio || 0).toFixed(2)}</span>
               </div>
-              <p class="text-purple-100 text-sm">Ticket Médio</p>
-              <p class="text-purple-200 text-xs">Por assinatura</p>
+              <p class="text-blue-100 text-sm">Ticket Médio</p>
+              <p class="text-blue-200 text-xs">Por assinatura</p>
             </div>
             
             <!-- Taxa Conversão -->
-            <div class="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl p-4 text-white">
+            <div class="bg-gradient-to-br from-[#1A3A7F] to-[#122D6A] rounded-xl p-4 text-white">
               <div class="flex items-center justify-between mb-2">
                 <i class="fas fa-percentage text-2xl opacity-80"></i>
                 <span class="text-2xl font-bold">${data.resumo.taxa_conversao || 0}%</span>
               </div>
-              <p class="text-amber-100 text-sm">Conversão</p>
-              <p class="text-amber-200 text-xs">Trial → Premium</p>
+              <p class="text-blue-100 text-sm">Conversão</p>
+              <p class="text-blue-200 text-xs">Trial → Premium</p>
             </div>
           </div>
           
@@ -16645,7 +16645,7 @@ window.gerenciarChavesAPI = async function() {
     modal.innerHTML = `
       <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <!-- Header -->
-        <div class="bg-gradient-to-r from-red-600 to-pink-600 p-5 text-white flex-shrink-0">
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] p-5 text-white flex-shrink-0">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -17129,7 +17129,7 @@ window.abrirReengajamento = async function() {
     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4';
     modal.innerHTML = `
       <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="bg-gradient-to-r from-orange-500 to-amber-600 p-5 text-white flex-shrink-0">
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] p-5 text-white flex-shrink-0">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -17319,7 +17319,7 @@ window.abrirFeedbackReengajamento = function(userId) {
   modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4';
   modal.innerHTML = `
     <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
-      <div class="bg-gradient-to-r from-purple-600 to-purple-700 p-5 text-white">
+      <div class="bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] p-5 text-white">
         <div class="flex items-center gap-3">
           <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
             <i class="fas fa-comment-dots text-2xl"></i>
@@ -17381,7 +17381,7 @@ window.abrirFeedbackReengajamento = function(userId) {
             Cancelar
           </button>
           <button onclick="enviarFeedbackReengajamento(${userId || 0})" 
-            class="flex-1 py-2.5 px-4 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800 transition text-sm font-medium shadow-lg">
+            class="flex-1 py-2.5 px-4 rounded-lg bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white hover:from-[#1A3A7F] hover:to-[#2A4A9F] transition text-sm font-medium shadow-lg">
             <i class="fas fa-paper-plane mr-1"></i> Enviar Feedback
           </button>
         </div>

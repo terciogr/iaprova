@@ -1,7 +1,7 @@
-// IAprova Service Worker v3.1 - Network First para app.js
-const CACHE_NAME = 'iaprova-v83';
-const STATIC_CACHE = 'iaprova-static-v83';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v83';
+// IAprova Service Worker v3.2 - v84 cores uniformizadas + fix email
+const CACHE_NAME = 'iaprova-v84';
+const STATIC_CACHE = 'iaprova-static-v84';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v84';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
