@@ -21471,9 +21471,17 @@ async function sendChatMessage() {
   addChatMessage('assistant', '<i class="fas fa-spinner fa-spin"></i> Pensando...', loadingId);
   
   try {
+    // ✅ v84: Enviar histórico do chat para contexto conversacional
+    // Enviar últimas 10 mensagens (excluindo a mensagem atual que acabou de ser adicionada)
+    const recentHistory = chatHistory.slice(-11, -1).map(m => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      text: m.content.replace(/<[^>]*>/g, '').substring(0, 500) // Limpar HTML e limitar tamanho
+    }));
+    
     const response = await axios.post('/api/chat', {
       message: message,
-      user_id: currentUser.id
+      user_id: currentUser.id,
+      history: recentHistory
     });
     
     // Remover loading

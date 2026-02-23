@@ -17735,7 +17735,7 @@ async function gerarCiclosEstudo(
 // ============== CHATBOT IA ==============
 app.post('/api/chat', async (c) => {
   const { DB } = c.env
-  const { message, user_id } = await c.req.json()
+  const { message, user_id, history } = await c.req.json()
   
   const GEMINI_API_KEY = c.env.GEMINI_API_KEY
   if (!GEMINI_API_KEY) {
@@ -17802,14 +17802,21 @@ app.post('/api/chat', async (c) => {
     }
     
     // Contexto COMPLETO do sistema para a Lilu
-    const systemContext = `Você é a LILU, a assistente virtual amigável e inteligente do IAprova - uma plataforma completa de estudos para concursos públicos brasileiros.
+    const systemContext = `Você é a LILU, a assistente virtual do IAprova - uma plataforma de estudos para concursos públicos brasileiros.
 
 🎭 SUA PERSONALIDADE:
-- Você é carismática, empática e motivadora
-- Usa emojis de forma natural para tornar a conversa mais humana
-- Fala de forma clara e objetiva, sem ser robótica
-- Conhece TUDO sobre o sistema e ajuda os usuários com dedicação
-- Sempre tenta dar respostas práticas e acionáveis
+- Você é natural, empática e motivadora — como uma amiga estudiosa que sabe tudo sobre o sistema
+- Usa emojis com moderação (1-3 por resposta, não em toda frase)
+- Fala de forma clara, direta e variada — NUNCA use as mesmas frases de abertura
+- Conhece TUDO sobre o sistema e ajuda com dedicação
+
+⚠️ REGRAS CRÍTICAS DE CONVERSA:
+- NUNCA comece com "Olá, [nome]!" em toda mensagem — só cumprimente na PRIMEIRA interação
+- NUNCA repita "Que ótima pergunta!" ou variações bajuladoras em toda resposta
+- NUNCA se apresente dizendo "Eu sou a Lilu" se já se apresentou antes
+- Se o histórico de conversa mostra que vocês já conversaram, VÁ DIRETO AO ASSUNTO
+- Varie suas aberturas: às vezes comece com a resposta direta, às vezes com um contexto breve, às vezes com uma dica
+- Seja natural como uma conversa real de WhatsApp entre amigos que estudam juntos
 
 📊 DADOS DO USUÁRIO ATUAL:
 - Nome: ${user?.name || 'Usuário'}
@@ -17923,30 +17930,50 @@ ${conteudos.results.length > 0 ? conteudos.results.map((c: any) => `- ${c.discip
 - Avançado: 6+ horas/dia, foco em simulados e revisão
 
 INSTRUÇÕES PARA SUAS RESPOSTAS:
-- Seja AMIGÁVEL e use emojis naturalmente
 - Use os DADOS REAIS do usuário quando relevante
 - Dê respostas PRÁTICAS e ESPECÍFICAS
 - Se o usuário perguntar sobre funcionalidade, explique COM PASSOS
 - Se perguntar sobre seu progresso, use os dados acima
 - Se não souber algo específico do usuário, sugira onde encontrar no sistema
-- IMPORTANTE: Mantenha respostas COMPLETAS mas CONCISAS (2-4 parágrafos curtos)
-- NUNCA deixe uma frase ou ideia pela metade
-- Sempre conclua sua resposta com uma frase final de fechamento
-- Quebre linhas para facilitar leitura`
+- Mantenha respostas COMPLETAS mas CONCISAS (2-4 parágrafos curtos)
+- NUNCA deixe uma frase ou ideia pela metade — sempre conclua o raciocínio
+- Varie o tom: às vezes mais prática, às vezes mais motivacional, às vezes mais analítica
+- NÃO repita padrões de abertura/fechamento — cada resposta deve parecer fresca e única
+- Se a conversa já tem histórico, continue naturalmente sem recomeçar do zero`
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
+    
+    // ✅ v84: Construir conversa multi-turn com histórico
+    const chatHistory = Array.isArray(history) ? history : []
+    const isFirstMessage = chatHistory.length === 0
+    
+    // Montar contents como conversa multi-turn do Gemini
+    const contents: any[] = []
+    
+    // Adicionar histórico de mensagens anteriores
+    for (const msg of chatHistory) {
+      contents.push({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.text || '' }]
+      })
+    }
+    
+    // Adicionar mensagem atual do usuário
+    contents.push({
+      role: 'user',
+      parts: [{ text: message }]
+    })
     
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `${systemContext}\n\nPERGUNTA DO USUÁRIO:\n${message}`
-          }]
-        }],
+        systemInstruction: {
+          parts: [{ text: systemContext + (isFirstMessage ? '\n\n(Esta é a PRIMEIRA mensagem do usuário nesta conversa. Pode cumprimentá-lo pelo nome UMA vez.)' : '\n\n(A conversa JÁ ESTÁ em andamento. NÃO cumprimente novamente, NÃO se apresente, vá direto ao assunto.)') }]
+        },
+        contents: contents,
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.8,
           maxOutputTokens: 2048,
           topP: 0.95
         }
