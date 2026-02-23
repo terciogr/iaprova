@@ -4276,7 +4276,7 @@ app.post('/api/feedbacks', async (c) => {
   }
 })
 
-// ✅ v85: Endpoint de Analytics completo para o admin
+// ✅ v86-fix: Endpoint de Analytics completo para o admin
 app.get('/api/admin/analytics', async (c) => {
   const { DB } = c.env
   
@@ -4285,93 +4285,115 @@ app.get('/api/admin/analytics', async (c) => {
   }
   
   try {
-    // 1. Totais de conteúdo por tipo (materiais_salvos)
-    const { results: totaisTipo } = await DB.prepare(`
-      SELECT tipo, COUNT(*) as total 
-      FROM materiais_salvos 
-      GROUP BY tipo
-    `).all()
+    // Helper: query segura que não quebra se tabela não existir
+    const safeQuery = async (query: string, params: any[] = []) => {
+      try {
+        const stmt = DB.prepare(query)
+        const bound = params.length > 0 ? stmt.bind(...params) : stmt
+        return await bound.all()
+      } catch (e: any) {
+        console.warn(`⚠️ Analytics query falhou: ${e.message?.substring(0, 100)}`)
+        return { results: [] }
+      }
+    }
+    const safeFirst = async (query: string, params: any[] = []) => {
+      try {
+        const stmt = DB.prepare(query)
+        const bound = params.length > 0 ? stmt.bind(...params) : stmt
+        return await bound.first() as any
+      } catch (e: any) {
+        console.warn(`⚠️ Analytics query falhou: ${e.message?.substring(0, 100)}`)
+        return null
+      }
+    }
+
+    // 1. Totais de conteúdo por tipo - combinar conteudo_estudo + materiais_salvos
+    const totaisCE = await safeQuery(`SELECT tipo, COUNT(*) as total FROM conteudo_estudo GROUP BY tipo`)
+    const totaisMS = await safeQuery(`SELECT tipo, COUNT(*) as total FROM materiais_salvos GROUP BY tipo`)
     
-    // 2. Total de flashcards
-    const flashcardsTotal = await DB.prepare(`
-      SELECT COUNT(*) as total FROM flashcards_salvos
-    `).first() as any
+    // Mesclar totais das duas tabelas
+    const totaisMap: Record<string, number> = {}
+    for (const r of (totaisCE.results || [])) { totaisMap[(r as any).tipo] = (totaisMap[(r as any).tipo] || 0) + ((r as any).total || 0) }
+    for (const r of (totaisMS.results || [])) { totaisMap[(r as any).tipo] = (totaisMap[(r as any).tipo] || 0) + ((r as any).total || 0) }
+    const totaisTipo = Object.entries(totaisMap).map(([tipo, total]) => ({ tipo, total }))
+    
+    // 2. Total de flashcards (de conteudo_estudo tipo 'flashcards')
+    const flashcardsTotal = await safeFirst(`SELECT COUNT(*) as total FROM conteudo_estudo WHERE tipo = 'flashcards'`)
     
     // 3. Total de simulados
-    const simuladosTotal = await DB.prepare(`
-      SELECT COUNT(*) as total FROM simulados_historico
-    `).first() as any
+    const simuladosTotal = await safeFirst(`SELECT COUNT(*) as total FROM simulados_historico`)
     
-    // 4. Total de revisões (conteúdos com regeneração ou marcados como revisão)
-    const revisoesTotal = await DB.prepare(`
-      SELECT COUNT(*) as total FROM materiais_salvos WHERE tipo = 'revisao'
-    `).first() as any
+    // 4. Total de revisões
+    const revisoesTotalCE = await safeFirst(`SELECT COUNT(*) as total FROM conteudo_estudo WHERE tipo = 'revisao'`)
+    const revisoesTotalMS = await safeFirst(`SELECT COUNT(*) as total FROM materiais_salvos WHERE tipo = 'revisao'`)
+    const revisoesTotal = (revisoesTotalCE?.total || 0) + (revisoesTotalMS?.total || 0)
     
-    // 5. Conteúdos por dia (últimos 30 dias)
-    const { results: conteudoPorDia } = await DB.prepare(`
-      SELECT 
-        DATE(created_at) as dia,
-        tipo,
-        COUNT(*) as total
+    // 5. Conteúdos por dia (últimos 30 dias) - combinar ambas tabelas
+    const conteudoPorDiaCE = await safeQuery(`
+      SELECT DATE(created_at) as dia, tipo, COUNT(*) as total
+      FROM conteudo_estudo
+      WHERE created_at >= datetime('now', '-30 days')
+      GROUP BY dia, tipo ORDER BY dia ASC
+    `)
+    const conteudoPorDiaMS = await safeQuery(`
+      SELECT DATE(created_at) as dia, tipo, COUNT(*) as total
       FROM materiais_salvos
       WHERE created_at >= datetime('now', '-30 days')
-      GROUP BY dia, tipo
-      ORDER BY dia ASC
-    `).all()
+      GROUP BY dia, tipo ORDER BY dia ASC
+    `)
+    const conteudoPorDia = [...(conteudoPorDiaCE.results || []), ...(conteudoPorDiaMS.results || [])]
     
-    // 6. Flashcards por dia
-    const { results: flashcardsPorDia } = await DB.prepare(`
-      SELECT 
-        DATE(created_at) as dia,
-        COUNT(*) as total
-      FROM flashcards_salvos
-      WHERE created_at >= datetime('now', '-30 days')
-      GROUP BY dia
-      ORDER BY dia ASC
-    `).all()
+    // 6. Flashcards por dia (de conteudo_estudo)
+    const flashcardsPorDiaRes = await safeQuery(`
+      SELECT DATE(created_at) as dia, COUNT(*) as total
+      FROM conteudo_estudo
+      WHERE tipo = 'flashcards' AND created_at >= datetime('now', '-30 days')
+      GROUP BY dia ORDER BY dia ASC
+    `)
     
     // 7. Simulados por dia
-    const { results: simuladosPorDia } = await DB.prepare(`
-      SELECT 
-        DATE(created_at) as dia,
-        COUNT(*) as total
+    const simuladosPorDiaRes = await safeQuery(`
+      SELECT DATE(created_at) as dia, COUNT(*) as total
       FROM simulados_historico
       WHERE created_at >= datetime('now', '-30 days')
-      GROUP BY dia
-      ORDER BY dia ASC
-    `).all()
+      GROUP BY dia ORDER BY dia ASC
+    `)
     
-    // 8. Exercícios por dia (de materiais_salvos tipo exercicios)
-    const { results: exerciciosPorDia } = await DB.prepare(`
-      SELECT 
-        DATE(created_at) as dia,
-        COUNT(*) as total
+    // 8. Exercícios por dia
+    const exerciciosPorDiaCE = await safeQuery(`
+      SELECT DATE(created_at) as dia, COUNT(*) as total
+      FROM conteudo_estudo
+      WHERE tipo = 'exercicios' AND created_at >= datetime('now', '-30 days')
+      GROUP BY dia ORDER BY dia ASC
+    `)
+    const exerciciosPorDiaMS = await safeQuery(`
+      SELECT DATE(created_at) as dia, COUNT(*) as total
       FROM materiais_salvos
       WHERE tipo = 'exercicios' AND created_at >= datetime('now', '-30 days')
-      GROUP BY dia
-      ORDER BY dia ASC
-    `).all()
+      GROUP BY dia ORDER BY dia ASC
+    `)
+    const exerciciosPorDia = [...(exerciciosPorDiaCE.results || []), ...(exerciciosPorDiaMS.results || [])]
     
-    // 9. Feedbacks: estatísticas
-    const feedbackStats = await DB.prepare(`
+    // 9. Feedbacks: estatísticas (user_feedbacks é a tabela correta)
+    const feedbackStats = await safeFirst(`
       SELECT 
         COUNT(*) as total,
         ROUND(AVG(CASE WHEN rating > 0 THEN rating ELSE NULL END), 1) as media_geral,
         SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as nao_lidos,
         SUM(CASE WHEN rating >= 4 OR feedback_type = 'praise' OR feedback_type = 'bom' THEN 1 ELSE 0 END) as positivos
-      FROM user_feedback
-    `).first() as any
+      FROM user_feedbacks
+    `)
     
     // 10. Feedbacks por tipo
-    const { results: feedbackPorTipo } = await DB.prepare(`
+    const feedbackPorTipoRes = await safeQuery(`
       SELECT feedback_type, COUNT(*) as total
-      FROM user_feedback
+      FROM user_feedbacks
       GROUP BY feedback_type
       ORDER BY total DESC
-    `).all()
+    `)
     
     // 11. Lista de feedbacks (últimos 100)
-    const { results: feedbackLista } = await DB.prepare(`
+    const feedbackListaRes = await safeQuery(`
       SELECT 
         f.id,
         f.feedback_type,
@@ -4382,22 +4404,22 @@ app.get('/api/admin/analytics', async (c) => {
         f.created_at,
         u.name as user_name,
         u.email as user_email
-      FROM user_feedback f
+      FROM user_feedbacks f
       LEFT JOIN users u ON f.user_id = u.id
       ORDER BY f.created_at DESC
       LIMIT 100
-    `).all()
+    `)
     
     return c.json({
       conteudos: {
-        totais: totaisTipo || [],
+        totais: totaisTipo,
         flashcards_total: flashcardsTotal?.total || 0,
         simulados_total: simuladosTotal?.total || 0,
-        revisoes_total: revisoesTotal?.total || 0,
-        por_dia: conteudoPorDia || [],
-        flashcards_por_dia: flashcardsPorDia || [],
-        simulados_por_dia: simuladosPorDia || [],
-        exercicios_por_dia: exerciciosPorDia || []
+        revisoes_total: revisoesTotal,
+        por_dia: conteudoPorDia,
+        flashcards_por_dia: flashcardsPorDiaRes.results || [],
+        simulados_por_dia: simuladosPorDiaRes.results || [],
+        exercicios_por_dia: exerciciosPorDia
       },
       feedbacks: {
         stats: {
@@ -4406,8 +4428,8 @@ app.get('/api/admin/analytics', async (c) => {
           nao_lidos: feedbackStats?.nao_lidos || 0,
           positivos: feedbackStats?.positivos || 0
         },
-        por_tipo: feedbackPorTipo || [],
-        lista: feedbackLista || []
+        por_tipo: feedbackPorTipoRes.results || [],
+        lista: feedbackListaRes.results || []
       },
       atualizado_em: new Date().toISOString()
     })
