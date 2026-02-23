@@ -24959,7 +24959,8 @@ window.toggleDisciplinaSimulado = async function(disciplinaId, disciplinaNome) {
             ${topicos.slice(0, 20).map(t => `
               <button onclick="toggleTopicoSimulado(${t.id}, '${t.nome.replace(/'/g, "\\'")}', ${disciplinaId})"
                       id="topico-simulado-${t.id}"
-                      class="px-4 py-2.5 text-sm text-left rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:border-[#2A4A9F] hover:bg-[#F0F4FA] dark:hover:bg-[#0D1F4D]/30 transition-all duration-150 leading-snug font-medium"
+                      class="topico-sim-btn px-4 py-2.5 text-sm text-left rounded-lg border-2 border-[#9CA3AF] hover:border-[#2A4A9F] hover:bg-[#F0F4FA] transition-all duration-150 leading-snug"
+                      style="color: #111827; font-weight: 500;"
                       title="${t.nome}">
                 ${t.nome}
               </button>
@@ -24994,12 +24995,18 @@ window.toggleTopicoSimulado = function(topicoId, topicoNome, disciplinaId) {
   
   if (index === -1) {
     simuladoConfig.topicosSelecionados.push({ id: topicoId, nome: topicoNome, disciplinaId });
-    btn.classList.add('border-[#122D6A]', 'bg-[#122D6A]', 'dark:bg-[#1A3A7F]', 'text-white', 'dark:text-white', 'shadow-sm');
-    btn.classList.remove('border-gray-300', 'dark:border-gray-600', 'text-gray-900', 'dark:text-gray-100', 'hover:bg-[#F0F4FA]');
+    btn.style.color = '#FFFFFF';
+    btn.style.backgroundColor = '#122D6A';
+    btn.style.borderColor = '#122D6A';
+    btn.style.fontWeight = '600';
+    btn.classList.add('shadow-sm');
   } else {
     simuladoConfig.topicosSelecionados.splice(index, 1);
-    btn.classList.remove('border-[#122D6A]', 'bg-[#122D6A]', 'dark:bg-[#1A3A7F]', 'text-white', 'dark:text-white', 'shadow-sm');
-    btn.classList.add('border-gray-300', 'dark:border-gray-600', 'text-gray-900', 'dark:text-gray-100', 'hover:bg-[#F0F4FA]');
+    btn.style.color = '#111827';
+    btn.style.backgroundColor = '';
+    btn.style.borderColor = '#9CA3AF';
+    btn.style.fontWeight = '500';
+    btn.classList.remove('shadow-sm');
   }
   
   atualizarResumoSimulado();
