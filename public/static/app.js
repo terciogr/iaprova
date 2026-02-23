@@ -24959,7 +24959,7 @@ window.toggleDisciplinaSimulado = async function(disciplinaId, disciplinaNome) {
             ${topicos.slice(0, 20).map(t => `
               <button onclick="toggleTopicoSimulado(${t.id}, '${t.nome.replace(/'/g, "\\'")}', ${disciplinaId})"
                       id="topico-simulado-${t.id}"
-                      class="px-3 py-2 text-sm text-left rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-[#4A6AC0] hover:bg-[#6BB6FF]/5 dark:hover:bg-[#0D1F4D]/30 transition leading-snug"
+                      class="px-4 py-2.5 text-sm text-left rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:border-[#2A4A9F] hover:bg-[#F0F4FA] dark:hover:bg-[#0D1F4D]/30 transition-all duration-150 leading-snug font-medium"
                       title="${t.nome}">
                 ${t.nome}
               </button>
@@ -24994,12 +24994,12 @@ window.toggleTopicoSimulado = function(topicoId, topicoNome, disciplinaId) {
   
   if (index === -1) {
     simuladoConfig.topicosSelecionados.push({ id: topicoId, nome: topicoNome, disciplinaId });
-    btn.classList.add('border-[#122D6A]', 'bg-[#122D6A]/10', 'dark:bg-[#122D6A]/30', 'text-[#0D1F4D]', 'dark:text-[#7BC4FF]', 'font-semibold');
-    btn.classList.remove('border-gray-300', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-300');
+    btn.classList.add('border-[#122D6A]', 'bg-[#122D6A]', 'dark:bg-[#1A3A7F]', 'text-white', 'dark:text-white', 'shadow-sm');
+    btn.classList.remove('border-gray-300', 'dark:border-gray-600', 'text-gray-900', 'dark:text-gray-100', 'hover:bg-[#F0F4FA]');
   } else {
     simuladoConfig.topicosSelecionados.splice(index, 1);
-    btn.classList.remove('border-[#122D6A]', 'bg-[#122D6A]/10', 'dark:bg-[#122D6A]/30', 'text-[#0D1F4D]', 'dark:text-[#7BC4FF]', 'font-semibold');
-    btn.classList.add('border-gray-300', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-300');
+    btn.classList.remove('border-[#122D6A]', 'bg-[#122D6A]', 'dark:bg-[#1A3A7F]', 'text-white', 'dark:text-white', 'shadow-sm');
+    btn.classList.add('border-gray-300', 'dark:border-gray-600', 'text-gray-900', 'dark:text-gray-100', 'hover:bg-[#F0F4FA]');
   }
   
   atualizarResumoSimulado();
