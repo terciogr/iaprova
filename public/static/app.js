@@ -24950,15 +24950,16 @@ window.toggleDisciplinaSimulado = async function(disciplinaId, disciplinaNome) {
         topicosDiv.innerHTML = '<p class="text-sm text-gray-500">Nenhum tópico encontrado.</p>';
       } else {
         topicosDiv.innerHTML = `
-          <div class="flex flex-wrap gap-2">
-            ${topicos.slice(0, 15).map(t => `
+          <div class="flex flex-col gap-2">
+            ${topicos.slice(0, 20).map(t => `
               <button onclick="toggleTopicoSimulado(${t.id}, '${t.nome.replace(/'/g, "\\'")}', ${disciplinaId})"
                       id="topico-simulado-${t.id}"
-                      class="px-3 py-1.5 text-sm rounded-full border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-[#4A6AC0] hover:bg-[#6BB6FF]/5 dark:hover:bg-[#0D1F4D]/30 transition">
-                ${t.nome.length > 30 ? t.nome.substring(0, 30) + '...' : t.nome}
+                      class="px-3 py-2 text-sm text-left rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-[#4A6AC0] hover:bg-[#6BB6FF]/5 dark:hover:bg-[#0D1F4D]/30 transition leading-snug"
+                      title="${t.nome}">
+                ${t.nome}
               </button>
             `).join('')}
-            ${topicos.length > 15 ? `<span class="text-xs text-gray-500 self-center">+${topicos.length - 15} mais</span>` : ''}
+            ${topicos.length > 20 ? `<span class="text-xs text-gray-500 self-center">+${topicos.length - 20} mais</span>` : ''}
           </div>
           <p class="text-xs text-gray-500 mt-2">Clique nos tópicos para incluí-los especificamente (opcional)</p>
         `;
@@ -24988,11 +24989,11 @@ window.toggleTopicoSimulado = function(topicoId, topicoNome, disciplinaId) {
   
   if (index === -1) {
     simuladoConfig.topicosSelecionados.push({ id: topicoId, nome: topicoNome, disciplinaId });
-    btn.classList.add('border-[#122D6A]', 'bg-[#6BB6FF]/10', 'dark:bg-[#0D1F4D]/50', 'text-[#0D1F4D]');
+    btn.classList.add('border-[#122D6A]', 'bg-[#122D6A]/10', 'dark:bg-[#122D6A]/30', 'text-[#0D1F4D]', 'dark:text-[#7BC4FF]', 'font-semibold');
     btn.classList.remove('border-gray-300', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-300');
   } else {
     simuladoConfig.topicosSelecionados.splice(index, 1);
-    btn.classList.remove('border-[#122D6A]', 'bg-[#6BB6FF]/10', 'dark:bg-[#0D1F4D]/50', 'text-[#0D1F4D]');
+    btn.classList.remove('border-[#122D6A]', 'bg-[#122D6A]/10', 'dark:bg-[#122D6A]/30', 'text-[#0D1F4D]', 'dark:text-[#7BC4FF]', 'font-semibold');
     btn.classList.add('border-gray-300', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-300');
   }
   
@@ -25208,7 +25209,7 @@ window.gerarSimulado = async function() {
         _simuladoDisciplinas: disciplinasSelecionadas.map(d => d.nome)
       });
       
-      showToast(`✅ Simulado gerado com ${response.data.questoes_geradas} questões!`, 'success');
+      showToast(`✅ Simulado gerado com ${response.data.questoes_geradas}/${response.data.questoes_pedidas || quantidadeQuestoes} questões!`, 'success');
     } else {
       showToast('Erro ao gerar simulado: ' + (response.data.error || 'Erro no servidor. Tente novamente.'), 'error');
     }

@@ -19093,21 +19093,44 @@ app.post('/api/simulado/gerar', async (c) => {
   }
   
   try {
-    console.log(`📝 Gerando simulado: ${quantidade} questões para ${disciplinas.length} disciplinas`)
+    // Garantir quantidade mínima e máxima
+    const qtdFinal = Math.max(5, Math.min(50, quantidade || 20))
+    console.log(`📝 Gerando simulado: ${qtdFinal} questões para ${disciplinas.length} disciplinas`)
     
     // Buscar nomes das disciplinas E seus tópicos cadastrados
     const disciplinasComTopicos: any[] = []
     for (const discId of disciplinas) {
       const disc = await DB.prepare('SELECT id, nome FROM disciplinas WHERE id = ?').bind(discId).first() as any
       if (disc) {
-        // Buscar tópicos desta disciplina
-        const { results: topicosDisc } = await DB.prepare(`
-          SELECT id, nome FROM topicos_edital WHERE disciplina_id = ? ORDER BY nome
-        `).bind(discId).all()
+        // ✅ CORREÇÃO: Buscar tópicos da tabela edital_topicos (via edital_disciplinas)
+        // Primeiro buscar edital_disciplina_id correspondente
+        const editalDisc = await DB.prepare(`
+          SELECT id FROM edital_disciplinas 
+          WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?))
+          LIMIT 1
+        `).bind(disc.nome).first() as any
+        
+        let topicosDisc: any[] = []
+        if (editalDisc?.id) {
+          const { results } = await DB.prepare(`
+            SELECT id, nome FROM edital_topicos 
+            WHERE edital_disciplina_id = ? 
+            ORDER BY ordem ASC LIMIT 20
+          `).bind(editalDisc.id).all()
+          topicosDisc = results || []
+        }
+        
+        // Fallback: tentar topicos_edital se edital_topicos não tiver dados
+        if (topicosDisc.length === 0) {
+          const { results } = await DB.prepare(`
+            SELECT id, nome FROM topicos_edital WHERE disciplina_id = ? ORDER BY nome LIMIT 20
+          `).bind(discId).all()
+          topicosDisc = results || []
+        }
         
         disciplinasComTopicos.push({
           ...disc,
-          topicos: topicosDisc || []
+          topicos: topicosDisc
         })
       }
     }
@@ -19116,7 +19139,11 @@ app.post('/api/simulado/gerar', async (c) => {
     let topicosEspecificos: any[] = []
     if (topicos && topicos.length > 0) {
       for (const topId of topicos) {
-        const top = await DB.prepare('SELECT id, nome, disciplina_id FROM topicos_edital WHERE id = ?').bind(topId).first()
+        // Tentar ambas as tabelas
+        let top = await DB.prepare('SELECT id, nome FROM edital_topicos WHERE id = ?').bind(topId).first()
+        if (!top) {
+          top = await DB.prepare('SELECT id, nome, disciplina_id FROM topicos_edital WHERE id = ?').bind(topId).first()
+        }
         if (top) {
           topicosEspecificos.push(top)
         }
@@ -19124,7 +19151,7 @@ app.post('/api/simulado/gerar', async (c) => {
     }
     
     // Calcular distribuição de questões por disciplina
-    const questoesPorDisciplina = Math.ceil(quantidade / disciplinasComTopicos.length)
+    const questoesPorDisciplina = Math.ceil(qtdFinal / disciplinasComTopicos.length)
     
     // Construir detalhamento por disciplina com tópicos
     const detalhamentoDisciplinas = disciplinasComTopicos.map(d => {
@@ -19145,30 +19172,29 @@ app.post('/api/simulado/gerar', async (c) => {
     
     const systemPrompt = `Você é um elaborador EXPERT de provas de concursos públicos brasileiros.
 
-🔴🔴🔴 ATENÇÃO MÁXIMA - REGRA CRÍTICA 🔴🔴🔴
-As questões DEVEM ser EXCLUSIVAMENTE sobre os tópicos listados abaixo de cada disciplina.
-NÃO invente tópicos. NÃO generalize. Cada questão deve ser sobre um tópico ESPECÍFICO listado.
+🔴🔴🔴 REGRA MAIS IMPORTANTE 🔴🔴🔴
+Você DEVE gerar EXATAMENTE ${qtdFinal} questões. NEM MAIS, NEM MENOS.
+Se pedirem 25, gere 25. Se pedirem 10, gere 10. Se pedirem 50, gere 50.
+Numere de 1 até ${qtdFinal}. NÃO pare antes de atingir ${qtdFinal}.
 
 ═══════════════════════════════════════════════════════
-DISTRIBUIÇÃO OBRIGATÓRIA:
+DISTRIBUIÇÃO:
 ${detalhamentoDisciplinas}
 ${topicosEspecificosTexto}
 ═══════════════════════════════════════════════════════
 
-CRIE EXATAMENTE ${quantidade} QUESTÕES.
+📌 REGRAS:
+1. Gere EXATAMENTE ${qtdFinal} questões (Questão 1 até Questão ${qtdFinal})
+2. As questões devem ser sobre os tópicos listados acima
+3. Distribua equilibradamente: ~${questoesPorDisciplina} questões por disciplina
+4. Varie: 30% fácil, 50% médio, 20% difícil
+5. Estilo de bancas: CESPE, FCC, FGV, VUNESP
+6. Inclua pegadinhas típicas
 
-📌 REGRAS OBRIGATÓRIAS:
-1. CADA questão deve indicar: [Disciplina: X] [Tópico: Y]
-2. O tópico Y DEVE ser um dos listados acima - NÃO INVENTE!
-3. Distribua equilibradamente entre os tópicos de cada disciplina
-4. Varie os níveis: Fácil (30%), Médio (50%), Difícil (20%)
-5. Use estilo de bancas reais (CESPE, FCC, FGV, VUNESP)
-6. Inclua pegadinhas típicas de provas
+FORMATO (repita ${qtdFinal} vezes, de 1 a ${qtdFinal}):
 
-ESTRUTURA OBRIGATÓRIA:
-
-**Questão 1** [Disciplina: Nome] [Tópico: Nome do Tópico] (Nível: Fácil/Médio/Difícil)
-[Enunciado claro sobre o tópico específico]
+**Questão 1** [Disciplina: Nome] [Tópico: Nome] (Nível: Médio)
+Enunciado da questão.
 
 a) Alternativa 1
 b) Alternativa 2
@@ -19177,13 +19203,15 @@ d) Alternativa 4
 e) Alternativa 5
 
 **Gabarito:** Letra X
-**Comentário:** Explicação detalhada relacionada ao tópico.
+**Comentário:** Explicação.
 
 ---
 
-[Continue até Questão ${quantidade}]
+⚠️ LEMBRETE FINAL: Verifique que gerou EXATAMENTE ${qtdFinal} questões antes de finalizar.`
 
-⚠️ VERIFICAÇÃO FINAL: Antes de entregar, confirme que CADA questão aborda um tópico LISTADO acima!`
+    // Calcular tokens necessários: ~600 tokens por questão (enunciado + 5 alternativas + gabarito + comentário)
+    const tokensNecessarios = Math.max(16000, qtdFinal * 700)
+    console.log(`🔧 Tokens alocados: ${tokensNecessarios} para ${qtdFinal} questões`)
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
     
@@ -19197,8 +19225,8 @@ e) Alternativa 5
           }]
         }],
         generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 16000, // Maior para simulados
+          temperature: 0.7,
+          maxOutputTokens: tokensNecessarios,
           topP: 0.95
         }
       })
@@ -19225,6 +19253,7 @@ e) Alternativa 5
     }
     
     const conteudo = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    const finishReason = data.candidates?.[0]?.finishReason || 'UNKNOWN'
     
     if (!conteudo || conteudo.length < 100) {
       console.error('❌ Simulado gerado muito curto:', conteudo.length, 'chars')
@@ -19234,12 +19263,18 @@ e) Alternativa 5
     // Contar questões geradas
     const questoesGeradas = (conteudo.match(/\*{0,2}Questão\s+\d+/gi) || []).length
     
-    console.log(`✅ Simulado gerado: ${conteudo.length} caracteres, ${questoesGeradas} questões`)
+    console.log(`✅ Simulado gerado: ${conteudo.length} chars, ${questoesGeradas}/${qtdFinal} questões, finishReason: ${finishReason}`)
+    
+    // Se gerou menos que o pedido e foi cortado por tokens, avisar
+    if (questoesGeradas < qtdFinal && finishReason === 'MAX_TOKENS') {
+      console.warn(`⚠️ Simulado cortado: gerou ${questoesGeradas} de ${qtdFinal} questões (MAX_TOKENS)`)
+    }
     
     return c.json({ 
       success: true,
       conteudo,
       questoes_geradas: questoesGeradas,
+      questoes_pedidas: qtdFinal,
       disciplinas: disciplinasComTopicos.map(d => d.nome),
       caracteres: conteudo.length,
       gerado_em: new Date().toISOString()
