@@ -15348,7 +15348,7 @@ window.abrirAnalyticsAdmin = async function() {
   const loadingEl = document.createElement('div');
   loadingEl.id = 'analytics-loading';
   loadingEl.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[10001]';
-  loadingEl.innerHTML = '<div class="' + themes[currentTheme].card + ' p-6 rounded-xl text-center"><i class="fas fa-spinner fa-spin text-4xl text-violet-500 mb-4"></i><p class="' + themes[currentTheme].text + '">Carregando analytics...</p></div>';
+  loadingEl.innerHTML = '<div class="' + themes[currentTheme].card + ' p-6 rounded-xl text-center"><i class="fas fa-spinner fa-spin text-4xl text-[#2A4A9F] mb-4"></i><p class="' + themes[currentTheme].text + '">Carregando analytics...</p></div>';
   document.body.appendChild(loadingEl);
   
   try {
@@ -15365,7 +15365,7 @@ window.abrirAnalyticsAdmin = async function() {
     modal.innerHTML = `
       <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-hidden flex flex-col">
         <!-- Header -->
-        <div class="bg-gradient-to-r from-violet-600 to-purple-700 p-5 text-white flex-shrink-0">
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] p-5 text-white flex-shrink-0">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -15373,7 +15373,7 @@ window.abrirAnalyticsAdmin = async function() {
               </div>
               <div>
                 <h2 class="text-xl font-bold">Analytics da Plataforma</h2>
-                <p class="text-violet-200 text-sm">Conteudos gerados e feedbacks de todos os usuarios</p>
+                <p class="text-blue-200 text-sm">Conteudos gerados e feedbacks de todos os usuarios</p>
               </div>
             </div>
             <button onclick="document.getElementById('modal-analytics-admin')?.remove()" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">
@@ -15392,27 +15392,32 @@ window.abrirAnalyticsAdmin = async function() {
               const tipoMap = {};
               tipos.forEach(t => { tipoMap[t.tipo] = t.total; });
               const items = [
-                { label: 'Teoria', icon: 'fa-book', color: 'blue', val: tipoMap['teoria'] || 0 },
-                { label: 'Exercicios', icon: 'fa-tasks', color: 'green', val: tipoMap['exercicios'] || 0 },
-                { label: 'Resumos', icon: 'fa-sticky-note', color: 'yellow', val: tipoMap['resumo'] || 0 },
-                { label: 'Flashcards', icon: 'fa-clone', color: 'purple', val: data.conteudos?.flashcards_total || 0 },
-                { label: 'Simulados', icon: 'fa-file-alt', color: 'red', val: data.conteudos?.simulados_total || 0 },
-                { label: 'Revisoes', icon: 'fa-redo', color: 'indigo', val: data.conteudos?.revisoes_total || 0 }
+                { label: 'Teoria', icon: 'fa-book', val: tipoMap['teoria'] || 0 },
+                { label: 'Exercicios', icon: 'fa-tasks', val: tipoMap['exercicios'] || 0 },
+                { label: 'Resumos', icon: 'fa-sticky-note', val: tipoMap['resumo'] || 0 },
+                { label: 'Flashcards', icon: 'fa-clone', val: data.conteudos?.flashcards_total || 0 },
+                { label: 'Simulados', icon: 'fa-file-alt', val: data.conteudos?.simulados_total || 0 },
+                { label: 'Revisoes', icon: 'fa-redo', val: data.conteudos?.revisoes_total || 0 }
               ];
-              return items.map(i => 
-                '<div class="bg-gradient-to-br from-' + i.color + '-500 to-' + i.color + '-600 rounded-xl p-3 text-white text-center">' +
+              var blueShades = [
+                ['#0A1839', '#122D6A'], ['#122D6A', '#1A3A7F'], ['#1A3A7F', '#2A4A9F'],
+                ['#2A4A9F', '#3A5AB0'], ['#3A5AB0', '#4A90D9'], ['#4A90D9', '#6BB6FF']
+              ];
+              return items.map(function(i, idx) {
+                var shade = blueShades[idx % blueShades.length];
+                return '<div class="rounded-xl p-3 text-white text-center" style="background: linear-gradient(135deg, ' + shade[0] + ', ' + shade[1] + ')">' +
                   '<i class="fas ' + i.icon + ' text-lg opacity-80"></i>' +
                   '<div class="text-2xl font-bold mt-1">' + i.val + '</div>' +
                   '<div class="text-xs opacity-80">' + i.label + '</div>' +
-                '</div>'
-              ).join('');
+                '</div>';
+              }).join('');
             })()}
           </div>
           
           <!-- Gráfico: Conteúdos ao longo do tempo -->
           <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
             <h3 class="font-bold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
-              <i class="fas fa-chart-line text-violet-500"></i>
+              <i class="fas fa-chart-line text-[#2A4A9F]"></i>
               Conteudos Gerados ao Longo do Tempo (ultimos 30 dias)
             </h3>
             <div style="height: 320px; position: relative;">
@@ -15423,7 +15428,7 @@ window.abrirAnalyticsAdmin = async function() {
           <!-- Gráfico: Feedbacks por tipo -->
           <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
             <h3 class="font-bold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
-              <i class="fas fa-star text-amber-500"></i>
+              <i class="fas fa-star text-[#4A90D9]"></i>
               Feedbacks por Tipo
             </h3>
             <div class="grid md:grid-cols-2 gap-4">
@@ -15432,20 +15437,20 @@ window.abrirAnalyticsAdmin = async function() {
               </div>
               <div class="space-y-3">
                 <div class="grid grid-cols-2 gap-2">
-                  <div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-blue-600">${data.feedbacks?.stats?.total || 0}</div>
+                  <div class="bg-[#E8EDF5] dark:bg-[#0A1839]/50 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-[#122D6A] dark:text-[#7BC4FF]">${data.feedbacks?.stats?.total || 0}</div>
                     <div class="text-xs ${themes[currentTheme].textSecondary}">Total feedbacks</div>
                   </div>
-                  <div class="bg-green-50 dark:bg-green-900/30 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-green-600">${data.feedbacks?.stats?.media_geral || '-'}</div>
+                  <div class="bg-[#E8EDF5] dark:bg-[#0A1839]/50 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-[#1A3A7F] dark:text-[#6BB6FF]">${data.feedbacks?.stats?.media_geral || '-'}</div>
                     <div class="text-xs ${themes[currentTheme].textSecondary}">Media rating</div>
                   </div>
-                  <div class="bg-amber-50 dark:bg-amber-900/30 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-amber-600">${data.feedbacks?.stats?.nao_lidos || 0}</div>
+                  <div class="bg-[#E8EDF5] dark:bg-[#0A1839]/50 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-[#2A4A9F] dark:text-[#4A90D9]">${data.feedbacks?.stats?.nao_lidos || 0}</div>
                     <div class="text-xs ${themes[currentTheme].textSecondary}">Nao lidos</div>
                   </div>
-                  <div class="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-emerald-600">${data.feedbacks?.stats?.positivos || 0}</div>
+                  <div class="bg-[#E8EDF5] dark:bg-[#0A1839]/50 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-[#3A5AB0] dark:text-[#4A90D9]">${data.feedbacks?.stats?.positivos || 0}</div>
                     <div class="text-xs ${themes[currentTheme].textSecondary}">Positivos</div>
                   </div>
                 </div>
@@ -15456,7 +15461,7 @@ window.abrirAnalyticsAdmin = async function() {
           <!-- Tabela: Todos os Feedbacks -->
           <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
             <h3 class="font-bold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
-              <i class="fas fa-list text-purple-500"></i>
+              <i class="fas fa-list text-[#2A4A9F]"></i>
               Todos os Feedbacks (ultimos 100)
             </h3>
             <div class="overflow-x-auto">
@@ -15475,12 +15480,12 @@ window.abrirAnalyticsAdmin = async function() {
                 <tbody>
                   ${(data.feedbacks?.lista && data.feedbacks.lista.length > 0) ? data.feedbacks.lista.map(function(f) {
                     var tipoColors = {
-                      'suggestion': 'bg-blue-100 text-blue-700',
+                      'suggestion': 'bg-[#E8EDF5] text-[#122D6A]',
                       'bug': 'bg-red-100 text-red-700',
-                      'praise': 'bg-green-100 text-green-700',
-                      'complaint': 'bg-orange-100 text-orange-700',
-                      'question': 'bg-purple-100 text-purple-700',
-                      'bom': 'bg-emerald-100 text-emerald-700',
+                      'praise': 'bg-[#D6E4F5] text-[#0A1839]',
+                      'complaint': 'bg-[#E8EDF5] text-[#1A3A7F]',
+                      'question': 'bg-[#D6E4F5] text-[#122D6A]',
+                      'bom': 'bg-[#D6E4F5] text-[#0A1839]',
                       'ruim': 'bg-red-100 text-red-700'
                     };
                     var tipoLabels = {

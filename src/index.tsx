@@ -4276,6 +4276,148 @@ app.post('/api/feedbacks', async (c) => {
   }
 })
 
+// ✅ v85: Endpoint de Analytics completo para o admin
+app.get('/api/admin/analytics', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    // 1. Totais de conteúdo por tipo (materiais_salvos)
+    const { results: totaisTipo } = await DB.prepare(`
+      SELECT tipo, COUNT(*) as total 
+      FROM materiais_salvos 
+      GROUP BY tipo
+    `).all()
+    
+    // 2. Total de flashcards
+    const flashcardsTotal = await DB.prepare(`
+      SELECT COUNT(*) as total FROM flashcards_salvos
+    `).first() as any
+    
+    // 3. Total de simulados
+    const simuladosTotal = await DB.prepare(`
+      SELECT COUNT(*) as total FROM simulados_historico
+    `).first() as any
+    
+    // 4. Total de revisões (conteúdos com regeneração ou marcados como revisão)
+    const revisoesTotal = await DB.prepare(`
+      SELECT COUNT(*) as total FROM materiais_salvos WHERE tipo = 'revisao'
+    `).first() as any
+    
+    // 5. Conteúdos por dia (últimos 30 dias)
+    const { results: conteudoPorDia } = await DB.prepare(`
+      SELECT 
+        DATE(created_at) as dia,
+        tipo,
+        COUNT(*) as total
+      FROM materiais_salvos
+      WHERE created_at >= datetime('now', '-30 days')
+      GROUP BY dia, tipo
+      ORDER BY dia ASC
+    `).all()
+    
+    // 6. Flashcards por dia
+    const { results: flashcardsPorDia } = await DB.prepare(`
+      SELECT 
+        DATE(created_at) as dia,
+        COUNT(*) as total
+      FROM flashcards_salvos
+      WHERE created_at >= datetime('now', '-30 days')
+      GROUP BY dia
+      ORDER BY dia ASC
+    `).all()
+    
+    // 7. Simulados por dia
+    const { results: simuladosPorDia } = await DB.prepare(`
+      SELECT 
+        DATE(created_at) as dia,
+        COUNT(*) as total
+      FROM simulados_historico
+      WHERE created_at >= datetime('now', '-30 days')
+      GROUP BY dia
+      ORDER BY dia ASC
+    `).all()
+    
+    // 8. Exercícios por dia (de materiais_salvos tipo exercicios)
+    const { results: exerciciosPorDia } = await DB.prepare(`
+      SELECT 
+        DATE(created_at) as dia,
+        COUNT(*) as total
+      FROM materiais_salvos
+      WHERE tipo = 'exercicios' AND created_at >= datetime('now', '-30 days')
+      GROUP BY dia
+      ORDER BY dia ASC
+    `).all()
+    
+    // 9. Feedbacks: estatísticas
+    const feedbackStats = await DB.prepare(`
+      SELECT 
+        COUNT(*) as total,
+        ROUND(AVG(CASE WHEN rating > 0 THEN rating ELSE NULL END), 1) as media_geral,
+        SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as nao_lidos,
+        SUM(CASE WHEN rating >= 4 OR feedback_type = 'praise' OR feedback_type = 'bom' THEN 1 ELSE 0 END) as positivos
+      FROM user_feedback
+    `).first() as any
+    
+    // 10. Feedbacks por tipo
+    const { results: feedbackPorTipo } = await DB.prepare(`
+      SELECT feedback_type, COUNT(*) as total
+      FROM user_feedback
+      GROUP BY feedback_type
+      ORDER BY total DESC
+    `).all()
+    
+    // 11. Lista de feedbacks (últimos 100)
+    const { results: feedbackLista } = await DB.prepare(`
+      SELECT 
+        f.id,
+        f.feedback_type,
+        f.rating,
+        f.message,
+        f.page_context,
+        f.is_read,
+        f.created_at,
+        u.name as user_name,
+        u.email as user_email
+      FROM user_feedback f
+      LEFT JOIN users u ON f.user_id = u.id
+      ORDER BY f.created_at DESC
+      LIMIT 100
+    `).all()
+    
+    return c.json({
+      conteudos: {
+        totais: totaisTipo || [],
+        flashcards_total: flashcardsTotal?.total || 0,
+        simulados_total: simuladosTotal?.total || 0,
+        revisoes_total: revisoesTotal?.total || 0,
+        por_dia: conteudoPorDia || [],
+        flashcards_por_dia: flashcardsPorDia || [],
+        simulados_por_dia: simuladosPorDia || [],
+        exercicios_por_dia: exerciciosPorDia || []
+      },
+      feedbacks: {
+        stats: {
+          total: feedbackStats?.total || 0,
+          media_geral: feedbackStats?.media_geral || '-',
+          nao_lidos: feedbackStats?.nao_lidos || 0,
+          positivos: feedbackStats?.positivos || 0
+        },
+        por_tipo: feedbackPorTipo || [],
+        lista: feedbackLista || []
+      },
+      atualizado_em: new Date().toISOString()
+    })
+    
+  } catch (error: any) {
+    console.error('Erro ao carregar analytics:', error)
+    return c.json({ error: 'Erro ao carregar analytics: ' + error.message }, 500)
+  }
+})
+
 // ✅ CORREÇÃO v13: Endpoint admin para listar todos os feedbacks
 app.get('/api/admin/feedbacks', async (c) => {
   const { DB } = c.env
