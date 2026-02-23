@@ -1,5 +1,5 @@
 // IAprova Service Worker v3.2 - v84 cores uniformizadas + fix email
-const CACHE_NAME = 'iaprova-v91';
+const CACHE_NAME = 'iaprova-v92';
 const STATIC_CACHE = 'iaprova-static-v84';
 const DYNAMIC_CACHE = 'iaprova-dynamic-v84';
 

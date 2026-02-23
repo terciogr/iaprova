@@ -24086,31 +24086,40 @@ function renderExercicioModal(questaoIndex) {
     const respondida = !!exercicioAtual.respostas[q.id];
     const atual = i === questaoIndex;
     
-    let btnBg = 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600';
-    let btnText = 'color: #374151';
-    let icon = '';
+    let btnBg, btnText, icon = '';
+    
     if (verificada) {
       if (acertou) {
-        btnBg = 'bg-green-500 border-green-500';
-        btnText = 'color: #fff';
+        btnBg = 'background: #22C55E; border-color: #16A34A;';
+        btnText = 'color: #FFFFFF; font-weight: 700;';
         icon = '<i class="fas fa-check text-[10px]"></i>';
       } else {
-        btnBg = 'bg-red-500 border-red-500';
-        btnText = 'color: #fff';
+        btnBg = 'background: #EF4444; border-color: #DC2626;';
+        btnText = 'color: #FFFFFF; font-weight: 700;';
         icon = '<i class="fas fa-times text-[10px]"></i>';
       }
     } else if (respondida) {
-      btnBg = 'bg-[#2A4A9F] border-[#2A4A9F]';
-      btnText = 'color: #fff';
+      btnBg = 'background: #2A4A9F; border-color: #1A3A7F;';
+      btnText = 'color: #FFFFFF; font-weight: 700;';
+    } else {
+      // Estado padrão: alto contraste em ambos os temas
+      if (currentTheme === 'dark') {
+        btnBg = 'background: #374151; border-color: #6B7280;';
+        btnText = 'color: #FFFFFF; font-weight: 600;';
+      } else {
+        btnBg = 'background: #FFFFFF; border-color: #9CA3AF;';
+        btnText = 'color: #111827; font-weight: 600;';
+      }
     }
     
-    const ringClass = atual ? 'ring-2 ring-[#122D6A] ring-offset-1 scale-110' : '';
+    const ringClass = atual ? 'ring-2 ring-offset-1 scale-110' : '';
+    const ringStyle = atual ? 'box-shadow: 0 0 0 2px ' + (currentTheme === 'dark' ? '#60A5FA' : '#122D6A') + '; transform: scale(1.1);' : '';
     
-    return `<button onclick="navegarQuestaoExercicio(${i})"
-      class="w-9 h-9 md:w-10 md:h-10 rounded-lg border-2 text-xs font-bold transition-all flex-shrink-0 flex items-center justify-center ${btnBg} ${ringClass}"
-      style="${btnText}" title="Questão ${i+1}">
-      ${icon || (i + 1)}
-    </button>`;
+    return '<button onclick="navegarQuestaoExercicio(' + i + ')" ' +
+      'class="w-9 h-9 md:w-10 md:h-10 rounded-lg border-2 text-xs transition-all flex-shrink-0 flex items-center justify-center ' + ringClass + '" ' +
+      'style="' + btnBg + btnText + ringStyle + '" title="Questão ' + (i+1) + '">' +
+      (icon || (i + 1)) +
+      '</button>';
   }).join('');
 
   const modalHtml = `
@@ -24166,15 +24175,15 @@ function renderExercicioModal(questaoIndex) {
         
         <!-- SIDEBAR NAVEGAÇÃO (desktop: lateral fixa | mobile: horizontal no topo) -->
         <!-- Mobile: faixa horizontal scrollável -->
-        <div class="md:hidden flex-shrink-0 border-b ${themes[currentTheme].border}" style="background: ${currentTheme === 'dark' ? '#1F2937' : '#FFFFFF'}">
+        <div class="md:hidden flex-shrink-0 border-b" style="background: ${currentTheme === 'dark' ? '#111827' : '#F0F4FA'}; border-color: ${currentTheme === 'dark' ? '#374151' : '#D1D5DB'}">
           <div class="flex gap-1.5 px-3 py-2 overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
             ${navButtons}
           </div>
         </div>
         
         <!-- Desktop: sidebar vertical -->
-        <aside class="hidden md:flex flex-col w-16 lg:w-20 flex-shrink-0 border-r ${themes[currentTheme].border} overflow-y-auto" 
-               style="background: ${currentTheme === 'dark' ? '#1F2937' : '#FFFFFF'}">
+        <aside class="hidden md:flex flex-col w-16 lg:w-20 flex-shrink-0 border-r overflow-y-auto" 
+               style="background: ${currentTheme === 'dark' ? '#111827' : '#F0F4FA'}; border-color: ${currentTheme === 'dark' ? '#374151' : '#D1D5DB'}">
           <div class="flex flex-col items-center gap-1.5 p-2 py-3">
             ${navButtons}
           </div>
