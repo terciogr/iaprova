@@ -24171,7 +24171,7 @@ function renderExercicioModal(questaoIndex) {
       </header>
 
       <!-- CORPO: SIDEBAR + QUESTÃO -->
-      <div class="flex-1 flex overflow-hidden">
+      <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
         
         <!-- SIDEBAR NAVEGAÇÃO (desktop: lateral fixa | mobile: horizontal no topo) -->
         <!-- Mobile: faixa horizontal scrollável -->
@@ -24190,7 +24190,7 @@ function renderExercicioModal(questaoIndex) {
         </aside>
 
         <!-- ÁREA DA QUESTÃO (scroll principal) -->
-        <main class="flex-1 overflow-y-auto">
+        <main class="flex-1 overflow-y-auto min-h-0">
           <div class="max-w-3xl mx-auto px-4 md:px-8 py-5 md:py-8">
             
             <!-- Badge questão -->
