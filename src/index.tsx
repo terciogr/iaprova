@@ -17929,7 +17929,9 @@ INSTRUÇÕES PARA SUAS RESPOSTAS:
 - Se o usuário perguntar sobre funcionalidade, explique COM PASSOS
 - Se perguntar sobre seu progresso, use os dados acima
 - Se não souber algo específico do usuário, sugira onde encontrar no sistema
-- Máximo 3-4 parágrafos por resposta
+- IMPORTANTE: Mantenha respostas COMPLETAS mas CONCISAS (2-4 parágrafos curtos)
+- NUNCA deixe uma frase ou ideia pela metade
+- Sempre conclua sua resposta com uma frase final de fechamento
 - Quebre linhas para facilitar leitura`
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
@@ -17945,7 +17947,7 @@ INSTRUÇÕES PARA SUAS RESPOSTAS:
         }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 1000,
+          maxOutputTokens: 2048,
           topP: 0.95
         }
       })
@@ -17961,8 +17963,25 @@ INSTRUÇÕES PARA SUAS RESPOSTAS:
       }, 500)
     }
     
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
+    let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                   'Desculpe, não consegui processar sua mensagem.'
+    
+    // ✅ v84: Verificar se a resposta foi cortada pelo limite de tokens
+    const finishReason = data.candidates?.[0]?.finishReason
+    if (finishReason === 'MAX_TOKENS' && reply.length > 50) {
+      // Tentar cortar no último parágrafo completo
+      const lastParagraph = reply.lastIndexOf('\n\n')
+      const lastSentence = reply.lastIndexOf('. ')
+      const lastExclamation = reply.lastIndexOf('! ')
+      const lastQuestion = reply.lastIndexOf('? ')
+      const bestCut = Math.max(lastParagraph, lastSentence, lastExclamation, lastQuestion)
+      
+      if (bestCut > reply.length * 0.5) {
+        // Cortar no ponto natural mais próximo do final
+        reply = reply.substring(0, bestCut + 1).trim()
+      }
+      // Não adicionar "..." - simplesmente finalizar no último ponto natural
+    }
     
     return c.json({ reply })
     
