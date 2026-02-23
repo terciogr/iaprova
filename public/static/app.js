@@ -24214,41 +24214,42 @@ function renderExercicioModal(questaoIndex) {
                 let iconHtml = alt.letra.toUpperCase();
                 
                 if (respostaAtual === alt.letra && !jaVerificada) {
-                  // Selecionada, não verificada
-                  btnStyle = `background: ${currentTheme === 'dark' ? '#1E3A5F' : '#EEF2FF'}; border-color: #2A4A9F;`;
+                  btnStyle = 'background: ' + (currentTheme === 'dark' ? '#1E3A5F' : '#EEF2FF') + '; border-color: #2A4A9F;';
                   circleStyle = 'background: #122D6A; color: #fff;';
                   textColor = currentTheme === 'dark' ? '#FFFFFF' : '#111827';
                 } else if (jaVerificada) {
                   if (alt.letra === questao.correta) {
-                    btnStyle = `background: ${currentTheme === 'dark' ? '#14532D' : '#F0FDF4'}; border-color: #22C55E;`;
+                    btnStyle = 'background: ' + (currentTheme === 'dark' ? '#14532D' : '#F0FDF4') + '; border-color: #22C55E;';
                     circleStyle = 'background: #22C55E; color: #fff;';
                     textColor = currentTheme === 'dark' ? '#BBF7D0' : '#166534';
                     iconHtml = '<i class="fas fa-check text-xs"></i>';
                   } else if (respostaAtual === alt.letra) {
-                    btnStyle = `background: ${currentTheme === 'dark' ? '#7F1D1D' : '#FEF2F2'}; border-color: #EF4444;`;
+                    btnStyle = 'background: ' + (currentTheme === 'dark' ? '#7F1D1D' : '#FEF2F2') + '; border-color: #EF4444;';
                     circleStyle = 'background: #EF4444; color: #fff;';
                     textColor = currentTheme === 'dark' ? '#FECACA' : '#991B1B';
                     iconHtml = '<i class="fas fa-times text-xs"></i>';
                   } else {
-                    btnStyle = `background: ${currentTheme === 'dark' ? '#1F2937' : '#FFFFFF'}; border-color: ${currentTheme === 'dark' ? '#374151' : '#E5E7EB'}; opacity: 0.6;`;
+                    btnStyle = 'background: ' + (currentTheme === 'dark' ? '#1F2937' : '#FFFFFF') + '; border-color: ' + (currentTheme === 'dark' ? '#374151' : '#E5E7EB') + '; opacity: 0.6;';
                   }
                 } else {
-                  btnStyle = `background: ${currentTheme === 'dark' ? '#1F2937' : '#FFFFFF'}; border-color: ${currentTheme === 'dark' ? '#4B5563' : '#D1D5DB'};`;
+                  btnStyle = 'background: ' + (currentTheme === 'dark' ? '#1F2937' : '#FFFFFF') + '; border-color: ' + (currentTheme === 'dark' ? '#4B5563' : '#D1D5DB') + ';';
                 }
                 
-                return \`
-                  <button 
-                    onclick="\${jaVerificada ? '' : \`selecionarAlternativa(\${questao.id}, '\${alt.letra}')\`}"
-                    id="alt-\${questao.id}-\${alt.letra}"
-                    class="w-full p-3 md:p-4 border-2 rounded-xl text-left transition-all flex items-start gap-3 \${jaVerificada ? 'cursor-default' : 'cursor-pointer hover:shadow-md'}"
-                    style="\${btnStyle}">
-                    <span class="flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center font-bold text-xs md:text-sm"
-                          style="\${circleStyle || \`background: \${currentTheme === 'dark' ? '#374151' : '#F3F4F6'}; color: \${currentTheme === 'dark' ? '#D1D5DB' : '#374151'};\`}">
-                      \${iconHtml}
-                    </span>
-                    <span class="text-sm md:text-base leading-relaxed pt-0.5" style="color: \${textColor}">\${alt.texto}</span>
-                  </button>
-                \`;
+                var defaultCircle = circleStyle || ('background: ' + (currentTheme === 'dark' ? '#374151' : '#F3F4F6') + '; color: ' + (currentTheme === 'dark' ? '#D1D5DB' : '#374151') + ';');
+                var onclickAttr = jaVerificada ? '' : "selecionarAlternativa(" + questao.id + ", '" + alt.letra + "')";
+                var cursorClass = jaVerificada ? 'cursor-default' : 'cursor-pointer hover:shadow-md';
+                
+                return '<button ' +
+                  'onclick="' + onclickAttr + '" ' +
+                  'id="alt-' + questao.id + '-' + alt.letra + '" ' +
+                  'class="w-full p-3 md:p-4 border-2 rounded-xl text-left transition-all flex items-start gap-3 ' + cursorClass + '" ' +
+                  'style="' + btnStyle + '">' +
+                  '<span class="flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center font-bold text-xs md:text-sm" ' +
+                  'style="' + defaultCircle + '">' +
+                  iconHtml +
+                  '</span>' +
+                  '<span class="text-sm md:text-base leading-relaxed pt-0.5" style="color: ' + textColor + '">' + alt.texto + '</span>' +
+                  '</button>';
               }).join('')}
             </div>
             
