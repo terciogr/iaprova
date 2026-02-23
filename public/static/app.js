@@ -24073,160 +24073,259 @@ function renderExercicioModal(questaoIndex) {
   
   const progressPercent = Math.round((respondidas / total) * 100);
   const verificadasCount = Object.keys(exercicioAtual.verificadas || {}).length;
+  const acertosCount = exercicioAtual.questoes.filter(q => exercicioAtual.verificadas?.[q.id] && exercicioAtual.respostas[q.id] === q.correta).length;
+  const errosCount = verificadasCount - acertosCount;
   
   // Remover modal anterior se existir
   document.getElementById('modal-exercicios')?.remove();
   
+  // Gerar botões de navegação vertical
+  const navButtons = exercicioAtual.questoes.map((q, i) => {
+    const verificada = exercicioAtual.verificadas?.[q.id];
+    const acertou = verificada && exercicioAtual.respostas[q.id] === q.correta;
+    const respondida = !!exercicioAtual.respostas[q.id];
+    const atual = i === questaoIndex;
+    
+    let btnBg = 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600';
+    let btnText = 'color: #374151';
+    let icon = '';
+    if (verificada) {
+      if (acertou) {
+        btnBg = 'bg-green-500 border-green-500';
+        btnText = 'color: #fff';
+        icon = '<i class="fas fa-check text-[10px]"></i>';
+      } else {
+        btnBg = 'bg-red-500 border-red-500';
+        btnText = 'color: #fff';
+        icon = '<i class="fas fa-times text-[10px]"></i>';
+      }
+    } else if (respondida) {
+      btnBg = 'bg-[#2A4A9F] border-[#2A4A9F]';
+      btnText = 'color: #fff';
+    }
+    
+    const ringClass = atual ? 'ring-2 ring-[#122D6A] ring-offset-1 scale-110' : '';
+    
+    return `<button onclick="navegarQuestaoExercicio(${i})"
+      class="w-9 h-9 md:w-10 md:h-10 rounded-lg border-2 text-xs font-bold transition-all flex-shrink-0 flex items-center justify-center ${btnBg} ${ringClass}"
+      style="${btnText}" title="Questão ${i+1}">
+      ${icon || (i + 1)}
+    </button>`;
+  }).join('');
+
   const modalHtml = `
-    <div id="modal-exercicios" class="fixed inset-0 bg-black/40 z-50 flex flex-col md:items-center md:justify-center md:p-4">
-      <div class="${themes[currentTheme].card} md:rounded-2xl shadow-2xl w-full md:max-w-3xl h-full md:h-auto md:max-h-[90vh] flex flex-col">
-        <!-- Header responsivo -->
-        <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-3 md:p-4 md:rounded-t-2xl flex-shrink-0">
-          <div class="flex items-center justify-between gap-2">
-            <div class="min-w-0 flex-1">
-              <p class="text-xs md:text-sm opacity-75 truncate">${exercicioAtual.disciplinaNome}</p>
-              <h2 class="text-sm md:text-lg font-bold truncate">${exercicioAtual.topicoNome}</h2>
+    <div id="modal-exercicios" class="fixed inset-0 z-50 flex flex-col" style="background: ${currentTheme === 'dark' ? '#111827' : '#F3F4F6'}">
+      
+      <!-- HEADER COMPACTO FIXO -->
+      <header class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white flex-shrink-0 shadow-lg" style="z-index:10">
+        <div class="max-w-7xl mx-auto px-3 md:px-6 py-2.5 md:py-3">
+          <div class="flex items-center justify-between">
+            <!-- Esquerda: info da disciplina -->
+            <div class="min-w-0 flex-1 mr-3">
+              <p class="text-[10px] md:text-xs text-blue-300 truncate">${exercicioAtual.disciplinaNome}</p>
+              <h1 class="text-sm md:text-base font-bold truncate">${exercicioAtual.topicoNome}</h1>
             </div>
-            <div class="flex items-center gap-2 md:gap-4 flex-shrink-0">
-              <div class="text-right">
-                <p class="text-lg md:text-2xl font-bold">${questaoIndex + 1}<span class="text-xs md:text-base opacity-75">/${total}</span></p>
-                <p class="text-[10px] md:text-xs opacity-75">${verificadasCount} verificadas</p>
+            <!-- Centro: stats -->
+            <div class="hidden sm:flex items-center gap-3 md:gap-5 mr-4">
+              <div class="text-center">
+                <p class="text-lg md:text-xl font-bold">${verificadasCount}<span class="text-xs opacity-60">/${total}</span></p>
+                <p class="text-[9px] md:text-[10px] text-blue-300">Verificadas</p>
               </div>
-              <button onclick="fecharExercicios()" class="p-1.5 md:p-2 hover:bg-white/20 rounded-lg transition" title="Fechar">
-                <i class="fas fa-times text-base md:text-lg"></i>
-              </button>
+              <div class="w-px h-8 bg-white/20"></div>
+              <div class="text-center">
+                <p class="text-lg md:text-xl font-bold text-green-400">${acertosCount}</p>
+                <p class="text-[9px] md:text-[10px] text-blue-300">Acertos</p>
+              </div>
+              <div class="w-px h-8 bg-white/20"></div>
+              <div class="text-center">
+                <p class="text-lg md:text-xl font-bold text-red-400">${errosCount}</p>
+                <p class="text-[9px] md:text-[10px] text-blue-300">Erros</p>
+              </div>
             </div>
+            <!-- Mobile stats mini -->
+            <div class="flex sm:hidden items-center gap-2 mr-2 text-xs">
+              <span class="font-bold">${verificadasCount}/${total}</span>
+              <span class="text-green-400 font-bold">${acertosCount}✓</span>
+              <span class="text-red-400 font-bold">${errosCount}✗</span>
+            </div>
+            <!-- Botão fechar -->
+            <button onclick="fecharExercicios()" class="p-2 hover:bg-white/10 rounded-lg transition" title="Fechar simulado">
+              <i class="fas fa-times text-lg"></i>
+            </button>
           </div>
-          <!-- Barra de progresso -->
-          <div class="mt-2 md:mt-3 h-1.5 md:h-2 bg-white/20 rounded-full overflow-hidden">
-            <div class="h-full bg-white rounded-full transition-all" style="width: ${Math.round((verificadasCount / total) * 100)}%"></div>
+          <!-- Barra de progresso fina -->
+          <div class="mt-2 h-1 bg-white/10 rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-500" 
+                 style="width: ${Math.round((verificadasCount / total) * 100)}%; background: linear-gradient(90deg, #4ADE80, #2DD4BF)"></div>
+          </div>
+        </div>
+      </header>
+
+      <!-- CORPO: SIDEBAR + QUESTÃO -->
+      <div class="flex-1 flex overflow-hidden">
+        
+        <!-- SIDEBAR NAVEGAÇÃO (desktop: lateral fixa | mobile: horizontal no topo) -->
+        <!-- Mobile: faixa horizontal scrollável -->
+        <div class="md:hidden flex-shrink-0 border-b ${themes[currentTheme].border}" style="background: ${currentTheme === 'dark' ? '#1F2937' : '#FFFFFF'}">
+          <div class="flex gap-1.5 px-3 py-2 overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
+            ${navButtons}
           </div>
         </div>
         
-        <!-- Questão - responsivo -->
-        <div class="flex-1 overflow-y-auto p-3 md:p-6 ${themes[currentTheme].bg}">
-          <div class="mb-4 md:mb-6">
-            <span class="inline-block px-2.5 py-0.5 md:px-3 md:py-1 bg-[#122D6A] text-white rounded-full text-xs md:text-sm font-medium mb-2 md:mb-3">
-              Questão ${questao.id}
-            </span>
-            <p class="text-sm md:text-lg ${themes[currentTheme].text} leading-relaxed">${questao.pergunta}</p>
+        <!-- Desktop: sidebar vertical -->
+        <aside class="hidden md:flex flex-col w-16 lg:w-20 flex-shrink-0 border-r ${themes[currentTheme].border} overflow-y-auto" 
+               style="background: ${currentTheme === 'dark' ? '#1F2937' : '#FFFFFF'}">
+          <div class="flex flex-col items-center gap-1.5 p-2 py-3">
+            ${navButtons}
           </div>
-          
-          <!-- Alternativas responsivas -->
-          <div class="space-y-2 md:space-y-3" id="alternativas-container">
-            ${questao.alternativas.map((alt, idx) => {
-              let btnClass = 'bg-white border-gray-200 hover:border-[#122D6A] hover:bg-[#122D6A]/5';
-              let circleClass = 'bg-gray-100 text-gray-700';
-              let textClass = 'text-gray-800';
-              
-              if (respostaAtual === alt.letra && !jaVerificada) {
-                btnClass = 'bg-blue-50 border-[#122D6A]';
-                circleClass = 'bg-[#122D6A] text-white';
-              } else if (jaVerificada) {
-                if (alt.letra === questao.correta) {
-                  btnClass = 'bg-green-50 border-green-500';
-                  circleClass = 'bg-green-500 text-white';
-                  textClass = 'text-green-800';
-                } else if (respostaAtual === alt.letra) {
-                  btnClass = 'bg-red-50 border-red-500';
-                  circleClass = 'bg-red-500 text-white';
-                  textClass = 'text-red-800';
+        </aside>
+
+        <!-- ÁREA DA QUESTÃO (scroll principal) -->
+        <main class="flex-1 overflow-y-auto">
+          <div class="max-w-3xl mx-auto px-4 md:px-8 py-5 md:py-8">
+            
+            <!-- Badge questão -->
+            <div class="flex items-center gap-3 mb-4 md:mb-6">
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs md:text-sm font-semibold"
+                    style="background: #122D6A; color: #fff;">
+                <i class="fas fa-file-alt text-[10px]"></i>
+                Questão ${questao.id} de ${total}
+              </span>
+              ${questao.disciplina ? `<span class="text-xs px-2 py-0.5 rounded-full" 
+                style="background: ${currentTheme === 'dark' ? '#1E3A5F' : '#E8EDF5'}; color: ${currentTheme === 'dark' ? '#93C5FD' : '#1A3A7F'}">
+                ${questao.disciplina}
+              </span>` : ''}
+            </div>
+            
+            <!-- Enunciado -->
+            <div class="mb-5 md:mb-8">
+              <p class="text-base md:text-lg leading-relaxed font-medium" 
+                 style="color: ${currentTheme === 'dark' ? '#F3F4F6' : '#111827'}">
+                ${questao.pergunta}
+              </p>
+            </div>
+            
+            <!-- Alternativas -->
+            <div class="space-y-2.5 md:space-y-3" id="alternativas-container">
+              ${questao.alternativas.map((alt, idx) => {
+                let btnStyle = '';
+                let circleStyle = '';
+                let textColor = currentTheme === 'dark' ? '#E5E7EB' : '#1F2937';
+                let iconHtml = alt.letra.toUpperCase();
+                
+                if (respostaAtual === alt.letra && !jaVerificada) {
+                  // Selecionada, não verificada
+                  btnStyle = `background: ${currentTheme === 'dark' ? '#1E3A5F' : '#EEF2FF'}; border-color: #2A4A9F;`;
+                  circleStyle = 'background: #122D6A; color: #fff;';
+                  textColor = currentTheme === 'dark' ? '#FFFFFF' : '#111827';
+                } else if (jaVerificada) {
+                  if (alt.letra === questao.correta) {
+                    btnStyle = `background: ${currentTheme === 'dark' ? '#14532D' : '#F0FDF4'}; border-color: #22C55E;`;
+                    circleStyle = 'background: #22C55E; color: #fff;';
+                    textColor = currentTheme === 'dark' ? '#BBF7D0' : '#166534';
+                    iconHtml = '<i class="fas fa-check text-xs"></i>';
+                  } else if (respostaAtual === alt.letra) {
+                    btnStyle = `background: ${currentTheme === 'dark' ? '#7F1D1D' : '#FEF2F2'}; border-color: #EF4444;`;
+                    circleStyle = 'background: #EF4444; color: #fff;';
+                    textColor = currentTheme === 'dark' ? '#FECACA' : '#991B1B';
+                    iconHtml = '<i class="fas fa-times text-xs"></i>';
+                  } else {
+                    btnStyle = `background: ${currentTheme === 'dark' ? '#1F2937' : '#FFFFFF'}; border-color: ${currentTheme === 'dark' ? '#374151' : '#E5E7EB'}; opacity: 0.6;`;
+                  }
+                } else {
+                  btnStyle = `background: ${currentTheme === 'dark' ? '#1F2937' : '#FFFFFF'}; border-color: ${currentTheme === 'dark' ? '#4B5563' : '#D1D5DB'};`;
                 }
-              }
-              
-              return `
-                <button 
-                  onclick="${jaVerificada ? '' : `selecionarAlternativa(${questao.id}, '${alt.letra}')`}"
-                  id="alt-${questao.id}-${alt.letra}"
-                  class="w-full p-2.5 md:p-4 border-2 rounded-xl text-left transition-all flex items-start gap-2 md:gap-3 ${btnClass} ${jaVerificada ? 'cursor-default' : 'cursor-pointer'}">
-                  <span class="flex-shrink-0 w-7 h-7 md:w-8 md:h-8 rounded-full ${circleClass} flex items-center justify-center font-bold uppercase text-xs md:text-sm">
-                    ${jaVerificada && alt.letra === questao.correta ? '<i class="fas fa-check text-xs"></i>' : 
-                      jaVerificada && respostaAtual === alt.letra && alt.letra !== questao.correta ? '<i class="fas fa-times text-xs"></i>' : 
-                      alt.letra}
-                  </span>
-                  <span class="text-sm md:text-base ${textClass}">${alt.texto}</span>
-                </button>
-              `;
-            }).join('')}
-          </div>
-          
-          <!-- Feedback após verificar -->
-          ${jaVerificada ? `
-            <div class="mt-4 p-4 rounded-xl ${acertouQuestao ? 'bg-[#2A4A9F]/10 border border-green-300' : 'bg-red-100 border border-red-300'}">
-              <div class="flex items-center gap-2 mb-2">
-                <i class="fas ${acertouQuestao ? 'fa-check-circle text-[#2A4A9F]' : 'fa-times-circle text-red-600'}"></i>
-                <span class="font-bold ${acertouQuestao ? 'text-green-700' : 'text-red-700'}">
-                  ${acertouQuestao ? 'Parabéns! Você acertou! 🎉' : 'Resposta incorreta'}
-                </span>
-              </div>
-              ${questao.explicacao ? `
-                <p class="text-sm text-gray-700 mt-2">
-                  <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
-                  ${questao.explicacao}
-                </p>
-              ` : ''}
+                
+                return \`
+                  <button 
+                    onclick="\${jaVerificada ? '' : \`selecionarAlternativa(\${questao.id}, '\${alt.letra}')\`}"
+                    id="alt-\${questao.id}-\${alt.letra}"
+                    class="w-full p-3 md:p-4 border-2 rounded-xl text-left transition-all flex items-start gap-3 \${jaVerificada ? 'cursor-default' : 'cursor-pointer hover:shadow-md'}"
+                    style="\${btnStyle}">
+                    <span class="flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center font-bold text-xs md:text-sm"
+                          style="\${circleStyle || \`background: \${currentTheme === 'dark' ? '#374151' : '#F3F4F6'}; color: \${currentTheme === 'dark' ? '#D1D5DB' : '#374151'};\`}">
+                      \${iconHtml}
+                    </span>
+                    <span class="text-sm md:text-base leading-relaxed pt-0.5" style="color: \${textColor}">\${alt.texto}</span>
+                  </button>
+                \`;
+              }).join('')}
             </div>
-          ` : ''}
-        </div>
-        
-        <!-- Footer - Navegação responsiva -->
-        <div class="p-2.5 md:p-4 border-t ${themes[currentTheme].border} flex-shrink-0 ${themes[currentTheme].card} safe-area-bottom">
-          <div class="flex gap-2 md:gap-3">
+            
+            <!-- Feedback após verificar -->
+            ${jaVerificada ? `
+              <div class="mt-5 md:mt-6 p-4 md:p-5 rounded-xl border-2"
+                   style="background: ${acertouQuestao 
+                     ? (currentTheme === 'dark' ? '#052E16' : '#F0FDF4') 
+                     : (currentTheme === 'dark' ? '#450A0A' : '#FEF2F2')}; 
+                   border-color: ${acertouQuestao ? '#22C55E' : '#EF4444'};">
+                <div class="flex items-center gap-2 mb-2">
+                  <i class="fas ${acertouQuestao ? 'fa-check-circle text-green-500' : 'fa-times-circle text-red-500'} text-lg"></i>
+                  <span class="font-bold text-sm md:text-base" 
+                        style="color: ${acertouQuestao 
+                          ? (currentTheme === 'dark' ? '#86EFAC' : '#166534') 
+                          : (currentTheme === 'dark' ? '#FCA5A5' : '#991B1B')}">
+                    ${acertouQuestao ? 'Resposta correta!' : 'Resposta incorreta'}
+                  </span>
+                </div>
+                ${questao.explicacao ? `
+                  <p class="text-sm leading-relaxed mt-2" 
+                     style="color: ${currentTheme === 'dark' ? '#D1D5DB' : '#374151'}">
+                    <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
+                    ${questao.explicacao}
+                  </p>
+                ` : ''}
+              </div>
+            ` : ''}
+            
+            <!-- Espaço extra no final para scroll confortável no mobile -->
+            <div class="h-4"></div>
+          </div>
+        </main>
+      </div>
+
+      <!-- FOOTER FIXO: AÇÕES -->
+      <footer class="flex-shrink-0 border-t shadow-[0_-2px_10px_rgba(0,0,0,0.1)]" 
+              style="background: ${currentTheme === 'dark' ? '#1F2937' : '#FFFFFF'}; border-color: ${currentTheme === 'dark' ? '#374151' : '#E5E7EB'};">
+        <div class="max-w-3xl mx-auto px-3 md:px-8 py-2.5 md:py-3">
+          <div class="flex items-center gap-2 md:gap-3">
+            <!-- Anterior -->
             ${questaoIndex > 0 ? `
               <button onclick="navegarQuestaoExercicio(${questaoIndex - 1})"
-                      class="px-3 md:px-5 py-2.5 md:py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition font-medium text-xs md:text-sm">
-                <i class="fas fa-chevron-left md:mr-2"></i><span class="hidden md:inline">Anterior</span>
+                      class="px-3 md:px-5 py-2.5 border-2 rounded-xl font-medium text-xs md:text-sm transition-all hover:shadow-md"
+                      style="border-color: ${currentTheme === 'dark' ? '#4B5563' : '#D1D5DB'}; color: ${currentTheme === 'dark' ? '#E5E7EB' : '#374151'};">
+                <i class="fas fa-chevron-left mr-1"></i><span class="hidden sm:inline">Anterior</span>
               </button>
-            ` : ''}
+            ` : '<div></div>'}
             
             <div class="flex-1"></div>
             
-            <!-- Botão Verificar Resposta -->
+            <!-- Verificar -->
             ${!jaVerificada && respostaAtual ? `
               <button onclick="verificarResposta(${questaoIndex})"
-                      class="px-3 md:px-5 py-2.5 md:py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition font-medium text-xs md:text-sm">
-                <i class="fas fa-search mr-1 md:mr-2"></i>Verificar
+                      class="px-4 md:px-6 py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-all hover:shadow-lg text-white"
+                      style="background: linear-gradient(135deg, #D97706, #B45309);">
+                <i class="fas fa-search mr-1.5"></i>Verificar
               </button>
             ` : ''}
             
+            <!-- Próxima / Finalizar -->
             ${questaoIndex < total - 1 ? `
               <button onclick="navegarQuestaoExercicio(${questaoIndex + 1})"
-                      class="px-3 md:px-5 py-2.5 md:py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition font-medium text-xs md:text-sm">
-                <span class="hidden md:inline">Próxima</span><span class="md:hidden">Próx</span><i class="fas fa-chevron-right ml-1 md:ml-2"></i>
+                      class="px-4 md:px-6 py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-all hover:shadow-lg text-white"
+                      style="background: linear-gradient(135deg, #122D6A, #1A3A7F);">
+                <span class="hidden sm:inline">Próxima</span><span class="sm:hidden">Próx</span><i class="fas fa-chevron-right ml-1.5"></i>
               </button>
             ` : `
               <button onclick="finalizarExercicios()"
-                      class="px-3 md:px-5 py-2.5 md:py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition font-medium text-xs md:text-sm ${verificadasCount < total ? 'opacity-60' : ''}">
-                <i class="fas fa-flag-checkered mr-1 md:mr-2"></i>Finalizar
+                      class="px-4 md:px-6 py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-all hover:shadow-lg text-white ${verificadasCount < total ? 'opacity-60' : ''}"
+                      style="background: linear-gradient(135deg, #16A34A, #15803D);">
+                <i class="fas fa-flag-checkered mr-1.5"></i>Finalizar
               </button>
             `}
           </div>
-          
-          <!-- Indicadores de questões -->
-          <div class="flex flex-wrap gap-2 mt-4 justify-center">
-            ${exercicioAtual.questoes.map((q, i) => {
-              const verificada = exercicioAtual.verificadas?.[q.id];
-              const acertou = verificada && exercicioAtual.respostas[q.id] === q.correta;
-              const atual = i === questaoIndex;
-              
-              let indicatorClass = 'bg-gray-200 text-gray-600';
-              if (verificada) {
-                indicatorClass = acertou ? 'bg-green-500 text-white' : 'bg-red-500 text-white';
-              } else if (exercicioAtual.respostas[q.id]) {
-                indicatorClass = 'bg-[#122D6A] text-white';
-              }
-              
-              return `
-                <button onclick="navegarQuestaoExercicio(${i})"
-                  class="w-8 h-8 rounded-full text-sm font-medium transition-all ${indicatorClass}
-                    ${atual ? 'ring-2 ring-[#122D6A] ring-offset-2' : ''}">
-                  ${verificada ? (acertou ? '✓' : '✗') : (i + 1)}
-                </button>
-              `;
-            }).join('')}
-          </div>
         </div>
-      </div>
+      </footer>
     </div>
   `;
   
