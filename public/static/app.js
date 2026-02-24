@@ -2149,6 +2149,546 @@ function renderLandingPage() {
         </div>
       </section>
       
+      <!-- ========== SHOWCASE: VEJA O SISTEMA POR DENTRO ========== -->
+      <section class="py-20 px-4 bg-gradient-to-br from-[#0A1839] via-[#122D6A] to-[#1A3A7F] relative overflow-hidden">
+        <!-- Background decorativo -->
+        <div class="absolute inset-0 opacity-10">
+          <div class="absolute top-20 left-10 w-72 h-72 bg-blue-400 rounded-full blur-3xl"></div>
+          <div class="absolute bottom-20 right-10 w-96 h-96 bg-emerald-400 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div class="max-w-7xl mx-auto relative z-10">
+          <div class="text-center mb-12">
+            <span class="inline-block px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-blue-200 text-sm font-medium mb-4">
+              <i class="fas fa-eye mr-2"></i>Veja com seus próprios olhos
+            </span>
+            <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
+              Conheça o sistema <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-blue-300">por dentro</span>
+            </h2>
+            <p class="text-lg text-blue-200 max-w-2xl mx-auto">
+              Não é só promessa. Veja como cada ferramenta funciona na prática e por que nossos alunos estudam com mais confiança.
+            </p>
+          </div>
+          
+          <!-- Tabs de navegação -->
+          <div class="flex flex-wrap justify-center gap-2 md:gap-3 mb-10" id="showcase-tabs">
+            <button onclick="switchShowcase('simulado')" id="tab-simulado"
+              class="showcase-tab active px-4 md:px-6 py-2.5 rounded-full text-sm font-semibold transition-all">
+              <i class="fas fa-file-alt mr-1.5"></i>Simulados
+            </button>
+            <button onclick="switchShowcase('dashboard')" id="tab-dashboard"
+              class="showcase-tab px-4 md:px-6 py-2.5 rounded-full text-sm font-semibold transition-all">
+              <i class="fas fa-chart-line mr-1.5"></i>Dashboard
+            </button>
+            <button onclick="switchShowcase('conteudo')" id="tab-conteudo"
+              class="showcase-tab px-4 md:px-6 py-2.5 rounded-full text-sm font-semibold transition-all">
+              <i class="fas fa-brain mr-1.5"></i>Conteúdo IA
+            </button>
+            <button onclick="switchShowcase('plano')" id="tab-plano"
+              class="showcase-tab px-4 md:px-6 py-2.5 rounded-full text-sm font-semibold transition-all">
+              <i class="fas fa-calendar-alt mr-1.5"></i>Plano de Estudos
+            </button>
+            <button onclick="switchShowcase('flashcards')" id="tab-flashcards"
+              class="showcase-tab px-4 md:px-6 py-2.5 rounded-full text-sm font-semibold transition-all">
+              <i class="fas fa-clone mr-1.5"></i>Flashcards
+            </button>
+          </div>
+          
+          <!-- Conteúdo do showcase -->
+          <div class="grid lg:grid-cols-5 gap-8 items-center">
+            
+            <!-- Lado esquerdo: Texto descritivo (2 cols) -->
+            <div class="lg:col-span-2 text-center lg:text-left order-2 lg:order-1">
+              
+              <!-- Simulado -->
+              <div id="showcase-text-simulado" class="showcase-text">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 rounded-full text-emerald-300 text-xs font-semibold mb-4">
+                  <i class="fas fa-star"></i> MAIS USADO
+                </div>
+                <h3 class="text-2xl md:text-3xl font-bold text-white mb-4">Simulados no estilo da sua banca</h3>
+                <p class="text-blue-200 mb-6 leading-relaxed">
+                  A IA gera questões <strong class="text-white">idênticas ao formato da sua prova</strong>. 
+                  Escolha a disciplina, o número de questões e receba um simulado completo com gabarito comentado.
+                </p>
+                <ul class="space-y-3 mb-6">
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-emerald-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-emerald-400 text-xs"></i>
+                    </span>
+                    Questões com 5 alternativas estilo CEBRASPE, FCC, FGV...
+                  </li>
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-emerald-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-emerald-400 text-xs"></i>
+                    </span>
+                    Explicação detalhada de cada resposta
+                  </li>
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-emerald-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-emerald-400 text-xs"></i>
+                    </span>
+                    Navegação por questão com placar em tempo real
+                  </li>
+                </ul>
+                <button onclick="goToLogin()" class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-500/30">
+                  <i class="fas fa-rocket mr-2"></i>Testar Simulados Grátis
+                </button>
+              </div>
+              
+              <!-- Dashboard -->
+              <div id="showcase-text-dashboard" class="showcase-text hidden">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 rounded-full text-blue-300 text-xs font-semibold mb-4">
+                  <i class="fas fa-chart-pie"></i> MÉTRICAS INTELIGENTES
+                </div>
+                <h3 class="text-2xl md:text-3xl font-bold text-white mb-4">Saiba exatamente onde você está</h3>
+                <p class="text-blue-200 mb-6 leading-relaxed">
+                  Dashboard completo com <strong class="text-white">estatísticas em tempo real</strong> do seu progresso. 
+                  Saiba seus pontos fortes, fracos e quanto falta para atingir suas metas.
+                </p>
+                <ul class="space-y-3 mb-6">
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-blue-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-blue-400 text-xs"></i>
+                    </span>
+                    Taxa de acertos por disciplina e tópico
+                  </li>
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-blue-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-blue-400 text-xs"></i>
+                    </span>
+                    Evolução semanal com gráficos visuais
+                  </li>
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-blue-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-blue-400 text-xs"></i>
+                    </span>
+                    Metas diárias e rastreamento de horas
+                  </li>
+                </ul>
+                <button onclick="goToLogin()" class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-500/30">
+                  <i class="fas fa-rocket mr-2"></i>Ver Meu Dashboard
+                </button>
+              </div>
+              
+              <!-- Conteúdo IA -->
+              <div id="showcase-text-conteudo" class="showcase-text hidden">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-500/20 rounded-full text-purple-300 text-xs font-semibold mb-4">
+                  <i class="fas fa-magic"></i> INTELIGÊNCIA ARTIFICIAL
+                </div>
+                <h3 class="text-2xl md:text-3xl font-bold text-white mb-4">Conteúdo gerado sob medida</h3>
+                <p class="text-blue-200 mb-6 leading-relaxed">
+                  Teoria, exercícios, resumos e mapas mentais <strong class="text-white">criados pela IA</strong> 
+                  especificamente para os tópicos do seu edital e o estilo da sua banca.
+                </p>
+                <ul class="space-y-3 mb-6">
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-purple-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-purple-400 text-xs"></i>
+                    </span>
+                    Teoria completa adaptada ao seu nível
+                  </li>
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-purple-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-purple-400 text-xs"></i>
+                    </span>
+                    Exercícios com dificuldade progressiva
+                  </li>
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-purple-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-purple-400 text-xs"></i>
+                    </span>
+                    Resumos objetivos para revisão rápida
+                  </li>
+                </ul>
+                <button onclick="goToLogin()" class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-500/30">
+                  <i class="fas fa-rocket mr-2"></i>Gerar Meu Conteúdo
+                </button>
+              </div>
+              
+              <!-- Plano de Estudos -->
+              <div id="showcase-text-plano" class="showcase-text hidden">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 rounded-full text-amber-300 text-xs font-semibold mb-4">
+                  <i class="fas fa-calendar-check"></i> ORGANIZAÇÃO TOTAL
+                </div>
+                <h3 class="text-2xl md:text-3xl font-bold text-white mb-4">Plano personalizado para sua rotina</h3>
+                <p class="text-blue-200 mb-6 leading-relaxed">
+                  A IA analisa seu edital e cria um <strong class="text-white">cronograma semanal inteligente</strong> 
+                  com distribuição de disciplinas, metas e tempo de estudo otimizado.
+                </p>
+                <ul class="space-y-3 mb-6">
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-amber-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-amber-400 text-xs"></i>
+                    </span>
+                    Cronograma adaptado ao seu horário
+                  </li>
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-amber-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-amber-400 text-xs"></i>
+                    </span>
+                    Metas diárias com tracking de progresso
+                  </li>
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-amber-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-amber-400 text-xs"></i>
+                    </span>
+                    Peso inteligente por relevância no edital
+                  </li>
+                </ul>
+                <button onclick="goToLogin()" class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-500/30">
+                  <i class="fas fa-rocket mr-2"></i>Criar Meu Plano
+                </button>
+              </div>
+              
+              <!-- Flashcards -->
+              <div id="showcase-text-flashcards" class="showcase-text hidden">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-500/20 rounded-full text-rose-300 text-xs font-semibold mb-4">
+                  <i class="fas fa-brain"></i> MEMORIZAÇÃO ATIVA
+                </div>
+                <h3 class="text-2xl md:text-3xl font-bold text-white mb-4">Flashcards que fixam o conteúdo</h3>
+                <p class="text-blue-200 mb-6 leading-relaxed">
+                  Sistema de <strong class="text-white">repetição espaçada</strong> com flashcards gerados pela IA. 
+                  Cada card é criado a partir do conteúdo que você precisa memorizar.
+                </p>
+                <ul class="space-y-3 mb-6">
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-rose-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-rose-400 text-xs"></i>
+                    </span>
+                    Pergunta e resposta com explicação
+                  </li>
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-rose-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-rose-400 text-xs"></i>
+                    </span>
+                    Classifique como fácil, médio ou difícil
+                  </li>
+                  <li class="flex items-center gap-3 text-blue-100">
+                    <span class="w-6 h-6 bg-rose-500/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-check text-rose-400 text-xs"></i>
+                    </span>
+                    Revise os cards mais difíceis automaticamente
+                  </li>
+                </ul>
+                <button onclick="goToLogin()" class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-500/30">
+                  <i class="fas fa-rocket mr-2"></i>Criar Flashcards
+                </button>
+              </div>
+            </div>
+            
+            <!-- Lado direito: Mockup da tela (3 cols) -->
+            <div class="lg:col-span-3 order-1 lg:order-2">
+              <div class="relative">
+                <!-- Moldura do dispositivo -->
+                <div class="bg-gray-900 rounded-2xl md:rounded-3xl p-2 md:p-3 shadow-2xl shadow-black/50 max-w-2xl mx-auto">
+                  <!-- Barra do browser -->
+                  <div class="flex items-center gap-2 px-3 py-2 bg-gray-800 rounded-t-xl md:rounded-t-2xl">
+                    <div class="flex gap-1.5">
+                      <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-red-500"></div>
+                      <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-yellow-500"></div>
+                      <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-green-500"></div>
+                    </div>
+                    <div class="flex-1 mx-2 md:mx-4 px-3 py-1 bg-gray-700 rounded-lg text-xs text-gray-400 truncate">
+                      <i class="fas fa-lock text-green-400 mr-1.5"></i>iaprova.app
+                    </div>
+                  </div>
+                  
+                  <!-- TELA: Simulado -->
+                  <div id="showcase-screen-simulado" class="showcase-screen bg-gray-100 rounded-b-xl md:rounded-b-2xl overflow-hidden" style="min-height: 380px;">
+                    <!-- Header do simulado -->
+                    <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-3 md:px-5 py-2.5 md:py-3">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-[9px] md:text-[10px] text-blue-300">Direito Constitucional</p>
+                          <p class="text-xs md:text-sm font-bold">Simulado CEBRASPE</p>
+                        </div>
+                        <div class="flex items-center gap-2 md:gap-4 text-[10px] md:text-xs">
+                          <span class="font-bold">8/25</span>
+                          <span class="text-green-400 font-bold">6 <i class="fas fa-check text-[8px]"></i></span>
+                          <span class="text-red-400 font-bold">2 <i class="fas fa-times text-[8px]"></i></span>
+                        </div>
+                      </div>
+                      <div class="mt-1.5 h-1 bg-white/10 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full bg-gradient-to-r from-green-400 to-teal-400" style="width: 32%"></div>
+                      </div>
+                    </div>
+                    <!-- Questão mockup -->
+                    <div class="px-3 md:px-5 py-3 md:py-4">
+                      <span class="inline-block px-2.5 py-0.5 bg-[#122D6A] text-white text-[10px] md:text-xs font-bold rounded-full mb-2 md:mb-3">Questão 8 de 25</span>
+                      <p class="text-[11px] md:text-sm text-gray-800 leading-relaxed mb-3 md:mb-4 font-medium">
+                        De acordo com a Constituição Federal de 1988, os direitos e garantias fundamentais incluem os direitos sociais previstos no art. 6º. Sobre esses direitos, assinale a alternativa correta:
+                      </p>
+                      <!-- Alternativas -->
+                      <div class="space-y-1.5 md:space-y-2">
+                        <div class="flex items-start gap-2 p-2 md:p-2.5 rounded-lg border-2 border-gray-200 bg-white">
+                          <span class="w-6 h-6 md:w-7 md:h-7 bg-gray-100 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold text-gray-600 flex-shrink-0">A</span>
+                          <span class="text-[10px] md:text-xs text-gray-700 leading-relaxed">A educação é direito exclusivo do Estado, não cabendo à família participar...</span>
+                        </div>
+                        <div class="flex items-start gap-2 p-2 md:p-2.5 rounded-lg border-2 border-gray-200 bg-white">
+                          <span class="w-6 h-6 md:w-7 md:h-7 bg-gray-100 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold text-gray-600 flex-shrink-0">B</span>
+                          <span class="text-[10px] md:text-xs text-gray-700 leading-relaxed">O lazer foi incluído como direito social pela EC nº 90/2015...</span>
+                        </div>
+                        <div class="flex items-start gap-2 p-2 md:p-2.5 rounded-lg border-2 border-[#2A4A9F] bg-blue-50">
+                          <span class="w-6 h-6 md:w-7 md:h-7 bg-[#122D6A] rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold text-white flex-shrink-0">C</span>
+                          <span class="text-[10px] md:text-xs text-gray-900 font-medium leading-relaxed">São direitos sociais: a educação, a saúde, a alimentação, o trabalho...</span>
+                        </div>
+                        <div class="flex items-start gap-2 p-2 md:p-2.5 rounded-lg border-2 border-green-400 bg-green-50">
+                          <span class="w-6 h-6 md:w-7 md:h-7 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0"><i class="fas fa-check text-white text-[8px] md:text-[10px]"></i></span>
+                          <span class="text-[10px] md:text-xs text-green-800 font-medium leading-relaxed">A proteção à maternidade e à infância são direitos sociais expressos...</span>
+                        </div>
+                        <div class="flex items-start gap-2 p-2 md:p-2.5 rounded-lg border-2 border-gray-200 bg-white opacity-60">
+                          <span class="w-6 h-6 md:w-7 md:h-7 bg-gray-100 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold text-gray-600 flex-shrink-0">E</span>
+                          <span class="text-[10px] md:text-xs text-gray-700 leading-relaxed">O direito à moradia não consta no rol dos direitos sociais...</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- TELA: Dashboard -->
+                  <div id="showcase-screen-dashboard" class="showcase-screen bg-gray-100 rounded-b-xl md:rounded-b-2xl overflow-hidden hidden" style="min-height: 380px;">
+                    <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-3 md:px-5 py-3 md:py-4">
+                      <p class="text-xs md:text-sm font-bold">Meu Desempenho</p>
+                      <p class="text-[10px] md:text-xs text-blue-300 mt-0.5">Semana 3 de estudos</p>
+                    </div>
+                    <div class="px-3 md:px-5 py-3 md:py-4">
+                      <!-- KPIs -->
+                      <div class="grid grid-cols-3 gap-2 md:gap-3 mb-3 md:mb-4">
+                        <div class="bg-white rounded-xl p-2 md:p-3 text-center border border-gray-100 shadow-sm">
+                          <p class="text-lg md:text-2xl font-bold text-[#122D6A]">87%</p>
+                          <p class="text-[9px] md:text-[10px] text-gray-500">Taxa de Acertos</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-2 md:p-3 text-center border border-gray-100 shadow-sm">
+                          <p class="text-lg md:text-2xl font-bold text-emerald-600">142</p>
+                          <p class="text-[9px] md:text-[10px] text-gray-500">Questões Feitas</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-2 md:p-3 text-center border border-gray-100 shadow-sm">
+                          <p class="text-lg md:text-2xl font-bold text-amber-600">23h</p>
+                          <p class="text-[9px] md:text-[10px] text-gray-500">Horas de Estudo</p>
+                        </div>
+                      </div>
+                      <!-- Gráfico fake de evolução -->
+                      <div class="bg-white rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm mb-3 md:mb-4">
+                        <p class="text-[10px] md:text-xs font-bold text-gray-800 mb-2 md:mb-3">Evolução Semanal</p>
+                        <div class="flex items-end gap-1 md:gap-1.5 h-16 md:h-20">
+                          <div class="flex-1 bg-blue-200 rounded-t" style="height: 40%"></div>
+                          <div class="flex-1 bg-blue-300 rounded-t" style="height: 55%"></div>
+                          <div class="flex-1 bg-blue-400 rounded-t" style="height: 48%"></div>
+                          <div class="flex-1 bg-blue-500 rounded-t" style="height: 70%"></div>
+                          <div class="flex-1 bg-blue-500 rounded-t" style="height: 65%"></div>
+                          <div class="flex-1 bg-[#122D6A] rounded-t" style="height: 85%"></div>
+                          <div class="flex-1 bg-emerald-500 rounded-t animate-pulse" style="height: 95%"></div>
+                        </div>
+                        <div class="flex justify-between mt-1 text-[8px] md:text-[9px] text-gray-400">
+                          <span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span class="text-emerald-600 font-bold">Hoje</span>
+                        </div>
+                      </div>
+                      <!-- Disciplinas -->
+                      <div class="bg-white rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm">
+                        <p class="text-[10px] md:text-xs font-bold text-gray-800 mb-2">Por Disciplina</p>
+                        <div class="space-y-2">
+                          <div>
+                            <div class="flex justify-between text-[9px] md:text-[10px] mb-0.5"><span class="text-gray-700">Direito Constitucional</span><span class="font-bold text-emerald-600">92%</span></div>
+                            <div class="h-1.5 bg-gray-100 rounded-full"><div class="h-full bg-emerald-500 rounded-full" style="width:92%"></div></div>
+                          </div>
+                          <div>
+                            <div class="flex justify-between text-[9px] md:text-[10px] mb-0.5"><span class="text-gray-700">Direito Administrativo</span><span class="font-bold text-blue-600">78%</span></div>
+                            <div class="h-1.5 bg-gray-100 rounded-full"><div class="h-full bg-blue-500 rounded-full" style="width:78%"></div></div>
+                          </div>
+                          <div>
+                            <div class="flex justify-between text-[9px] md:text-[10px] mb-0.5"><span class="text-gray-700">Português</span><span class="font-bold text-amber-600">65%</span></div>
+                            <div class="h-1.5 bg-gray-100 rounded-full"><div class="h-full bg-amber-500 rounded-full" style="width:65%"></div></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- TELA: Conteúdo IA -->
+                  <div id="showcase-screen-conteudo" class="showcase-screen bg-gray-100 rounded-b-xl md:rounded-b-2xl overflow-hidden hidden" style="min-height: 380px;">
+                    <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-3 md:px-5 py-3 md:py-4">
+                      <p class="text-xs md:text-sm font-bold">Gerar Conteúdo com IA</p>
+                      <p class="text-[10px] md:text-xs text-blue-300 mt-0.5">Escolha o tipo e o tópico</p>
+                    </div>
+                    <div class="px-3 md:px-5 py-3 md:py-4">
+                      <!-- Tipos de conteúdo -->
+                      <div class="grid grid-cols-2 gap-2 mb-3 md:mb-4">
+                        <div class="bg-[#122D6A] text-white rounded-xl p-2.5 md:p-3 text-center border-2 border-[#122D6A]">
+                          <i class="fas fa-book text-sm md:text-base mb-1"></i>
+                          <p class="text-[10px] md:text-xs font-bold">Teoria</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-2.5 md:p-3 text-center border-2 border-gray-200">
+                          <i class="fas fa-tasks text-gray-500 text-sm md:text-base mb-1"></i>
+                          <p class="text-[10px] md:text-xs font-medium text-gray-600">Exercícios</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-2.5 md:p-3 text-center border-2 border-gray-200">
+                          <i class="fas fa-file-alt text-gray-500 text-sm md:text-base mb-1"></i>
+                          <p class="text-[10px] md:text-xs font-medium text-gray-600">Resumo</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-2.5 md:p-3 text-center border-2 border-gray-200">
+                          <i class="fas fa-clone text-gray-500 text-sm md:text-base mb-1"></i>
+                          <p class="text-[10px] md:text-xs font-medium text-gray-600">Flashcards</p>
+                        </div>
+                      </div>
+                      <!-- Conteúdo gerado -->
+                      <div class="bg-white rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm">
+                        <div class="flex items-center gap-2 mb-2 md:mb-3">
+                          <span class="px-2 py-0.5 bg-[#122D6A] text-white text-[9px] md:text-[10px] font-bold rounded-full">IA GEROU</span>
+                          <span class="text-[9px] md:text-[10px] text-gray-400">há 3 segundos</span>
+                        </div>
+                        <h4 class="text-xs md:text-sm font-bold text-gray-900 mb-1.5 md:mb-2">Princípios da Administração Pública</h4>
+                        <p class="text-[10px] md:text-[11px] text-gray-600 leading-relaxed mb-2">
+                          Os princípios expressos da Administração Pública estão previstos no <strong>art. 37, caput, da CF/88</strong>: 
+                          Legalidade, Impessoalidade, Moralidade, Publicidade e Eficiência (LIMPE)...
+                        </p>
+                        <div class="flex gap-3 text-[9px] md:text-[10px] text-gray-400 border-t border-gray-100 pt-2 mt-2">
+                          <span><i class="fas fa-file-word mr-1 text-[#122D6A]"></i>2.340 palavras</span>
+                          <span><i class="fas fa-clock mr-1 text-amber-500"></i>~15 min leitura</span>
+                          <span><i class="fas fa-star mr-1 text-emerald-500"></i>Salvo</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- TELA: Plano de Estudos -->
+                  <div id="showcase-screen-plano" class="showcase-screen bg-gray-100 rounded-b-xl md:rounded-b-2xl overflow-hidden hidden" style="min-height: 380px;">
+                    <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-3 md:px-5 py-3 md:py-4">
+                      <p class="text-xs md:text-sm font-bold">Plano de Estudos Semanal</p>
+                      <p class="text-[10px] md:text-xs text-blue-300 mt-0.5">Semana 3 • 12-18 Fev</p>
+                    </div>
+                    <div class="px-3 md:px-5 py-3 md:py-4">
+                      <!-- Meta semanal -->
+                      <div class="bg-white rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm mb-3">
+                        <div class="flex items-center justify-between mb-2">
+                          <p class="text-[10px] md:text-xs font-bold text-gray-800">Meta da Semana</p>
+                          <span class="text-[10px] md:text-xs font-bold text-emerald-600">68%</span>
+                        </div>
+                        <div class="h-2 bg-gray-100 rounded-full"><div class="h-full bg-gradient-to-r from-[#122D6A] to-emerald-500 rounded-full" style="width:68%"></div></div>
+                        <p class="text-[9px] md:text-[10px] text-gray-500 mt-1.5">17 de 25 tarefas concluídas</p>
+                      </div>
+                      <!-- Dias da semana -->
+                      <div class="space-y-2">
+                        <div class="bg-white rounded-xl p-2.5 md:p-3 border border-gray-100 shadow-sm">
+                          <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                              <span class="w-7 h-7 md:w-8 md:h-8 bg-emerald-100 rounded-lg flex items-center justify-center"><i class="fas fa-check text-emerald-600 text-[10px] md:text-xs"></i></span>
+                              <div>
+                                <p class="text-[10px] md:text-xs font-bold text-gray-800">Segunda-feira</p>
+                                <p class="text-[9px] md:text-[10px] text-gray-500">Dir. Constitucional • 2h</p>
+                              </div>
+                            </div>
+                            <span class="text-[9px] md:text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Concluído</span>
+                          </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-2.5 md:p-3 border border-gray-100 shadow-sm">
+                          <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                              <span class="w-7 h-7 md:w-8 md:h-8 bg-emerald-100 rounded-lg flex items-center justify-center"><i class="fas fa-check text-emerald-600 text-[10px] md:text-xs"></i></span>
+                              <div>
+                                <p class="text-[10px] md:text-xs font-bold text-gray-800">Terça-feira</p>
+                                <p class="text-[9px] md:text-[10px] text-gray-500">Dir. Administrativo • 1.5h</p>
+                              </div>
+                            </div>
+                            <span class="text-[9px] md:text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Concluído</span>
+                          </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-2.5 md:p-3 border-2 border-[#122D6A] shadow-sm">
+                          <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                              <span class="w-7 h-7 md:w-8 md:h-8 bg-blue-100 rounded-lg flex items-center justify-center"><i class="fas fa-play text-[#122D6A] text-[10px] md:text-xs"></i></span>
+                              <div>
+                                <p class="text-[10px] md:text-xs font-bold text-gray-800">Quarta-feira <span class="text-[9px] text-blue-600">(Hoje)</span></p>
+                                <p class="text-[9px] md:text-[10px] text-gray-500">Português + Redação • 2.5h</p>
+                              </div>
+                            </div>
+                            <span class="text-[9px] md:text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Em andamento</span>
+                          </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-2.5 md:p-3 border border-gray-100 shadow-sm opacity-60">
+                          <div class="flex items-center gap-2">
+                            <span class="w-7 h-7 md:w-8 md:h-8 bg-gray-100 rounded-lg flex items-center justify-center"><i class="fas fa-clock text-gray-400 text-[10px] md:text-xs"></i></span>
+                            <div>
+                              <p class="text-[10px] md:text-xs font-bold text-gray-600">Quinta-feira</p>
+                              <p class="text-[9px] md:text-[10px] text-gray-400">Raciocínio Lógico • 1.5h</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- TELA: Flashcards -->
+                  <div id="showcase-screen-flashcards" class="showcase-screen bg-gray-100 rounded-b-xl md:rounded-b-2xl overflow-hidden hidden" style="min-height: 380px;">
+                    <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-3 md:px-5 py-3 md:py-4">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-xs md:text-sm font-bold">Flashcards</p>
+                          <p class="text-[10px] md:text-xs text-blue-300 mt-0.5">Direito Administrativo</p>
+                        </div>
+                        <span class="text-[10px] md:text-xs bg-white/20 px-2 py-0.5 rounded-full">Card 5 de 12</span>
+                      </div>
+                    </div>
+                    <div class="px-3 md:px-5 py-4 md:py-6">
+                      <!-- Card principal -->
+                      <div class="bg-white rounded-2xl p-4 md:p-6 shadow-lg border border-gray-100 text-center mb-4 md:mb-6" style="min-height: 160px;">
+                        <div class="inline-block px-2.5 py-0.5 bg-blue-50 text-[#122D6A] text-[9px] md:text-[10px] font-bold rounded-full mb-3 md:mb-4">RESPOSTA</div>
+                        <h4 class="text-sm md:text-base font-bold text-gray-900 mb-2 md:mb-3">O que é o princípio da autotutela?</h4>
+                        <p class="text-[11px] md:text-sm text-gray-600 leading-relaxed">
+                          É o poder que a Administração Pública tem de <strong>controlar seus próprios atos</strong>, 
+                          podendo anulá-los quando ilegais ou revogá-los por conveniência, 
+                          conforme Súmula 473 do STF.
+                        </p>
+                      </div>
+                      <!-- Botões de classificação -->
+                      <p class="text-center text-[9px] md:text-[10px] text-gray-500 mb-2 md:mb-3">Como foi esse card?</p>
+                      <div class="grid grid-cols-3 gap-2 md:gap-3">
+                        <button class="py-2.5 md:py-3 rounded-xl bg-red-50 border-2 border-red-200 text-center hover:bg-red-100 transition">
+                          <i class="fas fa-times text-red-500 text-sm md:text-base"></i>
+                          <p class="text-[9px] md:text-[10px] font-bold text-red-600 mt-0.5">Difícil</p>
+                        </button>
+                        <button class="py-2.5 md:py-3 rounded-xl bg-amber-50 border-2 border-amber-200 text-center hover:bg-amber-100 transition">
+                          <i class="fas fa-minus text-amber-500 text-sm md:text-base"></i>
+                          <p class="text-[9px] md:text-[10px] font-bold text-amber-600 mt-0.5">Médio</p>
+                        </button>
+                        <button class="py-2.5 md:py-3 rounded-xl bg-green-50 border-2 border-green-200 text-center hover:bg-green-100 transition">
+                          <i class="fas fa-check text-green-500 text-sm md:text-base"></i>
+                          <p class="text-[9px] md:text-[10px] font-bold text-green-600 mt-0.5">Fácil</p>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                </div>
+                
+                <!-- Badge flutuante -->
+                <div class="absolute -bottom-3 md:-bottom-4 left-1/2 -translate-x-1/2 px-4 md:px-5 py-1.5 md:py-2 bg-white rounded-full shadow-xl text-xs md:text-sm font-bold text-[#122D6A] border border-gray-200 whitespace-nowrap">
+                  <i class="fas fa-play-circle text-emerald-500 mr-1.5"></i>Tela real do sistema
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Counter social proof -->
+          <div class="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+            <div class="text-center">
+              <p class="text-2xl md:text-4xl font-bold text-white">15+</p>
+              <p class="text-xs md:text-sm text-blue-300 mt-1">Bancas Suportadas</p>
+            </div>
+            <div class="text-center">
+              <p class="text-2xl md:text-4xl font-bold text-white">5</p>
+              <p class="text-xs md:text-sm text-blue-300 mt-1">Tipos de Conteúdo</p>
+            </div>
+            <div class="text-center">
+              <p class="text-2xl md:text-4xl font-bold text-white">∞</p>
+              <p class="text-xs md:text-sm text-blue-300 mt-1">Questões Geradas</p>
+            </div>
+            <div class="text-center">
+              <p class="text-2xl md:text-4xl font-bold text-white">24/7</p>
+              <p class="text-xs md:text-sm text-blue-300 mt-1">Disponível Sempre</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      
       <!-- How it Works -->
       <section class="py-20 px-4 bg-gray-50">
         <div class="max-w-7xl mx-auto">
@@ -2366,6 +2906,9 @@ function renderLandingPage() {
       
     </div>
   `;
+  
+  // Inicializar showcase tabs
+  setTimeout(() => initShowcaseTabs(), 100);
 }
 
 // Função para ir para o login (a partir da landing page)
@@ -2384,6 +2927,68 @@ window.scrollToSection = function(sectionId) {
   if (section) {
     section.scrollIntoView({ behavior: 'smooth' });
   }
+};
+
+// Showcase tab switching para landing page
+window.switchShowcase = function(tab) {
+  // Esconder todos os textos e telas
+  document.querySelectorAll('.showcase-text').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.showcase-screen').forEach(el => el.classList.add('hidden'));
+  
+  // Mostrar o selecionado
+  const textEl = document.getElementById('showcase-text-' + tab);
+  const screenEl = document.getElementById('showcase-screen-' + tab);
+  if (textEl) textEl.classList.remove('hidden');
+  if (screenEl) screenEl.classList.remove('hidden');
+  
+  // Atualizar tabs ativas
+  document.querySelectorAll('.showcase-tab').forEach(btn => {
+    btn.style.background = 'rgba(255,255,255,0.1)';
+    btn.style.color = 'rgba(191,219,254,0.8)';
+    btn.style.border = '1px solid transparent';
+  });
+  const activeTab = document.getElementById('tab-' + tab);
+  if (activeTab) {
+    activeTab.style.background = '#FFFFFF';
+    activeTab.style.color = '#122D6A';
+    activeTab.style.border = '1px solid #FFFFFF';
+  }
+};
+
+// Inicializar tabs do showcase quando a landing page é renderizada
+window.initShowcaseTabs = function() {
+  // Aplicar estilo inicial em todos os tabs
+  document.querySelectorAll('.showcase-tab').forEach(btn => {
+    btn.style.background = 'rgba(255,255,255,0.1)';
+    btn.style.color = 'rgba(191,219,254,0.8)';
+    btn.style.border = '1px solid transparent';
+    btn.style.cursor = 'pointer';
+  });
+  // Ativar o primeiro
+  const firstTab = document.getElementById('tab-simulado');
+  if (firstTab) {
+    firstTab.style.background = '#FFFFFF';
+    firstTab.style.color = '#122D6A';
+    firstTab.style.border = '1px solid #FFFFFF';
+  }
+  
+  // Auto-rotate a cada 5 segundos
+  const tabs = ['simulado', 'dashboard', 'conteudo', 'plano', 'flashcards'];
+  let currentIndex = 0;
+  window.showcaseInterval = setInterval(() => {
+    currentIndex = (currentIndex + 1) % tabs.length;
+    switchShowcase(tabs[currentIndex]);
+  }, 6000);
+  
+  // Parar auto-rotate quando o usuário clicar manualmente
+  document.querySelectorAll('.showcase-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (window.showcaseInterval) {
+        clearInterval(window.showcaseInterval);
+        window.showcaseInterval = null;
+      }
+    });
+  });
 };
 
 // Toggle de senha na landing page
