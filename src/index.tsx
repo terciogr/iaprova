@@ -4229,6 +4229,41 @@ app.get('/api/admin/plans', async (c) => {
   }
 })
 
+// Criar novo plano de pagamento
+app.post('/api/admin/plans', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const { name, description, price, duration_days, features, is_active, discount_percent, is_featured, display_order } = await c.req.json()
+    
+    if (!name) return c.json({ error: 'Nome é obrigatório' }, 400)
+    
+    const result = await DB.prepare(`
+      INSERT INTO payment_plans (name, description, price, duration_days, features, is_active, discount_percent, is_featured, display_order)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      name, 
+      description || '', 
+      price || 0, 
+      duration_days || 0, 
+      JSON.stringify(features || []), 
+      is_active ? 1 : 0, 
+      discount_percent || 0, 
+      is_featured ? 1 : 0, 
+      display_order || 0
+    ).run()
+    
+    return c.json({ success: true, id: result.meta.last_row_id })
+  } catch (error: any) {
+    console.error('Erro ao criar plano:', error)
+    return c.json({ error: 'Erro ao criar plano: ' + error.message }, 500)
+  }
+})
+
 // Atualizar plano de pagamento
 app.put('/api/admin/plans/:id', async (c) => {
   const { DB } = c.env
@@ -4239,18 +4274,56 @@ app.put('/api/admin/plans/:id', async (c) => {
   
   try {
     const planId = c.req.param('id')
-    const { name, description, price, duration_days, features, is_active } = await c.req.json()
+    const { name, description, price, duration_days, features, is_active, discount_percent, is_featured, display_order } = await c.req.json()
     
     await DB.prepare(`
       UPDATE payment_plans 
-      SET name = ?, description = ?, price = ?, duration_days = ?, features = ?, is_active = ?
+      SET name = ?, description = ?, price = ?, duration_days = ?, features = ?, is_active = ?, discount_percent = ?, is_featured = ?, display_order = ?
       WHERE id = ?
-    `).bind(name, description, price, duration_days, JSON.stringify(features), is_active ? 1 : 0, planId).run()
+    `).bind(name, description, price, duration_days, JSON.stringify(features), is_active ? 1 : 0, discount_percent || 0, is_featured ? 1 : 0, display_order || 0, planId).run()
     
     return c.json({ success: true })
   } catch (error) {
     console.error('Erro ao atualizar plano:', error)
     return c.json({ error: 'Erro ao atualizar plano' }, 500)
+  }
+})
+
+// Deletar plano de pagamento
+app.delete('/api/admin/plans/:id', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const planId = c.req.param('id')
+    
+    // Verificar se há assinaturas ativas
+    const activeSubs = await DB.prepare('SELECT COUNT(*) as count FROM user_subscriptions WHERE plan_id = ? AND status = ?').bind(planId, 'active').first() as any
+    if (activeSubs && activeSubs.count > 0) {
+      return c.json({ error: `Não é possível excluir: ${activeSubs.count} assinatura(s) ativa(s) vinculada(s)` }, 400)
+    }
+    
+    await DB.prepare('DELETE FROM payment_plans WHERE id = ?').bind(planId).run()
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Erro ao deletar plano:', error)
+    return c.json({ error: 'Erro ao deletar plano' }, 500)
+  }
+})
+
+// Endpoint PÚBLICO (sem auth) para planos - usado na landing page
+app.get('/api/public/plans', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    const plans = await DB.prepare('SELECT id, name, description, price, duration_days, features, discount_percent, is_featured, display_order FROM payment_plans WHERE is_active = 1 ORDER BY display_order ASC').all()
+    return c.json({ plans: plans.results })
+  } catch (error) {
+    console.error('Erro ao listar planos públicos:', error)
+    return c.json({ plans: [] })
   }
 })
 

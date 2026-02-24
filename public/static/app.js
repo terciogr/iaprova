@@ -1535,6 +1535,8 @@ function checkUser() {
     }
     // Caso contrário, SEMPRE mostrar landing page de marketing (página inicial)
     renderLandingPage();
+    // Carregar planos dinâmicos do banco de dados
+    setTimeout(() => { if (typeof carregarPlanosLanding === 'function') carregarPlanosLanding(); }, 100);
     return;
   }
   
@@ -2736,7 +2738,7 @@ function renderLandingPage() {
         </div>
       </section>
       
-      <!-- Pricing Section -->
+      <!-- Pricing Section - DINÂMICO v96 -->
       <section id="pricing" class="py-20 px-4 bg-white">
         <div class="max-w-7xl mx-auto">
           <div class="text-center mb-16">
@@ -2749,98 +2751,11 @@ function renderLandingPage() {
             </p>
           </div>
           
-          <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <!-- Plano Gratuito -->
-            <div class="p-8 rounded-2xl border-2 border-gray-200 hover:border-[#122D6A]/30 transition-all">
-              <h3 class="text-xl font-bold text-gray-900 mb-2">Gratuito</h3>
-              <p class="text-gray-500 mb-6">Para conhecer a plataforma</p>
-              <div class="mb-6">
-                <span class="text-4xl font-bold text-gray-900">R$ 0</span>
-                <span class="text-gray-500">/sempre</span>
-              </div>
-              <ul class="space-y-3 mb-8">
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> 5 gerações de conteúdo/dia
-                </li>
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> 1 plano de estudos
-                </li>
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> 7 metas semanais
-                </li>
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> 1 simulado por semana
-                </li>
-              </ul>
-              <button onclick="goToLogin()" 
-                class="w-full py-3 border-2 border-[#122D6A] text-[#122D6A] font-semibold rounded-xl hover:bg-[#122D6A]/5 transition">
-                Começar Grátis
-              </button>
-            </div>
-            
-            <!-- Plano Premium Mensal - Destaque -->
-            <div class="p-8 rounded-2xl border-2 border-[#122D6A] bg-gradient-to-br from-[#122D6A]/5 to-transparent relative transform md:scale-105 shadow-xl">
-              <div class="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white text-sm font-bold rounded-full">
-                Mais Popular
-              </div>
-              <h3 class="text-xl font-bold text-gray-900 mb-2">Premium Mensal</h3>
-              <p class="text-gray-500 mb-6">Para quem vai passar</p>
-              <div class="mb-6">
-                <span class="text-4xl font-bold text-gray-900">R$ 29,90</span>
-                <span class="text-gray-500">/mês</span>
-              </div>
-              <ul class="space-y-3 mb-8">
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> <strong>Ilimitado</strong> gerações de conteúdo
-                </li>
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> <strong>Ilimitado</strong> planos de estudos
-                </li>
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> <strong>Ilimitado</strong> metas semanais
-                </li>
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> <strong>Ilimitado</strong> simulados
-                </li>
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> Suporte prioritário
-                </li>
-              </ul>
-              <button onclick="goToLogin()" 
-                class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white font-semibold rounded-xl hover:from-[#0D1F4D] hover:to-[#122D6A] transition shadow-lg shadow-[#122D6A]/30">
-                Assinar Agora
-              </button>
-            </div>
-            
-            <!-- Plano Anual -->
-            <div class="p-8 rounded-2xl border-2 border-gray-200 hover:border-[#122D6A]/30 transition-all">
-              <h3 class="text-xl font-bold text-gray-900 mb-2">Premium Anual</h3>
-              <p class="text-gray-500 mb-2">Economia de 30%</p>
-              <div class="mb-1">
-                <span class="text-4xl font-bold text-gray-900">R$ 249,90</span>
-                <span class="text-gray-500">/ano</span>
-              </div>
-              <p class="text-emerald-600 font-semibold text-sm mb-6">
-                <i class="fas fa-tag mr-1"></i> Apenas R$ 20,83/mês
-              </p>
-              <ul class="space-y-3 mb-8">
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> Tudo do Premium Mensal
-                </li>
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> <strong>30% de desconto</strong>
-                </li>
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> Acesso a novos recursos
-                </li>
-                <li class="flex items-center gap-2 text-gray-600">
-                  <i class="fas fa-check text-emerald-500"></i> Suporte VIP
-                </li>
-              </ul>
-              <button onclick="goToLogin()" 
-                class="w-full py-3 border-2 border-[#122D6A] text-[#122D6A] font-semibold rounded-xl hover:bg-[#122D6A]/5 transition">
-                Economizar 30%
-              </button>
+          <div id="landing-plans-container" class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <!-- Plans will be loaded dynamically -->
+            <div class="col-span-3 text-center py-8">
+              <i class="fas fa-spinner fa-spin text-[#122D6A] text-2xl"></i>
+              <p class="text-gray-500 mt-2 text-sm">Carregando planos...</p>
             </div>
           </div>
         </div>
@@ -2929,6 +2844,119 @@ window.scrollToSection = function(sectionId) {
   }
 };
 
+// ============== CARREGAR PLANOS DINÂMICOS NA LANDING PAGE v96 ==============
+window.carregarPlanosLanding = async function() {
+  const container = document.getElementById('landing-plans-container');
+  if (!container) return;
+  
+  try {
+    const response = await axios.get('/api/public/plans');
+    const plans = response.data.plans || [];
+    
+    if (plans.length === 0) {
+      container.innerHTML = '<div class="col-span-3 text-center py-8 text-gray-500">Nenhum plano disponível no momento.</div>';
+      return;
+    }
+    
+    // Determinar grid cols baseado no número de planos
+    const gridCols = plans.length <= 2 ? 'md:grid-cols-2' : plans.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-' + Math.min(plans.length, 4);
+    container.className = 'grid ' + gridCols + ' gap-8 max-w-5xl mx-auto';
+    
+    container.innerHTML = plans.map(p => {
+      let features = [];
+      try { features = typeof p.features === 'string' ? JSON.parse(p.features) : (p.features || []); } catch(e) {}
+      
+      const isFree = p.price === 0;
+      const hasDiscount = p.discount_percent > 0;
+      const finalPrice = hasDiscount ? p.price * (1 - p.discount_percent / 100) : p.price;
+      const isFeatured = !!p.is_featured;
+      
+      // Período label
+      let periodLabel = '/sempre';
+      if (p.duration_days > 0) {
+        if (p.duration_days <= 31) periodLabel = '/mês';
+        else if (p.duration_days <= 100) periodLabel = '/trimestre';
+        else periodLabel = '/ano';
+      }
+      
+      // Monthly equivalent for annual plans
+      let monthlyEquiv = '';
+      if (p.duration_days > 31) {
+        const months = p.duration_days / 30;
+        const monthlyPrice = finalPrice / months;
+        monthlyEquiv = '<p class="text-emerald-600 font-semibold text-sm mt-1"><i class="fas fa-tag mr-1"></i>Apenas R$ ' + monthlyPrice.toFixed(2).replace('.', ',') + '/mês</p>';
+      }
+      
+      const cardClasses = isFeatured
+        ? 'p-8 rounded-2xl border-2 border-[#122D6A] bg-gradient-to-br from-[#122D6A]/5 to-transparent relative transform md:scale-105 shadow-xl'
+        : 'p-8 rounded-2xl border-2 border-gray-200 hover:border-[#122D6A]/30 transition-all';
+      
+      const btnClasses = isFeatured
+        ? 'w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white font-semibold rounded-xl hover:from-[#0D1F4D] hover:to-[#122D6A] transition shadow-lg shadow-[#122D6A]/30'
+        : 'w-full py-3 border-2 border-[#122D6A] text-[#122D6A] font-semibold rounded-xl hover:bg-[#122D6A]/5 transition';
+      
+      const btnText = isFree ? 'Começar Grátis' : (isFeatured ? 'Assinar Agora' : (hasDiscount ? 'Economizar ' + p.discount_percent + '%' : 'Assinar'));
+      
+      return '<div class="' + cardClasses + '">' +
+        (isFeatured ? '<div class="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white text-sm font-bold rounded-full whitespace-nowrap">Mais Popular</div>' : '') +
+        (hasDiscount && !isFeatured ? '<div class="absolute -top-3 right-4 px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded-full">' + p.discount_percent + '% OFF</div>' : '') +
+        '<h3 class="text-xl font-bold text-gray-900 mb-2">' + p.name + '</h3>' +
+        '<p class="text-gray-500 mb-' + (monthlyEquiv ? '2' : '6') + '">' + (p.description || '') + '</p>' +
+        '<div class="mb-' + (monthlyEquiv ? '1' : '6') + '">' +
+          (hasDiscount ? '<span class="text-lg text-gray-400 line-through mr-2">R$ ' + Number(p.price).toFixed(2).replace('.', ',') + '</span>' : '') +
+          '<span class="text-4xl font-bold text-gray-900">' + (isFree ? 'R$ 0' : 'R$ ' + Number(finalPrice).toFixed(2).replace('.', ',')) + '</span>' +
+          '<span class="text-gray-500">' + periodLabel + '</span>' +
+        '</div>' +
+        (monthlyEquiv ? monthlyEquiv.replace('mt-1', 'mb-6') : '') +
+        '<ul class="space-y-3 mb-8">' +
+          features.map(function(f) { return '<li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> ' + f + '</li>'; }).join('') +
+        '</ul>' +
+        '<button onclick="goToLogin()" class="' + btnClasses + '">' + btnText + '</button>' +
+      '</div>';
+    }).join('');
+    
+    // Salvar planos globalmente para uso no modal de trial/upgrade
+    window._publicPlans = plans;
+    
+  } catch (error) {
+    console.error('Erro ao carregar planos:', error);
+    // Fallback para planos estáticos
+    container.innerHTML = `
+      <div class="p-8 rounded-2xl border-2 border-gray-200">
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Gratuito</h3>
+        <p class="text-gray-500 mb-6">Para conhecer a plataforma</p>
+        <div class="mb-6"><span class="text-4xl font-bold text-gray-900">R$ 0</span><span class="text-gray-500">/sempre</span></div>
+        <ul class="space-y-3 mb-8">
+          <li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> 5 gerações de conteúdo/dia</li>
+          <li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> 1 plano de estudos</li>
+        </ul>
+        <button onclick="goToLogin()" class="w-full py-3 border-2 border-[#122D6A] text-[#122D6A] font-semibold rounded-xl hover:bg-[#122D6A]/5 transition">Começar Grátis</button>
+      </div>
+      <div class="p-8 rounded-2xl border-2 border-[#122D6A] bg-gradient-to-br from-[#122D6A]/5 to-transparent relative transform md:scale-105 shadow-xl">
+        <div class="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white text-sm font-bold rounded-full">Mais Popular</div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Premium Mensal</h3>
+        <p class="text-gray-500 mb-6">Para quem vai passar</p>
+        <div class="mb-6"><span class="text-4xl font-bold text-gray-900">R$ 29,90</span><span class="text-gray-500">/mês</span></div>
+        <ul class="space-y-3 mb-8">
+          <li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> <strong>Ilimitado</strong> gerações de conteúdo</li>
+          <li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> <strong>Ilimitado</strong> simulados</li>
+        </ul>
+        <button onclick="goToLogin()" class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white font-semibold rounded-xl hover:from-[#0D1F4D] hover:to-[#122D6A] transition shadow-lg shadow-[#122D6A]/30">Assinar Agora</button>
+      </div>
+      <div class="p-8 rounded-2xl border-2 border-gray-200">
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Premium Anual</h3>
+        <p class="text-gray-500 mb-6">Economia de 30%</p>
+        <div class="mb-6"><span class="text-4xl font-bold text-gray-900">R$ 249,90</span><span class="text-gray-500">/ano</span></div>
+        <ul class="space-y-3 mb-8">
+          <li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> Tudo do Premium Mensal</li>
+          <li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> <strong>30% de desconto</strong></li>
+        </ul>
+        <button onclick="goToLogin()" class="w-full py-3 border-2 border-[#122D6A] text-[#122D6A] font-semibold rounded-xl hover:bg-[#122D6A]/5 transition">Economizar 30%</button>
+      </div>
+    `;
+  }
+};
+
 // Showcase tab switching para landing page
 window.switchShowcase = function(tab) {
   // Esconder todos os textos e telas
@@ -3007,6 +3035,7 @@ window.toggleLandingPassword = function() {
 // Função para renderizar página de cadastro (redireciona para landing com foco no form)
 function renderCadastro() {
   renderLandingPage();
+  setTimeout(() => { if (typeof carregarPlanosLanding === 'function') carregarPlanosLanding(); }, 100);
   // Aguardar renderização e focar no formulário de cadastro
   setTimeout(() => {
     const emailInput = document.getElementById('landing-email');
@@ -14658,6 +14687,7 @@ function logout() {
   
   // Voltar para a landing page (não para o login)
   renderLandingPage();
+  setTimeout(() => { if (typeof carregarPlanosLanding === 'function') carregarPlanosLanding(); }, 100);
 }
 
 // ============== PÁGINA DE CONFIGURAÇÕES (ESTILO MICROSOFT) ==============
@@ -16648,152 +16678,137 @@ window.verListaUsuarios = async function() {
     });
     const { users, pagination } = response.data;
     
-    // Carregar planos disponíveis
-    let plans = [];
-    try {
-      const plansRes = await axios.get('/api/admin/plans', { headers: { 'X-User-ID': currentUser.id } });
-      plans = plansRes.data.plans || [];
-    } catch (e) {}
-    
     const modal = document.createElement('div');
     modal.id = 'modal-admin-users';
     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    
+    const renderUserRows = (filteredUsers) => {
+      return filteredUsers.map(u => {
+        const totalAcessos = u.total_acessos || 0;
+        const acessosClass = totalAcessos >= 50 ? 'bg-green-100 text-green-700' : totalAcessos >= 10 ? 'bg-blue-100 text-blue-700' : totalAcessos >= 1 ? 'bg-gray-100 text-gray-600' : 'bg-red-50 text-red-400';
+        const cadastroDate = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '-';
+        const diasCadastro = u.created_at ? Math.floor((Date.now() - new Date(u.created_at).getTime()) / (1000*60*60*24)) : 0;
+        const isPremium = u.is_premium_real || u.is_premium;
+        
+        let trialLabel = '', trialClass = '';
+        if (isPremium) {
+          trialLabel = '<i class="fas fa-crown text-yellow-500"></i>';
+          trialClass = 'bg-yellow-50 text-yellow-700';
+        } else if (u.trial_expires_at) {
+          const diasRestantes = Math.ceil((new Date(u.trial_expires_at).getTime() - Date.now()) / (1000*60*60*24));
+          if (diasRestantes > 0) { trialLabel = diasRestantes + 'd'; trialClass = diasRestantes > 3 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'; }
+          else { trialLabel = Math.abs(diasRestantes) + 'd exp'; trialClass = 'bg-red-100 text-red-600'; }
+        } else if (u.created_at) {
+          const diasRestantes = 7 - Math.floor((Date.now() - new Date(u.created_at).getTime()) / (1000*60*60*24));
+          if (diasRestantes > 0) { trialLabel = diasRestantes + 'd'; trialClass = diasRestantes > 3 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'; }
+          else { trialLabel = Math.abs(diasRestantes) + 'd exp'; trialClass = 'bg-red-100 text-red-600'; }
+        } else { trialLabel = '-'; trialClass = 'bg-gray-100 text-gray-500'; }
+        
+        const jaRecebeuEmail = u.ultimo_email_reengajamento ? true : false;
+        const emailIcon = jaRecebeuEmail ? 'fa-check text-green-500' : 'fa-paper-plane text-orange-500';
+        const emailTitle = jaRecebeuEmail ? 'Já recebeu email' : 'Enviar email';
+        
+        return '<tr class="border-b border-gray-200 hover:bg-blue-50/50" id="user-row-' + u.id + '">' +
+          '<td class="p-2 text-gray-500 text-xs">' + u.id + '</td>' +
+          '<td class="p-2 text-gray-900 font-medium text-xs">' + (u.name || '-') + '</td>' +
+          '<td class="p-2 text-gray-600 text-xs">' + u.email + '</td>' +
+          '<td class="p-2 text-center">' + (u.email_verified ? '<i class="fas fa-check-circle text-green-500"></i>' : '<i class="fas fa-times-circle text-red-400"></i>') + '</td>' +
+          '<td class="p-2 text-center" id="premium-status-' + u.id + '">' + (isPremium ? '<span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-[10px] font-bold">PRO</span>' : '<span class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px]">Free</span>') + '</td>' +
+          '<td class="p-2 text-center text-xs text-gray-500"><div>' + cadastroDate + '</div><div class="text-[10px] opacity-60">' + diasCadastro + 'd</div></td>' +
+          '<td class="p-2 text-center"><span class="px-2 py-0.5 ' + trialClass + ' rounded-full text-[10px] font-medium">' + trialLabel + '</span></td>' +
+          '<td class="p-2 text-center"><span class="px-2 py-0.5 ' + acessosClass + ' rounded-full text-[10px] font-medium">' + totalAcessos + '</span></td>' +
+          '<td class="p-2 text-center"><div class="flex items-center justify-center gap-1">' +
+            '<button onclick="editarUsuarioAdmin(' + u.id + ',\'' + (u.name || '').replace(/'/g, "\\'") + '\',\'' + u.email + '\',' + (isPremium ? 1 : 0) + ')" class="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Editar"><i class="fas fa-edit text-xs"></i></button>' +
+            '<button onclick="togglePremiumAdmin(' + u.id + ',' + (isPremium ? 0 : 1) + ')" class="p-1 ' + (isPremium ? 'text-gray-400' : 'text-yellow-500') + ' hover:bg-yellow-50 rounded" title="' + (isPremium ? 'Remover' : 'Dar') + ' Premium"><i class="fas fa-crown text-xs"></i></button>' +
+            (!isPremium ? '<button onclick="enviarEmailIndividual(' + u.id + ',\'' + u.email.replace(/'/g, '') + '\')" class="p-1 text-orange-500 hover:bg-orange-50 rounded" title="' + emailTitle + '"><i class="fas ' + emailIcon + ' text-xs"></i></button>' : '') +
+            (u.email !== 'terciogomesrabelo@gmail.com' && !u.email_verified ? '<button onclick="deletarUsuarioAdmin(' + u.id + ',\'' + u.email + '\',false)" class="p-1 text-red-500 hover:bg-red-50 rounded" title="Deletar"><i class="fas fa-trash text-xs"></i></button>' : '') +
+          '</div></td></tr>';
+      }).join('');
+    };
+    
     modal.innerHTML = `
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
-          <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
-            <i class="fas fa-users text-blue-500"></i>
+      <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-5 py-4 flex items-center justify-between flex-shrink-0">
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            <i class="fas fa-users"></i>
             Gerenciar Usuários (${pagination.total})
           </h3>
-          <button onclick="document.getElementById('modal-admin-users')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
+          <button onclick="document.getElementById('modal-admin-users')?.remove()" class="text-white/80 hover:text-white p-1">
             <i class="fas fa-times text-xl"></i>
           </button>
         </div>
-        <div class="overflow-y-auto flex-1 p-4">
+        <div class="px-4 py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50">
+          <div class="flex gap-2">
+            <div class="flex-1 relative">
+              <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+              <input type="text" id="search-users" placeholder="Buscar por nome ou email..." 
+                class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none"
+                oninput="filterAdminUsers()">
+            </div>
+            <select id="filter-users-status" onchange="filterAdminUsers()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+              <option value="all">Todos</option>
+              <option value="premium">Premium</option>
+              <option value="free">Free</option>
+              <option value="verified">Verificados</option>
+              <option value="unverified">Não verificados</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-y-auto flex-1">
           <table class="w-full text-sm">
-            <thead class="bg-gray-50 sticky top-0">
+            <thead class="bg-[#122D6A] text-white sticky top-0" style="z-index:1">
               <tr>
-                <th class="p-2 text-left ${themes[currentTheme].text}">ID</th>
-                <th class="p-2 text-left ${themes[currentTheme].text}">Nome</th>
-                <th class="p-2 text-left ${themes[currentTheme].text}">Email</th>
-                <th class="p-2 text-center ${themes[currentTheme].text}">Verificado</th>
-                <th class="p-2 text-center ${themes[currentTheme].text}">Premium</th>
-                <th class="p-2 text-center ${themes[currentTheme].text}">Cadastro</th>
-                <th class="p-2 text-center ${themes[currentTheme].text}">Trial</th>
-                <th class="p-2 text-center ${themes[currentTheme].text}">Acessos</th>
-                <th class="p-2 text-center ${themes[currentTheme].text}">Ações</th>
+                <th class="p-2 text-left text-xs font-semibold">ID</th>
+                <th class="p-2 text-left text-xs font-semibold">Nome</th>
+                <th class="p-2 text-left text-xs font-semibold">Email</th>
+                <th class="p-2 text-center text-xs font-semibold">Verif.</th>
+                <th class="p-2 text-center text-xs font-semibold">Plano</th>
+                <th class="p-2 text-center text-xs font-semibold">Cadastro</th>
+                <th class="p-2 text-center text-xs font-semibold">Trial</th>
+                <th class="p-2 text-center text-xs font-semibold">Acessos</th>
+                <th class="p-2 text-center text-xs font-semibold">Ações</th>
               </tr>
             </thead>
-            <tbody>
-              ${users.map(u => {
-                const totalAcessos = u.total_acessos || 0;
-                const acessosClass = totalAcessos >= 50 ? 'bg-green-100 text-green-700' : totalAcessos >= 10 ? 'bg-blue-100 text-blue-700' : totalAcessos >= 1 ? 'bg-gray-100 text-gray-600' : 'bg-red-50 text-red-400';
-                
-                // Data de cadastro
-                const cadastroDate = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '-';
-                const diasCadastro = u.created_at ? Math.floor((Date.now() - new Date(u.created_at).getTime()) / (1000*60*60*24)) : 0;
-                
-                // Trial: calcular dias restantes
-                let trialLabel = '';
-                let trialClass = '';
-                const isPremium = u.is_premium_real || u.is_premium;
-                if (isPremium) {
-                  trialLabel = '<i class="fas fa-crown text-yellow-500"></i>';
-                  trialClass = 'bg-yellow-50 text-yellow-700';
-                } else if (u.trial_expires_at) {
-                  const trialExpires = new Date(u.trial_expires_at);
-                  const diasRestantes = Math.ceil((trialExpires.getTime() - Date.now()) / (1000*60*60*24));
-                  if (diasRestantes > 0) {
-                    trialLabel = diasRestantes + 'd';
-                    trialClass = diasRestantes > 3 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700';
-                  } else {
-                    trialLabel = 'Expirado ' + Math.abs(diasRestantes) + 'd';
-                    trialClass = 'bg-red-100 text-red-600';
-                  }
-                } else {
-                  // Sem trial, usar data de cadastro (7 dias de trial padrão)
-                  if (u.created_at) {
-                    const diasDesde = Math.floor((Date.now() - new Date(u.created_at).getTime()) / (1000*60*60*24));
-                    const diasRestantes = 7 - diasDesde;
-                    if (diasRestantes > 0) {
-                      trialLabel = diasRestantes + 'd';
-                      trialClass = diasRestantes > 3 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700';
-                    } else {
-                      trialLabel = 'Expirado ' + Math.abs(diasRestantes) + 'd';
-                      trialClass = 'bg-red-100 text-red-600';
-                    }
-                  } else {
-                    trialLabel = '-';
-                    trialClass = 'bg-gray-100 text-gray-500';
-                  }
-                }
-                
-                // Verificar se já recebeu email de reengajamento
-                const jaRecebeuEmail = u.ultimo_email_reengajamento ? true : false;
-                const emailIcon = jaRecebeuEmail ? 'fa-check text-green-500' : 'fa-paper-plane text-orange-500';
-                const emailTitle = jaRecebeuEmail ? 'Já recebeu em ' + new Date(u.ultimo_email_reengajamento).toLocaleDateString('pt-BR') + ' (reenviar)' : 'Enviar email de reengajamento';
-                
-                return `
-                <tr class="border-b ${themes[currentTheme].border} hover:bg-blue-50/50" id="user-row-${u.id}">
-                  <td class="p-2 ${themes[currentTheme].textSecondary}">${u.id}</td>
-                  <td class="p-2 ${themes[currentTheme].text} font-medium text-xs">${u.name || '-'}</td>
-                  <td class="p-2 ${themes[currentTheme].textSecondary} text-xs">${u.email}</td>
-                  <td class="p-2 text-center">
-                    ${u.email_verified ? '<i class="fas fa-check-circle text-green-500"></i>' : '<i class="fas fa-times-circle text-red-400"></i>'}
-                  </td>
-                  <td class="p-2 text-center" id="premium-status-${u.id}">
-                    ${isPremium ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs"><i class="fas fa-crown mr-1"></i>PRO</span>' : '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs">Free</span>'}
-                  </td>
-                  <td class="p-2 text-center text-xs ${themes[currentTheme].textSecondary}">
-                    <div>${cadastroDate}</div>
-                    <div class="text-[10px] opacity-60">${diasCadastro}d atrás</div>
-                  </td>
-                  <td class="p-2 text-center">
-                    <span class="px-2 py-0.5 ${trialClass} rounded-full text-xs font-medium">${trialLabel}</span>
-                  </td>
-                  <td class="p-2 text-center">
-                    <span class="px-2 py-0.5 ${acessosClass} rounded-full text-xs font-medium" title="Último: ${u.ultimo_acesso ? new Date(u.ultimo_acesso).toLocaleDateString('pt-BR') : 'Nunca'}">${totalAcessos}</span>
-                  </td>
-                  <td class="p-2 text-center">
-                    <div class="flex items-center justify-center gap-1">
-                      <button onclick="editarUsuarioAdmin(${u.id}, '${(u.name || '').replace(/'/g, "\\'")}', '${u.email}', ${isPremium ? 1 : 0})" 
-                        class="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Editar">
-                        <i class="fas fa-edit"></i>
-                      </button>
-                      <button onclick="togglePremiumAdmin(${u.id}, ${isPremium ? 0 : 1})" 
-                        class="p-1.5 ${isPremium ? 'text-gray-500 hover:bg-gray-50' : 'text-yellow-500 hover:bg-yellow-50'} rounded" 
-                        title="${isPremium ? 'Remover Premium' : 'Dar Premium'}">
-                        <i class="fas ${isPremium ? 'fa-user-minus' : 'fa-crown'}"></i>
-                      </button>
-                      ${!isPremium ? ('<button onclick="enviarEmailIndividual(' + u.id + ',\'' + u.email.replace(/'/g, '') + '\')" class="p-1.5 text-orange-500 hover:bg-orange-50 rounded" title="' + emailTitle + '"><i class="fas ' + emailIcon + '"></i></button>') : ''}
-                      ${u.email !== 'terciogomesrabelo@gmail.com' ? `
-                        <button onclick="deletarUsuarioAdmin(${u.id}, '${u.email}', ${u.email_verified ? 'true' : 'false'})" 
-                          class="p-1.5 ${u.email_verified ? 'text-gray-300 cursor-not-allowed' : 'text-red-500 hover:bg-red-50'} rounded" 
-                          title="${u.email_verified ? 'Não pode deletar (verificado)' : 'Deletar'}">
-                          <i class="fas fa-trash"></i>
-                        </button>
-                      ` : ''}
-                    </div>
-                  </td>
-                </tr>
-              `}).join('')}
+            <tbody id="users-tbody">
+              ${renderUserRows(users)}
             </tbody>
           </table>
         </div>
-        <div class="p-3 border-t ${themes[currentTheme].border} flex-shrink-0 text-center">
-          <p class="text-xs ${themes[currentTheme].textMuted}">
-            <i class="fas fa-info-circle mr-1"></i>
-            <i class="fas fa-paper-plane text-orange-400 mx-1"></i>= Enviar email reengajamento | 
-            <i class="fas fa-check text-green-400 mx-1"></i>= Já recebeu email | 
-            <span class="text-red-500">Lixeira vermelha = pode excluir</span>
+        <div class="p-2.5 border-t border-gray-200 flex-shrink-0 bg-gray-50 text-center">
+          <p class="text-[10px] text-gray-500">
+            <i class="fas fa-paper-plane text-orange-400 mr-1"></i>= Email reengajamento | 
+            <i class="fas fa-check text-green-400 mr-1"></i>= Já recebeu | 
+            <span class="text-red-500"><i class="fas fa-trash mr-1"></i>= Excluir (só não-verificados)</span>
           </p>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
+    
+    // Salvar dados para filtro
+    window._adminUsers = users;
+    window._renderUserRows = renderUserRows;
   } catch (error) {
-    showToast('❌ Erro ao carregar usuários', 'error');
+    showToast('Erro ao carregar usuários', 'error');
   }
+};
+
+// Filtro de usuários admin
+window.filterAdminUsers = function() {
+  const search = (document.getElementById('search-users')?.value || '').toLowerCase();
+  const status = document.getElementById('filter-users-status')?.value || 'all';
+  
+  let filtered = window._adminUsers || [];
+  if (search) {
+    filtered = filtered.filter(u => (u.name || '').toLowerCase().includes(search) || u.email.toLowerCase().includes(search));
+  }
+  if (status === 'premium') filtered = filtered.filter(u => u.is_premium_real || u.is_premium);
+  else if (status === 'free') filtered = filtered.filter(u => !(u.is_premium_real || u.is_premium));
+  else if (status === 'verified') filtered = filtered.filter(u => u.email_verified);
+  else if (status === 'unverified') filtered = filtered.filter(u => !u.email_verified);
+  
+  const tbody = document.getElementById('users-tbody');
+  if (tbody && window._renderUserRows) tbody.innerHTML = window._renderUserRows(filtered);
 };
 
 // Toggle Premium para usuário (admin)
@@ -17041,10 +17056,10 @@ window.enviarEmailIndividual = async function(userId, email) {
   }
 };
 
-// Ver histórico de emails
+// Ver histórico de emails - PADRONIZADO v96
 window.verHistoricoEmails = async function() {
   try {
-    const response = await axios.get('/api/admin/emails?limit=50', {
+    const response = await axios.get('/api/admin/emails?limit=200', {
       headers: { 'X-User-ID': currentUser.id }
     });
     const { emails, pagination } = response.data;
@@ -17052,54 +17067,80 @@ window.verHistoricoEmails = async function() {
     const modal = document.createElement('div');
     modal.id = 'modal-admin-emails';
     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    
+    const renderEmailRows = (filteredEmails) => {
+      return filteredEmails.map(e => {
+        const typeLabel = e.email_type === 'verification' ? 'Verificação' :
+          e.email_type === 'welcome' ? 'Boas-vindas' :
+          e.email_type === 'password_reset' ? 'Reset Senha' :
+          e.email_type === 'reengajamento' ? 'Reengajamento' :
+          e.email_type === 'payment_confirmation' ? 'Pagamento' : e.email_type;
+        const typeColor = e.email_type === 'verification' ? 'bg-blue-100 text-blue-700' :
+          e.email_type === 'welcome' ? 'bg-green-100 text-green-700' :
+          e.email_type === 'password_reset' ? 'bg-red-100 text-red-700' :
+          e.email_type === 'payment_confirmation' ? 'bg-emerald-100 text-emerald-700' :
+          'bg-yellow-100 text-yellow-700';
+        return '<tr class="border-b border-gray-200 hover:bg-blue-50/50">' +
+          '<td class="p-2 text-gray-700 text-xs">' + (e.email_to || '-') + '</td>' +
+          '<td class="p-2"><span class="px-2 py-0.5 rounded text-xs ' + typeColor + '">' + typeLabel + '</span></td>' +
+          '<td class="p-2 text-center">' + (e.status === 'sent' ? '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">Enviado</span>' : '<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">Falha</span>') + '</td>' +
+          '<td class="p-2 text-gray-500 text-xs">' + (e.created_at ? new Date(e.created_at).toLocaleString('pt-BR') : '-') + '</td>' +
+        '</tr>';
+      }).join('');
+    };
+    
     modal.innerHTML = `
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
-          <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
-            <i class="fas fa-envelope text-[#1A3A7F]"></i>
+      <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-5 py-4 flex items-center justify-between flex-shrink-0">
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            <i class="fas fa-envelope"></i>
             Histórico de Emails (${pagination.total})
           </h3>
-          <button onclick="document.getElementById('modal-admin-emails')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
+          <button onclick="document.getElementById('modal-admin-emails')?.remove()" class="text-white/80 hover:text-white p-1">
             <i class="fas fa-times text-xl"></i>
           </button>
         </div>
-        <div class="overflow-y-auto flex-1 p-4">
+        <div class="px-4 py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50">
+          <div class="flex gap-2">
+            <div class="flex-1 relative">
+              <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+              <input type="text" id="search-emails" placeholder="Buscar por email..." 
+                class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none"
+                oninput="filterAdminEmails()">
+            </div>
+            <select id="filter-emails-type" onchange="filterAdminEmails()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+              <option value="all">Todos</option>
+              <option value="verification">Verificação</option>
+              <option value="welcome">Boas-vindas</option>
+              <option value="reengajamento">Reengajamento</option>
+              <option value="password_reset">Reset Senha</option>
+              <option value="payment_confirmation">Pagamento</option>
+            </select>
+            <select id="filter-emails-status" onchange="filterAdminEmails()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+              <option value="all">Todos status</option>
+              <option value="sent">Enviados</option>
+              <option value="failed">Falha</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-y-auto flex-1">
           ${emails.length === 0 ? `
-            <div class="text-center py-8 ${themes[currentTheme].textSecondary}">
+            <div class="text-center py-12 text-gray-500">
               <i class="fas fa-inbox text-4xl mb-3 opacity-50"></i>
               <p>Nenhum email registrado ainda</p>
-              <p class="text-xs mt-2">Os logs começam a aparecer após a migração ser aplicada</p>
             </div>
           ` : `
             <table class="w-full text-sm">
-              <thead class="bg-gray-100 dark:bg-gray-800">
+              <thead class="bg-[#122D6A] text-white sticky top-0" style="z-index:1">
                 <tr>
-                  <th class="p-2 text-left ${themes[currentTheme].text}">Para</th>
-                  <th class="p-2 text-left ${themes[currentTheme].text}">Tipo</th>
-                  <th class="p-2 text-center ${themes[currentTheme].text}">Status</th>
-                  <th class="p-2 text-left ${themes[currentTheme].text}">Data</th>
+                  <th class="p-2 text-left text-xs font-semibold">Destinatário</th>
+                  <th class="p-2 text-left text-xs font-semibold">Tipo</th>
+                  <th class="p-2 text-center text-xs font-semibold">Status</th>
+                  <th class="p-2 text-left text-xs font-semibold">Data</th>
                 </tr>
               </thead>
-              <tbody>
-                ${emails.map(e => `
-                  <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td class="p-2 ${themes[currentTheme].textSecondary} text-xs">${e.email_to}</td>
-                    <td class="p-2">
-                      <span class="px-2 py-1 rounded text-xs ${
-                        e.email_type === 'verification' ? 'bg-blue-100 text-blue-700' :
-                        e.email_type === 'welcome' ? 'bg-green-100 text-green-700' :
-                        e.email_type === 'password_reset' ? 'bg-red-100 text-red-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }">
-                        ${e.email_type}
-                      </span>
-                    </td>
-                    <td class="p-2 text-center">
-                      ${e.status === 'sent' ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-times text-red-500"></i>'}
-                    </td>
-                    <td class="p-2 ${themes[currentTheme].textMuted} text-xs">${e.created_at ? new Date(e.created_at).toLocaleString('pt-BR') : '-'}</td>
-                  </tr>
-                `).join('')}
+              <tbody id="emails-tbody">
+                ${renderEmailRows(emails)}
               </tbody>
             </table>
           `}
@@ -17107,111 +17148,164 @@ window.verHistoricoEmails = async function() {
       </div>
     `;
     document.body.appendChild(modal);
+    
+    window._adminEmails = emails;
+    window._renderEmailRows = renderEmailRows;
   } catch (error) {
     showToast('❌ Erro ao carregar histórico de emails', 'error');
   }
 };
 
-// ✅ CORREÇÃO v13: Ver feedbacks dos usuários (admin)
+// Filtro de emails admin
+window.filterAdminEmails = function() {
+  const search = (document.getElementById('search-emails')?.value || '').toLowerCase();
+  const type = document.getElementById('filter-emails-type')?.value || 'all';
+  const status = document.getElementById('filter-emails-status')?.value || 'all';
+  
+  let filtered = window._adminEmails || [];
+  if (search) filtered = filtered.filter(e => (e.email_to || '').toLowerCase().includes(search));
+  if (type !== 'all') filtered = filtered.filter(e => e.email_type === type);
+  if (status !== 'all') filtered = filtered.filter(e => e.status === status);
+  
+  const tbody = document.getElementById('emails-tbody');
+  if (tbody && window._renderEmailRows) tbody.innerHTML = window._renderEmailRows(filtered);
+};
+
+// ✅ CORREÇÃO v96: Ver feedbacks dos usuários (admin) - PADRONIZADO
 window.verFeedbacksAdmin = async function() {
   try {
-    const response = await axios.get('/api/admin/feedbacks?limit=50', {
+    const response = await axios.get('/api/admin/feedbacks?limit=100', {
       headers: { 'X-User-ID': currentUser.id }
     });
     const { feedbacks, unread_count, stats, pagination } = response.data;
     
     const tipoLabels = {
-      suggestion: { icon: 'lightbulb', label: 'Sugestão', color: 'blue' },
-      bug: { icon: 'bug', label: 'Problema', color: 'red' },
-      compliment: { icon: 'heart', label: 'Elogio', color: 'emerald' },
-      other: { icon: 'ellipsis-h', label: 'Outro', color: 'gray' }
+      suggestion: { icon: 'lightbulb', label: 'Sugestão', color: 'bg-blue-100 text-blue-700' },
+      bug: { icon: 'bug', label: 'Problema', color: 'bg-red-100 text-red-700' },
+      compliment: { icon: 'heart', label: 'Elogio', color: 'bg-emerald-100 text-emerald-700' },
+      other: { icon: 'ellipsis-h', label: 'Outro', color: 'bg-gray-100 text-gray-700' }
     };
     
     const modal = document.createElement('div');
     modal.id = 'modal-admin-feedbacks';
     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    
+    const renderFeedbackRows = (filteredFeedbacks) => {
+      return filteredFeedbacks.map(f => {
+        const t = tipoLabels[f.feedback_type] || tipoLabels.other;
+        return '<tr class="border-b border-gray-200 hover:bg-blue-50/50 ' + (!f.is_read ? 'bg-pink-50' : '') + '">' +
+          '<td class="p-2 text-xs">' +
+            '<div class="text-gray-800 font-medium">' + (f.user_name || 'Anônimo') + '</div>' +
+            '<div class="text-gray-400 text-[10px]">' + (f.user_email || '') + '</div>' +
+          '</td>' +
+          '<td class="p-2"><span class="px-2 py-0.5 rounded text-xs ' + t.color + '"><i class="fas fa-' + t.icon + ' mr-1"></i>' + t.label + '</span></td>' +
+          '<td class="p-2 text-gray-700 text-xs max-w-[300px]">' +
+            '<div class="line-clamp-2" title="' + (f.message || '').replace(/"/g, '&quot;') + '">' + (f.message || '-') + '</div>' +
+          '</td>' +
+          '<td class="p-2 text-center">' + (f.rating ? '<span class="text-yellow-500 text-xs">' + '★'.repeat(f.rating) + '</span>' : '-') + '</td>' +
+          '<td class="p-2 text-center">' +
+            (!f.is_read ? '<span class="px-2 py-0.5 bg-red-500 text-white text-[10px] rounded-full">Novo</span>' : '<span class="text-green-500 text-xs"><i class="fas fa-check"></i></span>') +
+          '</td>' +
+          '<td class="p-2 text-gray-500 text-xs">' + (f.created_at ? new Date(f.created_at).toLocaleString('pt-BR') : '-') + '</td>' +
+          '<td class="p-2 text-center">' +
+            (!f.is_read ? '<button onclick="marcarFeedbackLido(' + f.id + ')" class="p-1 text-emerald-500 hover:bg-emerald-50 rounded" title="Marcar como lido"><i class="fas fa-check-circle text-xs"></i></button>' : '') +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    };
+    
+    // Stats inline
+    const statsHtml = (stats || []).map(s => {
+      const t = tipoLabels[s.feedback_type] || tipoLabels.other;
+      return '<span class="px-2 py-1 rounded text-xs ' + t.color + ' mr-1"><i class="fas fa-' + t.icon + ' mr-1"></i>' + t.label + ': ' + s.total + (s.avg_rating ? ' ★' + s.avg_rating.toFixed(1) : '') + '</span>';
+    }).join('');
+    
     modal.innerHTML = `
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
-          <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
-            <i class="fas fa-comment-dots text-pink-500"></i>
+      <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-5 py-4 flex items-center justify-between flex-shrink-0">
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            <i class="fas fa-comment-dots"></i>
             Feedbacks dos Usuários (${pagination.total})
-            ${unread_count > 0 ? `<span class="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">${unread_count} novos</span>` : ''}
+            ${unread_count > 0 ? '<span class="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full ml-2">' + unread_count + ' novos</span>' : ''}
           </h3>
-          <button onclick="document.getElementById('modal-admin-feedbacks')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
+          <button onclick="document.getElementById('modal-admin-feedbacks')?.remove()" class="text-white/80 hover:text-white p-1">
             <i class="fas fa-times text-xl"></i>
           </button>
         </div>
-        
-        <!-- Estatísticas -->
-        <div class="p-3 bg-gray-50 dark:bg-gray-800/50 border-b ${themes[currentTheme].border} flex gap-4 flex-wrap">
-          ${(stats || []).map(s => {
-            const t = tipoLabels[s.feedback_type] || tipoLabels.other;
-            return `
-              <div class="flex items-center gap-2 px-3 py-1.5 bg-${t.color}-100 dark:bg-${t.color}-900/30 rounded-full">
-                <i class="fas fa-${t.icon} text-${t.color}-600 dark:text-${t.color}-400 text-xs"></i>
-                <span class="text-${t.color}-700 dark:text-${t.color}-300 text-xs font-medium">${t.label}: ${s.total}</span>
-                ${s.avg_rating ? `<span class="text-yellow-500 text-xs">★ ${s.avg_rating.toFixed(1)}</span>` : ''}
-              </div>
-            `;
-          }).join('')}
+        <div class="px-4 py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50">
+          <div class="flex gap-2 flex-wrap items-center">
+            <div class="flex-1 relative min-w-[200px]">
+              <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+              <input type="text" id="search-feedbacks" placeholder="Buscar por nome, email ou mensagem..." 
+                class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none"
+                oninput="filterAdminFeedbacks()">
+            </div>
+            <select id="filter-feedbacks-type" onchange="filterAdminFeedbacks()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+              <option value="all">Todos tipos</option>
+              <option value="suggestion">Sugestões</option>
+              <option value="bug">Problemas</option>
+              <option value="compliment">Elogios</option>
+              <option value="other">Outros</option>
+            </select>
+            <select id="filter-feedbacks-status" onchange="filterAdminFeedbacks()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+              <option value="all">Todos</option>
+              <option value="unread">Não lidos</option>
+              <option value="read">Lidos</option>
+            </select>
+          </div>
+          ${statsHtml ? '<div class="mt-2 flex flex-wrap gap-1">' + statsHtml + '</div>' : ''}
         </div>
-        
-        <div class="overflow-y-auto flex-1 p-4">
+        <div class="overflow-y-auto flex-1">
           ${feedbacks.length === 0 ? `
-            <div class="text-center py-8 ${themes[currentTheme].textSecondary}">
+            <div class="text-center py-12 text-gray-500">
               <i class="fas fa-comment-slash text-4xl mb-3 opacity-50"></i>
               <p>Nenhum feedback recebido ainda</p>
             </div>
           ` : `
-            <div class="space-y-3">
-              ${feedbacks.map(f => {
-                const t = tipoLabels[f.feedback_type] || tipoLabels.other;
-                return `
-                  <div class="p-4 rounded-xl border ${f.is_read ? themes[currentTheme].border : 'border-pink-300 dark:border-pink-600'} ${f.is_read ? '' : 'bg-pink-50 dark:bg-pink-900/20'}">
-                    <div class="flex items-start justify-between gap-3">
-                      <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-2">
-                          <span class="px-2 py-0.5 rounded-full text-xs bg-${t.color}-100 text-${t.color}-700 dark:bg-${t.color}-900/30 dark:text-${t.color}-300">
-                            <i class="fas fa-${t.icon} mr-1"></i>${t.label}
-                          </span>
-                          ${f.rating ? `<span class="text-yellow-500 text-sm">${'★'.repeat(f.rating)}${'☆'.repeat(5-f.rating)}</span>` : ''}
-                          ${!f.is_read ? '<span class="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">Novo</span>' : ''}
-                        </div>
-                        <p class="${themes[currentTheme].text} mb-2">${f.message}</p>
-                        <div class="flex items-center gap-4 text-xs ${themes[currentTheme].textMuted}">
-                          <span><i class="fas fa-user mr-1"></i>${f.user_name || f.user_email || 'Anônimo'}</span>
-                          <span><i class="fas fa-clock mr-1"></i>${new Date(f.created_at).toLocaleString('pt-BR')}</span>
-                          ${f.page_context ? `<span><i class="fas fa-link mr-1"></i>${f.page_context}</span>` : ''}
-                        </div>
-                      </div>
-                      <div class="flex gap-1">
-                        ${!f.is_read ? `
-                          <button onclick="marcarFeedbackLido(${f.id})" class="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg" title="Marcar como lido">
-                            <i class="fas fa-check"></i>
-                          </button>
-                        ` : ''}
-                      </div>
-                    </div>
-                    ${f.admin_response ? `
-                      <div class="mt-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                        <p class="text-xs ${themes[currentTheme].textMuted} mb-1"><i class="fas fa-reply mr-1"></i>Resposta do admin:</p>
-                        <p class="${themes[currentTheme].text} text-sm">${f.admin_response}</p>
-                      </div>
-                    ` : ''}
-                  </div>
-                `;
-              }).join('')}
-            </div>
+            <table class="w-full text-sm">
+              <thead class="bg-[#122D6A] text-white sticky top-0" style="z-index:1">
+                <tr>
+                  <th class="p-2 text-left text-xs font-semibold">Usuário</th>
+                  <th class="p-2 text-left text-xs font-semibold">Tipo</th>
+                  <th class="p-2 text-left text-xs font-semibold">Mensagem</th>
+                  <th class="p-2 text-center text-xs font-semibold">Rating</th>
+                  <th class="p-2 text-center text-xs font-semibold">Status</th>
+                  <th class="p-2 text-left text-xs font-semibold">Data</th>
+                  <th class="p-2 text-center text-xs font-semibold">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="feedbacks-tbody">
+                ${renderFeedbackRows(feedbacks)}
+              </tbody>
+            </table>
           `}
         </div>
       </div>
     `;
     document.body.appendChild(modal);
+    
+    window._adminFeedbacks = feedbacks;
+    window._renderFeedbackRows = renderFeedbackRows;
   } catch (error) {
     console.error('Erro ao carregar feedbacks:', error);
     showToast('❌ Erro ao carregar feedbacks', 'error');
   }
+};
+
+// Filtro de feedbacks admin
+window.filterAdminFeedbacks = function() {
+  const search = (document.getElementById('search-feedbacks')?.value || '').toLowerCase();
+  const type = document.getElementById('filter-feedbacks-type')?.value || 'all';
+  const status = document.getElementById('filter-feedbacks-status')?.value || 'all';
+  
+  let filtered = window._adminFeedbacks || [];
+  if (search) filtered = filtered.filter(f => (f.user_name || '').toLowerCase().includes(search) || (f.user_email || '').toLowerCase().includes(search) || (f.message || '').toLowerCase().includes(search));
+  if (type !== 'all') filtered = filtered.filter(f => f.feedback_type === type);
+  if (status === 'unread') filtered = filtered.filter(f => !f.is_read);
+  else if (status === 'read') filtered = filtered.filter(f => f.is_read);
+  
+  const tbody = document.getElementById('feedbacks-tbody');
+  if (tbody && window._renderFeedbackRows) tbody.innerHTML = window._renderFeedbackRows(filtered);
 };
 
 // Marcar feedback como lido
@@ -17647,70 +17741,75 @@ window.verVisitasDetalhadas = async function() {
   }
 };
 
-// Ver feedbacks de conteúdo (admin)
-window.verFeedbacksAdmin = async function() {
+// Ver feedbacks de conteúdo (admin) - PADRONIZADO v96
+window.verFeedbacksConteudo = async function() {
   try {
-    const response = await axios.get('/api/admin/feedbacks?limit=50', {
+    const response = await axios.get('/api/admin/feedbacks?limit=100', {
       headers: { 'X-User-ID': currentUser.id }
     });
     const { feedbacks, pagination } = response.data;
     
     const modal = document.createElement('div');
-    modal.id = 'modal-admin-feedbacks';
+    modal.id = 'modal-admin-feedbacks-conteudo';
     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    
+    const renderRows = (list) => {
+      return (list || []).map(f => {
+        return '<tr class="border-b border-gray-200 hover:bg-blue-50/50">' +
+          '<td class="p-2 text-xs"><div class="text-gray-800 font-medium">' + (f.user_name || 'N/A') + '</div><div class="text-gray-400 text-[10px]">' + (f.user_email || '') + '</div></td>' +
+          '<td class="p-2 text-center">' + (f.tipo === 'bom' ? '<span class="px-2 py-0.5 rounded text-xs bg-emerald-100 text-emerald-700"><i class="fas fa-thumbs-up mr-1"></i>Bom</span>' : '<span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-700"><i class="fas fa-thumbs-down mr-1"></i>Ruim</span>') + '</td>' +
+          '<td class="p-2 text-xs"><div class="text-gray-800 font-medium">' + (f.conteudo_tipo || 'N/A') + '</div><div class="text-gray-400 text-[10px]">' + (f.disciplina_nome || '') + '</div><div class="text-gray-300 text-[10px]">' + (f.topico_nome || '') + '</div></td>' +
+          '<td class="p-2 text-gray-600 text-xs max-w-[200px]"><div class="line-clamp-2">' + (f.critica || '<span class="text-gray-300">-</span>') + '</div></td>' +
+          '<td class="p-2 text-gray-500 text-xs">' + (f.created_at ? new Date(f.created_at).toLocaleString('pt-BR') : '-') + '</td>' +
+        '</tr>';
+      }).join('');
+    };
+    
     modal.innerHTML = `
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
-          <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
-            <i class="fas fa-star text-amber-500"></i>
+      <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-5 py-4 flex items-center justify-between flex-shrink-0">
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            <i class="fas fa-star"></i>
             Feedbacks de Conteúdo (${pagination?.total || 0})
           </h3>
-          <button onclick="document.getElementById('modal-admin-feedbacks')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
+          <button onclick="document.getElementById('modal-admin-feedbacks-conteudo')?.remove()" class="text-white/80 hover:text-white p-1">
             <i class="fas fa-times text-xl"></i>
           </button>
         </div>
-        <div class="overflow-y-auto flex-1 p-4">
+        <div class="px-4 py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50">
+          <div class="flex gap-2">
+            <div class="flex-1 relative">
+              <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+              <input type="text" id="search-feedbacks-conteudo" placeholder="Buscar por nome, email ou conteúdo..." 
+                class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none"
+                oninput="filterFeedbacksConteudo()">
+            </div>
+            <select id="filter-fc-tipo" onchange="filterFeedbacksConteudo()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+              <option value="all">Todos</option>
+              <option value="bom">Bom</option>
+              <option value="ruim">Ruim</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-y-auto flex-1">
           ${!feedbacks || feedbacks.length === 0 ? `
-            <div class="text-center py-8 ${themes[currentTheme].textSecondary}">
+            <div class="text-center py-12 text-gray-500">
               <i class="fas fa-comments text-4xl mb-3 opacity-50"></i>
               <p>Nenhum feedback registrado ainda</p>
-              <p class="text-xs mt-2">Os feedbacks aparecem quando usuários avaliam conteúdos gerados</p>
             </div>
           ` : `
             <table class="w-full text-sm">
-              <thead class="bg-gray-100 dark:bg-gray-800">
+              <thead class="bg-[#122D6A] text-white sticky top-0" style="z-index:1">
                 <tr>
-                  <th class="p-2 text-left ${themes[currentTheme].text}">Usuário</th>
-                  <th class="p-2 text-center ${themes[currentTheme].text}">Avaliação</th>
-                  <th class="p-2 text-left ${themes[currentTheme].text}">Conteúdo</th>
-                  <th class="p-2 text-left ${themes[currentTheme].text}">Crítica</th>
-                  <th class="p-2 text-left ${themes[currentTheme].text}">Data</th>
+                  <th class="p-2 text-left text-xs font-semibold">Usuário</th>
+                  <th class="p-2 text-center text-xs font-semibold">Avaliação</th>
+                  <th class="p-2 text-left text-xs font-semibold">Conteúdo</th>
+                  <th class="p-2 text-left text-xs font-semibold">Crítica</th>
+                  <th class="p-2 text-left text-xs font-semibold">Data</th>
                 </tr>
               </thead>
-              <tbody>
-                ${feedbacks.map(f => `
-                  <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td class="p-2 ${themes[currentTheme].textSecondary} text-xs">
-                      <div>${f.user_name || 'N/A'}</div>
-                      <div class="text-[10px] opacity-70">${f.user_email || ''}</div>
-                    </td>
-                    <td class="p-2 text-center">
-                      ${f.tipo === 'bom' 
-                        ? '<span class="px-2 py-1 rounded text-xs bg-emerald-100 text-emerald-700"><i class="fas fa-thumbs-up mr-1"></i>Bom</span>' 
-                        : '<span class="px-2 py-1 rounded text-xs bg-red-100 text-red-700"><i class="fas fa-thumbs-down mr-1"></i>Ruim</span>'
-                      }
-                    </td>
-                    <td class="p-2 ${themes[currentTheme].text}">
-                      <div class="text-xs font-medium">${f.conteudo_tipo || 'N/A'}</div>
-                      <div class="text-[10px] ${themes[currentTheme].textSecondary}">${f.disciplina_nome || ''}</div>
-                      <div class="text-[10px] ${themes[currentTheme].textMuted}">${f.topico_nome || ''}</div>
-                    </td>
-                    <td class="p-2 ${themes[currentTheme].textSecondary} text-xs max-w-[200px]">
-                      ${f.critica ? `<span class="line-clamp-2" title="${f.critica}">${f.critica}</span>` : '<span class="opacity-50">-</span>'}
-                    </td>
-                    <td class="p-2 ${themes[currentTheme].textMuted} text-xs">${f.created_at ? new Date(f.created_at).toLocaleString('pt-BR') : '-'}</td>
-                  </tr>
-                `).join('')}
+              <tbody id="fc-tbody">
+                ${renderRows(feedbacks)}
               </tbody>
             </table>
           `}
@@ -17718,10 +17817,23 @@ window.verFeedbacksAdmin = async function() {
       </div>
     `;
     document.body.appendChild(modal);
+    
+    window._fcFeedbacks = feedbacks;
+    window._renderFcRows = renderRows;
   } catch (error) {
     console.error('Erro ao carregar feedbacks:', error);
     showToast('❌ Erro ao carregar feedbacks', 'error');
   }
+};
+
+window.filterFeedbacksConteudo = function() {
+  const search = (document.getElementById('search-feedbacks-conteudo')?.value || '').toLowerCase();
+  const tipo = document.getElementById('filter-fc-tipo')?.value || 'all';
+  let filtered = window._fcFeedbacks || [];
+  if (search) filtered = filtered.filter(f => (f.user_name || '').toLowerCase().includes(search) || (f.user_email || '').toLowerCase().includes(search) || (f.conteudo_tipo || '').toLowerCase().includes(search));
+  if (tipo !== 'all') filtered = filtered.filter(f => f.tipo === tipo);
+  const tbody = document.getElementById('fc-tbody');
+  if (tbody && window._renderFcRows) tbody.innerHTML = window._renderFcRows(filtered);
 };
 
 // ============== REENGAJAMENTO EMAIL MARKETING (Admin) ==============
@@ -18078,7 +18190,7 @@ window.enviarFeedbackReengajamento = async function(userId) {
   }
 };
 
-// Ver planos disponíveis
+// Ver planos disponíveis - CRUD COMPLETO v96
 window.verPlanosDisponiveis = async function() {
   try {
     const response = await axios.get('/api/admin/plans', {
@@ -18089,61 +18201,317 @@ window.verPlanosDisponiveis = async function() {
     const modal = document.createElement('div');
     modal.id = 'modal-admin-plans';
     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
+    
+    const renderPlanRows = (plansList) => {
+      return plansList.map(p => {
+        const priceFormatted = p.price === 0 ? 'Grátis' : 'R$ ' + Number(p.price).toFixed(2).replace('.', ',');
+        const finalPrice = p.discount_percent > 0 ? (p.price * (1 - p.discount_percent / 100)) : p.price;
+        const finalPriceFormatted = p.price === 0 ? 'Grátis' : 'R$ ' + Number(finalPrice).toFixed(2).replace('.', ',');
+        
+        return '<tr class="border-b border-gray-200 hover:bg-blue-50/50">' +
+          '<td class="p-2.5 text-gray-500 text-xs">' + p.id + '</td>' +
+          '<td class="p-2.5">' +
+            '<div class="text-gray-900 font-medium text-sm">' + (p.name || '-') + '</div>' +
+            '<div class="text-gray-400 text-[10px] mt-0.5">' + (p.description || '') + '</div>' +
+          '</td>' +
+          '<td class="p-2.5 text-center">' +
+            (p.discount_percent > 0 
+              ? '<div class="text-gray-400 text-xs line-through">' + priceFormatted + '</div><div class="text-green-600 font-bold text-sm">' + finalPriceFormatted + '</div>' 
+              : '<div class="text-gray-900 font-bold text-sm">' + priceFormatted + '</div>') +
+          '</td>' +
+          '<td class="p-2.5 text-center">' +
+            (p.discount_percent > 0 
+              ? '<span class="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">' + p.discount_percent + '% OFF</span>' 
+              : '<span class="text-gray-400 text-xs">—</span>') +
+          '</td>' +
+          '<td class="p-2.5 text-center text-gray-700 text-xs">' + (p.duration_days > 0 ? p.duration_days + ' dias' : 'Sempre') + '</td>' +
+          '<td class="p-2.5 text-center">' +
+            (p.is_active 
+              ? '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">Ativo</span>' 
+              : '<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">Inativo</span>') +
+          '</td>' +
+          '<td class="p-2.5 text-center">' +
+            (p.is_featured ? '<i class="fas fa-star text-yellow-500 text-xs"></i>' : '<span class="text-gray-300 text-xs">—</span>') +
+          '</td>' +
+          '<td class="p-2.5 text-center text-gray-500 text-xs">' + (p.display_order || 0) + '</td>' +
+          '<td class="p-2.5 text-center"><div class="flex items-center justify-center gap-1">' +
+            '<button onclick="editarPlanoAdmin(' + p.id + ')" class="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Editar"><i class="fas fa-edit text-xs"></i></button>' +
+            '<button onclick="togglePlanoAtivo(' + p.id + ',' + (p.is_active ? 0 : 1) + ')" class="p-1 ' + (p.is_active ? 'text-red-400' : 'text-green-500') + ' hover:bg-gray-50 rounded" title="' + (p.is_active ? 'Desativar' : 'Ativar') + '"><i class="fas ' + (p.is_active ? 'fa-toggle-off' : 'fa-toggle-on') + ' text-xs"></i></button>' +
+            '<button onclick="excluirPlanoAdmin(' + p.id + ',\'' + (p.name || '').replace(/'/g, "\\'") + '\')" class="p-1 text-red-500 hover:bg-red-50 rounded" title="Excluir"><i class="fas fa-trash text-xs"></i></button>' +
+          '</div></td>' +
+        '</tr>';
+      }).join('');
+    };
+    
     modal.innerHTML = `
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="p-4 border-b ${themes[currentTheme].border} flex items-center justify-between flex-shrink-0">
-          <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
-            <i class="fas fa-tags text-yellow-500"></i>
-            Planos de Pagamento
+      <div class="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-5 py-4 flex items-center justify-between flex-shrink-0">
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            <i class="fas fa-tags"></i>
+            Planos e Preços (${plans.length})
           </h3>
-          <button onclick="document.getElementById('modal-admin-plans')?.remove()" class="${themes[currentTheme].textSecondary} hover:text-red-500">
-            <i class="fas fa-times text-xl"></i>
-          </button>
+          <div class="flex items-center gap-2">
+            <button onclick="criarPlanoAdmin()" class="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition flex items-center gap-1">
+              <i class="fas fa-plus text-xs"></i> Novo Plano
+            </button>
+            <button onclick="document.getElementById('modal-admin-plans')?.remove()" class="text-white/80 hover:text-white p-1">
+              <i class="fas fa-times text-xl"></i>
+            </button>
+          </div>
         </div>
-        <div class="overflow-y-auto flex-1 p-4">
+        <div class="px-4 py-2 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+          <p class="text-xs text-gray-500 flex items-center gap-1">
+            <i class="fas fa-info-circle text-blue-500"></i>
+            Alterações nos preços e descontos refletem automaticamente na landing page e ofertas do sistema. O desconto é mostrado como "X% OFF" no site.
+          </p>
+        </div>
+        <div class="overflow-y-auto flex-1">
           ${plans && plans.length > 0 ? `
-            <div class="space-y-4">
-              ${plans.map(p => `
-                <div class="p-4 rounded-xl border ${themes[currentTheme].border} ${p.price === 0 ? 'bg-gray-50 dark:bg-gray-800' : 'bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20'}">
-                  <div class="flex justify-between items-start mb-2">
-                    <div>
-                      <h4 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
-                        ${p.price > 0 ? '<i class="fas fa-crown text-yellow-500"></i>' : '<i class="fas fa-user text-gray-400"></i>'}
-                        ${p.name}
-                      </h4>
-                      <p class="${themes[currentTheme].textSecondary} text-sm">${p.description || ''}</p>
-                    </div>
-                    <div class="text-right">
-                      <p class="text-2xl font-bold ${p.price > 0 ? 'text-green-600' : themes[currentTheme].text}">
-                        ${p.price === 0 ? 'Grátis' : `R$ ${p.price.toFixed(2)}`}
-                      </p>
-                      ${p.duration_days > 0 ? `<p class="text-xs ${themes[currentTheme].textMuted}">${p.duration_days} dias</p>` : ''}
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2 mt-2">
-                    <span class="px-2 py-1 rounded text-xs ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                      ${p.is_active ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
+            <table class="w-full text-sm">
+              <thead class="bg-[#122D6A] text-white sticky top-0" style="z-index:1">
+                <tr>
+                  <th class="p-2 text-left text-xs font-semibold">ID</th>
+                  <th class="p-2 text-left text-xs font-semibold">Nome / Descrição</th>
+                  <th class="p-2 text-center text-xs font-semibold">Preço</th>
+                  <th class="p-2 text-center text-xs font-semibold">Desconto</th>
+                  <th class="p-2 text-center text-xs font-semibold">Duração</th>
+                  <th class="p-2 text-center text-xs font-semibold">Status</th>
+                  <th class="p-2 text-center text-xs font-semibold">Destaque</th>
+                  <th class="p-2 text-center text-xs font-semibold">Ordem</th>
+                  <th class="p-2 text-center text-xs font-semibold">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="plans-tbody">
+                ${renderPlanRows(plans)}
+              </tbody>
+            </table>
           ` : `
-            <div class="text-center py-8 ${themes[currentTheme].textSecondary}">
+            <div class="text-center py-12 text-gray-500">
               <i class="fas fa-tags text-4xl mb-3 opacity-50"></i>
-              <p>Nenhum plano configurado ainda</p>
+              <p>Nenhum plano configurado</p>
+              <button onclick="criarPlanoAdmin()" class="mt-4 px-4 py-2 bg-[#122D6A] text-white rounded-lg text-sm hover:bg-[#0D1F4D] transition">
+                <i class="fas fa-plus mr-1"></i> Criar primeiro plano
+              </button>
             </div>
           `}
-          <p class="text-xs ${themes[currentTheme].textMuted} mt-4 text-center italic">
-            <i class="fas fa-info-circle mr-1"></i>
-            Os preços podem ser ajustados posteriormente no banco de dados
-          </p>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
+    
+    window._adminPlans = plans;
+    window._renderPlanRows = renderPlanRows;
   } catch (error) {
     showToast('❌ Erro ao carregar planos', 'error');
+  }
+};
+
+// Criar novo plano
+window.criarPlanoAdmin = function() {
+  const formModal = document.createElement('div');
+  formModal.id = 'modal-edit-plan';
+  formModal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10001] p-4';
+  formModal.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-5 py-4 flex items-center justify-between flex-shrink-0">
+        <h3 class="font-bold text-lg flex items-center gap-2">
+          <i class="fas fa-plus-circle"></i> Novo Plano
+        </h3>
+        <button onclick="document.getElementById('modal-edit-plan')?.remove()" class="text-white/80 hover:text-white p-1">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      <div class="overflow-y-auto flex-1 p-5">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nome do plano</label>
+            <input type="text" id="plan-name" placeholder="Ex: Premium Mensal" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-[#122D6A] outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+            <input type="text" id="plan-description" placeholder="Ex: Para quem vai passar" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-[#122D6A] outline-none">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Preço (R$)</label>
+              <input type="number" id="plan-price" placeholder="29.90" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-[#122D6A] outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Desconto (%)</label>
+              <input type="number" id="plan-discount" placeholder="0" step="1" min="0" max="100" value="0" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-[#122D6A] outline-none">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Duração (dias)</label>
+              <input type="number" id="plan-duration" placeholder="30" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-[#122D6A] outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Ordem exibição</label>
+              <input type="number" id="plan-order" placeholder="1" min="0" value="0" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-[#122D6A] outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Features (uma por linha)</label>
+            <textarea id="plan-features" rows="4" placeholder="Ilimitado gerações de conteúdo&#10;Ilimitado planos de estudos&#10;Suporte prioritário" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-[#122D6A] outline-none"></textarea>
+          </div>
+          <div class="flex gap-4">
+            <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" id="plan-active" checked class="w-4 h-4 text-[#122D6A] rounded focus:ring-[#122D6A]"> Ativo
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" id="plan-featured" class="w-4 h-4 text-[#122D6A] rounded focus:ring-[#122D6A]"> Destaque
+            </label>
+          </div>
+          
+          <div id="plan-preview" class="p-3 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <p class="text-xs text-gray-500 font-medium mb-1"><i class="fas fa-eye mr-1"></i>Preview no site:</p>
+            <div id="plan-preview-content" class="text-sm text-gray-700">Preencha os campos acima...</div>
+          </div>
+        </div>
+      </div>
+      <div class="p-4 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0 bg-gray-50">
+        <button onclick="document.getElementById('modal-edit-plan')?.remove()" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg text-sm hover:bg-gray-100 transition">Cancelar</button>
+        <button onclick="salvarPlanoAdmin()" class="px-4 py-2 bg-[#122D6A] text-white rounded-lg text-sm hover:bg-[#0D1F4D] transition font-medium">
+          <i class="fas fa-save mr-1"></i> Criar Plano
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(formModal);
+  
+  // Preview live
+  const updatePreview = () => {
+    const price = parseFloat(document.getElementById('plan-price')?.value || 0);
+    const discount = parseFloat(document.getElementById('plan-discount')?.value || 0);
+    const name = document.getElementById('plan-name')?.value || 'Plano';
+    const final = price * (1 - discount / 100);
+    let html = '<strong>' + name + '</strong> — ';
+    if (discount > 0) {
+      html += '<span class="line-through text-gray-400">R$ ' + price.toFixed(2).replace('.', ',') + '</span> ';
+      html += '<span class="text-green-600 font-bold">R$ ' + final.toFixed(2).replace('.', ',') + '</span> ';
+      html += '<span class="text-orange-600 text-xs font-bold">' + discount + '% OFF</span>';
+    } else {
+      html += price === 0 ? '<span class="font-bold">Grátis</span>' : '<span class="font-bold">R$ ' + price.toFixed(2).replace('.', ',') + '</span>';
+    }
+    document.getElementById('plan-preview-content').innerHTML = html;
+  };
+  document.getElementById('plan-price')?.addEventListener('input', updatePreview);
+  document.getElementById('plan-discount')?.addEventListener('input', updatePreview);
+  document.getElementById('plan-name')?.addEventListener('input', updatePreview);
+};
+
+// Salvar novo plano
+window.salvarPlanoAdmin = async function(planId) {
+  const name = document.getElementById('plan-name')?.value;
+  const description = document.getElementById('plan-description')?.value;
+  const price = parseFloat(document.getElementById('plan-price')?.value || 0);
+  const discount = parseFloat(document.getElementById('plan-discount')?.value || 0);
+  const duration = parseInt(document.getElementById('plan-duration')?.value || 0);
+  const order = parseInt(document.getElementById('plan-order')?.value || 0);
+  const featuresText = document.getElementById('plan-features')?.value || '';
+  const features = featuresText.split('\n').filter(f => f.trim());
+  const isActive = document.getElementById('plan-active')?.checked ? 1 : 0;
+  const isFeatured = document.getElementById('plan-featured')?.checked ? 1 : 0;
+  
+  if (!name) { showToast('❌ Nome é obrigatório', 'error'); return; }
+  
+  try {
+    const payload = { name, description, price, discount_percent: discount, duration_days: duration, features, is_active: isActive, is_featured: isFeatured, display_order: order };
+    
+    if (planId) {
+      await axios.put('/api/admin/plans/' + planId, payload, { headers: { 'X-User-ID': currentUser.id } });
+      showToast('✅ Plano atualizado!', 'success');
+    } else {
+      await axios.post('/api/admin/plans', payload, { headers: { 'X-User-ID': currentUser.id } });
+      showToast('✅ Plano criado!', 'success');
+    }
+    
+    document.getElementById('modal-edit-plan')?.remove();
+    document.getElementById('modal-admin-plans')?.remove();
+    verPlanosDisponiveis();
+  } catch (error) {
+    showToast('❌ Erro ao salvar plano: ' + (error.response?.data?.error || error.message), 'error');
+  }
+};
+
+// Editar plano existente
+window.editarPlanoAdmin = async function(planId) {
+  try {
+    const response = await axios.get('/api/admin/plans', { headers: { 'X-User-ID': currentUser.id } });
+    const plan = response.data.plans.find(p => p.id === planId);
+    if (!plan) { showToast('❌ Plano não encontrado', 'error'); return; }
+    
+    // Abrir form de criação preenchido
+    criarPlanoAdmin();
+    
+    // Aguardar DOM
+    setTimeout(() => {
+      document.getElementById('plan-name').value = plan.name || '';
+      document.getElementById('plan-description').value = plan.description || '';
+      document.getElementById('plan-price').value = plan.price || 0;
+      document.getElementById('plan-discount').value = plan.discount_percent || 0;
+      document.getElementById('plan-duration').value = plan.duration_days || 0;
+      document.getElementById('plan-order').value = plan.display_order || 0;
+      
+      let features = [];
+      try { features = typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || []); } catch(e) { features = []; }
+      document.getElementById('plan-features').value = features.join('\n');
+      
+      document.getElementById('plan-active').checked = !!plan.is_active;
+      document.getElementById('plan-featured').checked = !!plan.is_featured;
+      
+      // Atualizar título e botão
+      const header = document.querySelector('#modal-edit-plan .bg-gradient-to-r h3');
+      if (header) header.innerHTML = '<i class="fas fa-edit"></i> Editar Plano #' + planId;
+      
+      const saveBtn = document.querySelector('#modal-edit-plan button[onclick="salvarPlanoAdmin()"]');
+      if (saveBtn) {
+        saveBtn.setAttribute('onclick', 'salvarPlanoAdmin(' + planId + ')');
+        saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Salvar Alterações';
+      }
+      
+      // Trigger preview
+      document.getElementById('plan-price')?.dispatchEvent(new Event('input'));
+    }, 100);
+  } catch (error) {
+    showToast('❌ Erro ao carregar plano', 'error');
+  }
+};
+
+// Toggle ativar/desativar plano
+window.togglePlanoAtivo = async function(planId, setActive) {
+  try {
+    const response = await axios.get('/api/admin/plans', { headers: { 'X-User-ID': currentUser.id } });
+    const plan = response.data.plans.find(p => p.id === planId);
+    if (!plan) return;
+    
+    let features = [];
+    try { features = typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || []); } catch(e) {}
+    
+    await axios.put('/api/admin/plans/' + planId, {
+      ...plan, features, is_active: setActive, discount_percent: plan.discount_percent || 0, is_featured: plan.is_featured || 0, display_order: plan.display_order || 0
+    }, { headers: { 'X-User-ID': currentUser.id } });
+    
+    showToast(setActive ? '✅ Plano ativado!' : '✅ Plano desativado!', 'success');
+    document.getElementById('modal-admin-plans')?.remove();
+    verPlanosDisponiveis();
+  } catch (error) {
+    showToast('❌ Erro ao alterar status do plano', 'error');
+  }
+};
+
+// Excluir plano
+window.excluirPlanoAdmin = async function(planId, planName) {
+  if (!confirm('Tem certeza que deseja excluir o plano "' + planName + '"? Esta ação não pode ser desfeita.')) return;
+  
+  try {
+    await axios.delete('/api/admin/plans/' + planId, { headers: { 'X-User-ID': currentUser.id } });
+    showToast('✅ Plano excluído!', 'success');
+    document.getElementById('modal-admin-plans')?.remove();
+    verPlanosDisponiveis();
+  } catch (error) {
+    showToast('❌ ' + (error.response?.data?.error || 'Erro ao excluir plano'), 'error');
   }
 };
 
