@@ -336,6 +336,66 @@ INICIE A TRANSCRIÇÃO DO CONTEÚDO PROGRAMÁTICO (ANEXOS):`
   )
 }
 
+// Função para extrair texto de DOC/DOCX usando Gemini
+async function extractTextFromDocx(docBuffer: ArrayBuffer, geminiKey: string, mimeType: string): Promise<string> {
+  console.log('📄 Iniciando extração de texto do DOCX com Gemini API...')
+  
+  const bytes = new Uint8Array(docBuffer)
+  const fileSizeMB = bytes.length / (1024 * 1024)
+  console.log(`📄 DOCX: ${bytes.length} bytes (${fileSizeMB.toFixed(2)} MB)`)
+  
+  // Converter para base64
+  let binary = ''
+  const len = bytes.length
+  const chunkSize = 8192
+  
+  for (let i = 0; i < len; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, len))
+    binary += String.fromCharCode.apply(null, Array.from(chunk))
+  }
+  const base64 = btoa(binary)
+  
+  console.log(`📄 Base64: ${base64.length} caracteres`)
+  
+  const prompt = `Extraia TODO o texto deste documento Word. Retorne o conteúdo completo, preservando a estrutura (parágrafos, títulos, listas). Não adicione comentários ou análises, apenas o texto extraído do documento.`
+
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`
+  
+  const response = await fetch(geminiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { text: prompt },
+          { 
+            inlineData: { 
+              mimeType: mimeType,
+              data: base64 
+            } 
+          }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 30000
+      }
+    })
+  })
+  
+  if (!response.ok) {
+    const errText = await response.text()
+    console.error('Gemini DOCX error:', errText)
+    throw new Error(`Gemini API error: ${response.status}`)
+  }
+  
+  const data = await response.json() as any
+  const textoExtraido = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  
+  console.log(`📝 Texto extraído do DOCX: ${textoExtraido.length} caracteres`)
+  return textoExtraido
+}
+
 // Função para extrair disciplinas e tópicos de um arquivo XLSX (cronograma)
 async function extractFromXLSX(xlsxBuffer: ArrayBuffer): Promise<{ disciplinas: Array<{ nome: string, topicos: string[] }> }> {
   try {
@@ -18260,10 +18320,27 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
     } else if (file.type === 'text/plain') {
       // Arquivo de texto simples
       textoExtraido = await file.text()
+    } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword') {
+      // Extrair texto de DOC/DOCX usando Gemini
+      const arrayBuffer = await file.arrayBuffer()
+      const geminiKey = c.env.GEMINI_API_KEY || ''
+      
+      if (!geminiKey) {
+        return c.json({ error: 'API key do Gemini não configurada' }, 500)
+      }
+      
+      try {
+        textoExtraido = await extractTextFromDocx(arrayBuffer, geminiKey, file.type)
+      } catch (error: any) {
+        console.error('Erro ao extrair DOCX:', error)
+        return c.json({ 
+          error: 'Erro ao processar documento Word. Tente converter para PDF ou TXT.',
+          details: error?.message || 'Falha na extração do texto'
+        }, 500)
+      }
     } else {
-      // Para DOC/DOCX, por enquanto vamos pedir para converter
       return c.json({ 
-        error: 'Por favor, converta o arquivo para PDF ou TXT. Suporte para DOC/DOCX em breve.' 
+        error: 'Tipo de arquivo não suportado. Use PDF, DOCX ou TXT.' 
       }, 400)
     }
     
