@@ -4300,23 +4300,41 @@ async function processarTextoEditalColado(texto) {
     
   } catch (error) {
     console.error('❌ Erro ao processar texto:', error);
+    if (error?.response) {
+      console.error('  → Status:', error.response.status);
+      console.error('  → Data:', JSON.stringify(error.response.data)?.substring(0, 500));
+    }
     isProcessingEdital = false;
     
-    // ✅ v53: Verificar se é timeout
+    // ✅ v65: Verificar se é timeout
     const isTimeout = error?.code === 'ECONNABORTED' || 
                       error?.message?.toLowerCase().includes('timeout') ||
                       error?.message?.toLowerCase().includes('network');
     
-    const errorType = error?.response?.data?.errorType || '';
-    const canRetry = error?.response?.data?.canRetry !== false;
-    const backendError = error?.response?.data?.error || error?.message || 'Não foi possível processar o texto.';
+    // ✅ v66: Tratar resposta não-JSON do Cloudflare (ex: erro de CPU/memory)
+    let errorData = error?.response?.data;
+    if (typeof errorData === 'string') {
+      // Cloudflare pode retornar HTML de erro ao invés de JSON
+      try { errorData = JSON.parse(errorData); } catch(e) { 
+        errorData = { error: errorData.substring(0, 200), errorType: 'CLOUDFLARE_ERROR' }; 
+      }
+    }
     
-    // ✅ v53: Tela de erro melhorada com opções contextuais
+    const errorType = errorData?.errorType || '';
+    const canRetry = errorData?.canRetry !== false;
+    const backendError = errorData?.error || error?.message || 'Não foi possível processar o texto.';
+    const suggestion = errorData?.suggestion || '';
+    
+    // ✅ v65: Tela de erro melhorada com opções contextuais
     const iconClass = isTimeout ? 'fa-clock text-orange-500' : 
                      errorType === 'EXTRACTION_FAILED' ? 'fa-search text-amber-500' :
+                     errorType === 'TEXT_TOO_LARGE' ? 'fa-file-alt text-orange-500' :
+                     errorType === 'TIMEOUT_ERROR' ? 'fa-hourglass-half text-orange-500' :
                      'fa-exclamation-triangle text-amber-600';
     const titleText = isTimeout ? 'Tempo de análise excedido' :
                      errorType === 'EXTRACTION_FAILED' ? 'Disciplinas não encontradas' :
+                     errorType === 'TEXT_TOO_LARGE' ? 'Texto muito grande' :
+                     errorType === 'TIMEOUT_ERROR' ? 'Processamento excedeu o limite' :
                      'Ops! Algo deu errado';
     
     document.getElementById('app').innerHTML = `
@@ -4337,6 +4355,15 @@ async function processarTextoEditalColado(texto) {
                 <li>• <strong>Tente novamente</strong> - pode ser sobrecarga temporária</li>
                 <li>• <strong>Use texto menor</strong> - copie apenas a seção do Conteúdo Programático</li>
                 <li>• <strong>Continue sem edital</strong> e selecione disciplinas manualmente</li>
+              </ul>
+            </div>
+          ` : (errorType === 'TEXT_TOO_LARGE' || errorType === 'TIMEOUT_ERROR') ? `
+            <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4 text-left">
+              <h4 class="font-semibold text-orange-800 mb-2">💡 Dica:</h4>
+              <ul class="text-sm text-orange-700 space-y-1">
+                <li>• <strong>Cole apenas o Conteúdo Programático</strong> (geralmente Anexo II)</li>
+                <li>• Remova as partes iniciais (regras, cronograma, vagas)</li>
+                <li>• Se o arquivo é muito grande, copie apenas as disciplinas e tópicos</li>
               </ul>
             </div>
           ` : ''}

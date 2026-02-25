@@ -6858,12 +6858,38 @@ app.post('/api/editais/processar-texto', async (c) => {
     console.log(`📝 Processando para cargo: ${cargoUpper}`)
     
     // ════════════════════════════════════════════════════════════════
+    // ✅ v65: PRÉ-PROCESSAMENTO - Extrair apenas conteúdo programático de editais grandes
+    // Para textos > 30k chars, tentar extrair apenas a seção relevante
+    // Isso evita problemas de CPU time no Cloudflare Workers
+    // IMPORTANTE: Limitar texto ANTES de qualquer processamento pesado (regex, loops)
+    // ════════════════════════════════════════════════════════════════
+    
+    let textoParaProcessar = texto
+    if (texto.length > 30000) {
+      console.log(`📝 v65: Texto muito grande (${texto.length} chars), pré-extraindo conteúdo programático...`)
+      const preExtracao = extrairConteudoProgramatico(texto)
+      if (preExtracao.encontrado && preExtracao.conteudo.length > 500) {
+        textoParaProcessar = preExtracao.conteudo
+        console.log(`✅ v65: Seção de conteúdo programático extraída: ${textoParaProcessar.length} chars (de ${texto.length})`)
+      } else {
+        // Se não encontrou conteúdo programático, usar últimos 60k chars (mais provável conter o conteúdo)
+        textoParaProcessar = texto.substring(Math.max(0, texto.length - 60000))
+        console.log(`⚠️ v65: Conteúdo programático não encontrado, usando últimos ${textoParaProcessar.length} chars`)
+      }
+    }
+    // ✅ v65: Limitar texto a 60k chars no máximo (segurança adicional contra CPU timeout)
+    if (textoParaProcessar.length > 60000) {
+      console.log(`⚠️ v65: Texto ainda muito grande (${textoParaProcessar.length}), truncando para 60k chars`)
+      textoParaProcessar = textoParaProcessar.substring(0, 60000)
+    }
+    
+    // ════════════════════════════════════════════════════════════════
     // ✅ v51b: EXTRAÇÃO UNIVERSAL DE DISCIPLINAS - QUALQUER EDITAL
     // Abordagem: 1) Tenta tabela de disciplinas  2) Padrão "Nome: conteúdo"
     // ════════════════════════════════════════════════════════════════
     
     // Limpar texto: remover form feed, carriage return
-    const textoLimpo = texto
+    const textoLimpo = textoParaProcessar
       .replace(/\f/g, '\n')
       .replace(/\r/g, '')
     
@@ -6895,8 +6921,8 @@ app.post('/api/editais/processar-texto', async (c) => {
       // ✅ v61: Usar IA para sugerir disciplinas relevantes DIRETAMENTE
       console.log('   Usando IA para sugerir disciplinas relevantes para o cargo...')
       
-      const geminiKey = env.GEMINI_API_KEY
-      if (geminiKey && (cargo || concurso_nome)) {
+      const geminiKeyPS = geminiKey || c.env.GEMINI_API_KEY || ''
+      if (geminiKeyPS && (cargo || concurso_nome)) {
         try {
           const promptSugestaoPS = `Você é um especialista em concursos públicos brasileiros.
 
@@ -6919,7 +6945,7 @@ RETORNE APENAS JSON válido:
 {"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}`
 
           const sugestaoRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKeyPS}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -7403,6 +7429,23 @@ RETORNE APENAS JSON válido:
       }
       
       const secaoCargoTexto = linhas.slice(inicioSecaoCargo, fimSecaoCargo).join('\n')
+      
+      // ✅ v65: Evitar duplicação quando Gerais e Comuns capturam o mesmo bloco
+      // Se ambos têm conteúdo e um contém o outro (>80% overlap), manter apenas o maior
+      if (secaoGeraisTexto && secaoComumTexto) {
+        const menorLen = Math.min(secaoGeraisTexto.length, secaoComumTexto.length)
+        const maiorLen = Math.max(secaoGeraisTexto.length, secaoComumTexto.length)
+        if (menorLen / maiorLen > 0.8) {
+          console.log(`⚠️ v65: Seções Gerais e Comuns são quase idênticas (${secaoGeraisTexto.length} vs ${secaoComumTexto.length}), mantendo apenas uma`)
+          // Manter a maior e zerar a menor
+          if (secaoGeraisTexto.length >= secaoComumTexto.length) {
+            secaoComumTexto = ''
+          } else {
+            secaoGeraisTexto = ''
+          }
+        }
+      }
+      
       textoSecaoCargo = [
         secaoGeraisTexto ? 'CONHECIMENTOS GERAIS\n' + secaoGeraisTexto : '',
         secaoComumTexto ? 'CONHECIMENTOS ESPECÍFICOS COMUNS\n' + secaoComumTexto : '',
@@ -7872,6 +7915,269 @@ RETORNE APENAS JSON válido:
       }
       
       console.log(`   Total disciplinas brutas: ${disciplinasRaw.filter(d => d).length}, após filtragem: ${disciplinasExtraidas.length}`)
+    }
+    
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v65: DEDUPLICAÇÃO DE DISCIPLINAS
+    // Remove disciplinas com nomes duplicados (mantém a com mais tópicos ou maior peso)
+    // Necessário quando "CONHECIMENTOS GERAIS" aparece em múltiplas seções
+    // ════════════════════════════════════════════════════════════════
+    if (disciplinasExtraidas.length > 0) {
+      const mapaDisc = new Map<string, any>()
+      for (const d of disciplinasExtraidas) {
+        const nomeNormalizado = d.nome?.trim()?.toLowerCase()
+        if (mapaDisc.has(nomeNormalizado)) {
+          const existente = mapaDisc.get(nomeNormalizado)
+          // Manter a versão com mais tópicos; em empate, manter maior peso
+          const topicosExistentes = existente.topicos?.length || 0
+          const topicosNovos = d.topicos?.length || 0
+          if (topicosNovos > topicosExistentes || 
+              (topicosNovos === topicosExistentes && (d.peso || 1) > (existente.peso || 1))) {
+            console.log(`   🔄 v65: Disciplina duplicada "${d.nome}" - substituindo (${topicosNovos} > ${topicosExistentes} tópicos)`)
+            mapaDisc.set(nomeNormalizado, d)
+          } else {
+            console.log(`   🔄 v65: Disciplina duplicada removida: "${d.nome}" (${topicosNovos} <= ${topicosExistentes} tópicos)`)
+          }
+        } else {
+          mapaDisc.set(nomeNormalizado, d)
+        }
+      }
+      const disciplinasSemDuplicata = Array.from(mapaDisc.values())
+      if (disciplinasSemDuplicata.length < disciplinasExtraidas.length) {
+        console.log(`   📋 v65: Deduplicação: ${disciplinasExtraidas.length} → ${disciplinasSemDuplicata.length} disciplinas`)
+        disciplinasExtraidas = disciplinasSemDuplicata
+      }
+    }
+    
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v66: EXPANDIR "CONHECIMENTOS ESPECÍFICOS" EM SUB-DISCIPLINAS
+    // Quando "Conhecimentos Específicos" é uma única disciplina com muitos tópicos,
+    // tentar quebrar em sub-disciplinas reais (ex: Enfermagem em Saúde Coletiva, etc.)
+    // Suporta 3 formatos:
+    //   A) Sub-disciplinas em linhas separadas no textoSecaoCargo
+    //   B) Sub-disciplinas em parágrafo contínuo (ex: "...Enfermagem em Saúde Coletiva: vigilância...")  
+    //   C) Sub-disciplinas como tópicos separados com ":" no nome
+    // ════════════════════════════════════════════════════════════════
+    const idxConhecEsp = disciplinasExtraidas.findIndex((d: any) => 
+      /^conhecimentos\s+espec[ií]ficos/i.test(d.nome?.trim())
+    )
+    if (idxConhecEsp !== -1) {
+      const discEsp = disciplinasExtraidas[idxConhecEsp]
+      const topicosEsp = discEsp.topicos || []
+      
+      console.log(`   📦 v66: Analisando "Conhecimentos Específicos" com ${topicosEsp.length} tópicos para expandir...`)
+      
+      // Nomes das disciplinas já existentes (para não duplicar)
+      const nomesExistentes = new Set(
+        disciplinasExtraidas
+          .filter((_: any, idx: number) => idx !== idxConhecEsp)
+          .map((d: any) => d.nome?.trim()?.toLowerCase())
+      )
+      
+      let subDiscsExpandidas: any[] = []
+      
+      // ── MÉTODO A: Buscar sub-disciplinas em LINHAS SEPARADAS no textoSecaoCargo ──
+      const textoSecaoLower = textoSecaoCargo.toLowerCase()
+      const posConhecEsp = textoSecaoLower.indexOf('conhecimentos específicos')
+      if (posConhecEsp !== -1) {
+        const textoAposConhecEsp = textoSecaoCargo.substring(posConhecEsp)
+        const linhasEsp = textoAposConhecEsp.split('\n')
+        
+        const subDiscs: any[] = []
+        let subDiscAtual: { nome: string, textoCompleto: string } | null = null
+        
+        for (let i = 1; i < linhasEsp.length; i++) {
+          const linha = linhasEsp[i].trim()
+          if (!linha) continue
+          
+          const matchSubDisc = linha.match(/^([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú\s,\-–()\/e]+?)\s*:\s+(.+)/)
+          if (matchSubDisc) {
+            const nomeCandidata = matchSubDisc[1].trim()
+            if (nomeCandidata.length >= 8 && nomeCandidata.length <= 120 && 
+                !nomeCandidata.match(/^(Lei |Portaria |Decreto |Resolução |Art\.|§|Código de)/)) {
+              if (subDiscAtual) subDiscs.push(subDiscAtual)
+              subDiscAtual = { nome: nomeCandidata, textoCompleto: matchSubDisc[2] }
+              continue
+            }
+          }
+          
+          if (subDiscAtual && linha.length > 3) {
+            subDiscAtual.textoCompleto += '\n' + linha
+          }
+        }
+        if (subDiscAtual) subDiscs.push(subDiscAtual)
+        
+        if (subDiscs.length >= 2) {
+          subDiscsExpandidas = subDiscs
+            .filter(sd => sd.textoCompleto.length > 20)
+            .filter(sd => !nomesExistentes.has(sd.nome?.trim()?.toLowerCase()))
+            .map(sd => ({
+              nome: sd.nome,
+              peso: 2,
+              categoria: 'ESPECÍFICOS',
+              topicos: extrairTopicosDeTexto(sd.textoCompleto)
+            }))
+            .filter(sd => sd.topicos.length > 0)
+          
+          if (subDiscsExpandidas.length >= 2) {
+            console.log(`   📦 v66 Método A: encontrou ${subDiscsExpandidas.length} sub-disciplinas em linhas separadas`)
+          }
+        }
+      }
+      
+      // ── MÉTODO B: Buscar sub-disciplinas em PARÁGRAFO CONTÍNUO ──
+      // Quando todo o conteúdo específico está num único parágrafo/linha:
+      // "Conhecimentos Específicos: Administração... Enfermagem em Saúde Coletiva: vigilância..."
+      if (subDiscsExpandidas.length < 2) {
+        console.log(`   📦 v66 Método B: tentando extrair sub-disciplinas de parágrafo contínuo...`)
+        
+        // Buscar no textoSecaoCargo OU no textoParaProcessar (texto completo)
+        const textosParaBuscar = [textoSecaoCargo, textoParaProcessar]
+        
+        for (const textoFonte of textosParaBuscar) {
+          if (subDiscsExpandidas.length >= 2) break
+          
+          const textoFonteLower = textoFonte.toLowerCase()
+          const posEsp = textoFonteLower.indexOf('conhecimentos específicos')
+          if (posEsp === -1) continue
+          
+          // Pegar texto após "Conhecimentos Específicos" (até próximo cargo ou fim)
+          let textoEsp = textoFonte.substring(posEsp)
+          
+          // Limitar até o próximo cargo (MÉDICO, FARMACÊUTICO, etc.)
+          const regexOutroCargo = /\n\s*(MÉDICO|FARMACÊUTICO|DENTISTA|FISIOTERAPEUTA|NUTRICIONISTA|PSICÓLOGO|ASSISTENTE\s+SOCIAL|VETERINÁRIO|BIÓLOGO|BIOMÉDICO|FONOAUDIÓLOGO|TERAPEUTA)\s*\n/i
+          const matchOutroCargo = textoEsp.match(regexOutroCargo)
+          if (matchOutroCargo && matchOutroCargo.index) {
+            textoEsp = textoEsp.substring(0, matchOutroCargo.index)
+          }
+          
+          // Regex para encontrar sub-disciplinas no formato contínuo:
+          // "Enfermagem em Saúde Coletiva: conteúdo. Enfermagem em Urgência: conteúdo."
+          // Padrão: palavra capitalizada com 2+ palavras seguida de ":"
+          const regexSubDisc = /([A-ZÀ-Ú][a-zà-ú]+(?:\s+(?:em|de|da|do|das|dos|e|na|no|nas|nos|para|aplicad[ao]|à|ao)\s+)?[A-ZÀ-Úa-zà-ú\s,\-–()\/]+?)\s*:\s+/g
+          
+          const matches: { nome: string, pos: number }[] = []
+          let m
+          while ((m = regexSubDisc.exec(textoEsp)) !== null) {
+            const nome = m[1].trim()
+            // Validar: tem tamanho razoável, não é lei/decreto/artigo, parece disciplina
+            if (nome.length >= 8 && nome.length <= 120 && 
+                !nome.match(/^(Lei |Portaria |Decreto |Resolução |Art\.|§|Código de|Resolução COFEN|nº |Lei nº)/) &&
+                !nome.match(/^\d/) &&
+                // Verificar que começa com maiúscula significativa
+                nome.match(/^[A-ZÀ-Ú]/)) {
+              matches.push({ nome, pos: m.index + m[0].length })
+            }
+          }
+          
+          // Extrair conteúdo entre cada match
+          if (matches.length >= 2) {
+            const subDiscsB: any[] = []
+            for (let i = 0; i < matches.length; i++) {
+              const inicio = matches[i].pos
+              const fim = i < matches.length - 1 ? matches[i + 1].pos - matches[i + 1].nome.length - 1 : textoEsp.length
+              const conteudo = textoEsp.substring(inicio, fim).trim()
+              
+              if (conteudo.length > 15) {
+                subDiscsB.push({
+                  nome: matches[i].nome,
+                  textoCompleto: conteudo
+                })
+              }
+            }
+            
+            subDiscsExpandidas = subDiscsB
+              .filter(sd => sd.textoCompleto.length > 20)
+              .filter(sd => !nomesExistentes.has(sd.nome?.trim()?.toLowerCase()))
+              .map(sd => {
+                // Primeiro tentar extrairTopicosDeTexto normal
+                let topicos = extrairTopicosDeTexto(sd.textoCompleto)
+                
+                // Se retornou poucos tópicos, o texto provavelmente está em formato contínuo
+                // separado por vírgulas: "tópico1, tópico2, tópico3"
+                if (topicos.length <= 2) {
+                  const partesPorVirgula = sd.textoCompleto
+                    .split(/[,;]\s*/)
+                    .map((t: string) => t.trim().replace(/^[-•–]\s*/, '').replace(/[.;,]+$/, '').trim())
+                    .filter((t: string) => t.length > 3 && t.length < 300)
+                  if (partesPorVirgula.length > topicos.length) {
+                    topicos = partesPorVirgula
+                  }
+                }
+                
+                return {
+                  nome: sd.nome,
+                  peso: 2,
+                  categoria: 'ESPECÍFICOS',
+                  topicos
+                }
+              })
+              .filter(sd => sd.topicos.length > 0)
+            
+            if (subDiscsExpandidas.length >= 2) {
+              console.log(`   📦 v66 Método B: encontrou ${subDiscsExpandidas.length} sub-disciplinas em parágrafo contínuo`)
+              break
+            }
+          }
+        }
+      }
+      
+      // ── MÉTODO C: Analisar os TÓPICOS já extraídos ──
+      // Se os tópicos contêm sub-disciplinas com ":" (ex: "Enfermagem em Saúde Coletiva: vigilância, ...")
+      if (subDiscsExpandidas.length < 2 && topicosEsp.length >= 3) {
+        console.log(`   📦 v66 Método C: tentando agrupar tópicos como sub-disciplinas...`)
+        
+        const subDiscsC: { nome: string, topicos: string[] }[] = []
+        let subAtual: { nome: string, topicos: string[] } | null = null
+        
+        for (const topico of topicosEsp) {
+          const topicoStr = typeof topico === 'string' ? topico : topico.nome || ''
+          // Verificar se o tópico parece um cabeçalho de sub-disciplina
+          const matchCab = topicoStr.match(/^([A-ZÀ-Ú][a-zà-ú]+(?:\s+(?:em|de|da|do|das|dos|e|na|no|aplicad[ao]|à|ao)\s+)?[A-ZÀ-Úa-zà-ú\s\-–()\/]+?)(?:\s*:\s*(.+))?$/)
+          if (matchCab && matchCab[1].length >= 8 && matchCab[1].length <= 120 &&
+              !matchCab[1].match(/^(Lei |Portaria |Decreto |Resolução |Art\.|§)/)) {
+            // Parece sub-disciplina
+            if (subAtual && subAtual.topicos.length > 0) {
+              subDiscsC.push(subAtual)
+            }
+            subAtual = { nome: matchCab[1].trim(), topicos: [] }
+            if (matchCab[2]) {
+              // Há conteúdo após ":" - dividir em sub-tópicos
+              const subTopicos = matchCab[2].split(/[.;]/).map(t => t.trim()).filter(t => t.length > 3)
+              subAtual.topicos.push(...subTopicos)
+            }
+          } else if (subAtual) {
+            subAtual.topicos.push(topicoStr)
+          }
+        }
+        if (subAtual && subAtual.topicos.length > 0) subDiscsC.push(subAtual)
+        
+        if (subDiscsC.length >= 2) {
+          subDiscsExpandidas = subDiscsC
+            .filter(sd => !nomesExistentes.has(sd.nome?.trim()?.toLowerCase()))
+            .map(sd => ({
+              nome: sd.nome,
+              peso: 2,
+              categoria: 'ESPECÍFICOS',
+              topicos: sd.topicos.map(t => typeof t === 'string' ? t : t)
+            }))
+            .filter(sd => sd.topicos.length > 0)
+          
+          if (subDiscsExpandidas.length >= 2) {
+            console.log(`   📦 v66 Método C: encontrou ${subDiscsExpandidas.length} sub-disciplinas nos tópicos`)
+          }
+        }
+      }
+      
+      // ── Aplicar expansão se encontrou sub-disciplinas ──
+      if (subDiscsExpandidas.length >= 2) {
+        console.log(`   📦 v66: "Conhecimentos Específicos" expandido em ${subDiscsExpandidas.length} sub-disciplinas:`)
+        subDiscsExpandidas.forEach((sd: any) => console.log(`      → ${sd.nome} (${sd.topicos.length} tópicos)`))
+        // Substituir "Conhecimentos Específicos" pelas sub-disciplinas
+        disciplinasExtraidas.splice(idxConhecEsp, 1, ...subDiscsExpandidas)
+      } else {
+        console.log(`   ⚠️ v66: Não foi possível expandir "Conhecimentos Específicos" em sub-disciplinas (mantendo como está)`)
+      }
     }
     
     console.log(`\n📊 Extração programática: ${disciplinasExtraidas.length} disciplinas`)
@@ -8593,24 +8899,41 @@ ${textoParaFallback}`
     }
     
   } catch (error: any) {
-    console.error('❌ Erro ao processar texto de edital:', error)
-    console.error('❌ Stack:', error instanceof Error ? error.stack : 'no stack')
+    const errorMsg = error?.message || String(error)
+    const errorStack = error instanceof Error ? error.stack : 'no stack'
+    console.error('❌ Erro ao processar texto de edital:', errorMsg.substring(0, 500))
+    console.error('❌ Stack:', errorStack?.substring(0, 500))
     
     // ════════════════════════════════════════════════════════════════
-    // ✅ v59: FALLBACK INTELIGENTE - Sugerir disciplinas via IA
-    // Se a extração falhou completamente, usamos IA para sugerir disciplinas típicas
-    // baseado no cargo, concurso e banca informados
-    // NOTA: As variáveis cargo, concurso_nome, area_geral já foram extraídas no início
-    // do try, então não precisamos (e não podemos) ler o body novamente
+    // ✅ v65: TRATAMENTO DE ERROS MELHORADO
+    // Detectar tipo de erro e retornar mensagem útil
     // ════════════════════════════════════════════════════════════════
     
-    // Se chegou aqui, nem extração nem fallback funcionaram
+    // Detectar erros de tamanho/parse do body
+    const ehErroParse = errorMsg.includes('JSON') || errorMsg.includes('body') || errorMsg.includes('parse')
+    const ehErroTimeout = errorMsg.includes('timeout') || errorMsg.includes('abort') || errorMsg.includes('CPU')
+    const ehErroMemoria = errorMsg.includes('memory') || errorMsg.includes('heap') || errorMsg.includes('OOM')
+    
+    let msgErro = 'Erro ao processar edital. Por favor, tente uma das alternativas abaixo.'
+    let sugestao = '• Cole apenas o CONTEÚDO PROGRAMÁTICO do edital (a seção com as disciplinas)\n• Use "Continuar sem edital" e adicione as disciplinas manualmente\n• Tente converter o PDF para TXT em smallpdf.com/pdf-to-text'
+    let errorType = 'PROCESSING_ERROR'
+    
+    if (ehErroParse) {
+      msgErro = 'O texto enviado é muito grande ou está em formato inválido.'
+      sugestao = '• O edital pode ser grande demais para processar de uma vez\n• Cole apenas a seção "CONTEÚDO PROGRAMÁTICO" (geralmente Anexo II)\n• Remova as partes antes do conteúdo programático (regras, cronogramas, etc.)'
+      errorType = 'TEXT_TOO_LARGE'
+    } else if (ehErroTimeout || ehErroMemoria) {
+      msgErro = 'O processamento excedeu o tempo limite.'
+      sugestao = '• O edital é muito extenso para processar inteiro\n• Cole apenas a seção com disciplinas e tópicos\n• Tente dividir o texto e colar apenas o Anexo II'
+      errorType = 'TIMEOUT_ERROR'
+    }
+    
     return c.json({
-      error: 'Erro ao processar edital. Por favor, tente uma das alternativas abaixo.',
-      details: String(error).substring(0, 200),
-      errorType: 'PROCESSING_ERROR',
+      error: msgErro,
+      details: errorMsg.substring(0, 200),
+      errorType,
       canRetry: true,
-      suggestion: '• Cole apenas o CONTEÚDO PROGRAMÁTICO do edital (a seção com as disciplinas)\n• Use "Continuar sem edital" e adicione as disciplinas manualmente\n• Tente converter o PDF para TXT em smallpdf.com/pdf-to-text'
+      suggestion: sugestao
     }, 500)
   }
 })
