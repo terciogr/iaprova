@@ -4315,7 +4315,7 @@ app.delete('/api/admin/plans/:id', async (c) => {
 })
 
 // Endpoint PÚBLICO (sem auth) para planos - usado na landing page
-app.get('/api/public/plans', async (c) => {
+app.get('/api/plans/public', async (c) => {
   const { DB } = c.env
   
   try {
@@ -7175,6 +7175,16 @@ RETORNE APENAS JSON válido:
     const variacoesCargo: string[] = [cargoUpper]
     if (cargoUpper.includes('AUDITOR')) variacoesCargo.push('AUDITOR-FISCAL', 'AUDITOR FISCAL')
     if (cargoUpper.includes('ANALISTA')) variacoesCargo.push('ANALISTA-TRIBUTÁRIO', 'ANALISTA TRIBUTÁRIO')
+    // v64: Variações de cargos de saúde
+    if (cargoUpper.includes('ENFERMEIRO') || cargoUpper.includes('ENFERMAGEM')) {
+      variacoesCargo.push('ENFERMEIRO', 'ENFERMEIRA', 'ENFERMAGEM')
+      if (cargoUpper.includes('TÉCNICO')) variacoesCargo.push('TÉCNICO DE ENFERMAGEM', 'TÉCNICO EM ENFERMAGEM')
+    }
+    if (cargoUpper.includes('MÉDICO')) variacoesCargo.push('MÉDICO', 'MÉDICA')
+    if (cargoUpper.includes('FARMACÊUTICO')) variacoesCargo.push('FARMACÊUTICO', 'FARMACÊUTICA')
+    if (cargoUpper.includes('FISIOTERAPEUTA')) variacoesCargo.push('FISIOTERAPEUTA')
+    if (cargoUpper.includes('NUTRICIONISTA')) variacoesCargo.push('NUTRICIONISTA')
+    if (cargoUpper.includes('PSICÓLOGO')) variacoesCargo.push('PSICÓLOGO', 'PSICÓLOGA')
     
     let inicioSecaoCargo = -1
     let fimSecaoCargo = -1
@@ -7235,7 +7245,15 @@ RETORNE APENAS JSON válido:
       'AUDITOR FISCAL', 'ASSISTENTE SOCIAL', 'ENFERMEIRO', 'MÉDICO', 'FARMACÊUTICO',
       'FISIOTERAPEUTA', 'NUTRICIONISTA', 'PSICÓLOGO', 'TÉCNICO', 'ENGENHEIRO',
       'FONOAUDIÓLOGO', 'DENTISTA', 'BIOMÉDICO', 'VETERINÁRIO', 'ECONOMISTA',
-      'CIRURGIÃO', 'PROFESSOR', 'DELEGADO', 'PERITO', 'AGENTE', 'CONTADOR', 'ADVOGADO']
+      'CIRURGIÃO', 'PROFESSOR', 'DELEGADO', 'PERITO', 'AGENTE', 'CONTADOR', 'ADVOGADO',
+      // v64: Cargos de saúde adicionais
+      'TÉCNICO DE ENFERMAGEM', 'TÉCNICO EM ENFERMAGEM', 'AUXILIAR DE ENFERMAGEM',
+      'TERAPEUTA OCUPACIONAL', 'EDUCADOR FÍSICO', 'BIÓLOGO',
+      'TÉCNICO DE LABORATÓRIO', 'TÉCNICO EM RADIOLOGIA', 'TÉCNICO DE SAÚDE BUCAL',
+      // v64: Cargos administrativos adicionais
+      'ADMINISTRADOR', 'OFICIAL DE JUSTIÇA', 'ESCRIVÃO', 'ANALISTA JUDICIÁRIO',
+      'TÉCNICO JUDICIÁRIO', 'PROCURADOR', 'PROMOTOR', 'DEFENSOR',
+      'AUDITOR DE CONTROLE', 'ANALISTA DE CONTROLE']
       .filter(c => !variacoesCargo.some(v => v.includes(c) || c.includes(v)))
     
     // ✅ v61: Encontrar fim da seção do cargo
@@ -7539,7 +7557,33 @@ RETORNE APENAS JSON válido:
         'ÉTICA E LEGISLAÇÃO', 'ÉTICA NO SERVIÇO', 'SISTEMA ÚNICO', 'SAÚDE PÚBLICA',
         'ENFERMAGEM', 'FARMACOLOGIA', 'BIOSSEGURANÇA',
         'ATUALIDADES', 'REDAÇÃO', 'HISTÓRIA', 'GEOGRAFIA',
-        'PORTUGUÊS', 'INGLÊS', 'ESPANHOL'
+        'PORTUGUÊS', 'INGLÊS', 'ESPANHOL',
+        // v64: Disciplinas de saúde/enfermagem ampliadas
+        'LEGISLAÇÃO APLICADA AO SUS', 'LEGISLAÇÃO DO SUS', 'SAÚDE COLETIVA',
+        'SAÚDE DA MULHER', 'SAÚDE DA CRIANÇA', 'SAÚDE DO IDOSO', 'SAÚDE DO ADULTO',
+        'SAÚDE MENTAL', 'SAÚDE DO TRABALHADOR', 'SAÚDE DA FAMÍLIA',
+        'CLÍNICA MÉDICA', 'CLÍNICA CIRÚRGICA', 'CENTRO CIRÚRGICO',
+        'OBSTETRÍCIA', 'NEONATOLOGIA', 'PEDIATRIA', 'GERIATRIA',
+        'URGÊNCIA E EMERGÊNCIA', 'EMERGÊNCIA', 'UTI', 'TERAPIA INTENSIVA',
+        'SEMIOLOGIA', 'FUNDAMENTOS DE ENFERMAGEM', 'SISTEMATIZAÇÃO DA ASSISTÊNCIA',
+        'PROCESSO DE ENFERMAGEM', 'ADMINISTRAÇÃO EM ENFERMAGEM',
+        'EPIDEMIOLOGIA', 'VIGILÂNCIA EM SAÚDE', 'VIGILÂNCIA EPIDEMIOLÓGICA',
+        'IMUNIZAÇÃO', 'POLÍTICA NACIONAL', 'ATENÇÃO BÁSICA',
+        'NUTRIÇÃO', 'FISIOTERAPIA', 'FARMÁCIA', 'PSICOLOGIA',
+        'ANATOMIA', 'FISIOLOGIA', 'PATOLOGIA', 'MICROBIOLOGIA', 'PARASITOLOGIA',
+        // v64: Disciplinas jurídicas/administrativas ampliadas
+        'DIREITO CONSTITUCIONAL', 'DIREITO ADMINISTRATIVO', 'DIREITO PENAL',
+        'DIREITO CIVIL', 'DIREITO TRIBUTÁRIO', 'DIREITO PROCESSUAL',
+        'DIREITO DO TRABALHO', 'DIREITO PREVIDENCIÁRIO', 'DIREITO FINANCEIRO',
+        'DIREITO ELEITORAL', 'DIREITO EMPRESARIAL', 'DIREITO AMBIENTAL',
+        'CONTROLE EXTERNO', 'CONTROLE INTERNO', 'GESTÃO PÚBLICA',
+        // v64: Disciplinas de educação
+        'PEDAGOGIA', 'DIDÁTICA', 'PSICOLOGIA DA EDUCAÇÃO',
+        'FUNDAMENTOS DA EDUCAÇÃO', 'LEGISLAÇÃO EDUCACIONAL',
+        // v64: Disciplinas de TI
+        'SEGURANÇA DA INFORMAÇÃO', 'REDES DE COMPUTADORES', 'BANCO DE DADOS',
+        'PROGRAMAÇÃO', 'DESENVOLVIMENTO DE SISTEMAS', 'GOVERNANÇA DE TI',
+        'ENGENHARIA DE SOFTWARE', 'SISTEMAS OPERACIONAIS', 'INTELIGÊNCIA ARTIFICIAL'
       ]
       
       // Padrões que indicam que algo é subtópico, NÃO disciplina
@@ -7863,24 +7907,32 @@ RETORNE APENAS JSON válido:
       const motivo = poucasDisciplinas ? 'poucas disciplinas' : 'texto grande mas sem específicas'
       console.log(`\n🤖 Extração programática insuficiente (${motivo}: ${disciplinasExtraidas.length} disc, ${textoSecaoCargo.length} chars), usando IA...`)
       
-      // ✅ v55: Limitar texto para IA a 40000 chars (aumentado de 30000)
-      const textoParaIA = textoSecaoCargo.length > 40000 ? textoSecaoCargo.substring(0, 40000) : textoSecaoCargo
-      const promptIA = `TAREFA CRÍTICA: Extrair TODAS as disciplinas e seus tópicos para o cargo "${cargoUpper}" do conteúdo programático abaixo.
+      // ✅ v64: Se textoSecaoCargo é muito pequeno, usar texto completo do edital
+      let textoBaseIA = textoSecaoCargo
+      if (textoSecaoCargo.length < 2000 && texto.length > textoSecaoCargo.length) {
+        console.log(`⚠️ v64: textoSecaoCargo muito curto (${textoSecaoCargo.length} chars), usando texto completo (${texto.length} chars)`)
+        textoBaseIA = textoLimpo
+      }
+      const textoParaIA = textoBaseIA.length > 40000 ? textoBaseIA.substring(0, 40000) : textoBaseIA
+      const promptIA = `TAREFA CRÍTICA: Extrair disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO abaixo.
+Cargo do candidato: "${cargoUpper}"
 
-REGRAS OBRIGATÓRIAS:
-1. EXTRAIA ABSOLUTAMENTE TODAS as disciplinas (básicas E específicas) - geralmente 8 a 20
-2. Cada matéria/disciplina listada (seguida de ":" ou em linha separada) = UMA disciplina
-3. Conteúdo após o nome = TÓPICOS da disciplina (separados por ponto, vírgula ou lista)
-4. NÃO invente - extraia APENAS do texto fornecido
+REGRAS ABSOLUTAS E INVIOLÁVEIS:
+1. EXTRAIA APENAS disciplinas e tópicos que EXISTEM LITERALMENTE no texto abaixo
+2. NÃO INVENTE, NÃO SUGIRA, NÃO ADICIONE nenhuma disciplina que não esteja ESCRITA no texto
+3. Cada matéria/disciplina listada (seguida de ":" ou em linha separada) = UMA disciplina
+4. Conteúdo após o nome = TÓPICOS da disciplina
 5. MÓDULO I / Conhecimentos Básicos/Gerais = peso 1 e categoria "BÁSICOS"
 6. MÓDULO II / Conhecimentos Específicos = peso 2 e categoria "ESPECÍFICOS"
 7. Retorne APENAS JSON válido, sem markdown, sem explicações
-8. Se não conseguir extrair tópicos detalhados, retorne ao menos TODAS as disciplinas com seus pesos e categorias (isso é OBRIGATÓRIO)
-9. NUNCA retorne menos de 5 disciplinas para um edital de concurso público real
+8. Se uma disciplina aparece no texto mas você não encontra tópicos detalhados, retorne a disciplina com topicos vazio []
+9. Se o texto não contém conteúdo programático identificável, retorne {"disciplinas":[]}
+10. PROIBIDO: Inventar disciplinas como "Doutrina", "Jurisprudência" ou qualquer outra que NÃO ESTÁ no texto
+11. VERIFICAÇÃO: Cada disciplina retornada DEVE ter seu nome presente no texto fornecido
 
-FORMATO OBRIGATÓRIO: {"disciplinas":[{"nome":"Nome Exato da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}
+FORMATO: {"disciplinas":[{"nome":"Nome Exato da Disciplina como aparece no texto","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}
 
-CONTEÚDO:
+TEXTO DO EDITAL:
 ${textoParaIA}`
       
       if (!geminiKey && !openaiKey && !groqKey) {
@@ -7939,13 +7991,41 @@ ${textoParaIA}`
           if (jsonMatch) {
             const data = JSON.parse(jsonMatch[0])
             if (data.disciplinas?.length > 0) {
-              disciplinasExtraidas = data.disciplinas.map((d: any) => ({
-                nome: d.nome || 'Sem nome',
-                peso: d.peso || 1,
-                categoria: d.categoria || 'BÁSICOS',
-                topicos: Array.isArray(d.topicos) ? d.topicos.filter((t: any) => typeof t === 'string' && t.length > 3) : []
-              }))
-              console.log(`✅ IA extraiu: ${disciplinasExtraidas.length} disciplinas`)
+              // ✅ v64: VALIDAÇÃO PÓS-IA - verificar se disciplinas existem no texto original
+              const textoLowerValidacao = textoLimpo.toLowerCase()
+              const disciplinasValidadas = data.disciplinas.filter((d: any) => {
+                const nomeDisc = (d.nome || '').trim()
+                if (!nomeDisc || nomeDisc.length < 3) return false
+                
+                // Verificar se o nome da disciplina aparece no texto (busca tolerante)
+                const nomeLower = nomeDisc.toLowerCase()
+                const palavrasChave = nomeLower.split(/[\s\-–]+/).filter((p: string) => p.length > 3)
+                
+                // Verificar match exato ou parcial (pelo menos 60% das palavras-chave)
+                const matchExato = textoLowerValidacao.includes(nomeLower)
+                const matchParcial = palavrasChave.length > 0 && 
+                  palavrasChave.filter((p: string) => textoLowerValidacao.includes(p)).length >= Math.ceil(palavrasChave.length * 0.6)
+                
+                if (!matchExato && !matchParcial) {
+                  console.log(`   🗑️ v64: Disciplina IA REJEITADA (não encontrada no texto): "${nomeDisc}"`)
+                  return false
+                }
+                return true
+              })
+              
+              console.log(`✅ v64: IA extraiu ${data.disciplinas.length} disciplinas, ${disciplinasValidadas.length} validadas contra o texto`)
+              
+              if (disciplinasValidadas.length > 0) {
+                disciplinasExtraidas = disciplinasValidadas.map((d: any) => ({
+                  nome: d.nome || 'Sem nome',
+                  peso: d.peso || 1,
+                  categoria: d.categoria || 'BÁSICOS',
+                  topicos: Array.isArray(d.topicos) ? d.topicos.filter((t: any) => typeof t === 'string' && t.length > 3) : []
+                }))
+                console.log(`✅ IA final: ${disciplinasExtraidas.length} disciplinas validadas`)
+              } else {
+                console.log(`⚠️ v64: TODAS as disciplinas da IA foram rejeitadas (inventadas)! Mantendo extração programática.`)
+              }
             }
           }
         } catch (e) { console.log(`⚠️ Erro JSON IA: ${e}`) }
@@ -7954,32 +8034,31 @@ ${textoParaIA}`
     
     if (disciplinasExtraidas.length === 0) {
       // ════════════════════════════════════════════════════════════════
-      // ✅ v59: FALLBACK FINAL - Sugerir disciplinas típicas via IA
-      // Se nem a extração programática nem a IA do edital funcionaram,
-      // oferecemos sugestões baseadas no cargo/concurso/banca
+      // ✅ v64: FALLBACK FINAL - Tentar extração IA com texto COMPLETO
+      // PRIORIDADE: Extrair do texto real; só sugere se o texto não contiver disciplinas
       // ════════════════════════════════════════════════════════════════
-      console.log('🤖 v59: Extração falhou completamente, tentando sugestão IA...')
+      console.log('🤖 v64: Extração falhou, tentando IA com texto COMPLETO do edital...')
       
-      if (geminiKey && (cargo || concurso_nome)) {
+      if (geminiKey && texto.length > 200) {
         try {
-          const promptSugestao = `Você é um especialista em concursos públicos brasileiros.
+          const textoCompletoParaIA = texto.length > 40000 ? texto.substring(0, 40000) : texto
+          const promptExtracaoFinal = `TAREFA: Extrair TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO deste edital de concurso.
+Cargo do candidato: "${cargo || 'Não especificado'}"
 
-CONTEXTO:
-- Cargo: ${cargo || 'Não especificado'}
-- Concurso: ${concurso_nome || 'Não especificado'}
-- Área: ${areaDetectada}
+REGRAS ABSOLUTAS:
+1. EXTRAIA APENAS disciplinas que EXISTEM no texto abaixo
+2. NÃO INVENTE, NÃO SUGIRA, NÃO ADICIONE disciplinas que NÃO estejam no texto
+3. Procure seções como "CONTEÚDO PROGRAMÁTICO", "ANEXO II", "MÓDULO I/II"
+4. Procure padrões como "Disciplina: tópico1; tópico2" ou listas numeradas
+5. Se encontrar disciplinas, extraia com nome EXATO conforme o edital
+6. Se o texto NÃO contiver conteúdo programático, retorne {"disciplinas":[]}
+7. PROIBIDO inventar: "Doutrina", "Jurisprudência", ou qualquer termo não presente no texto
+8. peso 1 = Básicos/Gerais; peso 2 = Específicos
 
-TAREFA: Sugira as disciplinas e tópicos TÍPICOS para este tipo de concurso.
-Baseie-se em editais anteriores de cargos similares.
+FORMATO: {"disciplinas":[{"nome":"Nome Exato do Texto","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}
 
-REGRAS:
-1. Inclua disciplinas básicas (Português, Raciocínio Lógico, Informática, etc.)
-2. Inclua disciplinas específicas da área
-3. Cada disciplina deve ter 3-10 tópicos principais
-4. Retorne entre 8 e 15 disciplinas
-
-RETORNE APENAS JSON válido:
-{"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}`
+TEXTO COMPLETO DO EDITAL:
+${textoCompletoParaIA}`
 
           const sugestaoRes = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
@@ -7987,8 +8066,8 @@ RETORNE APENAS JSON válido:
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                contents: [{ parts: [{ text: promptSugestao }] }],
-                generationConfig: { temperature: 0.3, maxOutputTokens: 8000 }
+                contents: [{ parts: [{ text: promptExtracaoFinal }] }],
+                generationConfig: { temperature: 0.1, maxOutputTokens: 16000 }
               })
             }
           )
@@ -8001,53 +8080,69 @@ RETORNE APENAS JSON válido:
             if (jsonMatch) {
               const sugestao = JSON.parse(jsonMatch[0])
               if (sugestao.disciplinas && sugestao.disciplinas.length > 0) {
-                console.log(`✅ v59: IA sugeriu ${sugestao.disciplinas.length} disciplinas para o cargo`)
-                
-                // ✅ v63: Criar edital no banco mesmo para sugestões
-                let editalIdSugestao59: number | null = null
-                try {
-                  const editalResult = await c.env.DB.prepare(`
-                    INSERT INTO editais (user_id, nome_concurso, texto_completo, status) 
-                    VALUES (?, ?, ?, 'ativo')
-                  `).bind(
-                    user_id || 1,
-                    concurso_nome || 'Não especificado',
-                    texto.substring(0, 50000)
-                  ).run()
-                  
-                  editalIdSugestao59 = editalResult.meta?.last_row_id as number
-                  console.log(`✅ v63: Edital criado para sugestões v59 com ID ${editalIdSugestao59}`)
-                } catch (dbErr) {
-                  console.error('⚠️ v63: Erro ao criar edital para sugestões v59:', dbErr)
-                }
-                
-                const disciplinasSugeridas = sugestao.disciplinas.map((d: any, i: number) => ({
-                  id: -(i + 1),
-                  disciplina_id_real: -(i + 1),
-                  nome: d.nome,
-                  peso: d.peso || 1,
-                  categoria: d.categoria || 'BÁSICOS',
-                  total_topicos: d.topicos?.length || 0,
-                  topicos: (d.topicos || []).map((t: string) => ({ nome: t, peso: 1 }))
-                }))
-                
-                return c.json({
-                  success: true,
-                  edital_id: editalIdSugestao59,
-                  disciplinas: disciplinasSugeridas,
-                  total: disciplinasSugeridas.length,
-                  concurso_detectado: concurso_nome,
-                  area_detectada: areaDetectada,
-                  modo: 'sugestao',
-                  fonte: 'ia_sugestao_v59',
-                  sugestao: true,
-                  message: `⚠️ Não foi possível extrair disciplinas do edital. Estas ${disciplinasSugeridas.length} disciplinas são SUGESTÕES baseadas em concursos similares. Por favor, revise e ajuste conforme seu edital real!`
+                // ✅ v64: Validar disciplinas contra o texto original
+                const textoLowerValidFinal = texto.toLowerCase()
+                const disciplinasValidas = sugestao.disciplinas.filter((d: any) => {
+                  const nomeDisc = (d.nome || '').trim()
+                  if (!nomeDisc || nomeDisc.length < 3) return false
+                  const nomeLower = nomeDisc.toLowerCase()
+                  const palavras = nomeLower.split(/[\s\-–]+/).filter((p: string) => p.length > 3)
+                  const matchExato = textoLowerValidFinal.includes(nomeLower)
+                  const matchParcial = palavras.length > 0 && 
+                    palavras.filter((p: string) => textoLowerValidFinal.includes(p)).length >= Math.ceil(palavras.length * 0.6)
+                  if (!matchExato && !matchParcial) {
+                    console.log(`   🗑️ v64 fallback: Rejeitada "${nomeDisc}" (não no texto)`)
+                    return false
+                  }
+                  return true
                 })
+                
+                console.log(`✅ v64 fallback: IA retornou ${sugestao.disciplinas.length}, ${disciplinasValidas.length} validadas`)
+                
+                if (disciplinasValidas.length > 0) {
+                  // ✅ v64: Criar edital no banco para disciplinas validadas
+                  let editalIdFallback64: number | null = null
+                  try {
+                    const editalResult = await c.env.DB.prepare(`
+                      INSERT INTO editais (user_id, nome_concurso, texto_completo, status) 
+                      VALUES (?, ?, ?, 'processado')
+                    `).bind(
+                      user_id || 1,
+                      concurso_nome || 'Não especificado',
+                      texto.substring(0, 50000)
+                    ).run()
+                    editalIdFallback64 = editalResult.meta?.last_row_id as number
+                    console.log(`✅ v64: Edital criado com ID ${editalIdFallback64}`)
+                  } catch (dbErr) {
+                    console.error('⚠️ v64: Erro ao criar edital:', dbErr)
+                  }
+                  
+                  const disciplinasFinais = disciplinasValidas.map((d: any, i: number) => ({
+                    id: -(i + 1),
+                    disciplina_id_real: -(i + 1),
+                    nome: d.nome,
+                    peso: d.peso || 1,
+                    categoria: d.categoria || 'BÁSICOS',
+                    total_topicos: d.topicos?.length || 0,
+                    topicos: (d.topicos || []).map((t: string) => ({ nome: t, peso: 1 }))
+                  }))
+                  
+                  return c.json({
+                    success: true,
+                    edital_id: editalIdFallback64,
+                    disciplinas: disciplinasFinais,
+                    total: disciplinasFinais.length,
+                    concurso_detectado: concurso_nome,
+                    area_detectada: areaDetectada,
+                    fonte: 'ia_extracao_completa_v64',
+                    message: `${disciplinasFinais.length} disciplinas extraídas do edital via IA`
+                  })
+                }
               }
             }
           }
         } catch (sugestaoErr) {
-          console.error('⚠️ Erro na sugestão IA:', sugestaoErr)
+          console.error('⚠️ v64: Erro na extração IA:', sugestaoErr)
         }
       }
       
@@ -8142,33 +8237,26 @@ RETORNE APENAS JSON válido:
     // Se não houver, usar fallback de IA
     // ════════════════════════════════════════════════════════════════
     if (resultado.disciplinas.length === 0) {
-      console.log('⚠️ v62: Todas as disciplinas foram filtradas, usando fallback de IA...')
+      console.log('⚠️ v64: Todas as disciplinas foram filtradas, tentando IA com texto completo...')
       
       const geminiKeyFallback = c.env.GEMINI_API_KEY
-      console.log(`🔑 v63: Gemini key existe: ${!!geminiKeyFallback}, cargo: ${!!cargo}, concurso: ${!!concurso_nome}`)
       
-      if (geminiKeyFallback && (cargo || concurso_nome)) {
+      if (geminiKeyFallback && texto.length > 200) {
         try {
-          console.log('🚀 v63: Iniciando chamada para Gemini API...')
-          const promptFallbackFiltro = `Você é um especialista em concursos públicos brasileiros.
+          const textoParaFallback = texto.length > 40000 ? texto.substring(0, 40000) : texto
+          const promptFallbackFiltro = `TAREFA: Extrair TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO deste edital.
+Cargo: "${cargo || 'Não especificado'}"
 
-CONTEXTO:
-- Cargo: ${cargo || 'Não especificado'}
-- Concurso/Órgão: ${concurso_nome || 'Não especificado'}
-- Área: ${areaDetectada}
-- NOTA: O edital fornecido não continha disciplinas válidas para extração (pode ser um processo seletivo simplificado ou documento sem conteúdo programático)
+REGRAS ABSOLUTAS:
+1. EXTRAIA APENAS disciplinas PRESENTES no texto abaixo
+2. NÃO INVENTE disciplinas - cada nome deve aparecer no texto
+3. Se o texto não contiver conteúdo programático, retorne {"disciplinas":[]}
+4. peso 1 = Básicos/Gerais; peso 2 = Específicos
 
-TAREFA: Sugira as disciplinas e tópicos TÍPICOS para este tipo de cargo/concurso.
-Baseie-se em editais anteriores de cargos similares.
+FORMATO: {"disciplinas":[{"nome":"Nome Exato","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1"]}]}
 
-REGRAS:
-1. Inclua disciplinas básicas relevantes (Português, Raciocínio Lógico, Informática, etc.)
-2. Inclua disciplinas específicas da função/área
-3. Cada disciplina deve ter 3-8 tópicos principais
-4. Retorne entre 6 e 12 disciplinas
-
-RETORNE APENAS JSON válido:
-{"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}`
+TEXTO:
+${textoParaFallback}`
 
           const fallbackRes = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKeyFallback}`,
@@ -8177,13 +8265,12 @@ RETORNE APENAS JSON válido:
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 contents: [{ parts: [{ text: promptFallbackFiltro }] }],
-                generationConfig: { temperature: 0.3, maxOutputTokens: 8000 }
+                generationConfig: { temperature: 0.1, maxOutputTokens: 16000 }
               })
             }
           )
           
           if (fallbackRes.ok) {
-            console.log('✅ v63: Gemini API respondeu OK')
             const fallbackData = await fallbackRes.json() as any
             const respText = fallbackData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
             const jsonMatch = respText.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').match(/\{[\s\S]*\}/)
@@ -8191,62 +8278,56 @@ RETORNE APENAS JSON válido:
             if (jsonMatch) {
               const sugestao = JSON.parse(jsonMatch[0])
               if (sugestao.disciplinas && sugestao.disciplinas.length > 0) {
-                console.log(`✅ v62: IA sugeriu ${sugestao.disciplinas.length} disciplinas como fallback`)
-                
-                // ✅ v63: Criar edital no banco mesmo para sugestões (para permitir salvar depois)
-                let editalIdSugestao: number | null = null
-                try {
-                  const editalResult = await c.env.DB.prepare(`
-                    INSERT INTO editais (user_id, nome_concurso, texto_completo, status) 
-                    VALUES (?, ?, ?, 'ativo')
-                  `).bind(
-                    user_id || 1,
-                    concurso_nome || 'Não especificado',
-                    texto.substring(0, 50000)
-                  ).run()
-                  
-                  editalIdSugestao = editalResult.meta?.last_row_id as number
-                  console.log(`✅ v63: Edital criado para sugestões com ID ${editalIdSugestao}`)
-                } catch (dbErr) {
-                  console.error('⚠️ v63: Erro ao criar edital para sugestões:', dbErr)
-                }
-                
-                const disciplinasSugeridas = sugestao.disciplinas.map((d: any, i: number) => ({
-                  id: -(i + 1),
-                  disciplina_id_real: -(i + 1),
-                  nome: d.nome,
-                  peso: d.peso || 1,
-                  categoria: d.categoria || 'BÁSICOS',
-                  total_topicos: d.topicos?.length || 0,
-                  topicos: (d.topicos || []).map((t: string) => ({ nome: t, peso: 1 }))
-                }))
-                
-                return c.json({
-                  success: true,
-                  edital_id: editalIdSugestao,
-                  disciplinas: disciplinasSugeridas,
-                  total: disciplinasSugeridas.length,
-                  concurso_detectado: concurso_nome,
-                  area_detectada: areaDetectada,
-                  modo: 'sugestao',
-                  fonte: 'ia_fallback_filtro_v62',
-                  sugestao: true,
-                  message: `ℹ️ O edital não continha disciplinas identificáveis (pode ser um processo seletivo simplificado). Sugerimos ${disciplinasSugeridas.length} disciplinas relevantes para o cargo. Revise e ajuste conforme necessário!`
+                // ✅ v64: Validar contra texto
+                const textoLowerFallback = texto.toLowerCase()
+                const discValidasFallback = sugestao.disciplinas.filter((d: any) => {
+                  const nome = (d.nome || '').trim()
+                  if (!nome || nome.length < 3) return false
+                  const nomeLower = nome.toLowerCase()
+                  const palavras = nomeLower.split(/[\s\-–]+/).filter((p: string) => p.length > 3)
+                  return textoLowerFallback.includes(nomeLower) || 
+                    (palavras.length > 0 && palavras.filter((p: string) => textoLowerFallback.includes(p)).length >= Math.ceil(palavras.length * 0.6))
                 })
+                
+                if (discValidasFallback.length > 0) {
+                  let editalIdFallback: number | null = null
+                  try {
+                    const editalResult = await c.env.DB.prepare(`
+                      INSERT INTO editais (user_id, nome_concurso, texto_completo, status) 
+                      VALUES (?, ?, ?, 'processado')
+                    `).bind(user_id || 1, concurso_nome || 'Não especificado', texto.substring(0, 50000)).run()
+                    editalIdFallback = editalResult.meta?.last_row_id as number
+                  } catch (dbErr) { console.error('⚠️ Erro ao criar edital fallback:', dbErr) }
+                  
+                  const disciplinasFallback = discValidasFallback.map((d: any, i: number) => ({
+                    id: -(i + 1), disciplina_id_real: -(i + 1),
+                    nome: d.nome, peso: d.peso || 1,
+                    categoria: d.categoria || 'BÁSICOS',
+                    total_topicos: d.topicos?.length || 0,
+                    topicos: (d.topicos || []).map((t: string) => ({ nome: t, peso: 1 }))
+                  }))
+                  
+                  return c.json({
+                    success: true, edital_id: editalIdFallback,
+                    disciplinas: disciplinasFallback, total: disciplinasFallback.length,
+                    concurso_detectado: concurso_nome, area_detectada: areaDetectada,
+                    fonte: 'ia_pos_filtro_v64',
+                    message: `${disciplinasFallback.length} disciplinas extraídas do edital`
+                  })
+                }
               }
             }
           }
         } catch (err) {
-          console.error('⚠️ v62: Erro ao gerar sugestão IA após filtro:', err)
+          console.error('⚠️ v64: Erro no fallback pós-filtro:', err)
         }
       }
       
-      // Se IA falhou, retornar erro informativo
       return c.json({
         error: 'Não foi possível extrair disciplinas do edital',
         errorType: 'EXTRACTION_FAILED',
         canRetry: false,
-        suggestion: 'Este edital pode ser um processo seletivo simplificado (sem provas de conhecimentos) ou não contém conteúdo programático.\n\n• Use "Continuar sem edital" para criar um plano de estudos personalizado\n• Ou cole apenas a seção de CONTEÚDO PROGRAMÁTICO do edital'
+        suggestion: 'Este edital pode ser um processo seletivo simplificado ou não contém conteúdo programático.\n\n• Use "Continuar sem edital" para criar um plano de estudos personalizado\n• Ou cole apenas a seção de CONTEÚDO PROGRAMÁTICO do edital'
       }, 400)
     }
     

@@ -2850,7 +2850,7 @@ window.carregarPlanosLanding = async function() {
   if (!container) return;
   
   try {
-    const response = await axios.get('/api/public/plans');
+    const response = await axios.get('/api/plans/public');
     const plans = response.data.plans || [];
     
     if (plans.length === 0) {
