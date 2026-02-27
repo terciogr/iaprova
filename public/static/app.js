@@ -2872,11 +2872,13 @@ window.carregarPlanosLanding = async function() {
       const isFeatured = !!p.is_featured;
       
       // Período label
-      let periodLabel = '/sempre';
+      let periodLabel = '';
       if (p.duration_days > 0) {
         if (p.duration_days <= 31) periodLabel = '/mês';
         else if (p.duration_days <= 100) periodLabel = '/trimestre';
         else periodLabel = '/ano';
+      } else if (isFree) {
+        periodLabel = ''; // Trial gratuito não mostra período
       }
       
       // Monthly equivalent for annual plans
@@ -2920,38 +2922,17 @@ window.carregarPlanosLanding = async function() {
     
   } catch (error) {
     console.error('Erro ao carregar planos:', error);
-    // Fallback para planos estáticos
+    // Fallback genérico sem mencionar preços ou limites específicos
     container.innerHTML = `
-      <div class="p-8 rounded-2xl border-2 border-gray-200">
-        <h3 class="text-xl font-bold text-gray-900 mb-2">Gratuito</h3>
-        <p class="text-gray-500 mb-6">Para conhecer a plataforma</p>
-        <div class="mb-6"><span class="text-4xl font-bold text-gray-900">R$ 0</span><span class="text-gray-500">/sempre</span></div>
-        <ul class="space-y-3 mb-8">
-          <li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> 5 gerações de conteúdo/dia</li>
-          <li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> 1 plano de estudos</li>
-        </ul>
-        <button onclick="goToLogin()" class="w-full py-3 border-2 border-[#122D6A] text-[#122D6A] font-semibold rounded-xl hover:bg-[#122D6A]/5 transition">Começar Grátis</button>
-      </div>
-      <div class="p-8 rounded-2xl border-2 border-[#122D6A] bg-gradient-to-br from-[#122D6A]/5 to-transparent relative transform md:scale-105 shadow-xl">
-        <div class="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white text-sm font-bold rounded-full">Mais Popular</div>
-        <h3 class="text-xl font-bold text-gray-900 mb-2">Premium Mensal</h3>
-        <p class="text-gray-500 mb-6">Para quem vai passar</p>
-        <div class="mb-6"><span class="text-4xl font-bold text-gray-900">R$ 29,90</span><span class="text-gray-500">/mês</span></div>
-        <ul class="space-y-3 mb-8">
-          <li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> <strong>Ilimitado</strong> gerações de conteúdo</li>
-          <li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> <strong>Ilimitado</strong> simulados</li>
-        </ul>
-        <button onclick="goToLogin()" class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white font-semibold rounded-xl hover:from-[#0D1F4D] hover:to-[#122D6A] transition shadow-lg shadow-[#122D6A]/30">Assinar Agora</button>
-      </div>
-      <div class="p-8 rounded-2xl border-2 border-gray-200">
-        <h3 class="text-xl font-bold text-gray-900 mb-2">Premium Anual</h3>
-        <p class="text-gray-500 mb-6">Economia de 30%</p>
-        <div class="mb-6"><span class="text-4xl font-bold text-gray-900">R$ 249,90</span><span class="text-gray-500">/ano</span></div>
-        <ul class="space-y-3 mb-8">
-          <li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> Tudo do Premium Mensal</li>
-          <li class="flex items-center gap-2 text-gray-600"><i class="fas fa-check text-emerald-500"></i> <strong>30% de desconto</strong></li>
-        </ul>
-        <button onclick="goToLogin()" class="w-full py-3 border-2 border-[#122D6A] text-[#122D6A] font-semibold rounded-xl hover:bg-[#122D6A]/5 transition">Economizar 30%</button>
+      <div class="col-span-3 text-center py-12">
+        <div class="max-w-md mx-auto">
+          <i class="fas fa-tags text-[#122D6A] text-4xl mb-4"></i>
+          <h3 class="text-xl font-bold text-gray-900 mb-2">Conheça nossos planos</h3>
+          <p class="text-gray-500 mb-6">Crie sua conta para ver os planos disponíveis e comece a estudar com 14 dias grátis!</p>
+          <button onclick="goToLogin()" class="px-8 py-3 bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] text-white font-semibold rounded-xl hover:from-[#0D1F4D] hover:to-[#122D6A] transition shadow-lg shadow-[#122D6A]/30">
+            <i class="fas fa-rocket mr-2"></i>Começar Agora
+          </button>
+        </div>
       </div>
     `;
   }
@@ -18334,15 +18315,19 @@ window.verPlanosDisponiveis = async function() {
 };
 
 // Criar novo plano
-window.criarPlanoAdmin = function() {
+window.criarPlanoAdmin = function(editingPlanId) {
+  // Remove modal anterior se existir
+  document.getElementById('modal-edit-plan')?.remove();
+  
+  const isEditing = !!editingPlanId;
   const formModal = document.createElement('div');
   formModal.id = 'modal-edit-plan';
   formModal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10001] p-4';
   formModal.innerHTML = `
     <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
       <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-5 py-4 flex items-center justify-between flex-shrink-0">
-        <h3 class="font-bold text-lg flex items-center gap-2">
-          <i class="fas fa-plus-circle"></i> Novo Plano
+        <h3 id="plan-modal-title" class="font-bold text-lg flex items-center gap-2">
+          <i class="fas fa-${isEditing ? 'edit' : 'plus-circle'}"></i> ${isEditing ? 'Editar Plano #' + editingPlanId : 'Novo Plano'}
         </h3>
         <button onclick="document.getElementById('modal-edit-plan')?.remove()" class="text-white/80 hover:text-white p-1">
           <i class="fas fa-times text-xl"></i>
@@ -18399,8 +18384,8 @@ window.criarPlanoAdmin = function() {
       </div>
       <div class="p-4 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0 bg-gray-50">
         <button onclick="document.getElementById('modal-edit-plan')?.remove()" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg text-sm hover:bg-gray-100 transition">Cancelar</button>
-        <button onclick="salvarPlanoAdmin()" class="px-4 py-2 bg-[#122D6A] text-white rounded-lg text-sm hover:bg-[#0D1F4D] transition font-medium">
-          <i class="fas fa-save mr-1"></i> Criar Plano
+        <button id="plan-save-btn" onclick="salvarPlanoAdmin(${editingPlanId || ''})" class="px-4 py-2 bg-[#122D6A] text-white rounded-lg text-sm hover:bg-[#0D1F4D] transition font-medium">
+          <i class="fas fa-save mr-1"></i> ${isEditing ? 'Salvar Alterações' : 'Criar Plano'}
         </button>
       </div>
     </div>
@@ -18467,12 +18452,12 @@ window.editarPlanoAdmin = async function(planId) {
   try {
     const response = await axios.get('/api/admin/plans', { headers: { 'X-User-ID': currentUser.id } });
     const plan = response.data.plans.find(p => p.id === planId);
-    if (!plan) { showToast('❌ Plano não encontrado', 'error'); return; }
+    if (!plan) { showToast('Plano não encontrado', 'error'); return; }
     
-    // Abrir form de criação preenchido
-    criarPlanoAdmin();
+    // Abrir form JÁ com planId configurado para edição
+    criarPlanoAdmin(planId);
     
-    // Aguardar DOM
+    // Aguardar DOM e preencher campos
     setTimeout(() => {
       document.getElementById('plan-name').value = plan.name || '';
       document.getElementById('plan-description').value = plan.description || '';
@@ -18488,21 +18473,11 @@ window.editarPlanoAdmin = async function(planId) {
       document.getElementById('plan-active').checked = !!plan.is_active;
       document.getElementById('plan-featured').checked = !!plan.is_featured;
       
-      // Atualizar título e botão
-      const header = document.querySelector('#modal-edit-plan .bg-gradient-to-r h3');
-      if (header) header.innerHTML = '<i class="fas fa-edit"></i> Editar Plano #' + planId;
-      
-      const saveBtn = document.querySelector('#modal-edit-plan button[onclick="salvarPlanoAdmin()"]');
-      if (saveBtn) {
-        saveBtn.setAttribute('onclick', 'salvarPlanoAdmin(' + planId + ')');
-        saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Salvar Alterações';
-      }
-      
-      // Trigger preview
+      // Trigger preview update
       document.getElementById('plan-price')?.dispatchEvent(new Event('input'));
     }, 100);
   } catch (error) {
-    showToast('❌ Erro ao carregar plano', 'error');
+    showToast('Erro ao carregar plano', 'error');
   }
 };
 
