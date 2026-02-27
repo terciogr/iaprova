@@ -936,7 +936,7 @@ async function sendVerificationEmail(email: string, token: string, name: string,
                             <strong>Você está a um clique de iniciar sua jornada rumo à aprovação!</strong>
                           </p>
                           <p style="color: #4A6491; margin: 0; font-size: 14px; line-height: 1.7;">
-                            Com o IAprova, você terá acesso a um plano de estudos personalizado, conteúdos gerados por IA e ferramentas inteligentes para maximizar sua preparação.
+                            Com o IAprova, você terá <strong style="color: #059669;">14 dias grátis</strong> para testar todas as funcionalidades: plano de estudos personalizado, conteúdos gerados por IA e ferramentas inteligentes para maximizar sua preparação.
                           </p>
                         </div>
                       </td>
@@ -1178,7 +1178,7 @@ async function sendWelcomeEmail(email: string, name: string, env?: any): Promise
                       <td style="padding: 40px 40px 20px 40px;">
                         <h2 style="color: #122D6A; margin: 0 0 8px 0; font-size: 22px; font-weight: 700;">Parabéns, ${name}! 🚀</h2>
                         <p style="color: #4A6491; margin: 0; font-size: 15px; line-height: 1.6;">
-                          Seu email foi verificado e sua conta está <strong>100% ativa</strong>. Agora você tem acesso completo a todas as funcionalidades do IAprova!
+                          Seu email foi verificado e sua conta está <strong>100% ativa</strong>. Agora você tem <strong style="color: #059669;">14 dias grátis</strong> para explorar todas as funcionalidades do IAprova!
                         </p>
                       </td>
                     </tr>
@@ -1681,7 +1681,7 @@ app.post('/api/register', async (c) => {
     
     const result = await DB.prepare(
       `INSERT INTO users (name, email, password, email_verified, verification_token, trial_started_at, trial_expires_at, subscription_status) 
-       VALUES (?, ?, ?, 0, ?, datetime('now'), datetime('now', '+7 days'), 'trial')`
+       VALUES (?, ?, ?, 0, ?, datetime('now'), datetime('now', '+14 days'), 'trial')`
     ).bind(name, email, password, verificationToken).run()
 
     // Enviar email de verificação
@@ -1985,13 +1985,13 @@ app.get('/api/subscription/status/:userId', async (c) => {
     }
     
     // ═══════════════════════════════════════════════
-    // 3. TRIAL — 7 dias gratuitos
+    // 3. TRIAL — 14 dias gratuitos
     // ═══════════════════════════════════════════════
     
     // Se nunca iniciou trial, iniciar agora
     if (!user.trial_started_at) {
       const trialStart = now.toISOString()
-      const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 dias
+      const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 dias
       
       await DB.prepare(`
         UPDATE users SET 
@@ -2007,8 +2007,8 @@ app.get('/api/subscription/status/:userId', async (c) => {
         needsPayment: false,
         trialStarted: trialStart,
         trialExpires: trialEnd,
-        daysRemaining: 7,
-        message: 'Período de teste iniciado! Você tem 7 dias grátis.'
+        daysRemaining: 14,
+        message: 'Período de teste iniciado! Você tem 14 dias grátis.'
       })
     }
     
@@ -2122,7 +2122,7 @@ app.get('/api/subscription/details/:userId', async (c) => {
       planInfo = {
         status: isExpired ? 'trial_expired' : 'trial',
         statusLabel: isExpired ? 'Trial Expirado' : 'Período de Teste',
-        currentPlan: 'Teste Grátis (7 dias)',
+        currentPlan: 'Teste Grátis (14 dias)',
         price: 0,
         startDate: user.trial_started_at,
         expiresAt: user.trial_expires_at,
@@ -5152,7 +5152,7 @@ app.get('/api/auth/google/callback', async (c) => {
           auth_provider, email_verified, password,
           trial_started_at, trial_expires_at, subscription_status
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'google', 1, '',
-          datetime('now'), datetime('now', '+7 days'), 'trial')
+          datetime('now'), datetime('now', '+14 days'), 'trial')
       `).bind(
         googleUser.name || 'Usuário Google',
         googleUser.email,

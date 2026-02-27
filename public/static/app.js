@@ -1979,7 +1979,7 @@ function renderLandingPage() {
               
               <!-- Trust badges -->
               <div class="flex flex-wrap justify-center lg:justify-start gap-4 text-blue-200/70 text-sm mb-6">
-                <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> 7 dias grátis</span>
+                <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> 14 dias grátis</span>
                 <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> Sem cartão</span>
                 <span class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-400"></i> Cancele quando quiser</span>
               </div>
@@ -1998,7 +1998,7 @@ function renderLandingPage() {
                     <i class="fas fa-brain text-white text-2xl"></i>
                   </div>
                   <h2 class="text-xl font-bold text-white mb-1">Comece sua jornada</h2>
-                  <p class="text-blue-200 text-sm">7 dias grátis para testar todas as funcionalidades</p>
+                  <p class="text-blue-200 text-sm">14 dias grátis para testar todas as funcionalidades</p>
                 </div>
                 
                 <form id="landing-signup-form" onsubmit="handleLandingSignup(event)" class="space-y-4">
@@ -3573,7 +3573,7 @@ function renderBoasVindas() {
                   <i class="fas fa-gift text-white"></i>
                 </div>
                 <div>
-                  <p class="font-medium text-emerald-800">🎉 7 dias grátis para testar!</p>
+                  <p class="font-medium text-emerald-800">🎉 14 dias grátis para testar!</p>
                   <p class="text-xs text-emerald-600">Acesso completo a todas as funcionalidades</p>
                 </div>
               </div>
