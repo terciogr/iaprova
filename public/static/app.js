@@ -10408,6 +10408,10 @@ window.visualizarMaterialDireto = async function(materialId, tipo) {
       exibirExerciciosInterativos(dadosExibicao);
     } else if (tipo === 'flashcards') {
       exibirFlashcardsVisuais(dadosExibicao);
+    } else if (tipo === 'resumo' && material.tags && material.tags.includes('subtipo:esquematizado')) {
+      // ✅ v70: Resumo esquematizado
+      dadosExibicao.subtipo_resumo = 'esquematizado';
+      exibirResumoEsquematizado(dadosExibicao);
     } else {
       exibirConteudoGerado(dadosExibicao);
     }
@@ -10537,7 +10541,7 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
               </div>
             </button>
             
-            <button onclick="selecionarTipoConteudo('resumo')"
+            <button onclick="abrirSubtipoResumo(${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}', ${metaId || 'null'})"
                     id="btn-tipo-resumo"
                     class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#3A5AB0] hover:bg-[#3A5AB0]/5 transition text-left bg-white">
               <div class="flex items-center gap-3">
@@ -10546,7 +10550,7 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
                 </div>
                 <div>
                   <p class="font-semibold text-gray-800">Resumo</p>
-                  <p class="text-xs text-gray-500">Esquematizado</p>
+                  <p class="text-xs text-gray-500">Escrito ou Esquematizado</p>
                 </div>
               </div>
             </button>
@@ -10622,6 +10626,87 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
 
 // Variável para armazenar tipo selecionado
 let tipoConteudoSelecionado = null;
+// ✅ v70: Variável para subtipo de resumo (escrito ou esquematizado)
+let subtipoResumoSelecionado = null;
+
+// ✅ v70: Abrir modal de sub-seleção de tipo de resumo
+window.abrirSubtipoResumo = function(topicoId, topicoNome, disciplinaNome, metaId) {
+  // Fechar modal principal
+  document.getElementById('modal-gerar-conteudo')?.remove();
+  
+  const modalHtml = `
+    <div id="modal-subtipo-resumo" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="bg-gradient-to-r from-[#3A5AB0] to-[#2A4A9F] text-white p-6">
+          <h2 class="text-xl font-bold flex items-center gap-3">
+            <i class="fas fa-sticky-note"></i>
+            Tipo de Resumo
+          </h2>
+          <p class="mt-1 text-sm opacity-90">${topicoNome}</p>
+          <p class="text-xs opacity-75">${disciplinaNome}</p>
+        </div>
+        
+        <div class="p-6">
+          <p class="${themes[currentTheme].textSecondary} mb-4">Como deseja seu resumo?</p>
+          
+          <div class="space-y-3">
+            <!-- Opção: Resumo Escrito -->
+            <button onclick="selecionarSubtipoResumo('escrito', ${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}', ${metaId || 'null'})"
+                    class="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#3A5AB0] hover:bg-[#3A5AB0]/5 transition text-left bg-white group">
+              <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center flex-shrink-0 group-hover:from-blue-200 group-hover:to-blue-100 transition">
+                  <i class="fas fa-align-left text-[#3A5AB0] text-xl"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="font-bold text-gray-800 text-base">Resumo Escrito</p>
+                  <p class="text-xs text-gray-500 mt-1">Texto corrido com explicações detalhadas, pontos-chave, pegadinhas de prova e mnemônicos.</p>
+                </div>
+                <i class="fas fa-chevron-right text-gray-400 group-hover:text-[#3A5AB0] transition"></i>
+              </div>
+            </button>
+            
+            <!-- Opção: Resumo Esquematizado -->
+            <button onclick="selecionarSubtipoResumo('esquematizado', ${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}', ${metaId || 'null'})"
+                    class="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#3A5AB0] hover:bg-[#3A5AB0]/5 transition text-left bg-white group relative overflow-hidden">
+              <div class="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded-bl-lg font-bold">NOVO</div>
+              <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:from-emerald-200 group-hover:to-emerald-100 transition">
+                  <i class="fas fa-project-diagram text-emerald-600 text-xl"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="font-bold text-gray-800 text-base">Resumo Esquematizado</p>
+                  <p class="text-xs text-gray-500 mt-1">Visual com mapas mentais, diagramas, hierarquias, tabelas comparativas e caixas coloridas.</p>
+                </div>
+                <i class="fas fa-chevron-right text-gray-400 group-hover:text-emerald-600 transition"></i>
+              </div>
+            </button>
+          </div>
+          
+          <button onclick="document.getElementById('modal-subtipo-resumo').remove(); gerarConteudoTopico(${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}', ${metaId || 'null'})"
+                  class="w-full mt-4 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition">
+            <i class="fas fa-arrow-left mr-2"></i>Voltar
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  const modalDiv = document.createElement('div');
+  modalDiv.innerHTML = modalHtml;
+  document.body.appendChild(modalDiv.firstElementChild);
+}
+
+// ✅ v70: Selecionar subtipo e iniciar geração de resumo
+window.selecionarSubtipoResumo = function(subtipo, topicoId, topicoNome, disciplinaNome, metaId) {
+  console.log('📋 Subtipo de resumo selecionado:', subtipo);
+  subtipoResumoSelecionado = subtipo;
+  
+  // Fechar modal de subtipo
+  document.getElementById('modal-subtipo-resumo')?.remove();
+  
+  // Executar geração diretamente
+  executarGeracaoConteudo(topicoId, topicoNome, disciplinaNome, 'resumo', null, metaId);
+}
 
 // Função para selecionar tipo de conteúdo
 window.selecionarTipoConteudo = function(tipo) {
@@ -10786,7 +10871,7 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
   const tipoDescricao = {
     'teoria': 'a teoria completa',
     'exercicios': `${quantidade || 10} exercícios`,
-    'resumo': 'o resumo esquematizado',
+    'resumo': subtipoResumoSelecionado === 'esquematizado' ? 'o resumo esquematizado' : 'o resumo escrito',
     'flashcards': `${quantidade || 15} flashcards`
   }[tipo] || 'o conteúdo';
   
@@ -10912,7 +10997,8 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       tipo: tipo,
       quantidade: quantidade,
       meta_id: metaId,
-      config_ia: iaConfig  // Enviar configurações da IA
+      config_ia: iaConfig,  // Enviar configurações da IA
+      subtipo_resumo: tipo === 'resumo' ? (subtipoResumoSelecionado || 'escrito') : undefined  // ✅ v70: subtipo de resumo
     }, {
       headers: {
         'X-User-ID': currentUser?.id || 1
@@ -10969,10 +11055,15 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       } else if (response.data.tipo === 'flashcards') {
         // Flashcards visuais
         exibirFlashcardsVisuais(response.data);
+      } else if (response.data.tipo === 'resumo' && response.data.subtipo_resumo === 'esquematizado') {
+        // ✅ v70: Resumo esquematizado com renderização visual
+        exibirResumoEsquematizado(response.data);
       } else {
-        // Teoria ou Resumo - exibição padrão formatada
+        // Teoria ou Resumo escrito - exibição padrão formatada
         exibirConteudoGerado(response.data);
       }
+      // ✅ v70: Resetar subtipo de resumo após uso
+      subtipoResumoSelecionado = null;
     } else {
       showToast('Erro ao gerar conteúdo: ' + (response.data.error || 'Erro no servidor. Tente novamente.'), 'error');
     }
@@ -11270,6 +11361,359 @@ window.exibirConteudoGerado = function(data) {
   const modalDiv = document.createElement('div');
   modalDiv.innerHTML = modalHtml;
   document.body.appendChild(modalDiv.firstElementChild);
+}
+
+// ✅ v70: Exibir resumo esquematizado com renderização visual rica
+window.exibirResumoEsquematizado = function(data) {
+  const { topico_nome, disciplina_nome, disciplina_id, topico_id, tipo, conteudo, caracteres, gerado_em, material_id, regenerado } = data;
+  
+  // Remover modais existentes
+  document.querySelectorAll('#modal-conteudo-gerado, #modal-loading-regeneracao').forEach(m => m.remove());
+  
+  // Guardar dados para salvar
+  window.conteudoGeradoOriginal = typeof conteudo === 'string' ? conteudo : (conteudo?.texto || JSON.stringify(conteudo) || '');
+  window.conteudoAtualDados = {
+    topico_nome,
+    disciplina_nome,
+    disciplina_id,
+    topico_id,
+    tipo: 'resumo',
+    subtipo_resumo: 'esquematizado',
+    material_id
+  };
+  
+  const conteudoTexto = window.conteudoGeradoOriginal;
+  const numCaracteres = caracteres || conteudoTexto.length || 0;
+  const dataGeracao = gerado_em ? new Date(gerado_em).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
+  
+  // ✅ PARSER: Converter markdown esquematizado em blocos visuais HTML
+  const conteudoVisual = parsearResumoEsquematizado(conteudoTexto);
+  
+  const modalHtml = `
+    <div id="modal-conteudo-gerado" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-6 flex-shrink-0 rounded-t-2xl">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-xl font-bold flex items-center gap-3">
+                <i class="fas fa-project-diagram"></i>
+                Resumo Esquematizado
+                ${regenerado ? '<span class="bg-amber-500 text-xs px-2 py-1 rounded-full"><i class="fas fa-magic mr-1"></i>Melhorado</span>' : ''}
+              </h2>
+              <p class="mt-1 text-sm opacity-90">${topico_nome || 'Conteúdo'}</p>
+              <p class="text-xs opacity-75">${disciplina_nome || 'Material de Estudo'}</p>
+            </div>
+            <div class="text-right">
+              <p class="text-xs opacity-75">${numCaracteres.toLocaleString()} caracteres</p>
+              <p class="text-xs opacity-75">${dataGeracao}</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Conteúdo scrollável -->
+        <div class="flex-1 overflow-y-auto p-6">
+          <div class="resumo-esquematizado space-y-4">
+            ${conteudoVisual}
+          </div>
+        </div>
+        
+        <!-- Área de Feedback -->
+        <div id="feedback-area" class="p-4 border-t ${themes[currentTheme].border} bg-gray-50">
+          <div id="feedback-buttons" class="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <span class="text-sm text-gray-600 mr-2">Este conteúdo foi útil?</span>
+            <div class="flex gap-2">
+              <button onclick="darFeedbackConteudo('bom')" 
+                      class="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition">
+                <i class="fas fa-thumbs-up"></i> Bom
+              </button>
+              <button onclick="abrirFeedbackNegativo()" 
+                      class="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
+                <i class="fas fa-thumbs-down"></i> Pode melhorar
+              </button>
+            </div>
+          </div>
+          <div id="feedback-negativo-form" class="hidden mt-4">
+            <textarea id="feedback-negativo-texto" class="w-full p-3 border rounded-lg text-sm" rows="3" placeholder="O que pode melhorar neste resumo?"></textarea>
+            <div class="flex gap-2 mt-2">
+              <button onclick="enviarFeedbackNegativo()" class="px-4 py-2 bg-[#122D6A] text-white rounded-lg text-sm hover:bg-[#0D1F4D] transition">
+                <i class="fas fa-magic mr-1"></i>Regenerar com sugestões
+              </button>
+              <button onclick="document.getElementById('feedback-negativo-form').classList.add('hidden'); document.getElementById('feedback-buttons').classList.remove('hidden')" 
+                      class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition">Cancelar</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Footer fixo -->
+        <div class="flex flex-wrap items-center justify-between gap-3 p-4 border-t ${themes[currentTheme].border} flex-shrink-0 rounded-b-2xl">
+          <div class="flex gap-2">
+            <button onclick="salvarConteudoGerado()" 
+                    class="px-4 py-2 bg-[#122D6A] text-white rounded-lg text-sm hover:bg-[#0D1F4D] transition flex items-center gap-2">
+              <i class="fas fa-save"></i> Salvar
+            </button>
+            <button onclick="copiarConteudoGerado()"
+                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition flex items-center gap-2">
+              <i class="fas fa-copy"></i> Copiar
+            </button>
+          </div>
+          <button onclick="document.getElementById('modal-conteudo-gerado').remove()"
+                  class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
+            <i class="fas fa-times mr-1"></i>Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  const modalDiv = document.createElement('div');
+  modalDiv.innerHTML = modalHtml;
+  document.body.appendChild(modalDiv.firstElementChild);
+}
+
+// ✅ v70: Parser para converter markdown de resumo esquematizado em HTML visual
+function parsearResumoEsquematizado(texto) {
+  if (!texto) return '<p class="text-gray-500">Conteúdo vazio</p>';
+  
+  let html = '';
+  const linhas = texto.split('\n');
+  let blocoAtual = null;
+  let linhasBloco = [];
+  let emTabela = false;
+  let tabelaLinhas = [];
+  
+  // Cores para diferentes seções
+  const secaoCores = [
+    { bg: 'bg-blue-50', border: 'border-blue-300', icon: 'text-blue-600', headerBg: 'bg-blue-100' },
+    { bg: 'bg-emerald-50', border: 'border-emerald-300', icon: 'text-emerald-600', headerBg: 'bg-emerald-100' },
+    { bg: 'bg-amber-50', border: 'border-amber-300', icon: 'text-amber-600', headerBg: 'bg-amber-100' },
+    { bg: 'bg-purple-50', border: 'border-purple-300', icon: 'text-purple-600', headerBg: 'bg-purple-100' },
+    { bg: 'bg-rose-50', border: 'border-rose-300', icon: 'text-rose-600', headerBg: 'bg-rose-100' },
+    { bg: 'bg-cyan-50', border: 'border-cyan-300', icon: 'text-cyan-600', headerBg: 'bg-cyan-100' },
+    { bg: 'bg-orange-50', border: 'border-orange-300', icon: 'text-orange-600', headerBg: 'bg-orange-100' },
+    { bg: 'bg-indigo-50', border: 'border-indigo-300', icon: 'text-indigo-600', headerBg: 'bg-indigo-100' }
+  ];
+  let corIdx = 0;
+  
+  // Mapa de emojis para ícones FontAwesome
+  const emojiToIcon = {
+    '📌': 'fa-thumbtack', '📋': 'fa-clipboard-list', '⚠️': 'fa-exclamation-triangle',
+    '🎯': 'fa-bullseye', '✅': 'fa-check-circle', '💡': 'fa-lightbulb',
+    '🔑': 'fa-key', '📊': 'fa-chart-bar', '🔴': 'fa-circle text-red-500',
+    '🟢': 'fa-circle text-green-500', '🟡': 'fa-circle text-yellow-500',
+    '📝': 'fa-pen', '🧠': 'fa-brain', '⭐': 'fa-star', '🔗': 'fa-link',
+    '📖': 'fa-book-open', '🏛️': 'fa-landmark', '⚖️': 'fa-balance-scale',
+    '📚': 'fa-books', '🎓': 'fa-graduation-cap', '💻': 'fa-laptop-code'
+  };
+  
+  function getIconForEmoji(text) {
+    for (const [emoji, icon] of Object.entries(emojiToIcon)) {
+      if (text.includes(emoji)) return icon;
+    }
+    return 'fa-bookmark';
+  }
+  
+  function limparEmojis(text) {
+    return text.replace(/[\u{1F300}-\u{1FBFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}]/gu, '').trim();
+  }
+  
+  function formatarInline(text) {
+    return text
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-bold text-gray-900">$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
+      .replace(/`(.+?)`/g, '<code class="bg-gray-200 text-red-700 px-1.5 py-0.5 rounded text-xs font-mono">$1</code>');
+  }
+  
+  function fecharBloco() {
+    if (!blocoAtual) return;
+    
+    const cor = secaoCores[corIdx % secaoCores.length];
+    const iconClass = getIconForEmoji(blocoAtual.raw);
+    const titulo = formatarInline(limparEmojis(blocoAtual.titulo).replace(/^#+\s*/, '').replace(/\*\*/g, ''));
+    
+    let conteudoBloco = '';
+    let temLista = false;
+    let listaItens = [];
+    
+    linhasBloco.forEach(function(l) {
+      const trimmed = l.trim();
+      if (!trimmed) {
+        if (listaItens.length > 0) {
+          conteudoBloco += renderizarLista(listaItens, cor);
+          listaItens = [];
+          temLista = false;
+        }
+        return;
+      }
+      
+      // Sub-cabeçalho (### ou **)
+      if (trimmed.match(/^###\s/)) {
+        if (listaItens.length > 0) {
+          conteudoBloco += renderizarLista(listaItens, cor);
+          listaItens = [];
+        }
+        const subTitulo = formatarInline(limparEmojis(trimmed.replace(/^###\s*/, '')).replace(/\*\*/g, ''));
+        conteudoBloco += '<h4 class="font-bold text-gray-800 mt-3 mb-1 text-sm flex items-center gap-2"><i class="fas fa-angle-right ' + cor.icon + '"></i>' + subTitulo + '</h4>';
+        return;
+      }
+      
+      // Item de lista
+      if (trimmed.match(/^[-•●▸▹→]\s/) || trimmed.match(/^\d+[\.\)]\s/)) {
+        const itemTexto = formatarInline(trimmed.replace(/^[-•●▸▹→]\s*/, '').replace(/^\d+[\.\)]\s*/, ''));
+        listaItens.push(itemTexto);
+        temLista = true;
+        return;
+      }
+      
+      // Texto normal (parágrafo)
+      if (listaItens.length > 0) {
+        conteudoBloco += renderizarLista(listaItens, cor);
+        listaItens = [];
+      }
+      conteudoBloco += '<p class="text-sm text-gray-700 leading-relaxed mb-2">' + formatarInline(trimmed) + '</p>';
+    });
+    
+    // Fechar lista pendente
+    if (listaItens.length > 0) {
+      conteudoBloco += renderizarLista(listaItens, cor);
+    }
+    
+    // Montar card da seção
+    html += '<div class="rounded-xl border-2 ' + cor.border + ' ' + cor.bg + ' overflow-hidden shadow-sm">' +
+      '<div class="' + cor.headerBg + ' px-4 py-3 flex items-center gap-3">' +
+        '<div class="w-8 h-8 rounded-lg bg-white/80 flex items-center justify-center shadow-sm">' +
+          '<i class="fas ' + iconClass + ' ' + cor.icon + '"></i>' +
+        '</div>' +
+        '<h3 class="font-bold text-gray-800">' + titulo + '</h3>' +
+      '</div>' +
+      '<div class="px-4 py-3">' + conteudoBloco + '</div>' +
+    '</div>';
+    
+    corIdx++;
+    blocoAtual = null;
+    linhasBloco = [];
+  }
+  
+  function renderizarLista(itens, cor) {
+    let listaHtml = '<div class="space-y-1.5 my-2">';
+    itens.forEach(function(item, idx) {
+      listaHtml += '<div class="flex items-start gap-2.5 text-sm">' +
+        '<div class="w-5 h-5 rounded-full ' + cor.headerBg + ' flex items-center justify-center flex-shrink-0 mt-0.5">' +
+          '<i class="fas fa-check text-[10px] ' + cor.icon + '"></i>' +
+        '</div>' +
+        '<span class="text-gray-700 leading-relaxed">' + item + '</span>' +
+      '</div>';
+    });
+    listaHtml += '</div>';
+    return listaHtml;
+  }
+  
+  // Processar tabelas separadamente
+  function processarTabela(linhasTab) {
+    if (linhasTab.length < 2) return '';
+    let tabHtml = '<div class="overflow-x-auto my-3"><table class="w-full border-collapse text-sm rounded-lg overflow-hidden">';
+    let headerProcessado = false;
+    
+    linhasTab.forEach(function(l) {
+      const trimmed = l.trim();
+      if (trimmed.match(/^[\|\s\-:]+$/) && !trimmed.match(/[a-zA-Z]/)) return; // Skip separator
+      
+      const celulas = trimmed.split('|').map(function(c) { return c.trim(); }).filter(function(c) { return c.length > 0; });
+      
+      if (!headerProcessado) {
+        tabHtml += '<thead><tr class="bg-[#122D6A] text-white">';
+        celulas.forEach(function(cel) {
+          tabHtml += '<th class="px-3 py-2 text-left font-semibold text-xs">' + formatarInline(cel) + '</th>';
+        });
+        tabHtml += '</tr></thead><tbody>';
+        headerProcessado = true;
+      } else {
+        tabHtml += '<tr class="even:bg-gray-50 hover:bg-blue-50 transition">';
+        celulas.forEach(function(cel) {
+          tabHtml += '<td class="px-3 py-2 border-t border-gray-200 text-gray-700">' + formatarInline(cel) + '</td>';
+        });
+        tabHtml += '</tr>';
+      }
+    });
+    
+    tabHtml += '</tbody></table></div>';
+    return tabHtml;
+  }
+  
+  // Parser principal
+  for (let i = 0; i < linhas.length; i++) {
+    const linha = linhas[i];
+    const trimmed = linha.trim();
+    
+    // Detectar tabela
+    if (trimmed.match(/^\|.*\|.*\|/) || (emTabela && trimmed.match(/^\|/))) {
+      if (!emTabela) {
+        emTabela = true;
+        tabelaLinhas = [];
+      }
+      tabelaLinhas.push(trimmed);
+      continue;
+    } else if (emTabela) {
+      // Terminou a tabela
+      if (blocoAtual) {
+        linhasBloco.push(processarTabela(tabelaLinhas));
+      } else {
+        html += processarTabela(tabelaLinhas);
+      }
+      tabelaLinhas = [];
+      emTabela = false;
+    }
+    
+    // Ignorar linhas vazias no início ou separadores
+    if (trimmed === '---' || trimmed === '***') {
+      continue;
+    }
+    
+    // Detectar cabeçalhos de seção (## ou # com emoji)
+    if (trimmed.match(/^#{1,2}\s/) || (trimmed.match(/^[📌📋⚠️🎯✅💡🔑📊📝🧠⭐🔗📖🏛️⚖️📚🎓💻]/) && trimmed.match(/\*\*/))) {
+      // Fechar bloco anterior
+      fecharBloco();
+      
+      blocoAtual = {
+        titulo: trimmed.replace(/^#+\s*/, ''),
+        raw: trimmed
+      };
+      linhasBloco = [];
+      continue;
+    }
+    
+    // Se estamos dentro de um bloco, adicionar a linha
+    if (blocoAtual) {
+      linhasBloco.push(linha);
+    } else {
+      // Conteúdo fora de seção — tratar como texto geral
+      if (trimmed) {
+        // Se é um cabeçalho solto, criar bloco
+        if (trimmed.match(/^\*\*[^*]+\*\*$/)) {
+          fecharBloco();
+          blocoAtual = {
+            titulo: trimmed,
+            raw: trimmed
+          };
+          linhasBloco = [];
+        } else {
+          html += '<p class="text-sm text-gray-700 mb-2">' + formatarInline(trimmed) + '</p>';
+        }
+      }
+    }
+  }
+  
+  // Fechar último bloco e tabela pendente
+  if (emTabela && tabelaLinhas.length > 0) {
+    if (blocoAtual) {
+      linhasBloco.push(processarTabela(tabelaLinhas));
+    } else {
+      html += processarTabela(tabelaLinhas);
+    }
+  }
+  fecharBloco();
+  
+  return html || '<p class="text-gray-500">Conteúdo não pôde ser formatado.</p>';
 }
 
 // Funções de feedback do conteúdo
@@ -13206,7 +13650,11 @@ function renderListaMateriais(materiais) {
   return `
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       ${materiais.map(material => {
-        const config = tipoConfig[material.tipo] || tipoConfig.anotacao;
+        let config = tipoConfig[material.tipo] || tipoConfig.anotacao;
+        // ✅ v70: Diferenciar resumo esquematizado
+        if (material.tipo === 'resumo' && material.tags && material.tags.includes('subtipo:esquematizado')) {
+          config = { icon: 'fa-project-diagram', label: 'Resumo Esquematizado', bgClass: 'bg-emerald-500/10', textClass: 'text-emerald-600' };
+        }
         const dataFormatada = new Date(material.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
         
         return `
@@ -20836,6 +21284,10 @@ window.verConteudoGerado = async function(metaId, tipo) {
         exibirExerciciosInterativos(dadosMaterial);
       } else if (tipo === 'flashcards') {
         exibirFlashcardsVisuais(dadosMaterial);
+      } else if (tipo === 'resumo' && material.tags && material.tags.includes('subtipo:esquematizado')) {
+        // ✅ v70: Resumo esquematizado
+        dadosMaterial.subtipo_resumo = 'esquematizado';
+        exibirResumoEsquematizado(dadosMaterial);
       } else {
         exibirConteudoGerado(dadosMaterial);
       }
@@ -20844,6 +21296,12 @@ window.verConteudoGerado = async function(metaId, tipo) {
     
     // 4. Não encontrou - abrir modal para gerar
     console.log(`🆕 v70: Conteúdo ${tipo} não existe, abrindo modal para gerar...`);
+    
+    if (tipo === 'resumo') {
+      // ✅ v70: Perguntar subtipo de resumo
+      abrirSubtipoResumo(meta.topico_id || null, meta.topico_nome || 'Tópico', meta.disciplina_nome || 'Disciplina', metaId);
+      return;
+    }
     
     if (tipo === 'exercicios' || tipo === 'flashcards') {
       // v71: Guardar dados no window para não depender de strings inline no onclick
@@ -26462,6 +26920,10 @@ window.visualizarMaterial = async function(materialId) {
       exibirExerciciosInterativos(dados);
     } else if (material.tipo === 'flashcards') {
       exibirFlashcardsVisuais(dados);
+    } else if (material.tipo === 'resumo' && material.tags && material.tags.includes('subtipo:esquematizado')) {
+      // ✅ v70: Resumo esquematizado com renderização visual
+      dados.subtipo_resumo = 'esquematizado';
+      exibirResumoEsquematizado(dados);
     } else if (material.arquivo_url) {
       window.open(material.arquivo_url, '_blank');
     } else {

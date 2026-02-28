@@ -19128,7 +19128,7 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
 // ============== GERAR CONTEÚDO DO TÓPICO COM IA ==============
 app.post('/api/topicos/gerar-conteudo', async (c) => {
   const { DB } = c.env
-  const { topico_id, topico_nome, disciplina_nome, tipo, quantidade, meta_id, config_ia, feedback_usuario, regenerar, user_id } = await c.req.json()
+  const { topico_id, topico_nome, disciplina_nome, tipo, quantidade, meta_id, config_ia, feedback_usuario, regenerar, user_id, subtipo_resumo } = await c.req.json()
   
   // ✅ VALIDAÇÃO: Exigir tópico para gerar conteúdo
   if (!topico_id && !topico_nome) {
@@ -19519,7 +19519,80 @@ ${caracteristicasBanca?.estilo?.tipo === 'certo_errado' ?
         const formatoResumo = iaConfig.formatoResumo === 'curto' ? 'Resumo CURTO com pontos-chave apenas.' :
                              'Resumo DETALHADO com explicações completas.';
         
-        systemPrompt = `Você é um professor especialista em concursos públicos brasileiros.
+        // ✅ v70: Diferenciar entre resumo escrito e esquematizado
+        const isEsquematizado = subtipo_resumo === 'esquematizado';
+        
+        if (isEsquematizado) {
+          systemPrompt = `Você é um professor especialista em concursos públicos brasileiros, expert em criar materiais visuais de estudo.
+
+FORMATO: Resumo ESQUEMATIZADO / VISUAL com hierarquia clara e organização por blocos.
+
+🔴 EXTENSÃO OBRIGATÓRIA: ${limiteResumo} caracteres (o usuário escolheu este tamanho)
+
+Crie um RESUMO ESQUEMATIZADO sobre o tópico "${topico_nome}" da disciplina "${disciplina_nome}".
+
+⚠️ REGRA CRÍTICA DE FORMATAÇÃO:
+O conteúdo será renderizado visualmente em CARDS/BLOCOS coloridos. Cada seção (##) vira um card separado.
+USE OBRIGATORIAMENTE esta estrutura:
+
+## 📌 CONCEITO CENTRAL
+- Definição objetiva do tema principal
+- O que é, para que serve, onde se aplica
+- Fundamento legal/teórico (se houver)
+
+## 📋 ESTRUTURA / HIERARQUIA
+- Organize os conceitos em níveis hierárquicos
+- Use sub-itens com traço (-) para detalhar
+- Classifique por categorias quando possível
+
+## 🔑 ELEMENTOS-CHAVE
+- Ponto essencial 1 — explicação breve
+- Ponto essencial 2 — explicação breve
+- Ponto essencial 3 — explicação breve
+- Ponto essencial 4 — explicação breve
+
+## 📊 COMPARATIVO / DIFERENÇAS
+| Aspecto | Conceito A | Conceito B |
+|---------|-----------|-----------|
+| Definição | ... | ... |
+| Aplicação | ... | ... |
+| Exceção | ... | ... |
+
+## ⚠️ PEGADINHAS E ARMADILHAS
+- O que parece correto mas NÃO é
+- Confusões mais comuns em prova
+- Palavras que mudam o sentido da questão
+
+## 🎯 MNEMÔNICOS E MACETES
+- Siglas para memorização
+- Frases de memorização
+- Associações mentais úteis
+
+## ✅ RESUMO RÁPIDO (REVISÃO)
+- Ponto 1: [frase curta e direta]
+- Ponto 2: [frase curta e direta]
+- Ponto 3: [frase curta e direta]
+- Ponto 4: [frase curta e direta]
+- Ponto 5: [frase curta e direta]
+
+REGRAS OBRIGATÓRIAS:
+1. Cada seção DEVE começar com ## seguido de emoji e título em MAIÚSCULA
+2. Use listas com traço (-) como marcador principal
+3. Use **negrito** para termos importantes
+4. Tabelas Markdown SÃO BEM-VINDAS para comparativos
+5. Seja CONCISO em cada item — máximo 1-2 linhas por bullet
+6. CUBRA TODOS os aspectos importantes do tópico
+7. Adicione ou remova seções conforme necessário para o tema
+8. 🔴 GERE EXATAMENTE ~${limiteResumo} caracteres
+
+🚫 PROIBIDO:
+- NÃO use texto corrido/parágrafos longos
+- NÃO inicie com saudações
+- NÃO use # (h1), apenas ## (h2) e ### (h3)
+- VÁ DIRETO AO CONTEÚDO`
+        } else {
+          // Resumo escrito (formato original)
+          systemPrompt = `Você é um professor especialista em concursos públicos brasileiros.
 
 FORMATO: ${formatoResumo}
 
@@ -19565,6 +19638,7 @@ REGRAS:
 🚫 PROIBIDO:
 - NÃO inicie com saudações
 - VÁ DIRETO AO CONTEÚDO`
+        }
         break
         
       case 'flashcards':
@@ -19762,12 +19836,17 @@ REGRAS OBRIGATÓRIAS:
           'flashcards': 'Flashcards'
         }[tipoConteudo] || 'Conteúdo'
         
-        const titulo = `${tipoLabel}: ${topico_nome || disciplina_nome}`
+        // ✅ v70: Título diferenciado para resumo esquematizado
+        const subtipoLabel = (tipoConteudo === 'resumo' && subtipo_resumo === 'esquematizado') ? 'Resumo Esquematizado' : tipoLabel
+        const titulo = `${subtipoLabel}: ${topico_nome || disciplina_nome}`
+        
+        // ✅ v70: Salvar subtipo como tag
+        const tags = (tipoConteudo === 'resumo' && subtipo_resumo) ? `subtipo:${subtipo_resumo}` : null
         
         const saveResult = await DB.prepare(`
-          INSERT INTO materiais_salvos (user_id, disciplina_id, topico_id, tipo, titulo, conteudo, meta_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).bind(parseInt(user_id_header), disciplina_id || null, topico_id || null, tipoConteudo, titulo, conteudo, meta_id || null).run()
+          INSERT INTO materiais_salvos (user_id, disciplina_id, topico_id, tipo, titulo, conteudo, meta_id, tags)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(parseInt(user_id_header), disciplina_id || null, topico_id || null, tipoConteudo, titulo, conteudo, meta_id || null, tags).run()
         
         material_id = saveResult.meta.last_row_id
         console.log(`💾 Material auto-salvo com ID: ${material_id}`)
@@ -19812,6 +19891,7 @@ REGRAS OBRIGATÓRIAS:
       disciplina_id,
       disciplina_nome,
       tipo: tipoConteudo,
+      subtipo_resumo: tipoConteudo === 'resumo' ? (subtipo_resumo || 'escrito') : undefined,
       conteudo,
       caracteres: conteudo.length,
       gerado_em: new Date().toISOString(),
