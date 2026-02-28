@@ -8202,7 +8202,79 @@ async function verificarEntrevista() {
 }
 
 // Mostrar tela quando assinatura/trial expirou
-function mostrarTelaAssinaturaExpirada(subscription) {
+async function mostrarTelaAssinaturaExpirada(subscription) {
+  // ✅ v69: Carregar planos do banco de dados
+  let plans = [];
+  try {
+    const resp = await axios.get('/api/plans/public');
+    plans = (resp.data.plans || []).filter(function(p) { return p.price > 0; });
+    // Ordenar por duration_days (mensal primeiro)
+    plans.sort(function(a, b) { return a.duration_days - b.duration_days; });
+  } catch(e) { console.error('Erro ao carregar planos:', e); }
+  
+  const mensalPlan = plans.find(function(p) { return p.duration_days >= 28 && p.duration_days <= 31; });
+  
+  let planCardsHtml = '';
+  plans.forEach(function(p, idx) {
+    const hasDiscount = p.discount_percent > 0;
+    const finalPrice = hasDiscount ? p.price * (1 - p.discount_percent / 100) : p.price;
+    const isFeatured = !!p.is_featured;
+    
+    // Tipo do plano
+    let planType = '';
+    const nameLower = (p.name || '').toLowerCase();
+    if (nameLower.includes('mensal') || (p.duration_days >= 28 && p.duration_days <= 31)) planType = 'mensal';
+    else if (nameLower.includes('trimestral') || (p.duration_days >= 80 && p.duration_days <= 100)) planType = 'trimestral';
+    else if (nameLower.includes('anual') || p.duration_days >= 360) planType = 'anual';
+    else planType = 'plano_' + p.id;
+    
+    // Economia vs mensal
+    let monthlyEquiv = '';
+    if (mensalPlan && p.duration_days > 31) {
+      const months = p.duration_days / 30;
+      monthlyEquiv = '<p class="text-emerald-600 text-xs font-semibold">≈ R$ ' + (finalPrice / months).toFixed(2).replace('.', ',') + '/mês</p>';
+    }
+    
+    // Badge de desconto
+    let discountBadge = '';
+    if (hasDiscount) {
+      discountBadge = '<div class="absolute -top-3 left-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full">' + p.discount_percent + '% OFF</div>';
+    } else if (isFeatured) {
+      discountBadge = '<div class="absolute -top-3 left-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full">MAIS POPULAR</div>';
+    }
+    
+    const isHighlighted = isFeatured || p.duration_days >= 360;
+    const cardClass = isHighlighted 
+      ? 'border-2 border-[#122D6A] rounded-xl p-4 bg-blue-50 relative cursor-pointer hover:shadow-lg transition' 
+      : 'border-2 border-gray-200 rounded-xl p-4 hover:border-[#122D6A] transition cursor-pointer';
+    
+    // Preço original riscado
+    let originalPriceHtml = '';
+    if (hasDiscount) {
+      originalPriceHtml = '<p class="text-gray-400 text-sm line-through">R$ ' + Number(p.price).toFixed(2).replace('.', ',') + '</p>';
+    }
+    
+    planCardsHtml += '<div class="' + cardClass + '" onclick="iniciarPagamento(\'' + planType + '\')">' +
+      discountBadge +
+      '<div class="flex items-center justify-between' + (discountBadge ? ' mt-2' : '') + '">' +
+        '<div>' +
+          '<h3 class="font-bold text-gray-800">' + p.name + '</h3>' +
+          '<p class="text-gray-500 text-sm">Acesso por ' + p.duration_days + ' dias</p>' +
+        '</div>' +
+        '<div class="text-right">' +
+          originalPriceHtml +
+          '<p class="text-2xl font-bold text-[#122D6A]">R$ ' + Number(finalPrice).toFixed(2).replace('.', ',') + '</p>' +
+          monthlyEquiv +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  });
+  
+  // Fallback se API falhar
+  if (!planCardsHtml) {
+    planCardsHtml = '<div class="text-center py-4 text-gray-500"><p>Erro ao carregar planos. Tente recarregar a página.</p></div>';
+  }
+
   document.getElementById('app').innerHTML = `
     <div class="min-h-screen bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F] flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
@@ -8223,38 +8295,9 @@ function mostrarTelaAssinaturaExpirada(subscription) {
             escolha um dos planos abaixo:
           </p>
           
-          <!-- Planos -->
+          <!-- Planos dinâmicos -->
           <div class="space-y-4">
-            <!-- Plano Mensal -->
-            <div class="border-2 border-gray-200 rounded-xl p-4 hover:border-[#122D6A] transition cursor-pointer" onclick="selecionarPlano('mensal')">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h3 class="font-bold text-gray-800">Premium Mensal</h3>
-                  <p class="text-gray-500 text-sm">Acesso por 30 dias</p>
-                </div>
-                <div class="text-right">
-                  <p class="text-2xl font-bold text-[#122D6A]">R$ 29,90</p>
-                  <p class="text-gray-400 text-xs">/mês</p>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Plano Anual - Destaque -->
-            <div class="border-2 border-[#122D6A] rounded-xl p-4 bg-blue-50 relative cursor-pointer" onclick="selecionarPlano('anual')">
-              <div class="absolute -top-3 left-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                MAIS POPULAR - 30% OFF
-              </div>
-              <div class="flex items-center justify-between mt-2">
-                <div>
-                  <h3 class="font-bold text-gray-800">Premium Anual</h3>
-                  <p class="text-gray-500 text-sm">Acesso por 365 dias</p>
-                </div>
-                <div class="text-right">
-                  <p class="text-2xl font-bold text-[#122D6A]">R$ 249,90</p>
-                  <p class="text-emerald-600 text-xs font-semibold">≈ R$ 20,83/mês</p>
-                </div>
-              </div>
-            </div>
+            ${planCardsHtml}
           </div>
           
           <!-- Benefícios -->
@@ -8281,47 +8324,10 @@ function mostrarTelaAssinaturaExpirada(subscription) {
   `;
 }
 
-// Selecionar plano e redirecionar para pagamento
+// Selecionar plano e redirecionar para pagamento (usa iniciarPagamento dinâmico)
 window.selecionarPlano = function(plano) {
-  const links = {
-    mensal: 'https://mpago.la/13tzztx',
-    anual: 'https://mpago.la/2ZBgz1w'
-  };
-  
-  // Salvar qual plano foi selecionado para verificar depois
-  localStorage.setItem('selectedPlan', plano);
-  localStorage.setItem('paymentInitiated', Date.now().toString());
-  
-  // Mostrar modal de confirmação
-  const modal = document.createElement('div');
-  modal.id = 'payment-modal';
-  modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[10000] p-4';
-  modal.innerHTML = `
-    <div class="bg-white rounded-2xl p-6 max-w-md w-full text-center">
-      <div class="w-16 h-16 bg-[#122D6A] rounded-full flex items-center justify-center mx-auto mb-4">
-        <i class="fas fa-credit-card text-white text-2xl"></i>
-      </div>
-      <h3 class="text-xl font-bold text-gray-800 mb-2">Finalizar Pagamento</h3>
-      <p class="text-gray-600 mb-4">
-        Você será redirecionado para o Mercado Pago para finalizar o pagamento do plano 
-        <strong>${plano === 'anual' ? 'Premium Anual (R$ 249,90)' : 'Premium Mensal (R$ 29,90)'}</strong>.
-      </p>
-      <p class="text-sm text-gray-500 mb-6">
-        Após a confirmação do pagamento, seu acesso será liberado automaticamente.
-      </p>
-      <div class="flex gap-3">
-        <button onclick="document.getElementById('payment-modal').remove()" 
-          class="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50">
-          Cancelar
-        </button>
-        <button onclick="window.open('${links[plano]}', '_blank'); document.getElementById('payment-modal').remove(); mostrarAguardandoPagamento();" 
-          class="flex-1 py-3 bg-[#122D6A] text-white rounded-xl font-semibold hover:bg-[#0D1F4D]">
-          <i class="fas fa-external-link-alt mr-2"></i>Pagar
-        </button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
+  // ✅ v69: Usar iniciarPagamento que cria preferência via API (preços do banco)
+  iniciarPagamento(plano);
 };
 
 // Mostrar tela aguardando confirmação de pagamento
@@ -14945,14 +14951,17 @@ window.abrirMinhaAssinatura = async function() {
   // Buscar detalhes da assinatura
   let subscriptionDetails = null;
   let planosInfo = null;
+  let publicPlans = [];
   
   try {
-    const [subResponse, planosResponse] = await Promise.all([
+    const [subResponse, planosResponse, plansResponse] = await Promise.all([
       axios.get('/api/subscription/details/' + currentUser.id),
-      axios.get('/api/planos/count/' + currentUser.id)
+      axios.get('/api/planos/count/' + currentUser.id),
+      axios.get('/api/plans/public')
     ]);
     subscriptionDetails = subResponse.data;
     planosInfo = planosResponse.data;
+    publicPlans = (plansResponse.data.plans || []).filter(function(p) { return p.price > 0; });
   } catch (e) {
     console.error('Erro ao buscar detalhes:', e);
     showToast('Erro ao carregar informações da assinatura', 'error');
@@ -15000,16 +15009,16 @@ window.abrirMinhaAssinatura = async function() {
   let priceSection = '';
   if (subscriptionDetails.price > 0) {
     priceSection = '<div class="text-center py-3 border-t ' + themes[currentTheme].border + '">' +
-      '<p class="' + themes[currentTheme].textSecondary + ' text-sm">Valor do plano</p>' +
-      '<p class="text-2xl font-bold ' + themes[currentTheme].text + '">R$ ' + subscriptionDetails.price.toFixed(2).replace('.', ',') + '</p>' +
+      '<p class="text-gray-700 dark:text-gray-300 text-sm">Valor do plano</p>' +
+      '<p class="text-2xl font-bold text-gray-900 dark:text-gray-100">R$ ' + subscriptionDetails.price.toFixed(2).replace('.', ',') + '</p>' +
     '</div>';
   }
   
   let startDateSection = '';
   if (subscriptionDetails.startDate) {
     startDateSection = '<div class="flex justify-between items-center py-2 border-b ' + themes[currentTheme].border + '">' +
-      '<span class="' + themes[currentTheme].textSecondary + '">Início do plano</span>' +
-      '<span class="font-medium ' + themes[currentTheme].text + '">' + formatDate(subscriptionDetails.startDate) + '</span>' +
+      '<span class="text-gray-700 dark:text-gray-300">Início do plano</span>' +
+      '<span class="font-medium text-gray-900 dark:text-gray-100">' + formatDate(subscriptionDetails.startDate) + '</span>' +
     '</div>';
   }
   
@@ -15020,11 +15029,11 @@ window.abrirMinhaAssinatura = async function() {
     const daysText = subscriptionDetails.daysRemaining === -1 ? '∞ Ilimitado' : subscriptionDetails.daysRemaining + ' dias';
     
     expiresSection = '<div class="flex justify-between items-center py-2 border-b ' + themes[currentTheme].border + '">' +
-      '<span class="' + themes[currentTheme].textSecondary + '">Válido até</span>' +
+      '<span class="text-gray-700 dark:text-gray-300">Válido até</span>' +
       '<span class="font-medium ' + daysClass + '">' + formatDate(subscriptionDetails.expiresAt) + '</span>' +
     '</div>' +
     '<div class="flex justify-between items-center py-2 border-b ' + themes[currentTheme].border + '">' +
-      '<span class="' + themes[currentTheme].textSecondary + '">Dias restantes</span>' +
+      '<span class="text-gray-700 dark:text-gray-300">Dias restantes</span>' +
       '<span class="font-bold ' + daysValueClass + '">' + daysText + '</span>' +
     '</div>';
   }
@@ -15061,46 +15070,99 @@ window.abrirMinhaAssinatura = async function() {
   }
   
   let upgradeSection = '';
-  if (['trial', 'trial_expired', 'expired', 'free'].includes(subscriptionDetails.status)) {
-    // Botões de upgrade com integração Mercado Pago
-    upgradeSection = '<div class="border-t ' + themes[currentTheme].border + ' pt-6">' +
-      '<h4 class="font-semibold ' + themes[currentTheme].text + ' mb-4">' +
-        '<i class="fas fa-arrow-up mr-2 text-emerald-500"></i>Fazer Upgrade' +
-      '</h4>' +
-      '<div class="grid gap-3">' +
-        // Plano Anual (destacado)
-        '<button onclick="iniciarPagamento(\'anual\')" ' +
+  if (['trial', 'trial_expired', 'expired', 'free'].includes(subscriptionDetails.status) && publicPlans.length > 0) {
+    // ✅ v69: Gerar seção de upgrade dinamicamente a partir dos planos do banco
+    // Ordenar: planos com mais dias primeiro (anual no topo)
+    const sortedPlans = publicPlans.slice().sort(function(a, b) { return b.duration_days - a.duration_days; });
+    
+    // Encontrar plano mensal para calcular economia
+    const mensalPlan = sortedPlans.find(function(p) { return p.duration_days >= 28 && p.duration_days <= 31; });
+    
+    let planCards = '';
+    sortedPlans.forEach(function(p) {
+      let features = [];
+      try { features = typeof p.features === 'string' ? JSON.parse(p.features) : (p.features || []); } catch(e) {}
+      
+      const hasDiscount = p.discount_percent > 0;
+      const finalPrice = hasDiscount ? p.price * (1 - p.discount_percent / 100) : p.price;
+      const isFeatured = !!p.is_featured;
+      
+      // Determinar tipo do plano para iniciarPagamento
+      let planType = '';
+      const nameLower = (p.name || '').toLowerCase();
+      if (nameLower.includes('mensal') || (p.duration_days >= 28 && p.duration_days <= 31)) planType = 'mensal';
+      else if (nameLower.includes('trimestral') || (p.duration_days >= 80 && p.duration_days <= 100)) planType = 'trimestral';
+      else if (nameLower.includes('anual') || p.duration_days >= 360) planType = 'anual';
+      else planType = 'plano_' + p.id;
+      
+      // Calcular economia vs mensal
+      let economyText = '';
+      let monthlyEquiv = '';
+      if (mensalPlan && p.duration_days > 31) {
+        const months = p.duration_days / 30;
+        const custoSemDesconto = mensalPlan.price * months;
+        const economia = custoSemDesconto - finalPrice;
+        if (economia > 0) {
+          economyText = '<span class="text-xs text-emerald-600 font-semibold">Economize R$ ' + economia.toFixed(2).replace('.', ',') + '!</span>';
+        }
+        monthlyEquiv = '<p class="text-xs text-gray-500">ou R$ ' + (finalPrice / months).toFixed(2).replace('.', ',') + '/mês</p>';
+      }
+      
+      // Período label
+      let periodLabel = '';
+      if (p.duration_days <= 31) periodLabel = '/mês';
+      else if (p.duration_days <= 100) periodLabel = '/trimestre';
+      else periodLabel = '/ano';
+      
+      // Preço original riscado se tem desconto
+      let originalPriceHtml = '';
+      if (hasDiscount) {
+        originalPriceHtml = '<p class="text-sm line-through text-gray-400">R$ ' + Number(p.price).toFixed(2).replace('.', ',') + '</p>';
+      }
+      
+      if (isFeatured || sortedPlans.indexOf(p) === 0) {
+        // Card destacado (primeiro = mais longo ou featured)
+        planCards += '<button onclick="iniciarPagamento(\'' + planType + '\')" ' +
           'class="w-full p-4 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition text-left relative overflow-hidden">' +
           '<div class="absolute top-0 right-0 bg-emerald-500 text-white text-xs px-2 py-1 rounded-bl-lg font-bold">MELHOR VALOR</div>' +
           '<div class="flex justify-between items-center">' +
             '<div>' +
-              '<h5 class="font-bold ' + themes[currentTheme].text + '">Premium Anual</h5>' +
-              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Acesso por 365 dias</p>' +
-              '<span class="text-xs text-emerald-600 font-semibold">Economize R$ 109,00!</span>' +
+              '<h5 class="font-bold text-gray-800 dark:text-gray-100">' + p.name + '</h5>' +
+              '<p class="text-sm text-gray-600 dark:text-gray-400">Acesso por ' + p.duration_days + ' dias</p>' +
+              economyText +
             '</div>' +
             '<div class="text-right">' +
-              '<p class="text-sm line-through ' + themes[currentTheme].textMuted + '">R$ 358,80</p>' +
-              '<p class="text-xl font-bold text-emerald-600">R$ 249,90</p>' +
-              '<p class="text-xs ' + themes[currentTheme].textMuted + '">ou R$ 20,83/mês</p>' +
+              originalPriceHtml +
+              '<p class="text-xl font-bold text-emerald-600">R$ ' + Number(finalPrice).toFixed(2).replace('.', ',') + '</p>' +
+              monthlyEquiv +
             '</div>' +
           '</div>' +
-        '</button>' +
-        // Plano Mensal
-        '<button onclick="iniciarPagamento(\'mensal\')" ' +
+        '</button>';
+      } else {
+        // Card normal
+        planCards += '<button onclick="iniciarPagamento(\'' + planType + '\')" ' +
           'class="w-full p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-[#122D6A] transition text-left">' +
           '<div class="flex justify-between items-center">' +
             '<div>' +
-              '<h5 class="font-bold ' + themes[currentTheme].text + '">Premium Mensal</h5>' +
-              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Acesso por 30 dias</p>' +
+              '<h5 class="font-bold text-gray-800 dark:text-gray-100">' + p.name + '</h5>' +
+              '<p class="text-sm text-gray-600 dark:text-gray-400">Acesso por ' + p.duration_days + ' dias</p>' +
             '</div>' +
             '<div class="text-right">' +
-              '<p class="text-xl font-bold text-[#122D6A]">R$ 29,90</p>' +
-              '<p class="text-xs ' + themes[currentTheme].textMuted + '">/mês</p>' +
+              originalPriceHtml +
+              '<p class="text-xl font-bold text-[#122D6A]">R$ ' + Number(finalPrice).toFixed(2).replace('.', ',') + '</p>' +
+              '<p class="text-xs text-gray-500">' + periodLabel + '</p>' +
             '</div>' +
           '</div>' +
-        '</button>' +
-      '</div>' +
-      '<p class="text-xs ' + themes[currentTheme].textMuted + ' mt-4 text-center">' +
+        '</button>';
+      }
+    });
+    
+    upgradeSection = '<div class="border-t ' + themes[currentTheme].border + ' pt-6">' +
+      '<h4 class="font-semibold text-gray-800 dark:text-gray-100 mb-4">' +
+        '<i class="fas fa-arrow-up mr-2 text-emerald-500"></i>Fazer Upgrade' +
+      '</h4>' +
+      '<div class="grid gap-3">' + planCards + '</div>' +
+      '<p class="text-xs text-gray-500 mt-4 text-center">' +
         '<i class="fas fa-lock mr-1"></i>Pagamento seguro via Mercado Pago' +
       '</p>' +
     '</div>';
@@ -15116,8 +15178,8 @@ window.abrirMinhaAssinatura = async function() {
           '<i class="fas fa-credit-card text-white text-xl"></i>' +
         '</div>' +
         '<div>' +
-          '<h3 class="text-lg font-bold ' + themes[currentTheme].text + '">Minha Assinatura</h3>' +
-          '<p class="' + themes[currentTheme].textSecondary + ' text-sm">Detalhes do seu plano</p>' +
+          '<h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Minha Assinatura</h3>' +
+          '<p class="text-gray-600 dark:text-gray-400 text-sm">Detalhes do seu plano</p>' +
         '</div>' +
       '</div>' +
       '<button onclick="document.getElementById(\'modal-assinatura\').remove()" class="' + themes[currentTheme].textSecondary + ' hover:text-gray-600">' +
@@ -15141,30 +15203,30 @@ window.abrirMinhaAssinatura = async function() {
     '</div>' +
     '<div class="space-y-3 mb-6">' +
       '<div class="flex justify-between items-center py-2 border-b ' + themes[currentTheme].border + '">' +
-        '<span class="' + themes[currentTheme].textSecondary + '">Membro desde</span>' +
-        '<span class="font-medium ' + themes[currentTheme].text + '">' + formatDate(subscriptionDetails.memberSince) + '</span>' +
+        '<span class="text-gray-700 dark:text-gray-300">Membro desde</span>' +
+        '<span class="font-medium text-gray-900 dark:text-gray-100">' + formatDate(subscriptionDetails.memberSince) + '</span>' +
       '</div>' +
       startDateSection +
       expiresSection +
     '</div>' +
     '<div class="mb-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700">' +
       '<div class="flex items-center gap-2 mb-2">' +
-        '<i class="fas fa-book-open text-blue-600 dark:text-blue-400"></i>' +
-        '<span class="font-semibold text-blue-800 dark:text-blue-300">Planos de Estudo</span>' +
+        '<i class="fas fa-book-open text-[#122D6A] dark:text-blue-400"></i>' +
+        '<span class="font-semibold text-[#122D6A] dark:text-blue-300">Planos de Estudo</span>' +
       '</div>' +
       '<div class="flex items-center justify-between">' +
-        '<span class="' + themes[currentTheme].textSecondary + '">Utilizados</span>' +
-        '<span class="font-bold ' + themes[currentTheme].text + '">' + planosInfo.total + ' de ' + planosInfo.limite + '</span>' +
+        '<span class="text-gray-700 dark:text-gray-300">Utilizados</span>' +
+        '<span class="font-bold text-gray-900 dark:text-gray-100">' + planosInfo.total + ' de ' + planosInfo.limite + '</span>' +
       '</div>' +
       '<div class="w-full bg-gray-200 rounded-full h-2 mt-2 dark:bg-gray-700">' +
-        '<div class="bg-blue-600 h-2 rounded-full transition-all" style="width: ' + progressWidth + '%"></div>' +
+        '<div class="bg-[#122D6A] h-2 rounded-full transition-all" style="width: ' + progressWidth + '%"></div>' +
       '</div>' +
-      '<p class="text-xs ' + themes[currentTheme].textMuted + ' mt-2">' + planosText + '</p>' +
+      '<p class="text-xs text-gray-600 dark:text-gray-400 mt-2">' + planosText + '</p>' +
     '</div>' +
     paymentHistorySection +
     upgradeSection +
     '<div class="mt-6 pt-4 border-t ' + themes[currentTheme].border + ' text-center">' +
-      '<p class="text-xs ' + themes[currentTheme].textMuted + '">Dúvidas sobre sua assinatura? Entre em contato pelo suporte.</p>' +
+      '<p class="text-xs text-gray-600 dark:text-gray-400">Dúvidas sobre sua assinatura? Entre em contato pelo suporte.</p>' +
     '</div>' +
   '</div>';
   

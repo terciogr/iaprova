@@ -2063,6 +2063,28 @@ app.get('/api/subscription/details/:userId', async (c) => {
     }
     
     const now = new Date()
+    
+    // ✅ v69: Buscar preços dos planos do banco de dados primeiro
+    let dbPlanPrices: Record<string, number> = {}
+    try {
+      const dbPlansAll = await DB.prepare(
+        'SELECT name, price, duration_days FROM payment_plans WHERE is_active = 1'
+      ).all() as any
+      if (dbPlansAll?.results) {
+        for (const dp of dbPlansAll.results) {
+          const nl = (dp.name || '').toLowerCase()
+          if (nl.includes('mensal') || (dp.duration_days >= 28 && dp.duration_days <= 31)) {
+            dbPlanPrices['mensal'] = dp.price
+          } else if (nl.includes('trimestral') || (dp.duration_days >= 80 && dp.duration_days <= 100)) {
+            dbPlanPrices['trimestral'] = dp.price
+          } else if (nl.includes('anual') || dp.duration_days >= 360) {
+            dbPlanPrices['anual'] = dp.price
+          }
+        }
+      }
+    } catch(e) { /* fallback */ }
+    const getPlanPrice = (plan: string) => dbPlanPrices[plan] || (plan === 'anual' ? 249.90 : 29.90)
+    
     let planInfo: any = {
       status: 'free',
       statusLabel: 'Gratuito',
@@ -2098,19 +2120,14 @@ app.get('/api/subscription/details/:userId', async (c) => {
       planInfo = {
         status: isExpired ? 'expired' : 'active',
         statusLabel: isExpired ? 'Expirado' : 'Ativo',
-        currentPlan: user.subscription_plan === 'anual' ? 'Premium Anual' : 'Premium Mensal',
-        price: user.subscription_plan === 'anual' ? 249.90 : 29.90,
+        currentPlan: user.subscription_plan === 'anual' ? 'Premium Anual' : (user.subscription_plan === 'trimestral' ? 'Premium Trimestral' : 'Premium Mensal'),
+        price: 0, // será preenchido depois com preço do banco
         startDate: user.payment_date,
         expiresAt: user.subscription_expires_at,
         daysRemaining: daysRemaining,
         isActive: !isExpired,
         paymentId: user.payment_id,
-        paymentHistory: user.payment_date ? [{
-          date: user.payment_date,
-          plan: user.subscription_plan === 'anual' ? 'Premium Anual' : 'Premium Mensal',
-          amount: user.subscription_plan === 'anual' ? 249.90 : 29.90,
-          status: 'paid'
-        }] : []
+        paymentHistory: []
       }
     }
     // Se está no período de trial
@@ -2146,6 +2163,11 @@ app.get('/api/subscription/details/:userId', async (c) => {
       }
     }
     
+    // ✅ Preencher price do planInfo com valor do banco
+    if (planInfo.status === 'active' || planInfo.status === 'expired') {
+      planInfo.price = getPlanPrice(user.subscription_plan || 'mensal')
+    }
+    
     // ✅ CORREÇÃO v11: Buscar histórico de pagamentos real da tabela payment_history
     try {
       // Criar tabela se não existir
@@ -2176,7 +2198,7 @@ app.get('/api/subscription/details/:userId', async (c) => {
           paymentId: p.payment_id,
           date: p.created_at,
           plan: p.plan === 'anual' ? 'Premium Anual' : 'Premium Mensal',
-          amount: p.amount || (p.plan === 'anual' ? 249.90 : 29.90),
+          amount: p.amount || getPlanPrice(p.plan),
           status: p.status === 'approved' ? 'paid' : p.status,
           payerEmail: p.payer_email
         }))
@@ -2187,7 +2209,7 @@ app.get('/api/subscription/details/:userId', async (c) => {
           paymentId: user.payment_id || 'legacy',
           date: user.payment_date,
           plan: user.subscription_plan === 'anual' ? 'Premium Anual' : 'Premium Mensal',
-          amount: user.subscription_plan === 'anual' ? 249.90 : 29.90,
+          amount: getPlanPrice(user.subscription_plan || 'mensal'),
           status: 'paid'
         }]
       }
@@ -2200,24 +2222,7 @@ app.get('/api/subscription/details/:userId', async (c) => {
       email: user.email,
       name: user.name,
       memberSince: user.created_at,
-      ...planInfo,
-      upgradePlans: [
-        {
-          id: 'mensal',
-          name: 'Premium Mensal',
-          price: 29.90,
-          duration: '30 dias',
-          link: PAYMENT_LINKS.mensal
-        },
-        {
-          id: 'anual',
-          name: 'Premium Anual',
-          price: 249.90,
-          duration: '365 dias',
-          savings: '30% de desconto',
-          link: PAYMENT_LINKS.anual
-        }
-      ]
+      ...planInfo
     })
     
   } catch (error) {
@@ -2226,28 +2231,44 @@ app.get('/api/subscription/details/:userId', async (c) => {
   }
 })
 
-// Obter links de pagamento
+// Obter links de pagamento (dinâmico do banco)
 app.get('/api/subscription/payment-links', async (c) => {
+  const { DB } = c.env as any
+  try {
+    const dbPlans = await DB.prepare(
+      'SELECT id, name, description, price, duration_days, features, discount_percent, is_featured FROM payment_plans WHERE is_active = 1 AND price > 0 ORDER BY price ASC'
+    ).all() as any
+    
+    if (dbPlans?.results?.length > 0) {
+      const plans = dbPlans.results.map((p: any) => {
+        let features = []
+        try { features = typeof p.features === 'string' ? JSON.parse(p.features) : (p.features || []) } catch(e) {}
+        const nameLower = (p.name || '').toLowerCase()
+        let planId = ''
+        if (nameLower.includes('mensal') || (p.duration_days >= 28 && p.duration_days <= 31)) planId = 'mensal'
+        else if (nameLower.includes('trimestral') || (p.duration_days >= 80 && p.duration_days <= 100)) planId = 'trimestral'
+        else if (nameLower.includes('anual') || p.duration_days >= 360) planId = 'anual'
+        else planId = 'plano_' + p.id
+        
+        return {
+          id: planId,
+          name: p.name,
+          price: p.price,
+          duration: p.duration_days,
+          discount_percent: p.discount_percent || 0,
+          is_featured: !!p.is_featured,
+          features
+        }
+      })
+      return c.json({ plans })
+    }
+  } catch(e) { console.error('Erro ao buscar planos:', e) }
+  
+  // Fallback
   return c.json({
     plans: [
-      {
-        id: 'mensal',
-        name: 'Premium Mensal',
-        price: 29.90,
-        duration: 30,
-        link: PAYMENT_LINKS.mensal,
-        features: ['Acesso ilimitado', 'Suporte prioritário', 'Todas as funcionalidades']
-      },
-      {
-        id: 'anual',
-        name: 'Premium Anual',
-        price: 249.90,
-        pricePerMonth: 20.83,
-        duration: 365,
-        link: PAYMENT_LINKS.anual,
-        savings: '30% de desconto',
-        features: ['Acesso ilimitado', 'Suporte VIP', 'Todas as funcionalidades', 'Novos recursos em primeira mão']
-      }
+      { id: 'mensal', name: 'Premium Mensal', price: 29.90, duration: 30, features: [] },
+      { id: 'anual', name: 'Premium Anual', price: 249.90, duration: 365, features: [] }
     ]
   })
 })
@@ -2268,10 +2289,30 @@ app.post('/api/subscription/activate', async (c) => {
   
   try {
     const now = new Date()
-    const durationDays = plan === 'anual' ? 365 : 30
+    
+    // ✅ v69: Buscar preço e duração do plano do banco de dados
+    let durationDays = plan === 'anual' ? 365 : (plan === 'trimestral' ? 90 : 30)
+    let amount = plan === 'anual' ? 249.90 : (plan === 'trimestral' ? 79.90 : 29.90)
+    try {
+      const dbPlansActivate = await DB.prepare(
+        'SELECT name, price, duration_days FROM payment_plans WHERE is_active = 1'
+      ).all() as any
+      if (dbPlansActivate?.results) {
+        for (const dp of dbPlansActivate.results) {
+          const nl = (dp.name || '').toLowerCase()
+          if ((plan === 'mensal' && (nl.includes('mensal') || (dp.duration_days >= 28 && dp.duration_days <= 31))) ||
+              (plan === 'trimestral' && (nl.includes('trimestral') || (dp.duration_days >= 80 && dp.duration_days <= 100))) ||
+              (plan === 'anual' && (nl.includes('anual') || dp.duration_days >= 360))) {
+            durationDays = dp.duration_days
+            amount = dp.price
+            break
+          }
+        }
+      }
+    } catch(e) { /* fallback to defaults */ }
+    
     const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString()
     const finalPaymentId = paymentId || 'manual_' + Date.now()
-    const amount = plan === 'anual' ? 249.90 : 29.90
     
     await DB.prepare(`
       UPDATE users SET 
@@ -2339,15 +2380,40 @@ app.post('/api/mercadopago/create-preference', async (c) => {
       return c.json({ error: 'Usuário não encontrado' }, 404)
     }
     
-    // Definir planos
-    const plans: Record<string, { title: string; price: number; days: number }> = {
-      mensal: { title: 'IAprova Premium Mensal', price: 29.90, days: 30 },
-      anual: { title: 'IAprova Premium Anual', price: 249.90, days: 365 }
+    // ✅ v69: Buscar planos do banco de dados (dinâmico)
+    const dbPlans = await DB.prepare(
+      'SELECT id, name, price, duration_days FROM payment_plans WHERE is_active = 1 ORDER BY price ASC'
+    ).all() as any
+    
+    // Mapear planos por tipo (mensal/anual/trimestral) baseado no nome ou duration_days
+    const plans: Record<string, { title: string; price: number; days: number }> = {}
+    
+    if (dbPlans?.results?.length > 0) {
+      for (const p of dbPlans.results) {
+        let key = ''
+        const nameLower = (p.name || '').toLowerCase()
+        if (nameLower.includes('mensal') || (p.duration_days >= 28 && p.duration_days <= 31)) {
+          key = 'mensal'
+        } else if (nameLower.includes('trimestral') || (p.duration_days >= 80 && p.duration_days <= 100)) {
+          key = 'trimestral'
+        } else if (nameLower.includes('anual') || p.duration_days >= 360) {
+          key = 'anual'
+        }
+        if (key && p.price > 0) {
+          plans[key] = { title: `IAprova ${p.name}`, price: p.price, days: p.duration_days }
+        }
+      }
+    }
+    
+    // Fallback se banco vazio
+    if (Object.keys(plans).length === 0) {
+      plans['mensal'] = { title: 'IAprova Premium Mensal', price: 29.90, days: 30 }
+      plans['anual'] = { title: 'IAprova Premium Anual', price: 249.90, days: 365 }
     }
     
     const selectedPlan = plans[plan]
     if (!selectedPlan) {
-      return c.json({ error: 'Plano inválido' }, 400)
+      return c.json({ error: 'Plano inválido. Planos disponíveis: ' + Object.keys(plans).join(', ') }, 400)
     }
     
     // Criar preferência no Mercado Pago
@@ -2885,6 +2951,26 @@ app.get('/obrigado-premium', async (c) => {
   const paymentId = c.req.query('payment_id') || ''
   const plan = c.req.query('plan') || 'premium'
   
+  // ✅ v69: Buscar preço real do plano do banco
+  const { DB } = c.env as any
+  let planPrice = plan === 'anual' ? 249.90 : (plan === 'trimestral' ? 79.90 : 29.90)
+  let planName = plan === 'anual' ? 'Premium Anual' : (plan === 'trimestral' ? 'Premium Trimestral' : 'Premium Mensal')
+  try {
+    const dbPlansConv = await DB.prepare('SELECT name, price, duration_days FROM payment_plans WHERE is_active = 1').all() as any
+    if (dbPlansConv?.results) {
+      for (const dp of dbPlansConv.results) {
+        const nl = (dp.name || '').toLowerCase()
+        if ((plan === 'mensal' && (nl.includes('mensal') || (dp.duration_days >= 28 && dp.duration_days <= 31))) ||
+            (plan === 'trimestral' && (nl.includes('trimestral') || (dp.duration_days >= 80 && dp.duration_days <= 100))) ||
+            (plan === 'anual' && (nl.includes('anual') || dp.duration_days >= 360))) {
+          planPrice = dp.price
+          planName = dp.name
+          break
+        }
+      }
+    }
+  } catch(e) { /* fallback */ }
+  
   const html = `
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -2902,15 +2988,15 @@ app.get('/obrigado-premium', async (c) => {
       gtag('js', new Date());
       gtag('config', 'G-94LLLJN9HM');
       
-      // ✅ Evento de conversão de compra
+      // ✅ Evento de conversão de compra (preço dinâmico do banco)
       gtag('event', 'purchase', {
         transaction_id: '${paymentId}',
-        value: ${plan === 'anual' ? '249.90' : '29.90'},
+        value: ${planPrice},
         currency: 'BRL',
         items: [{
-          item_name: 'IAprova ${plan === 'anual' ? 'Premium Anual' : 'Premium Mensal'}',
+          item_name: 'IAprova ${planName}',
           item_category: 'subscription',
-          price: ${plan === 'anual' ? '249.90' : '29.90'},
+          price: ${planPrice},
           quantity: 1
         }]
       });
@@ -2918,7 +3004,7 @@ app.get('/obrigado-premium', async (c) => {
       // Evento adicional para conversão personalizada
       gtag('event', 'conversion', {
         'send_to': 'AW-CONVERSION_ID/CONVERSION_LABEL',
-        'value': ${plan === 'anual' ? '249.90' : '29.90'},
+        'value': ${planPrice},
         'currency': 'BRL',
         'transaction_id': '${paymentId}'
       });
@@ -3168,13 +3254,29 @@ app.get('/api/admin/dashboard', async (c) => {
       // Contar usuários premium (is_premium = 1)
       const premiumTotal = await DB.prepare("SELECT COUNT(*) as count FROM users WHERE is_premium = 1").first() as any
       
-      // Calcular receita baseada nos planos
+      // Calcular receita baseada nos planos (preços do banco)
       const mensalCount = await DB.prepare("SELECT COUNT(*) as count FROM users WHERE subscription_plan = 'mensal' AND subscription_status = 'active'").first() as any
       const anualCount = await DB.prepare("SELECT COUNT(*) as count FROM users WHERE subscription_plan = 'anual' AND subscription_status = 'active'").first() as any
+      const trimestralCount = await DB.prepare("SELECT COUNT(*) as count FROM users WHERE subscription_plan = 'trimestral' AND subscription_status = 'active'").first() as any
       
-      const receitaMensal = (mensalCount?.count || 0) * 29.90
-      const receitaAnual = (anualCount?.count || 0) * 249.90
-      const receitaTotal = receitaMensal + receitaAnual
+      // ✅ v69: Buscar preços reais do banco
+      let precoMensal = 29.90, precoAnual = 249.90, precoTrimestral = 79.90
+      try {
+        const dbPrices = await DB.prepare('SELECT name, price, duration_days FROM payment_plans WHERE is_active = 1').all() as any
+        if (dbPrices?.results) {
+          for (const dp of dbPrices.results) {
+            const nl = (dp.name || '').toLowerCase()
+            if (nl.includes('mensal') || (dp.duration_days >= 28 && dp.duration_days <= 31)) precoMensal = dp.price
+            else if (nl.includes('trimestral') || (dp.duration_days >= 80 && dp.duration_days <= 100)) precoTrimestral = dp.price
+            else if (nl.includes('anual') || dp.duration_days >= 360) precoAnual = dp.price
+          }
+        }
+      } catch(e) { /* fallback */ }
+      
+      const receitaMensal = (mensalCount?.count || 0) * precoMensal
+      const receitaAnual = (anualCount?.count || 0) * precoAnual
+      const receitaTrimestral = (trimestralCount?.count || 0) * precoTrimestral
+      const receitaTotal = receitaMensal + receitaAnual + receitaTrimestral
       
       subscriptionStats = {
         total: premiumTotal?.count || 0,
@@ -4005,6 +4107,20 @@ app.get('/api/admin/financeiro', async (c) => {
   }
   
   try {
+    // ✅ v69: Buscar preços reais do banco primeiro
+    let precoMensal = 29.90, precoAnual = 249.90, precoTrimestral = 79.90
+    try {
+      const dbPricesFinanceiro = await DB.prepare('SELECT name, price, duration_days FROM payment_plans WHERE is_active = 1').all() as any
+      if (dbPricesFinanceiro?.results) {
+        for (const dp of dbPricesFinanceiro.results) {
+          const nl = (dp.name || '').toLowerCase()
+          if (nl.includes('mensal') || (dp.duration_days >= 28 && dp.duration_days <= 31)) precoMensal = dp.price
+          else if (nl.includes('trimestral') || (dp.duration_days >= 80 && dp.duration_days <= 100)) precoTrimestral = dp.price
+          else if (nl.includes('anual') || dp.duration_days >= 360) precoAnual = dp.price
+        }
+      }
+    } catch(e) { /* fallback */ }
+    
     // Período selecionado (padrão: 30 dias)
     const periodo = c.req.query('periodo') || '30' // 7, 30, 90, 365, all
     
@@ -4017,16 +4133,17 @@ app.get('/api/admin/financeiro', async (c) => {
     const { results: pagamentos } = await DB.prepare(`
       SELECT 
         u.id, u.name, u.email, u.subscription_status, u.subscription_plan,
-        u.subscription_expires_at, u.payment_id, u.payment_date, u.created_at,
-        CASE 
-          WHEN u.subscription_plan = 'anual' THEN 249.90
-          WHEN u.subscription_plan = 'mensal' THEN 29.90
-          ELSE 0
-        END as valor_pago
+        u.subscription_expires_at, u.payment_id, u.payment_date, u.created_at
       FROM users u
       WHERE u.subscription_status IN ('active', 'expired') OR u.payment_id IS NOT NULL
       ORDER BY u.payment_date DESC
     `).all()
+    
+    // Mapear valor_pago com preços do banco
+    const pagamentosComValor = (pagamentos || []).map((p: any) => ({
+      ...p,
+      valor_pago: p.subscription_plan === 'anual' ? precoAnual : (p.subscription_plan === 'trimestral' ? precoTrimestral : (p.subscription_plan === 'mensal' ? precoMensal : 0))
+    }))
     
     // Estatísticas gerais
     const totalUsuarios = await DB.prepare('SELECT COUNT(*) as count FROM users').first() as any
@@ -4034,34 +4151,40 @@ app.get('/api/admin/financeiro', async (c) => {
     const usuariosTrial = await DB.prepare(`SELECT COUNT(*) as count FROM users WHERE subscription_status = 'trial'`).first() as any
     const usuariosExpirados = await DB.prepare(`SELECT COUNT(*) as count FROM users WHERE subscription_status = 'expired'`).first() as any
     
-    // Calcular receitas por período
-    const receitaHoje = await DB.prepare(`
-      SELECT COUNT(*) as qtd, 
-             SUM(CASE WHEN subscription_plan = 'anual' THEN 249.90 WHEN subscription_plan = 'mensal' THEN 29.90 ELSE 0 END) as total
-      FROM users 
+    // ✅ v69: Calcular receitas por período (preços do banco via JS em vez de SQL hardcoded)
+    const calcReceita = (rows: any[]) => {
+      let total = 0
+      for (const r of rows) {
+        if (r.subscription_plan === 'anual') total += precoAnual
+        else if (r.subscription_plan === 'trimestral') total += precoTrimestral
+        else if (r.subscription_plan === 'mensal') total += precoMensal
+      }
+      return { qtd: rows.length, total }
+    }
+    
+    const pagHoje = await DB.prepare(`
+      SELECT subscription_plan FROM users 
       WHERE DATE(payment_date) = DATE('now') AND subscription_status IN ('active', 'expired')
-    `).first() as any
+    `).all() as any
+    const receitaHoje = calcReceita(pagHoje?.results || [])
     
-    const receita7dias = await DB.prepare(`
-      SELECT COUNT(*) as qtd,
-             SUM(CASE WHEN subscription_plan = 'anual' THEN 249.90 WHEN subscription_plan = 'mensal' THEN 29.90 ELSE 0 END) as total
-      FROM users 
+    const pag7dias = await DB.prepare(`
+      SELECT subscription_plan FROM users 
       WHERE payment_date >= DATE('now', '-7 days') AND subscription_status IN ('active', 'expired')
-    `).first() as any
+    `).all() as any
+    const receita7dias = calcReceita(pag7dias?.results || [])
     
-    const receita30dias = await DB.prepare(`
-      SELECT COUNT(*) as qtd,
-             SUM(CASE WHEN subscription_plan = 'anual' THEN 249.90 WHEN subscription_plan = 'mensal' THEN 29.90 ELSE 0 END) as total
-      FROM users 
+    const pag30dias = await DB.prepare(`
+      SELECT subscription_plan FROM users 
       WHERE payment_date >= DATE('now', '-30 days') AND subscription_status IN ('active', 'expired')
-    `).first() as any
+    `).all() as any
+    const receita30dias = calcReceita(pag30dias?.results || [])
     
-    const receitaTotal = await DB.prepare(`
-      SELECT COUNT(*) as qtd,
-             SUM(CASE WHEN subscription_plan = 'anual' THEN 249.90 WHEN subscription_plan = 'mensal' THEN 29.90 ELSE 0 END) as total
-      FROM users 
+    const pagTotal = await DB.prepare(`
+      SELECT subscription_plan FROM users 
       WHERE subscription_status IN ('active', 'expired') AND payment_id IS NOT NULL
-    `).first() as any
+    `).all() as any
+    const receitaTotal = calcReceita(pagTotal?.results || [])
     
     // Distribuição por plano
     const planoMensal = await DB.prepare(`
@@ -4092,8 +4215,11 @@ app.get('/api/admin/financeiro', async (c) => {
       ? Math.round((convertidos?.qtd / totalTrialHistorico?.qtd) * 100) 
       : 0
     
-    // MRR (Monthly Recurring Revenue) - Receita Recorrente Mensal
-    const mrr = (planoMensal?.qtd || 0) * 29.90 + ((planoAnual?.qtd || 0) * 249.90 / 12)
+    // MRR (Monthly Recurring Revenue) - Receita Recorrente Mensal (preços dinâmicos)
+    const planoTrimestral = await DB.prepare(`
+      SELECT COUNT(*) as qtd FROM users WHERE subscription_plan = 'trimestral' AND subscription_status = 'active'
+    `).first() as any
+    const mrr = (planoMensal?.qtd || 0) * precoMensal + ((planoAnual?.qtd || 0) * precoAnual / 12) + ((planoTrimestral?.qtd || 0) * precoTrimestral / 3)
     
     // ARR (Annual Recurring Revenue) - Receita Recorrente Anual
     const arr = mrr * 12
@@ -4119,13 +4245,14 @@ app.get('/api/admin/financeiro', async (c) => {
         ltv_estimado: mrr > 0 ? (mrr * 12) / Math.max(1, usuariosPremium?.count || 1) : 0
       },
       planos: {
-        mensal: { qtd: planoMensal?.qtd || 0, receita_mensal: (planoMensal?.qtd || 0) * 29.90 },
-        anual: { qtd: planoAnual?.qtd || 0, receita_mensal: ((planoAnual?.qtd || 0) * 249.90) / 12 }
+        mensal: { qtd: planoMensal?.qtd || 0, receita_mensal: (planoMensal?.qtd || 0) * precoMensal },
+        trimestral: { qtd: planoTrimestral?.qtd || 0, receita_mensal: ((planoTrimestral?.qtd || 0) * precoTrimestral) / 3 },
+        anual: { qtd: planoAnual?.qtd || 0, receita_mensal: ((planoAnual?.qtd || 0) * precoAnual) / 12 }
       },
       alertas: {
         expirando_7_dias: expirandoProximosSete?.qtd || 0
       },
-      pagamentos: pagamentos
+      pagamentos: pagamentosComValor
     })
   } catch (error: any) {
     console.error('Erro ao gerar relatório financeiro:', error)
