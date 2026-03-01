@@ -10391,24 +10391,25 @@ window.visualizarMaterialDireto = async function(materialId, tipo) {
     document.getElementById('modal-materiais-topico')?.remove();
     
     // Abrir visualização específica por tipo
-    // ✅ v69: Sempre passar objeto completo para todas as funções de exibição
+    // ✅ v71: Usar material.tipo real do banco para decisão de exibição
+    const tipoReal = material.tipo || tipo;
     const dadosExibicao = {
       topico_nome: material.topico_nome || material.titulo || 'Conteúdo',
       disciplina_nome: material.disciplina_nome || 'Geral',
       disciplina_id: material.disciplina_id,
       topico_id: material.topico_id,
-      tipo: material.tipo || tipo,
+      tipo: tipoReal,
       conteudo: material.conteudo,
       caracteres: material.conteudo ? material.conteudo.length : 0,
       gerado_em: material.created_at,
       material_id: material.id
     };
     
-    if (tipo === 'exercicios') {
+    if (tipoReal === 'exercicios') {
       exibirExerciciosInterativos(dadosExibicao);
-    } else if (tipo === 'flashcards') {
+    } else if (tipoReal === 'flashcards') {
       exibirFlashcardsVisuais(dadosExibicao);
-    } else if (tipo === 'resumo' && material.tags && material.tags.includes('subtipo:esquematizado')) {
+    } else if (tipoReal === 'resumo' && material.tags && material.tags.includes('subtipo:esquematizado')) {
       // ✅ v70: Resumo esquematizado
       dadosExibicao.subtipo_resumo = 'esquematizado';
       exibirResumoEsquematizado(dadosExibicao);
@@ -21210,13 +21211,13 @@ async function processarResumoPersonalizado(metaId) {
 
 // Ver conteúdo gerado - v70: NOVA ABORDAGEM - busca por meta_id E por disciplina/topico
 window.verConteudoGerado = async function(metaId, tipo) {
-  console.log(`👁️ v70: Verificando ${tipo} da meta ${metaId}`);
+  console.log(`👁️ v71: Verificando ${tipo} da meta ${metaId}`);
   
   const meta = window.metaAtual || { topico_nome: 'Tópico', disciplina_nome: 'Disciplina' };
-  console.log(`👁️ v70: Meta atual:`, meta);
+  console.log(`👁️ v71: Meta atual:`, meta);
   
   try {
-    // ESTRATÉGIA v70: Buscar conteúdo de MÚLTIPLAS fontes
+    // ESTRATÉGIA v71: Buscar conteúdo de MÚLTIPLAS fontes com validação de tipo
     let material = null;
     
     // 1. Tentar buscar pelo meta_id na API
@@ -21225,27 +21226,33 @@ window.verConteudoGerado = async function(metaId, tipo) {
         headers: { 'X-User-ID': currentUser?.id || localStorage.getItem('userId') }
       });
       const data = response.data;
-      console.log(`👁️ v70: Dados da meta API:`, data);
+      console.log(`👁️ v71: Dados da meta API:`, data);
       
       window.conteudosMetaCache[metaId] = data;
       
       const conteudoId = data.tipos_gerados?.[tipo];
       if (conteudoId) {
-        console.log(`📚 v70: Conteúdo encontrado por meta_id: ID=${conteudoId}`);
+        console.log(`📚 v71: Conteúdo encontrado por meta_id: ID=${conteudoId}, source=${data.tipos_sources?.[tipo]?.source}`);
         try {
           const materialRes = await axios.get(`/api/materiais/ver/${conteudoId}`);
-          material = materialRes.data;
+          const mat = materialRes.data;
+          // v71: VALIDAR que o tipo do material retornado corresponde ao tipo solicitado
+          if (mat && mat.tipo === tipo) {
+            material = mat;
+          } else if (mat) {
+            console.warn(`⚠️ v71: Material ID=${conteudoId} tem tipo='${mat.tipo}' mas pedimos '${tipo}' - descartando`);
+          }
         } catch (e) {
-          console.warn(`⚠️ v70: Material ID=${conteudoId} não encontrado:`, e.message);
+          console.warn(`⚠️ v71: Material ID=${conteudoId} não encontrado:`, e.message);
         }
       }
     } catch (e) {
-      console.warn(`⚠️ v70: Erro ao buscar conteudos/meta:`, e.message);
+      console.warn(`⚠️ v71: Erro ao buscar conteudos/meta:`, e.message);
     }
     
-    // 2. FALLBACK v70: Se não encontrou por meta_id, buscar por disciplina/topico
+    // 2. FALLBACK v71: Se não encontrou por meta_id, buscar por disciplina/topico
     if (!material && (meta.topico_id || meta.disciplina_id)) {
-      console.log(`🔍 v70: Buscando por disciplina_id=${meta.disciplina_id}, topico_id=${meta.topico_id}, tipo=${tipo}`);
+      console.log(`🔍 v71: Buscando por disciplina_id=${meta.disciplina_id}, topico_id=${meta.topico_id}, tipo=${tipo}`);
       try {
         const busca = await axios.get(`/api/materiais/buscar`, {
           params: {
@@ -21257,16 +21264,18 @@ window.verConteudoGerado = async function(metaId, tipo) {
         });
         if (busca.data?.material) {
           material = busca.data.material;
-          console.log(`📚 v70: Material encontrado por disciplina/topico: ID=${material.id}, titulo=${material.titulo}`);
+          console.log(`📚 v71: Material encontrado por disciplina/topico: ID=${material.id}, tipo=${material.tipo}, titulo=${material.titulo}`);
         }
       } catch (e) {
-        console.warn(`⚠️ v70: Busca por disciplina/topico falhou:`, e.message);
+        console.warn(`⚠️ v71: Busca por disciplina/topico falhou:`, e.message);
       }
     }
     
     // 3. Se encontrou material, exibir
     if (material && material.conteudo) {
-      console.log(`✅ v70: Exibindo material existente: ID=${material.id}, tipo=${material.tipo}`);
+      // v71: Usar material.tipo real do banco, não o tipo solicitado (proteção extra)
+      const tipoReal = material.tipo || tipo;
+      console.log(`✅ v71: Exibindo material existente: ID=${material.id}, tipoReal=${tipoReal}, tipoSolicitado=${tipo}`);
       
       const dadosMaterial = {
         conteudo: material.conteudo,
@@ -21274,17 +21283,17 @@ window.verConteudoGerado = async function(metaId, tipo) {
         disciplina_nome: material.disciplina_nome || meta.disciplina_nome || 'Geral',
         disciplina_id: material.disciplina_id || meta.disciplina_id,
         topico_id: material.topico_id || meta.topico_id,
-        tipo: material.tipo || tipo,
+        tipo: tipoReal,
         material_id: material.id,
         caracteres: material.conteudo ? material.conteudo.length : 0,
         gerado_em: material.created_at
       };
       
-      if (tipo === 'exercicios') {
+      if (tipoReal === 'exercicios') {
         exibirExerciciosInterativos(dadosMaterial);
-      } else if (tipo === 'flashcards') {
+      } else if (tipoReal === 'flashcards') {
         exibirFlashcardsVisuais(dadosMaterial);
-      } else if (tipo === 'resumo' && material.tags && material.tags.includes('subtipo:esquematizado')) {
+      } else if (tipoReal === 'resumo' && material.tags && material.tags.includes('subtipo:esquematizado')) {
         // ✅ v70: Resumo esquematizado
         dadosMaterial.subtipo_resumo = 'esquematizado';
         exibirResumoEsquematizado(dadosMaterial);
@@ -21295,7 +21304,7 @@ window.verConteudoGerado = async function(metaId, tipo) {
     }
     
     // 4. Não encontrou - abrir modal para gerar
-    console.log(`🆕 v70: Conteúdo ${tipo} não existe, abrindo modal para gerar...`);
+    console.log(`🆕 v71: Conteúdo ${tipo} não existe, abrindo modal para gerar...`);
     
     if (tipo === 'resumo') {
       // ✅ v70: Perguntar subtipo de resumo

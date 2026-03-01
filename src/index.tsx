@@ -15809,15 +15809,7 @@ app.get('/api/conteudos/meta/:meta_id', async (c) => {
   const meta_id = parseInt(c.req.param('meta_id'))
 
   try {
-    // 1. Buscar de conteudo_estudo
-    const { results: fromConteudoEstudo } = await DB.prepare(`
-      SELECT id, tipo, created_at, disciplina_id, 'conteudo_estudo' as source
-      FROM conteudo_estudo 
-      WHERE meta_id = ?
-      ORDER BY created_at DESC
-    `).bind(meta_id).all()
-
-    // 2. Buscar de materiais_salvos DIRETO pelo meta_id (mais confiável)
+    // v71: PRIORIDADE 1 - Buscar de materiais_salvos DIRETO pelo meta_id (fonte mais confiável)
     const { results: fromMateriaisMetaId } = await DB.prepare(`
       SELECT id, tipo, created_at, disciplina_id, 'materiais_salvos' as source
       FROM materiais_salvos 
@@ -15825,7 +15817,34 @@ app.get('/api/conteudos/meta/:meta_id', async (c) => {
       ORDER BY created_at DESC
     `).bind(meta_id).all()
 
-    // 3. Buscar info da meta para fallback por disciplina/tópico
+    // v71: PRIORIDADE 2 - Buscar de conteudo_estudo (extrair material_id do JSON conteudo)
+    const { results: rawConteudoEstudo } = await DB.prepare(`
+      SELECT id, tipo, created_at, disciplina_id, conteudo, 'conteudo_estudo' as source
+      FROM conteudo_estudo 
+      WHERE meta_id = ?
+      ORDER BY created_at DESC
+    `).bind(meta_id).all()
+    
+    // v71: Extrair material_id real do campo conteudo JSON de conteudo_estudo
+    const fromConteudoEstudo = rawConteudoEstudo.map((r: any) => {
+      let materialId = null
+      try {
+        if (r.conteudo) {
+          const parsed = JSON.parse(r.conteudo)
+          materialId = parsed.material_id || null
+        }
+      } catch (e) { /* conteudo não é JSON válido, ignorar */ }
+      return {
+        id: materialId || r.id, // usar material_id se disponível, senão o id próprio
+        tipo: r.tipo,
+        created_at: r.created_at,
+        disciplina_id: r.disciplina_id,
+        source: materialId ? 'materiais_salvos' : 'conteudo_estudo', // se tem material_id, a fonte real é materiais_salvos
+        original_conteudo_estudo_id: r.id
+      }
+    })
+
+    // v71: PRIORIDADE 3 - Buscar info da meta para fallback por disciplina/tópico
     const meta = await DB.prepare(`
       SELECT disciplina_id, topicos_sugeridos 
       FROM metas_semana 
@@ -15849,19 +15868,22 @@ app.get('/api/conteudos/meta/:meta_id', async (c) => {
       }
     }
 
-    // Combinar resultados (priorizar meta_id direto, depois fallback)
-    const allResults = [...fromConteudoEstudo, ...fromMateriaisMetaId, ...fromMateriaisFallback]
+    // v71: Combinar resultados - PRIORIDADE: materiais_salvos (meta_id direto) > conteudo_estudo (com material_id) > fallback
+    const allResults = [...fromMateriaisMetaId, ...fromConteudoEstudo, ...fromMateriaisFallback]
     
-    // Criar mapa de tipos (primeiro encontrado vence)
+    // v71: Criar mapa de tipos (primeiro encontrado vence - por isso materiais_salvos vem primeiro)
     const tiposMap: Record<string, { id: number, source: string }> = {}
     for (const r of allResults) {
-      if (!tiposMap[r.tipo as string]) {
-        tiposMap[r.tipo as string] = { 
+      const tipo = r.tipo as string
+      if (!tiposMap[tipo]) {
+        tiposMap[tipo] = { 
           id: r.id as number, 
           source: r.source as string 
         }
       }
     }
+    
+    console.log(`📋 v71: Meta ${meta_id} - tipos encontrados:`, JSON.stringify(tiposMap))
 
     return c.json({
       meta_id,
@@ -15873,7 +15895,8 @@ app.get('/api/conteudos/meta/:meta_id', async (c) => {
       tem_teoria: !!tiposMap['teoria'],
       tem_exercicios: !!tiposMap['exercicios'],
       tem_resumo: !!tiposMap['resumo'],
-      tem_flashcards: !!tiposMap['flashcards']
+      tem_flashcards: !!tiposMap['flashcards'],
+      tem_resumo_personalizado: !!tiposMap['resumo_personalizado']
     })
   } catch (error: any) {
     console.error('Erro ao buscar conteúdos da meta:', error)
