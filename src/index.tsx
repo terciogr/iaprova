@@ -19542,37 +19542,38 @@ ${caracteristicasBanca?.estilo?.tipo === 'certo_errado' ?
         const formatoResumo = iaConfig.formatoResumo === 'curto' ? 'Resumo CURTO com pontos-chave apenas.' :
                              'Resumo DETALHADO com explicações completas.';
         
-        // ✅ v70: Diferenciar entre resumo escrito e esquematizado
-        const isEsquematizado = subtipo_resumo === 'esquematizado';
+        // ✅ v71: Resumo é SEMPRE esquematizado
+        const isEsquematizado = true;
         
-        if (isEsquematizado) {
-          systemPrompt = `Você é um professor especialista em concursos públicos brasileiros, expert em criar materiais visuais de estudo.
+        systemPrompt = `Você é um professor especialista em concursos públicos brasileiros, expert em criar materiais visuais de estudo extremamente didáticos e completos.
 
-FORMATO: Resumo ESQUEMATIZADO / VISUAL com hierarquia clara e organização por blocos.
+FORMATO: Resumo ESQUEMATIZADO / VISUAL com hierarquia clara e organização por blocos coloridos.
 
-🔴 EXTENSÃO OBRIGATÓRIA: ${limiteResumo} caracteres (o usuário escolheu este tamanho)
-
-Crie um RESUMO ESQUEMATIZADO sobre o tópico "${topico_nome}" da disciplina "${disciplina_nome}".
+Crie um RESUMO ESQUEMATIZADO COMPLETO e DETALHADO sobre o tópico "${topico_nome}" da disciplina "${disciplina_nome}".
 
 ⚠️ REGRA CRÍTICA DE FORMATAÇÃO:
 O conteúdo será renderizado visualmente em CARDS/BLOCOS coloridos. Cada seção (##) vira um card separado.
-USE OBRIGATORIAMENTE esta estrutura:
+NÃO se limite em tamanho — seja o mais COMPLETO possível. Cubra TODOS os aspectos do tema de forma detalhada.
+
+USE OBRIGATORIAMENTE esta estrutura (adicione ou remova seções conforme o tema exigir):
 
 ## 📌 CONCEITO CENTRAL
-- Definição objetiva do tema principal
+- Definição objetiva e completa do tema principal
 - O que é, para que serve, onde se aplica
-- Fundamento legal/teórico (se houver)
+- Fundamento legal/teórico (artigos de lei, se houver)
+- Contexto histórico ou doutrinário relevante
 
 ## 📋 ESTRUTURA / HIERARQUIA
-- Organize os conceitos em níveis hierárquicos
-- Use sub-itens com traço (-) para detalhar
-- Classifique por categorias quando possível
+- Organize TODOS os conceitos em níveis hierárquicos claros
+- Use sub-itens com traço (-) para detalhar cada nível
+- Classifique por categorias, tipos, espécies quando possível
+- Mostre a relação entre os elementos
 
 ## 🔑 ELEMENTOS-CHAVE
-- Ponto essencial 1 — explicação breve
-- Ponto essencial 2 — explicação breve
-- Ponto essencial 3 — explicação breve
-- Ponto essencial 4 — explicação breve
+- Liste TODOS os pontos essenciais do tema — cada um com explicação clara
+- Use **negrito** nos termos mais cobrados em prova
+- Detalhe cada ponto com 1-3 linhas explicativas
+- Inclua exemplos práticos quando útil
 
 ## 📊 COMPARATIVO / DIFERENÇAS
 | Aspecto | Conceito A | Conceito B |
@@ -19580,88 +19581,48 @@ USE OBRIGATORIAMENTE esta estrutura:
 | Definição | ... | ... |
 | Aplicação | ... | ... |
 | Exceção | ... | ... |
+| Fundamentação | ... | ... |
+(Inclua tabelas comparativas sempre que houver conceitos similares para diferenciar)
 
-## ⚠️ PEGADINHAS E ARMADILHAS
-- O que parece correto mas NÃO é
-- Confusões mais comuns em prova
-- Palavras que mudam o sentido da questão
+## 📜 FUNDAMENTAÇÃO LEGAL (se aplicável)
+- Artigos de lei relevantes com transcrição resumida
+- Súmulas, jurisprudência ou entendimentos doutrinários
+- Dispositivos constitucionais relacionados
+
+## ⚠️ PEGADINHAS E ARMADILHAS DE PROVA
+- O que parece correto mas NÃO é — explique o porquê
+- Confusões mais comuns em questões de concurso
+- Palavras-chave que mudam completamente o sentido
+- Exceções que bancas adoram cobrar
 
 ## 🎯 MNEMÔNICOS E MACETES
-- Siglas para memorização
-- Frases de memorização
+- Siglas criativas para memorização
+- Frases de memorização fáceis de lembrar
 - Associações mentais úteis
+- Técnicas de fixação
 
-## ✅ RESUMO RÁPIDO (REVISÃO)
+## ✅ RESUMO RÁPIDO PARA REVISÃO
 - Ponto 1: [frase curta e direta]
 - Ponto 2: [frase curta e direta]
 - Ponto 3: [frase curta e direta]
-- Ponto 4: [frase curta e direta]
-- Ponto 5: [frase curta e direta]
+(Liste TODOS os pontos que sintetizam o tema)
 
 REGRAS OBRIGATÓRIAS:
 1. Cada seção DEVE começar com ## seguido de emoji e título em MAIÚSCULA
 2. Use listas com traço (-) como marcador principal
-3. Use **negrito** para termos importantes
-4. Tabelas Markdown SÃO BEM-VINDAS para comparativos
-5. Seja CONCISO em cada item — máximo 1-2 linhas por bullet
-6. CUBRA TODOS os aspectos importantes do tópico
-7. Adicione ou remova seções conforme necessário para o tema
-8. 🔴 GERE EXATAMENTE ~${limiteResumo} caracteres
+3. Use **negrito** para termos importantes e palavras-chave de prova
+4. Tabelas Markdown SÃO BEM-VINDAS para comparativos — use sempre que possível
+5. Seja DETALHADO — cubra o tema INTEGRALMENTE, sem cortar conteúdo
+6. Adicione quantas seções forem necessárias — não se limite às sugeridas acima
+7. Se o tema tiver classificações, tipos ou espécies, DETALHE CADA UM
+8. Inclua exemplos práticos quando ajudar na compreensão
 
 🚫 PROIBIDO:
-- NÃO use texto corrido/parágrafos longos
-- NÃO inicie com saudações
+- NÃO use texto corrido/parágrafos longos — sempre use listas e bullets
+- NÃO inicie com saudações ou introduções genéricas
 - NÃO use # (h1), apenas ## (h2) e ### (h3)
+- NÃO corte conteúdo por limite de tamanho — gere TUDO que for necessário
 - VÁ DIRETO AO CONTEÚDO`
-        } else {
-          // Resumo escrito (formato original)
-          systemPrompt = `Você é um professor especialista em concursos públicos brasileiros.
-
-FORMATO: ${formatoResumo}
-
-🔴 EXTENSÃO OBRIGATÓRIA: ${limiteResumo} caracteres (o usuário escolheu este tamanho)
-Se o usuário escolheu 1 página (~2500 chars): seja mais conciso
-Se escolheu 2 páginas (~5000 chars): desenvolva mais
-Se escolheu 3 páginas (~7500 chars): seja bem detalhado
-
-Crie um RESUMO sobre o tópico "${topico_nome}" da disciplina "${disciplina_nome}".
-
-ESTRUTURA OBRIGATÓRIA:
-📌 **CONCEITO PRINCIPAL**
-[Definição clara e objetiva]
-
-📋 **PONTOS-CHAVE**
-• Ponto 1 - explicação
-• Ponto 2 - explicação
-• Ponto 3 - explicação
-[Adicione quantos pontos forem necessários]
-
-⚠️ **ATENÇÃO - PEGADINHAS DE PROVA**
-• O que parece mas não é
-• Erros comuns dos candidatos
-• Palavras-chave que enganam
-
-🎯 **MNEMÔNICOS E MACETES**
-[Técnicas para memorização]
-
-✅ **PALAVRAS-CHAVE PARA PROVA**
-[Lista das palavras que indicam a resposta correta]
-
-REGRAS:
-- Seja OBJETIVO e DIRETO
-- Use bullets para facilitar memorização
-- 🔴 GERE EXATAMENTE ~${limiteResumo} caracteres (o usuário escolheu este tamanho!)
-- NUNCA deixe nenhum aspecto importante do tópico sem cobrir
-- Formate em Markdown
-
-📊 REGRAS PARA TABELAS:
-- EVITE tabelas - prefira listas
-- Se usar tabela, formate corretamente em Markdown
-
-🚫 PROIBIDO:
-- NÃO inicie com saudações
-- VÁ DIRETO AO CONTEÚDO`
-        }
         break
         
       case 'flashcards':
@@ -19730,18 +19691,19 @@ REGRAS OBRIGATÓRIAS:
     // ✅ SEMPRE usar temperatura BAIXA (0.2) para conteúdo mais objetivo e consistente
     const temperaturaFixa = 0.2
     
-    // ✅ Calcular maxOutputTokens baseado no tipo e extensão
-    // 1 token ≈ 4 caracteres, então multiplicamos por fator de segurança
+    // ✅ v71: Calcular maxOutputTokens baseado no tipo e extensão
     let maxTokens = 8192 // padrão alto
     if (tipoConteudo === 'flashcards') {
-      maxTokens = Math.max(qtdFlashcards * 300, 6000) // Aumentado para garantir todos os flashcards
+      maxTokens = Math.max(qtdFlashcards * 300, 6000)
     } else if (tipoConteudo === 'exercicios') {
-      maxTokens = Math.max(qtdExercicios * 600, 8000) // Aumentado para garantir todas as questões
+      maxTokens = Math.max(qtdExercicios * 600, 8000)
+    } else if (tipoConteudo === 'resumo') {
+      // v71: Resumo esquematizado completo - sem limite de tamanho
+      maxTokens = 16000
     } else {
-      // Para teoria/resumo: garantir tokens suficientes para a extensão desejada
-      // Para 'completo' (10000 chars), precisamos de pelo menos 8000 tokens
+      // Para teoria: garantir tokens suficientes para a extensão desejada
       if (iaConfig.extensao === 'completo') {
-        maxTokens = 12000 // Garantir espaço suficiente para conteúdo completo
+        maxTokens = 12000
       } else {
         maxTokens = Math.max(Math.ceil(limiteCaracteres / 1.5), 4000)
       }
@@ -19859,12 +19821,12 @@ REGRAS OBRIGATÓRIAS:
           'flashcards': 'Flashcards'
         }[tipoConteudo] || 'Conteúdo'
         
-        // ✅ v70: Título diferenciado para resumo esquematizado
-        const subtipoLabel = (tipoConteudo === 'resumo' && subtipo_resumo === 'esquematizado') ? 'Resumo Esquematizado' : tipoLabel
+        // ✅ v71: Resumo é sempre esquematizado
+        const subtipoLabel = (tipoConteudo === 'resumo') ? 'Resumo Esquematizado' : tipoLabel
         const titulo = `${subtipoLabel}: ${topico_nome || disciplina_nome}`
         
-        // ✅ v70: Salvar subtipo como tag
-        const tags = (tipoConteudo === 'resumo' && subtipo_resumo) ? `subtipo:${subtipo_resumo}` : null
+        // ✅ v71: Sempre salvar tag de esquematizado para resumos
+        const tags = (tipoConteudo === 'resumo') ? 'subtipo:esquematizado' : null
         
         const saveResult = await DB.prepare(`
           INSERT INTO materiais_salvos (user_id, disciplina_id, topico_id, tipo, titulo, conteudo, meta_id, tags)
@@ -19914,7 +19876,7 @@ REGRAS OBRIGATÓRIAS:
       disciplina_id,
       disciplina_nome,
       tipo: tipoConteudo,
-      subtipo_resumo: tipoConteudo === 'resumo' ? (subtipo_resumo || 'escrito') : undefined,
+      subtipo_resumo: tipoConteudo === 'resumo' ? 'esquematizado' : undefined,
       conteudo,
       caracteres: conteudo.length,
       gerado_em: new Date().toISOString(),
