@@ -22325,6 +22325,82 @@ app.get('/api/admin/analytics', async (c) => {
   }
 })
 
+// ============== CONCURSOS PÚBLICOS API ==============
+// v72: Proxy para API de concursos públicos do Brasil
+
+const UFS_BRASIL = ['ac','al','ap','am','ba','ce','df','es','go','ma','mt','ms','mg','pa','pb','pr','pe','pi','rj','rn','rs','ro','rr','sc','sp','se','to']
+
+// Buscar concursos de uma UF específica
+app.get('/api/concursos/:uf', async (c) => {
+  const uf = c.req.param('uf').toLowerCase()
+  
+  if (!UFS_BRASIL.includes(uf)) {
+    return c.json({ error: 'UF inválida' }, 400)
+  }
+  
+  try {
+    const response = await fetch(`https://concursos-api.deno.dev/${uf}`, {
+      headers: { 'Accept': 'application/json' }
+    })
+    const data = await response.json() as any
+    return c.json(data)
+  } catch (error: any) {
+    console.error(`Erro ao buscar concursos ${uf}:`, error)
+    return c.json({ error: 'Erro ao buscar concursos', details: error.message }, 500)
+  }
+})
+
+// Buscar concursos de TODAS as UFs (agregado)
+app.get('/api/concursos', async (c) => {
+  try {
+    const results: any[] = []
+    
+    // Buscar todas as UFs em paralelo (em lotes de 5 com delay para não sobrecarregar API externa)
+    for (let i = 0; i < UFS_BRASIL.length; i += 5) {
+      const batch = UFS_BRASIL.slice(i, i + 5)
+      const promises = batch.map(async (uf) => {
+        try {
+          const response = await fetch(`https://concursos-api.deno.dev/${uf}`, {
+            headers: { 'Accept': 'application/json' }
+          })
+          const data = await response.json() as any
+          // Se veio com a message de "dados sendo coletados", retry uma vez após delay
+          if (data.message && !data.concursos_abertos) {
+            await new Promise(r => setTimeout(r, 1500))
+            try {
+              const retryResp = await fetch(`https://concursos-api.deno.dev/${uf}`, {
+                headers: { 'Accept': 'application/json' }
+              })
+              const retryData = await retryResp.json() as any
+              if (retryData.concursos_abertos || retryData.concursos_previstos) {
+                return retryData
+              }
+            } catch (e) { /* usar dados originais */ }
+          }
+          return data
+        } catch (e) {
+          return { uf, estado: uf.toUpperCase(), concursos_abertos: [], concursos_previstos: [], error: true }
+        }
+      })
+      const batchResults = await Promise.all(promises)
+      results.push(...batchResults)
+      // Pequeno delay entre batches
+      if (i + 5 < UFS_BRASIL.length) {
+        await new Promise(r => setTimeout(r, 300))
+      }
+    }
+    
+    return c.json({ 
+      success: true, 
+      total_ufs: results.length,
+      estados: results 
+    })
+  } catch (error: any) {
+    console.error('Erro ao buscar todos concursos:', error)
+    return c.json({ error: 'Erro ao buscar concursos', details: error.message }, 500)
+  }
+})
+
 // ============== ROTA CATCH-ALL (SPA) ==============
 // IMPORTANTE: Esta rota deve vir por ÚLTIMO, após todas as outras rotas de API e arquivos estáticos
 // Ela captura qualquer URL não definida anteriormente e retorna o HTML do SPA

@@ -1171,6 +1171,19 @@ function createUnifiedFAB() {
         </button>
       </div>
       
+      <!-- Botão Concursos Públicos -->
+      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
+        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
+          Concursos
+        </span>
+        <button 
+          onclick="abrirModalConcursos(); toggleFabMenu(); event.stopPropagation();"
+          class="w-12 h-12 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
+          title="Concursos Públicos">
+          <i class="fas fa-landmark text-lg"></i>
+        </button>
+      </div>
+      
       <!-- Botão Instalar App -->
       <div id="fab-install-app" class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
         <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
@@ -1262,6 +1275,10 @@ function createUnifiedFAB() {
       
       #fab-menu.open .fab-item:nth-child(8) {
         transition-delay: 0.4s;
+      }
+      
+      #fab-menu.open .fab-item:nth-child(9) {
+        transition-delay: 0.45s;
       }
       
       #fab-main.open #fab-icon {
@@ -23158,6 +23175,523 @@ function addChatMessage(role, content, id = null) {
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
   
   chatHistory.push({ role, content });
+}
+
+// ============== CONCURSOS PÚBLICOS - MAPA DO BRASIL ==============
+// v72: Sistema completo de busca de concursos públicos
+
+const UFS_INFO = {
+  ac: { nome: 'Acre', regiao: 'Norte' },
+  al: { nome: 'Alagoas', regiao: 'Nordeste' },
+  ap: { nome: 'Amapá', regiao: 'Norte' },
+  am: { nome: 'Amazonas', regiao: 'Norte' },
+  ba: { nome: 'Bahia', regiao: 'Nordeste' },
+  ce: { nome: 'Ceará', regiao: 'Nordeste' },
+  df: { nome: 'Distrito Federal', regiao: 'Centro-Oeste' },
+  es: { nome: 'Espírito Santo', regiao: 'Sudeste' },
+  go: { nome: 'Goiás', regiao: 'Centro-Oeste' },
+  ma: { nome: 'Maranhão', regiao: 'Nordeste' },
+  mt: { nome: 'Mato Grosso', regiao: 'Centro-Oeste' },
+  ms: { nome: 'Mato Grosso do Sul', regiao: 'Centro-Oeste' },
+  mg: { nome: 'Minas Gerais', regiao: 'Sudeste' },
+  pa: { nome: 'Pará', regiao: 'Norte' },
+  pb: { nome: 'Paraíba', regiao: 'Nordeste' },
+  pr: { nome: 'Paraná', regiao: 'Sul' },
+  pe: { nome: 'Pernambuco', regiao: 'Nordeste' },
+  pi: { nome: 'Piauí', regiao: 'Nordeste' },
+  rj: { nome: 'Rio de Janeiro', regiao: 'Sudeste' },
+  rn: { nome: 'Rio Grande do Norte', regiao: 'Nordeste' },
+  rs: { nome: 'Rio Grande do Sul', regiao: 'Sul' },
+  ro: { nome: 'Rondônia', regiao: 'Norte' },
+  rr: { nome: 'Roraima', regiao: 'Norte' },
+  sc: { nome: 'Santa Catarina', regiao: 'Sul' },
+  sp: { nome: 'São Paulo', regiao: 'Sudeste' },
+  se: { nome: 'Sergipe', regiao: 'Nordeste' },
+  to: { nome: 'Tocantins', regiao: 'Norte' }
+};
+
+let concursosCache = {};
+let concursosFilterUF = '';
+let concursosFilterTipo = 'todos'; // todos, abertos, previstos
+
+window.abrirModalConcursos = async function() {
+  // Modal principal
+  const modal = document.createElement('div');
+  modal.id = 'modal-concursos';
+  modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[10000] p-2 md:p-4';
+  modal.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-[#0A1839] to-[#122D6A] p-4 md:p-5 text-white flex-shrink-0">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 md:w-12 md:h-12 bg-white/15 rounded-xl flex items-center justify-center">
+              <i class="fas fa-landmark text-xl md:text-2xl"></i>
+            </div>
+            <div>
+              <h2 class="text-lg md:text-xl font-bold">Concursos Públicos</h2>
+              <p class="text-blue-200 text-xs md:text-sm">Abertos e previstos em todo o Brasil</p>
+            </div>
+          </div>
+          <button onclick="document.getElementById('modal-concursos')?.remove()" class="w-9 h-9 md:w-10 md:h-10 bg-white/15 rounded-full flex items-center justify-center hover:bg-white/25 transition">
+            <i class="fas fa-times text-lg"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Filtros -->
+      <div class="px-4 md:px-5 py-3 border-b ${themes[currentTheme].border} flex-shrink-0">
+        <div class="flex flex-wrap items-center gap-2 md:gap-3">
+          <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+            <i class="fas fa-filter text-[#2A4A9F] text-sm"></i>
+            <select id="concursos-filtro-uf" onchange="filtrarConcursosUF(this.value)" class="flex-1 text-sm border ${themes[currentTheme].border} rounded-lg px-3 py-2 ${themes[currentTheme].card} ${themes[currentTheme].text} focus:ring-2 focus:ring-[#2A4A9F] focus:outline-none">
+              <option value="">Todos os estados</option>
+              ${Object.entries(UFS_INFO).sort((a,b) => a[1].nome.localeCompare(b[1].nome)).map(([uf, info]) => 
+                '<option value="' + uf + '">' + info.nome + ' (' + uf.toUpperCase() + ')</option>'
+              ).join('')}
+            </select>
+          </div>
+          <div class="flex rounded-lg border ${themes[currentTheme].border} overflow-hidden">
+            <button id="btn-filtro-todos" onclick="filtrarConcursosTipo('todos')" class="px-3 py-2 text-xs font-medium bg-[#122D6A] text-white transition">Todos</button>
+            <button id="btn-filtro-abertos" onclick="filtrarConcursosTipo('abertos')" class="px-3 py-2 text-xs font-medium ${themes[currentTheme].text} hover:bg-[#E8EDF5] transition">Abertos</button>
+            <button id="btn-filtro-previstos" onclick="filtrarConcursosTipo('previstos')" class="px-3 py-2 text-xs font-medium ${themes[currentTheme].text} hover:bg-[#E8EDF5] transition">Previstos</button>
+          </div>
+          <div class="flex items-center gap-2 flex-1 min-w-[180px]">
+            <input id="concursos-busca-orgao" type="text" placeholder="Buscar órgão..." oninput="filtrarConcursosBusca(this.value)" class="flex-1 text-sm border ${themes[currentTheme].border} rounded-lg px-3 py-2 ${themes[currentTheme].card} ${themes[currentTheme].text} focus:ring-2 focus:ring-[#2A4A9F] focus:outline-none" />
+          </div>
+        </div>
+      </div>
+      
+      <!-- Content -->
+      <div class="flex-1 overflow-y-auto p-4 md:p-5 space-y-5" id="concursos-content">
+        <div class="flex items-center justify-center py-12">
+          <div class="text-center">
+            <i class="fas fa-spinner fa-spin text-4xl text-[#2A4A9F] mb-3"></i>
+            <p class="${themes[currentTheme].textSecondary} text-sm">Carregando concursos de todos os estados...</p>
+            <p class="${themes[currentTheme].textMuted} text-xs mt-1">Isso pode levar alguns segundos</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector('.fixed').addEventListener('click', function(e) {
+    if (e.target === modal) modal.remove();
+  });
+  
+  // Carregar dados
+  await carregarConcursosTodos();
+};
+
+async function carregarConcursosTodos() {
+  try {
+    // Primeiro carrega o panorama geral (pode demorar)
+    const response = await axios.get('/api/concursos', { timeout: 120000 });
+    const data = response.data;
+    
+    if (data.success && data.estados) {
+      concursosCache = {};
+      data.estados.forEach(estado => {
+        if (estado.uf) {
+          const uf = estado.uf.toLowerCase();
+          // Só cachear se tem dados reais
+          if (estado.concursos_abertos || estado.concursos_previstos) {
+            concursosCache[uf] = estado;
+          }
+        }
+      });
+    }
+    
+    renderizarConcursosContent();
+  } catch (error) {
+    console.error('Erro ao carregar concursos:', error);
+    const content = document.getElementById('concursos-content');
+    if (content) {
+      content.innerHTML = `
+        <div class="text-center py-12">
+          <i class="fas fa-exclamation-triangle text-4xl text-amber-500 mb-3"></i>
+          <p class="${themes[currentTheme].text} font-medium">Erro ao carregar concursos</p>
+          <p class="${themes[currentTheme].textSecondary} text-sm mt-1">Tente novamente em alguns instantes</p>
+          <button onclick="carregarConcursosTodos()" class="mt-4 px-4 py-2 bg-[#122D6A] text-white rounded-lg text-sm hover:bg-[#1A3A7F] transition">
+            <i class="fas fa-redo mr-1"></i> Tentar novamente
+          </button>
+        </div>
+      `;
+    }
+  }
+}
+
+// Carregar UF individual (quando clica no mapa ou dropdown)
+async function carregarConcursosUF(uf) {
+  try {
+    const response = await axios.get('/api/concursos/' + uf, { timeout: 15000 });
+    const data = response.data;
+    if (data.concursos_abertos || data.concursos_previstos) {
+      concursosCache[uf.toLowerCase()] = data;
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.error('Erro ao carregar concursos ' + uf, e);
+    return false;
+  }
+}
+
+function getConcursosFiltrados() {
+  let estados = Object.entries(concursosCache);
+  const buscaOrgao = (document.getElementById('concursos-busca-orgao')?.value || '').toLowerCase().trim();
+  
+  // Filtrar por UF
+  if (concursosFilterUF) {
+    estados = estados.filter(([uf]) => uf === concursosFilterUF);
+  }
+  
+  // Montar lista flat de concursos
+  let concursos = [];
+  estados.forEach(([uf, data]) => {
+    const info = UFS_INFO[uf] || { nome: uf.toUpperCase(), regiao: 'N/A' };
+    if (concursosFilterTipo === 'todos' || concursosFilterTipo === 'abertos') {
+      (data.concursos_abertos || []).forEach(c => {
+        concursos.push({ ...c, uf: uf.toUpperCase(), estado: info.nome, regiao: info.regiao, tipo: 'aberto' });
+      });
+    }
+    if (concursosFilterTipo === 'todos' || concursosFilterTipo === 'previstos') {
+      (data.concursos_previstos || []).forEach(c => {
+        concursos.push({ ...c, uf: uf.toUpperCase(), estado: info.nome, regiao: info.regiao, tipo: 'previsto' });
+      });
+    }
+  });
+  
+  // Filtrar por busca de órgão
+  if (buscaOrgao) {
+    concursos = concursos.filter(c => {
+      const orgao = (c['Órgão'] || c['orgao'] || '').toLowerCase();
+      return orgao.includes(buscaOrgao);
+    });
+  }
+  
+  return concursos;
+}
+
+function getEstatisticasPorUF() {
+  const stats = {};
+  Object.entries(concursosCache).forEach(([uf, data]) => {
+    const abertos = (data.concursos_abertos || []).length;
+    const previstos = (data.concursos_previstos || []).length;
+    stats[uf] = { abertos, previstos, total: abertos + previstos };
+  });
+  return stats;
+}
+
+function getEstatisticasPorRegiao() {
+  const regioes = { Norte: { abertos: 0, previstos: 0 }, Nordeste: { abertos: 0, previstos: 0 }, 'Centro-Oeste': { abertos: 0, previstos: 0 }, Sudeste: { abertos: 0, previstos: 0 }, Sul: { abertos: 0, previstos: 0 } };
+  Object.entries(concursosCache).forEach(([uf, data]) => {
+    const info = UFS_INFO[uf];
+    if (info && regioes[info.regiao]) {
+      regioes[info.regiao].abertos += (data.concursos_abertos || []).length;
+      regioes[info.regiao].previstos += (data.concursos_previstos || []).length;
+    }
+  });
+  return regioes;
+}
+
+window.filtrarConcursosUF = async function(uf) {
+  concursosFilterUF = uf;
+  // Se selecionou uma UF e não temos dados, buscar individualmente
+  if (uf && !concursosCache[uf]) {
+    const content = document.getElementById('concursos-content');
+    if (content) {
+      const oldHTML = content.innerHTML;
+      const infoNome = UFS_INFO[uf]?.nome || uf.toUpperCase();
+      content.innerHTML = '<div class="flex items-center justify-center py-8"><div class="text-center"><i class="fas fa-spinner fa-spin text-3xl text-[#2A4A9F] mb-2"></i><p class="' + themes[currentTheme].textSecondary + ' text-sm">Carregando concursos de ' + infoNome + '...</p></div></div>';
+      const success = await carregarConcursosUF(uf);
+      if (!success) {
+        // Não encontrou dados, mostrar vazio
+      }
+    }
+  }
+  renderizarConcursosContent();
+};
+
+window.filtrarConcursosTipo = function(tipo) {
+  concursosFilterTipo = tipo;
+  // Atualizar botões visuais
+  ['todos', 'abertos', 'previstos'].forEach(t => {
+    const btn = document.getElementById('btn-filtro-' + t);
+    if (btn) {
+      if (t === tipo) {
+        btn.className = 'px-3 py-2 text-xs font-medium bg-[#122D6A] text-white transition';
+      } else {
+        btn.className = 'px-3 py-2 text-xs font-medium ' + themes[currentTheme].text + ' hover:bg-[#E8EDF5] transition';
+      }
+    }
+  });
+  renderizarConcursosContent();
+};
+
+window.filtrarConcursosBusca = function(val) {
+  // Debounce
+  clearTimeout(window._concursosBuscaTimeout);
+  window._concursosBuscaTimeout = setTimeout(() => renderizarConcursosContent(), 300);
+};
+
+window.selecionarUFnoMapa = async function(uf) {
+  const ufLower = uf.toLowerCase();
+  concursosFilterUF = ufLower;
+  const select = document.getElementById('concursos-filtro-uf');
+  if (select) select.value = ufLower;
+  // Se não temos dados para essa UF, buscar
+  if (ufLower && !concursosCache[ufLower]) {
+    await carregarConcursosUF(ufLower);
+  }
+  renderizarConcursosContent();
+};
+
+function renderizarConcursosContent() {
+  const content = document.getElementById('concursos-content');
+  if (!content) return;
+  
+  const concursos = getConcursosFiltrados();
+  const stats = getEstatisticasPorUF();
+  const regioes = getEstatisticasPorRegiao();
+  
+  const totalAbertos = Object.values(stats).reduce((s, v) => s + v.abertos, 0);
+  const totalPrevistos = Object.values(stats).reduce((s, v) => s + v.previstos, 0);
+  const ufComMais = Object.entries(stats).sort((a, b) => b[1].total - a[1].total)[0];
+  
+  content.innerHTML = `
+    <!-- Stats resumo -->
+    <div class="grid grid-cols-3 gap-3">
+      <div class="bg-gradient-to-br from-[#0A1839] to-[#122D6A] rounded-xl p-3 md:p-4 text-white text-center">
+        <div class="text-2xl md:text-3xl font-bold">${totalAbertos}</div>
+        <div class="text-[10px] md:text-xs opacity-70 mt-0.5">Abertos</div>
+      </div>
+      <div class="bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-xl p-3 md:p-4 text-white text-center">
+        <div class="text-2xl md:text-3xl font-bold">${totalPrevistos}</div>
+        <div class="text-[10px] md:text-xs opacity-70 mt-0.5">Previstos</div>
+      </div>
+      <div class="bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] rounded-xl p-3 md:p-4 text-white text-center">
+        <div class="text-2xl md:text-3xl font-bold">${totalAbertos + totalPrevistos}</div>
+        <div class="text-[10px] md:text-xs opacity-70 mt-0.5">Total</div>
+      </div>
+    </div>
+    
+    <!-- Mapa + Gráfico lado a lado -->
+    <div class="grid md:grid-cols-2 gap-4">
+      <!-- Mapa do Brasil (SVG interativo) -->
+      <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
+        <h3 class="font-semibold ${themes[currentTheme].text} text-sm mb-3 flex items-center gap-2">
+          <i class="fas fa-map-marked-alt text-[#2A4A9F]"></i>
+          Mapa por Estado
+          ${concursosFilterUF ? '<span class="ml-auto text-xs text-[#2A4A9F] cursor-pointer hover:underline" onclick="filtrarConcursosUF(\\'\\'); document.getElementById(\\'concursos-filtro-uf\\').value=\\'\\';">✕ Limpar filtro</span>' : ''}
+        </h3>
+        <div id="mapa-brasil-container" class="flex justify-center">
+          ${renderMapaBrasil(stats)}
+        </div>
+      </div>
+      
+      <!-- Gráfico por região -->
+      <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
+        <h3 class="font-semibold ${themes[currentTheme].text} text-sm mb-3 flex items-center gap-2">
+          <i class="fas fa-chart-bar text-[#2A4A9F]"></i>
+          Concursos por Região
+        </h3>
+        <div style="height: 250px; position: relative;">
+          <canvas id="chart-concursos-regiao"></canvas>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Top estados -->
+    <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
+      <h3 class="font-semibold ${themes[currentTheme].text} text-sm mb-3 flex items-center gap-2">
+        <i class="fas fa-trophy text-[#2A4A9F]"></i>
+        Top 10 Estados com Mais Concursos
+      </h3>
+      <div class="space-y-2">
+        ${Object.entries(stats)
+          .sort((a, b) => b[1].total - a[1].total)
+          .slice(0, 10)
+          .map(([uf, s], idx) => {
+            const info = UFS_INFO[uf] || { nome: uf.toUpperCase() };
+            const maxTotal = Object.values(stats).reduce((m, v) => Math.max(m, v.total), 1);
+            const pct = Math.round((s.total / maxTotal) * 100);
+            return `<div class="flex items-center gap-3 cursor-pointer hover:bg-[#E8EDF5] dark:hover:bg-[#0A1839]/30 rounded-lg p-1.5 transition mapa-uf-cell" data-uf="${uf}">
+              <span class="w-6 text-center text-xs font-bold ${themes[currentTheme].textSecondary}">${idx + 1}°</span>
+              <span class="w-8 text-center text-xs font-bold text-[#122D6A] dark:text-[#7BC4FF] bg-[#E8EDF5] dark:bg-[#0A1839]/50 rounded px-1 py-0.5">${uf.toUpperCase()}</span>
+              <span class="flex-1 text-xs ${themes[currentTheme].text} truncate">${info.nome}</span>
+              <div class="flex-1 max-w-[120px] bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
+                <div class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#2A4A9F]" style="width: ${pct}%"></div>
+              </div>
+              <span class="text-xs font-semibold text-[#122D6A] dark:text-[#7BC4FF] w-8 text-right">${s.total}</span>
+            </div>`;
+          }).join('')}
+      </div>
+    </div>
+    
+    <!-- Tabela de concursos -->
+    <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
+      <h3 class="font-semibold ${themes[currentTheme].text} text-sm mb-3 flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <i class="fas fa-list text-[#2A4A9F]"></i>
+          ${concursosFilterUF ? UFS_INFO[concursosFilterUF]?.nome || concursosFilterUF.toUpperCase() : 'Todos os Estados'} — ${concursos.length} concurso${concursos.length !== 1 ? 's' : ''}
+        </span>
+      </h3>
+      <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-[#E8EDF5] dark:bg-[#0A1839] sticky top-0 z-10">
+            <tr>
+              <th class="p-2.5 text-left text-xs font-semibold ${themes[currentTheme].text}">Órgão</th>
+              <th class="p-2.5 text-center text-xs font-semibold ${themes[currentTheme].text}">UF</th>
+              <th class="p-2.5 text-center text-xs font-semibold ${themes[currentTheme].text}">Vagas</th>
+              <th class="p-2.5 text-center text-xs font-semibold ${themes[currentTheme].text}">Situação</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${concursos.length > 0 ? concursos.sort((a, b) => {
+              // Abertos primeiro, depois previstos
+              if (a.tipo !== b.tipo) return a.tipo === 'aberto' ? -1 : 1;
+              return (a['Órgão'] || '').localeCompare(b['Órgão'] || '');
+            }).map(c => {
+              const orgao = c['Órgão'] || c['orgao'] || 'N/A';
+              const vagas = c['Vagas'] || c['vagas'] || '-';
+              const isAberto = c.tipo === 'aberto';
+              return '<tr class="border-b ' + themes[currentTheme].border + ' hover:bg-[#E8EDF5]/50 dark:hover:bg-[#0A1839]/20 transition">' +
+                '<td class="p-2.5 text-xs ' + themes[currentTheme].text + '"><div class="font-medium">' + orgao + '</div><div class="text-[10px] opacity-50 md:hidden">' + c.estado + '</div></td>' +
+                '<td class="p-2.5 text-center"><span class="text-[10px] font-bold text-[#122D6A] dark:text-[#7BC4FF] bg-[#E8EDF5] dark:bg-[#0A1839]/50 rounded px-1.5 py-0.5">' + c.uf + '</span></td>' +
+                '<td class="p-2.5 text-center text-xs font-semibold ' + themes[currentTheme].text + '">' + vagas + '</td>' +
+                '<td class="p-2.5 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-medium ' + (isAberto ? 'bg-[#D6E4F5] text-[#0A1839] dark:bg-[#122D6A]/40 dark:text-[#7BC4FF]' : 'bg-[#E8EDF5] text-[#1A3A7F] dark:bg-[#1A3A7F]/30 dark:text-[#B8C9E4]') + '">' + (isAberto ? '<i class="fas fa-check-circle mr-1"></i>Aberto' : '<i class="fas fa-clock mr-1"></i>Previsto') + '</span></td>' +
+              '</tr>';
+            }).join('') : '<tr><td colspan="4" class="p-8 text-center ' + themes[currentTheme].textSecondary + '"><i class="fas fa-search text-3xl mb-2 opacity-30"></i><p>Nenhum concurso encontrado com os filtros aplicados</p></td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  
+  // Renderizar gráfico por região
+  setTimeout(() => {
+    renderChartRegioes(regioes);
+    // Adicionar event listeners para os estados no mapa
+    document.querySelectorAll('.mapa-uf-cell').forEach(g => {
+      g.addEventListener('click', function() {
+        const uf = this.getAttribute('data-uf');
+        if (uf) {
+          selecionarUFnoMapa(uf);
+        }
+      });
+      // Hover effect
+      g.addEventListener('mouseenter', function() {
+        const rect = this.querySelector('rect');
+        if (rect) rect.setAttribute('opacity', '0.8');
+      });
+      g.addEventListener('mouseleave', function() {
+        const rect = this.querySelector('rect');
+        if (rect) rect.setAttribute('opacity', '1');
+      });
+    });
+  }, 100);
+}
+
+function renderMapaBrasil(stats) {
+  // Mapa SVG simplificado do Brasil com posições relativas dos estados
+  const maxTotal = Math.max(...Object.values(stats).map(s => s.total), 1);
+  
+  // Posições dos estados no grid do mapa (simulando a forma do Brasil)
+  const posicoes = {
+    rr: [3, 0], ap: [5, 0],
+    am: [2, 1], pa: [4, 1], ma: [6, 1],
+    ac: [1, 2], ro: [2, 2], to: [4, 2], pi: [6, 2], ce: [7, 2],
+    mt: [3, 3], go: [4, 3], ba: [6, 3], rn: [8, 2], pb: [8, 3],
+    ms: [3, 4], df: [5, 3], mg: [6, 4], pe: [8, 3.5], al: [8, 4], se: [7.5, 4.5],
+    sp: [4, 5], rj: [6, 5], es: [7, 4.5],
+    pr: [4, 6], sc: [4, 7],
+    rs: [4, 8]
+  };
+  
+  const cellW = 42, cellH = 32;
+  const svgW = 10 * cellW + 20;
+  const svgH = 9.5 * cellH + 20;
+  
+  let svgContent = `<svg viewBox="0 0 ${svgW} ${svgH}" class="w-full max-w-[380px]" xmlns="http://www.w3.org/2000/svg">`;
+  
+  Object.entries(posicoes).forEach(([uf, [x, y]]) => {
+    const s = stats[uf] || { total: 0, abertos: 0, previstos: 0 };
+    const intensity = s.total > 0 ? Math.max(0.15, Math.min(1, s.total / maxTotal)) : 0.05;
+    const isSelected = concursosFilterUF === uf;
+    const r = Math.round(18 - 8 * intensity);
+    const g = Math.round(45 - 20 * intensity);
+    const b = Math.round(106 + 50 * intensity);
+    const fill = s.total > 0 ? `rgb(${r}, ${g}, ${b})` : '#CBD5E1';
+    const stroke = isSelected ? '#F59E0B' : 'rgba(255,255,255,0.6)';
+    const strokeW = isSelected ? 2.5 : 0.8;
+    const px = 10 + x * cellW;
+    const py = 10 + y * cellH;
+    
+    svgContent += `
+      <g class="mapa-uf-cell" data-uf="${uf}" style="cursor:pointer;">
+        <rect x="${px}" y="${py}" width="${cellW - 3}" height="${cellH - 3}" rx="4" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}" />
+        <text x="${px + (cellW - 3) / 2}" y="${py + 13}" text-anchor="middle" fill="white" font-size="10" font-weight="bold" style="pointer-events:none">${uf.toUpperCase()}</text>
+        <text x="${px + (cellW - 3) / 2}" y="${py + 24}" text-anchor="middle" fill="rgba(255,255,255,0.75)" font-size="8" style="pointer-events:none">${s.total}</text>
+      </g>
+    `;
+  });
+  
+  svgContent += '</svg>';
+  return svgContent;
+}
+
+function renderChartRegioes(regioes) {
+  const ctx = document.getElementById('chart-concursos-regiao');
+  if (!ctx) return;
+  
+  const labels = Object.keys(regioes);
+  const dataAbertos = labels.map(r => regioes[r].abertos);
+  const dataPrevistos = labels.map(r => regioes[r].previstos);
+  
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Abertos',
+          data: dataAbertos,
+          backgroundColor: '#122D6A',
+          borderRadius: 4,
+          barPercentage: 0.7
+        },
+        {
+          label: 'Previstos',
+          data: dataPrevistos,
+          backgroundColor: '#7BC4FF',
+          borderRadius: 4,
+          barPercentage: 0.7
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { usePointStyle: true, padding: 12, font: { size: 11 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return ctx.dataset.label + ': ' + ctx.parsed.y + ' concurso' + (ctx.parsed.y !== 1 ? 's' : '');
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { beginAtZero: true, ticks: { stepSize: 5, font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } }
+      }
+    }
+  });
 }
 
 function renderChatButton() {
