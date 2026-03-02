@@ -22367,28 +22367,31 @@ app.get('/api/concursos/:uf', async (c) => {
 app.get('/api/concursos', async (c) => {
   try {
     const hoje = new Date().toISOString().split('T')[0]
+    const forceRefresh = c.req.query('force') === '1'
     
-    // 1. Verificar cache D1 do dia
-    const cached = await c.env.DB.prepare(
-      'SELECT data_json, total_abertos, total_previstos, total_ufs FROM concursos_cache WHERE cache_date = ?'
-    ).bind(hoje).first() as any
-    
-    if (cached) {
-      const estados = JSON.parse(cached.data_json)
-      return c.json({
-        success: true,
-        total_ufs: cached.total_ufs || estados.length,
-        cached: true,
-        cache_date: hoje,
-        estados
-      })
+    // 1. Verificar cache D1 do dia (se não forçar refresh)
+    if (!forceRefresh) {
+      const cached = await c.env.DB.prepare(
+        'SELECT data_json, total_abertos, total_previstos, total_ufs FROM concursos_cache WHERE cache_date = ?'
+      ).bind(hoje).first() as any
+      
+      if (cached) {
+        const estados = JSON.parse(cached.data_json)
+        return c.json({
+          success: true,
+          total_ufs: cached.total_ufs || estados.length,
+          cached: true,
+          cache_date: hoje,
+          estados
+        })
+      }
     }
     
-    // 2. Sem cache do dia — buscar da API externa (todas as UFs em paralelo)
+    // 2. Buscar da API externa (todas as UFs em paralelo)
     const promises = UFS_BRASIL.map(async (uf) => {
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000)
+        const timeoutId = setTimeout(() => controller.abort(), 6000)
         const response = await fetch(`https://concursos-api.deno.dev/${uf}`, {
           headers: { 'Accept': 'application/json' },
           signal: controller.signal
@@ -22403,25 +22406,31 @@ app.get('/api/concursos', async (c) => {
     
     const allResults = await Promise.all(promises)
     
-    // 3. Calcular totais
-    let totalAbertos = 0, totalPrevistos = 0
+    // 3. Calcular totais e qualidade dos dados
+    let totalAbertos = 0, totalPrevistos = 0, ufsComDados = 0
     allResults.forEach((e: any) => {
-      totalAbertos += (e.concursos_abertos || []).length
-      totalPrevistos += (e.concursos_previstos || []).length
+      const ab = (e.concursos_abertos || []).length
+      const pr = (e.concursos_previstos || []).length
+      totalAbertos += ab
+      totalPrevistos += pr
+      if (ab > 0 || pr > 0) ufsComDados++
     })
     
-    // 4. Salvar no cache D1 (INSERT OR REPLACE para o dia)
-    try {
-      await c.env.DB.prepare(
-        'INSERT OR REPLACE INTO concursos_cache (cache_date, data_json, total_abertos, total_previstos, total_ufs) VALUES (?, ?, ?, ?, ?)'
-      ).bind(hoje, JSON.stringify(allResults), totalAbertos, totalPrevistos, allResults.length).run()
-      
-      // Limpar caches antigos (manter apenas 7 dias)
-      await c.env.DB.prepare(
-        'DELETE FROM concursos_cache WHERE cache_date < ?'
-      ).bind(new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]).run()
-    } catch (dbErr) {
-      console.error('Erro ao salvar cache concursos:', dbErr)
+    // 4. Só salvar no cache se dados são bons (>50% das UFs com dados)
+    const qualidadeBoa = ufsComDados >= 14 // pelo menos metade das 27 UFs
+    if (qualidadeBoa) {
+      try {
+        await c.env.DB.prepare(
+          'INSERT OR REPLACE INTO concursos_cache (cache_date, data_json, total_abertos, total_previstos, total_ufs) VALUES (?, ?, ?, ?, ?)'
+        ).bind(hoje, JSON.stringify(allResults), totalAbertos, totalPrevistos, allResults.length).run()
+        
+        // Limpar caches antigos (manter 7 dias)
+        await c.env.DB.prepare(
+          'DELETE FROM concursos_cache WHERE cache_date < ?'
+        ).bind(new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]).run()
+      } catch (dbErr) {
+        console.error('Erro ao salvar cache concursos:', dbErr)
+      }
     }
     
     return c.json({
@@ -22429,6 +22438,7 @@ app.get('/api/concursos', async (c) => {
       total_ufs: allResults.length,
       cached: false,
       cache_date: hoje,
+      ufs_com_dados: ufsComDados,
       estados: allResults
     })
   } catch (error: any) {

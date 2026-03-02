@@ -23259,6 +23259,14 @@ window.abrirModalConcursos = async function() {
           <div class="flex items-center gap-2 flex-1 min-w-[180px]">
             <input id="concursos-busca-orgao" type="text" placeholder="Buscar órgão..." oninput="filtrarConcursosBusca(this.value)" class="flex-1 text-sm border ${t.border} rounded-lg px-3 py-2 ${t.card} ${t.text} focus:ring-2 focus:ring-[#2A4A9F] focus:outline-none" />
           </div>
+          <button onclick="limparFiltrosConcursos()" class="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-[#2A4A9F] border border-[#2A4A9F]/30 rounded-lg hover:bg-[#2A4A9F]/10 transition" title="Limpar todos os filtros">
+            <i class="fas fa-times-circle"></i>
+            <span class="hidden sm:inline">Limpar</span>
+          </button>
+          <button onclick="atualizarDadosConcursos()" id="btn-atualizar-concursos" class="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-[#122D6A] rounded-lg hover:bg-[#1A3A7F] transition" title="Buscar dados atualizados">
+            <i class="fas fa-sync-alt" id="icon-atualizar-concursos"></i>
+            <span class="hidden sm:inline">Atualizar</span>
+          </button>
         </div>
       </div>
       
@@ -23440,9 +23448,54 @@ window.filtrarConcursosTipo = function(tipo) {
 };
 
 window.filtrarConcursosBusca = function(val) {
-  // Debounce
   clearTimeout(window._concursosBuscaTimeout);
   window._concursosBuscaTimeout = setTimeout(() => renderizarConcursosContent(), 300);
+};
+
+window.limparFiltrosConcursos = function() {
+  concursosFilterUF = '';
+  concursosFilterTipo = 'todos';
+  const sel = document.getElementById('concursos-filtro-uf');
+  if (sel) sel.value = '';
+  const busca = document.getElementById('concursos-busca-orgao');
+  if (busca) busca.value = '';
+  const t = themes[currentTheme];
+  ['todos', 'abertos', 'previstos'].forEach(tp => {
+    const btn = document.getElementById('btn-filtro-' + tp);
+    if (btn) btn.className = tp === 'todos' ? 'px-3 py-2 text-xs font-medium bg-[#122D6A] text-white transition' : 'px-3 py-2 text-xs font-medium ' + t.text + ' hover:bg-[#E8EDF5] transition';
+  });
+  renderizarConcursosContent();
+};
+
+window.atualizarDadosConcursos = async function() {
+  const icon = document.getElementById('icon-atualizar-concursos');
+  const btn = document.getElementById('btn-atualizar-concursos');
+  if (icon) icon.classList.add('fa-spin');
+  if (btn) btn.disabled = true;
+  
+  try {
+    // Forçar re-busca ignorando cache
+    const response = await axios.get('/api/concursos?force=1', { timeout: 25000 });
+    const data = response.data;
+    if (data.success && data.estados) {
+      concursosCache = {};
+      data.estados.forEach(estado => {
+        if (estado.uf) {
+          const uf = estado.uf.toLowerCase();
+          concursosCache[uf] = {
+            ...estado,
+            concursos_abertos: estado.concursos_abertos || [],
+            concursos_previstos: estado.concursos_previstos || []
+          };
+        }
+      });
+    }
+    renderizarConcursosContent();
+  } catch(e) {
+    console.error('Erro ao atualizar concursos:', e);
+  }
+  if (icon) icon.classList.remove('fa-spin');
+  if (btn) btn.disabled = false;
 };
 
 window.selecionarUFnoMapa = async function(uf) {
@@ -23628,86 +23681,92 @@ function renderTabelaConcursos(lista, tipo, filtroLabel, t) {
 function renderMapaBrasil(stats) {
   const maxTotal = Math.max(...Object.values(stats).map(s => s.total), 1);
   const isDark = currentTheme === 'dark';
-  
-  // Posições dos estados no grid (simulando forma do Brasil)
-  const posicoes = {
-    rr: [3, 0], ap: [5, 0],
-    am: [2, 1], pa: [4, 1], ma: [6, 1],
-    ac: [1, 2], ro: [2, 2], to: [4, 2], pi: [6, 2], ce: [7, 2],
-    mt: [3, 3], go: [4, 3], ba: [6, 3], rn: [8, 2], pb: [8, 3],
-    ms: [3, 4], df: [5, 3], mg: [6, 4], pe: [8, 3.5], al: [8, 4], se: [7.5, 4.5],
-    sp: [4, 5], rj: [6, 5], es: [7, 4.5],
-    pr: [4, 6], sc: [4, 7],
-    rs: [4, 8]
+
+  // Paths simplificados dos estados brasileiros (viewBox 0 0 600 560)
+  const ESTADOS_SVG = {
+    am: { d:'M42,100 L120,75 L190,80 L200,120 L195,170 L155,185 L100,195 L50,175 Z', cx:120, cy:135 },
+    rr: { d:'M100,15 L140,10 L160,40 L150,75 L120,75 L90,55 Z', cx:125, cy:45 },
+    ap: { d:'M230,15 L265,10 L280,40 L270,80 L240,75 L220,50 Z', cx:250, cy:45 },
+    pa: { d:'M190,80 L270,80 L310,85 L330,120 L310,170 L260,185 L195,170 L200,120 Z', cx:260, cy:130 },
+    ma: { d:'M330,90 L370,80 L390,105 L380,145 L350,155 L310,150 L310,120 Z', cx:350, cy:118 },
+    to: { d:'M310,170 L340,160 L360,170 L355,230 L340,250 L310,240 Z', cx:333, cy:210 },
+    pi: { d:'M370,105 L400,95 L415,120 L405,170 L380,175 L360,170 L350,155 L380,145 Z', cx:388, cy:140 },
+    ce: { d:'M415,80 L445,75 L460,95 L450,120 L415,120 L400,95 Z', cx:432, cy:98 },
+    rn: { d:'M460,95 L490,90 L495,108 L470,115 L450,120 Z', cx:473, cy:103 },
+    pb: { d:'M450,120 L490,112 L498,128 L460,135 Z', cx:472, cy:124 },
+    pe: { d:'M405,135 L460,135 L500,132 L498,150 L445,155 L405,170 Z', cx:452, cy:146 },
+    al: { d:'M458,155 L498,150 L500,168 L465,172 Z', cx:478, cy:162 },
+    se: { d:'M465,172 L500,168 L500,185 L470,185 Z', cx:482, cy:177 },
+    ba: { d:'M355,175 L405,170 L445,155 L458,172 L470,185 L475,240 L450,290 L400,300 L355,280 L340,250 L355,230 Z', cx:410, cy:235 },
+    mt: { d:'M195,195 L260,185 L310,195 L310,240 L290,290 L240,310 L190,290 L185,240 Z', cx:245, cy:250 },
+    go: { d:'M310,250 L355,250 L365,290 L355,330 L320,340 L290,325 L290,290 Z', cx:325, cy:295 },
+    df: { d:'M340,290 L355,285 L358,300 L343,305 Z', cx:349, cy:295 },
+    ms: { d:'M215,310 L290,290 L290,330 L280,380 L240,400 L210,385 L195,340 Z', cx:250, cy:350 },
+    mg: { d:'M355,280 L400,300 L440,290 L475,300 L470,350 L430,380 L380,385 L350,365 L325,340 L340,310 Z', cx:405, cy:338 },
+    es: { d:'M475,300 L510,295 L515,340 L480,350 L470,350 Z', cx:492, cy:322 },
+    rj: { d:'M430,380 L470,370 L500,375 L490,400 L450,405 Z', cx:468, cy:388 },
+    sp: { d:'M310,360 L380,385 L420,395 L430,420 L390,440 L330,430 L300,405 L290,380 Z', cx:360, cy:408 },
+    pr: { d:'M290,420 L350,440 L380,445 L375,475 L330,485 L285,470 L275,445 Z', cx:328, cy:458 },
+    sc: { d:'M310,485 L360,480 L375,500 L355,518 L315,515 L300,498 Z', cx:335, cy:500 },
+    rs: { d:'M280,500 L325,518 L345,530 L330,560 L285,555 L255,535 L250,510 Z', cx:298, cy:533 },
+    ac: { d:'M30,180 L100,195 L90,220 L40,225 L15,210 Z', cx:55, cy:205 },
+    ro: { d:'M100,195 L155,185 L185,195 L185,240 L150,250 L110,235 L90,220 Z', cx:140, cy:218 }
   };
-  
-  const cellW = 46, cellH = 34;
-  const svgW = 10 * cellW + 20;
-  const svgH = 9.5 * cellH + 20;
-  
-  // Silhueta simplificada do Brasil (path SVG real)
-  const brasilOutline = 'M170,8 C190,5 220,10 250,8 C280,5 310,15 330,20 C350,25 370,18 390,25 C400,28 405,35 395,45 C385,55 395,65 400,75 C405,85 395,95 390,105 C385,115 375,120 365,130 C370,140 380,145 390,150 C395,155 405,160 410,170 C415,180 420,190 415,200 C410,210 405,220 400,230 C395,240 400,250 395,260 C390,270 380,275 370,280 C360,285 350,295 340,300 C330,305 320,310 310,315 C300,320 290,318 280,320 C270,325 260,330 250,335 C240,330 230,325 220,320 C210,315 200,320 190,315 C180,310 175,300 170,290 C165,280 160,270 155,260 C150,250 140,245 135,235 C130,225 125,215 120,205 C115,195 110,185 115,175 C120,165 115,155 110,145 C105,135 110,125 115,115 C120,105 125,95 130,85 C135,75 140,65 145,55 C150,45 155,35 160,25 C163,18 167,12 170,8 Z';
-  
-  let svg = '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '" class="w-full max-w-[420px]" xmlns="http://www.w3.org/2000/svg" style="display:block;">';
-  
-  // Silhueta do Brasil ao fundo
-  svg += '<path d="' + brasilOutline + '" fill="' + (isDark ? 'rgba(42,74,159,0.08)' : 'rgba(42,74,159,0.05)') + '" stroke="' + (isDark ? 'rgba(42,74,159,0.15)' : 'rgba(42,74,159,0.12)') + '" stroke-width="1.5" stroke-dasharray="4,3" />';
-  
-  // Tiles dos estados
-  Object.entries(posicoes).forEach(function(entry) {
-    var uf = entry[0], pos = entry[1];
-    var x = pos[0], y = pos[1];
+
+  let svg = '<svg viewBox="0 0 530 580" class="w-full max-w-[400px]" xmlns="http://www.w3.org/2000/svg" style="display:block">';
+
+  // Fundo silhueta sutil
+  svg += '<rect width="530" height="580" fill="none"/>';
+
+  Object.entries(ESTADOS_SVG).forEach(function(entry) {
+    var uf = entry[0];
+    var geo = entry[1];
     var s = stats[uf] || { total: 0, abertos: 0, previstos: 0 };
-    var intensity = s.total > 0 ? Math.max(0.15, Math.min(1, s.total / maxTotal)) : 0;
+    var intensity = s.total > 0 ? Math.max(0.12, Math.min(1, s.total / maxTotal)) : 0;
     var isSelected = concursosFilterUF === uf;
-    
-    var fill, textColor, subColor;
+
+    var fill;
     if (s.total === 0) {
-      fill = isDark ? '#374151' : '#E2E8F0';
-      textColor = isDark ? '#9CA3AF' : '#94A3B8';
-      subColor = isDark ? 'rgba(156,163,175,0.6)' : 'rgba(148,163,184,0.6)';
+      fill = isDark ? '#2D3748' : '#E2E8F0';
     } else {
-      // Gradiente: azul claro (pouco) → azul escuro (muito)
-      var r = Math.round(isDark ? (30 + 70 * (1 - intensity)) : (220 - 200 * intensity));
-      var g = Math.round(isDark ? (50 + 80 * (1 - intensity)) : (230 - 185 * intensity));
-      var b = Math.round(isDark ? (120 + 60 * (1 - intensity)) : (255 - 95 * intensity));
-      fill = 'rgb(' + r + ',' + g + ',' + b + ')';
-      textColor = intensity > 0.4 ? 'white' : (isDark ? '#E5E7EB' : '#0A1839');
-      subColor = intensity > 0.4 ? 'rgba(255,255,255,0.75)' : (isDark ? 'rgba(229,231,235,0.6)' : 'rgba(10,24,57,0.55)');
+      if (isDark) {
+        var r = Math.round(20 + 60*(1-intensity));
+        var g = Math.round(40 + 70*(1-intensity));
+        var b = Math.round(130 + 50*(1-intensity));
+        fill = 'rgb('+r+','+g+','+b+')';
+      } else {
+        var r = Math.round(210 - 190*intensity);
+        var g = Math.round(225 - 180*intensity);
+        var b = Math.round(255 - 95*intensity);
+        fill = 'rgb('+r+','+g+','+b+')';
+      }
     }
-    
-    var stroke = isSelected ? '#F59E0B' : (isDark ? 'rgba(55,65,81,0.6)' : 'rgba(255,255,255,0.85)');
-    var strokeW = isSelected ? 3 : 1;
-    var px = 10 + x * cellW;
-    var py = 10 + y * cellH;
-    
-    svg += '<g class="mapa-uf-cell" data-uf="' + uf + '" style="cursor:pointer;">' +
-      '<rect x="' + px + '" y="' + py + '" width="' + (cellW - 3) + '" height="' + (cellH - 3) + '" rx="5" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + strokeW + '" />' +
-      '<text x="' + (px + (cellW - 3) / 2) + '" y="' + (py + 14) + '" text-anchor="middle" fill="' + textColor + '" font-size="11" font-weight="bold" style="pointer-events:none">' + uf.toUpperCase() + '</text>' +
-      '<text x="' + (px + (cellW - 3) / 2) + '" y="' + (py + 26) + '" text-anchor="middle" fill="' + subColor + '" font-size="9" style="pointer-events:none">' + s.total + '</text>' +
-    '</g>';
+
+    var stroke = isSelected ? '#F59E0B' : (isDark ? 'rgba(100,116,139,0.5)' : 'rgba(255,255,255,0.9)');
+    var strokeW = isSelected ? 2.5 : 1;
+    var textColor = intensity > 0.35 ? 'white' : (isDark ? '#CBD5E1' : '#1E293B');
+    var subColor = intensity > 0.35 ? 'rgba(255,255,255,0.7)' : (isDark ? 'rgba(203,213,225,0.6)' : 'rgba(30,41,59,0.5)');
+
+    svg += '<g class="mapa-uf-cell" data-uf="'+uf+'" style="cursor:pointer">';
+    svg += '<path d="'+geo.d+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="'+strokeW+'" stroke-linejoin="round"/>';
+    svg += '<text x="'+geo.cx+'" y="'+(geo.cy-3)+'" text-anchor="middle" fill="'+textColor+'" font-size="10" font-weight="bold" style="pointer-events:none">'+uf.toUpperCase()+'</text>';
+    svg += '<text x="'+geo.cx+'" y="'+(geo.cy+9)+'" text-anchor="middle" fill="'+subColor+'" font-size="8" style="pointer-events:none">'+s.total+'</text>';
+    svg += '</g>';
   });
-  
-  // Legenda de intensidade
-  svg += '<g transform="translate(10,' + (svgH - 20) + ')">';
-  svg += '<text x="0" y="10" fill="' + (isDark ? '#9CA3AF' : '#64748B') + '" font-size="8">Menos</text>';
-  for (var i = 0; i < 5; i++) {
-    var lInt = i / 4;
-    var lr, lg, lb;
-    if (isDark) {
-      lr = Math.round(30 + 70 * (1 - lInt));
-      lg = Math.round(50 + 80 * (1 - lInt));
-      lb = Math.round(120 + 60 * (1 - lInt));
-    } else {
-      lr = Math.round(220 - 200 * lInt);
-      lg = Math.round(230 - 185 * lInt);
-      lb = Math.round(255 - 95 * lInt);
-    }
-    svg += '<rect x="' + (35 + i * 18) + '" y="2" width="16" height="10" rx="2" fill="rgb(' + lr + ',' + lg + ',' + lb + ')" />';
+
+  // Legenda
+  svg += '<g transform="translate(10,555)">';
+  svg += '<text x="0" y="10" fill="'+(isDark?'#94A3B8':'#64748B')+'" font-size="8">Menos</text>';
+  for (var i=0; i<5; i++) {
+    var li = i/4;
+    var cr,cg,cb;
+    if (isDark) { cr=Math.round(20+60*(1-li)); cg=Math.round(40+70*(1-li)); cb=Math.round(130+50*(1-li)); }
+    else { cr=Math.round(210-190*li); cg=Math.round(225-180*li); cb=Math.round(255-95*li); }
+    svg += '<rect x="'+(35+i*18)+'" y="2" width="16" height="10" rx="2" fill="rgb('+cr+','+cg+','+cb+')"/>';
   }
-  svg += '<text x="130" y="10" fill="' + (isDark ? '#9CA3AF' : '#64748B') + '" font-size="8">Mais</text>';
+  svg += '<text x="130" y="10" fill="'+(isDark?'#94A3B8':'#64748B')+'" font-size="8">Mais</text>';
   svg += '</g>';
-  
+
   svg += '</svg>';
   return svg;
 }
