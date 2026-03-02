@@ -23275,7 +23275,7 @@ window.abrirModalConcursos = async function() {
     </div>
   `;
   document.body.appendChild(modal);
-  modal.querySelector('.fixed').addEventListener('click', function(e) {
+  modal.addEventListener('click', function(e) {
     if (e.target === modal) modal.remove();
   });
   
