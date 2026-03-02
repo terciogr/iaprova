@@ -23215,17 +23215,17 @@ let concursosFilterUF = '';
 let concursosFilterTipo = 'todos'; // todos, abertos, previstos
 
 window.abrirModalConcursos = async function() {
-  // Modal principal
+  const t = themes[currentTheme];
   const modal = document.createElement('div');
   modal.id = 'modal-concursos';
   modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[10000] p-2 md:p-4';
   modal.innerHTML = `
-    <div class="bg-white dark:bg-[#0D1B3E] rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+    <div class="${t.card} rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
       <!-- Header -->
       <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] p-4 md:p-5 text-white flex-shrink-0">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 md:w-12 md:h-12 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
+            <div class="w-10 h-10 md:w-12 md:h-12 bg-white/20 rounded-xl flex items-center justify-center">
               <i class="fas fa-landmark text-xl md:text-2xl text-white"></i>
             </div>
             <div>
@@ -23233,42 +23233,42 @@ window.abrirModalConcursos = async function() {
               <p class="text-blue-200 text-xs md:text-sm font-medium">Abertos e previstos em todo o Brasil</p>
             </div>
           </div>
-          <button onclick="document.getElementById('modal-concursos')?.remove()" class="w-9 h-9 md:w-10 md:h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition shadow-sm">
+          <button onclick="document.getElementById('modal-concursos')?.remove()" class="w-9 h-9 md:w-10 md:h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition">
             <i class="fas fa-times text-lg text-white"></i>
           </button>
         </div>
       </div>
       
       <!-- Filtros -->
-      <div class="px-4 md:px-5 py-3 border-b border-[#D6E4F5] dark:border-[#1A3A7F]/50 flex-shrink-0 bg-[#F7F9FC] dark:bg-[#0A1839]/60">
+      <div class="px-4 md:px-5 py-3 border-b ${t.border} flex-shrink-0 ${t.bgAlt}">
         <div class="flex flex-wrap items-center gap-2 md:gap-3">
           <div class="flex items-center gap-2 flex-1 min-w-[200px]">
             <i class="fas fa-filter text-[#2A4A9F] text-sm"></i>
-            <select id="concursos-filtro-uf" onchange="filtrarConcursosUF(this.value)" class="flex-1 text-sm border border-[#D6E4F5] dark:border-[#1A3A7F]/50 rounded-lg px-3 py-2 bg-white dark:bg-[#0D1B3E] text-[#0A1839] dark:text-[#D6E4F5] focus:ring-2 focus:ring-[#2A4A9F] focus:outline-none">
+            <select id="concursos-filtro-uf" onchange="filtrarConcursosUF(this.value)" class="flex-1 text-sm border ${t.border} rounded-lg px-3 py-2 ${t.card} ${t.text} focus:ring-2 focus:ring-[#2A4A9F] focus:outline-none">
               <option value="">Todos os estados</option>
               ${Object.entries(UFS_INFO).sort((a,b) => a[1].nome.localeCompare(b[1].nome)).map(([uf, info]) => 
                 '<option value="' + uf + '">' + info.nome + ' (' + uf.toUpperCase() + ')</option>'
               ).join('')}
             </select>
           </div>
-          <div class="flex rounded-lg border border-[#D6E4F5] dark:border-[#1A3A7F]/50 overflow-hidden">
+          <div class="flex rounded-lg border ${t.border} overflow-hidden">
             <button id="btn-filtro-todos" onclick="filtrarConcursosTipo('todos')" class="px-3 py-2 text-xs font-medium bg-[#122D6A] text-white transition">Todos</button>
-            <button id="btn-filtro-abertos" onclick="filtrarConcursosTipo('abertos')" class="px-3 py-2 text-xs font-medium text-[#0A1839] dark:text-[#D6E4F5] hover:bg-[#E8EDF5] transition">Abertos</button>
-            <button id="btn-filtro-previstos" onclick="filtrarConcursosTipo('previstos')" class="px-3 py-2 text-xs font-medium text-[#0A1839] dark:text-[#D6E4F5] hover:bg-[#E8EDF5] transition">Previstos</button>
+            <button id="btn-filtro-abertos" onclick="filtrarConcursosTipo('abertos')" class="px-3 py-2 text-xs font-medium ${t.text} hover:bg-[#E8EDF5] transition">Abertos</button>
+            <button id="btn-filtro-previstos" onclick="filtrarConcursosTipo('previstos')" class="px-3 py-2 text-xs font-medium ${t.text} hover:bg-[#E8EDF5] transition">Previstos</button>
           </div>
           <div class="flex items-center gap-2 flex-1 min-w-[180px]">
-            <input id="concursos-busca-orgao" type="text" placeholder="Buscar órgão..." oninput="filtrarConcursosBusca(this.value)" class="flex-1 text-sm border border-[#D6E4F5] dark:border-[#1A3A7F]/50 rounded-lg px-3 py-2 bg-white dark:bg-[#0D1B3E] text-[#0A1839] dark:text-[#D6E4F5] focus:ring-2 focus:ring-[#2A4A9F] focus:outline-none" />
+            <input id="concursos-busca-orgao" type="text" placeholder="Buscar órgão..." oninput="filtrarConcursosBusca(this.value)" class="flex-1 text-sm border ${t.border} rounded-lg px-3 py-2 ${t.card} ${t.text} focus:ring-2 focus:ring-[#2A4A9F] focus:outline-none" />
           </div>
         </div>
       </div>
       
       <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 bg-[#F7F9FC] dark:bg-[#070F24]" id="concursos-content">
+      <div class="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 ${t.bgAlt}" id="concursos-content">
         <div class="flex items-center justify-center py-12">
           <div class="text-center">
             <i class="fas fa-spinner fa-spin text-4xl text-[#2A4A9F] mb-3"></i>
-            <p class="text-[#5A6F9A] text-sm">Carregando concursos de todos os estados...</p>
-            <p class="text-[#8BA3D4] text-xs mt-1">Isso pode levar alguns segundos</p>
+            <p class="${t.textSecondary} text-sm">Carregando concursos de todos os estados...</p>
+            <p class="${t.textMuted} text-xs mt-1">Isso pode levar alguns segundos</p>
           </div>
         </div>
       </div>
@@ -23279,7 +23279,6 @@ window.abrirModalConcursos = async function() {
     if (e.target === modal) modal.remove();
   });
   
-  // Carregar dados
   await carregarConcursosTodos();
 };
 
@@ -23412,12 +23411,12 @@ function getEstatisticasPorRegiao() {
 
 window.filtrarConcursosUF = async function(uf) {
   concursosFilterUF = uf;
-  // Se selecionou uma UF e não temos dados, buscar individualmente
   if (uf && !concursosCache[uf]) {
     const content = document.getElementById('concursos-content');
     if (content) {
+      const t = themes[currentTheme];
       const infoNome = UFS_INFO[uf]?.nome || uf.toUpperCase();
-      content.innerHTML = '<div class="flex items-center justify-center py-8"><div class="text-center"><i class="fas fa-spinner fa-spin text-3xl text-[#2A4A9F] mb-2"></i><p class="text-[#5A6F9A] text-sm">Carregando concursos de ' + infoNome + '...</p></div></div>';
+      content.innerHTML = '<div class="flex items-center justify-center py-8"><div class="text-center"><i class="fas fa-spinner fa-spin text-3xl text-[#2A4A9F] mb-2"></i><p class="' + t.textSecondary + ' text-sm">Carregando concursos de ' + infoNome + '...</p></div></div>';
       await carregarConcursosUF(uf);
     }
   }
@@ -23426,14 +23425,14 @@ window.filtrarConcursosUF = async function(uf) {
 
 window.filtrarConcursosTipo = function(tipo) {
   concursosFilterTipo = tipo;
-  // Atualizar botões visuais
-  ['todos', 'abertos', 'previstos'].forEach(t => {
-    const btn = document.getElementById('btn-filtro-' + t);
+  const t = themes[currentTheme];
+  ['todos', 'abertos', 'previstos'].forEach(tp => {
+    const btn = document.getElementById('btn-filtro-' + tp);
     if (btn) {
-      if (t === tipo) {
+      if (tp === tipo) {
         btn.className = 'px-3 py-2 text-xs font-medium bg-[#122D6A] text-white transition';
       } else {
-        btn.className = 'px-3 py-2 text-xs font-medium text-[#0A1839] dark:text-[#D6E4F5] hover:bg-[#E8EDF5] transition';
+        btn.className = 'px-3 py-2 text-xs font-medium ' + t.text + ' hover:bg-[#E8EDF5] transition';
       }
     }
   });
@@ -23461,6 +23460,7 @@ window.selecionarUFnoMapa = async function(uf) {
 function renderizarConcursosContent() {
   const content = document.getElementById('concursos-content');
   if (!content) return;
+  const t = themes[currentTheme];
   
   const concursos = getConcursosFiltrados();
   const stats = getEstatisticasPorUF();
@@ -23473,7 +23473,7 @@ function renderizarConcursosContent() {
   const filtroLabel = concursosFilterUF ? (UFS_INFO[concursosFilterUF]?.nome || concursosFilterUF.toUpperCase()) : 'Brasil';
   
   content.innerHTML = `
-    <!-- Cards resumo - refletem filtros -->
+    <!-- Cards resumo -->
     <div class="grid grid-cols-3 gap-3">
       <div class="bg-gradient-to-br from-[#0A1839] to-[#122D6A] rounded-xl p-3 md:p-4 text-white text-center shadow-lg">
         <div class="text-2xl md:text-3xl font-bold">${filtradas.totalAbertos}</div>
@@ -23491,23 +23491,21 @@ function renderizarConcursosContent() {
     
     <!-- Mapa + Gráfico lado a lado -->
     <div class="grid md:grid-cols-2 gap-4">
-      <!-- Mapa do Brasil (SVG interativo) -->
-      <div class="bg-white dark:bg-[#0D1B3E] border border-[#D6E4F5] dark:border-[#1A3A7F]/50 rounded-xl p-4 shadow-sm">
-        <h3 class="font-semibold text-[#0A1839] dark:text-white text-sm mb-3 flex items-center gap-2">
+      <div class="${t.card} border ${t.border} rounded-xl p-4">
+        <h3 class="font-semibold ${t.text} text-sm mb-3 flex items-center gap-2">
           <i class="fas fa-map-marked-alt text-[#2A4A9F]"></i>
           Mapa por Estado
           ${concursosFilterUF ? '<span id="btn-limpar-filtro-uf" class="ml-auto text-xs text-[#2A4A9F] cursor-pointer hover:underline font-normal">&#10005; Limpar filtro</span>' : ''}
         </h3>
-        <div id="mapa-brasil-container" class="flex justify-center items-center min-h-[280px]">
+        <div id="mapa-brasil-container" class="flex justify-center items-center min-h-[300px]">
           ${renderMapaBrasil(stats)}
         </div>
       </div>
       
-      <!-- Gráfico por região -->
-      <div class="bg-white dark:bg-[#0D1B3E] border border-[#D6E4F5] dark:border-[#1A3A7F]/50 rounded-xl p-4 shadow-sm">
-        <h3 class="font-semibold text-[#0A1839] dark:text-white text-sm mb-3 flex items-center gap-2">
+      <div class="${t.card} border ${t.border} rounded-xl p-4">
+        <h3 class="font-semibold ${t.text} text-sm mb-3 flex items-center gap-2">
           <i class="fas fa-chart-bar text-[#2A4A9F]"></i>
-          Concursos por Região ${concursosFilterUF ? '(' + filtroLabel + ')' : ''}
+          Por Região ${concursosFilterUF ? '(' + filtroLabel + ')' : ''}
         </h3>
         <div style="height: 250px; position: relative;">
           <canvas id="chart-concursos-regiao"></canvas>
@@ -23515,10 +23513,10 @@ function renderizarConcursosContent() {
       </div>
     </div>
     
-    <!-- Top estados - compacto -->
-    <div class="bg-white dark:bg-[#0D1B3E] border border-[#D6E4F5] dark:border-[#1A3A7F]/50 rounded-xl p-4 shadow-sm">
+    <!-- Top estados - compacto colapsável -->
+    <div class="${t.card} border ${t.border} rounded-xl p-4">
       <button id="btn-toggle-ranking" class="w-full flex items-center justify-between text-left">
-        <h3 class="font-semibold text-[#0A1839] dark:text-white text-sm flex items-center gap-2">
+        <h3 class="font-semibold ${t.text} text-sm flex items-center gap-2">
           <i class="fas fa-trophy text-[#2A4A9F]"></i>
           Top 10 Estados
         </h3>
@@ -23530,99 +23528,32 @@ function renderizarConcursosContent() {
             .sort((a, b) => b[1].total - a[1].total)
             .slice(0, 10)
             .map(([uf, s], idx) => {
-              const info = UFS_INFO[uf] || { nome: uf.toUpperCase() };
               const maxTotal = Object.values(stats).reduce((m, v) => Math.max(m, v.total), 1);
               const pct = Math.round((s.total / maxTotal) * 100);
               const isSelected = concursosFilterUF === uf;
-              return '<div class="mapa-uf-cell flex items-center gap-2 p-2 rounded-lg cursor-pointer transition hover:bg-[#E8EDF5] dark:hover:bg-[#122D6A]/40 ' + (isSelected ? 'bg-[#E8EDF5] dark:bg-[#122D6A]/40 ring-1 ring-[#2A4A9F]' : '') + '" data-uf="' + uf + '">' +
-                '<span class="text-[10px] font-bold text-[#2A4A9F] dark:text-[#7BC4FF] w-4">' + (idx + 1) + '</span>' +
-                '<span class="text-xs font-bold text-[#0A1839] dark:text-white bg-[#E8EDF5] dark:bg-[#122D6A]/60 rounded px-1.5 py-0.5">' + uf.toUpperCase() + '</span>' +
-                '<div class="flex-1 bg-[#E8EDF5] dark:bg-[#0A1839]/60 rounded-full h-1.5 overflow-hidden">' +
+              return '<div class="mapa-uf-cell flex items-center gap-2 p-2 rounded-lg cursor-pointer transition ' + t.cardHover + ' ' + (isSelected ? 'ring-2 ring-[#2A4A9F]' : '') + '" data-uf="' + uf + '">' +
+                '<span class="text-[10px] font-bold text-[#2A4A9F] w-4">' + (idx + 1) + '</span>' +
+                '<span class="text-xs font-bold text-[#122D6A] bg-[#E8EDF5] rounded px-1.5 py-0.5">' + uf.toUpperCase() + '</span>' +
+                '<div class="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden">' +
                   '<div class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-[#2A4A9F]" style="width:' + pct + '%"></div>' +
                 '</div>' +
-                '<span class="text-[10px] font-semibold text-[#122D6A] dark:text-[#7BC4FF]">' + s.total + '</span>' +
+                '<span class="text-[10px] font-semibold text-[#122D6A]">' + s.total + '</span>' +
               '</div>';
             }).join('')}
         </div>
       </div>
     </div>
     
-    <!-- Tabela de concursos ABERTOS -->
-    ${(concursosFilterTipo === 'todos' || concursosFilterTipo === 'abertos') ? '<div class="bg-white dark:bg-[#0D1B3E] border border-[#D6E4F5] dark:border-[#1A3A7F]/50 rounded-xl shadow-sm overflow-hidden">' +
-      '<div class="px-4 py-3 border-b border-[#D6E4F5] dark:border-[#1A3A7F]/50 flex items-center gap-2">' +
-        '<span class="w-2 h-2 rounded-full bg-emerald-500"></span>' +
-        '<h3 class="font-semibold text-[#0A1839] dark:text-white text-sm">' +
-          '<i class="fas fa-check-circle text-emerald-600 mr-1"></i>' +
-          'Concursos Abertos (' + concursosAbertos.length + ')' +
-        '</h3>' +
-        '<span class="ml-auto text-xs text-[#5A6F9A] dark:text-[#8BA3D4]">' + filtroLabel + '</span>' +
-      '</div>' +
-      '<div class="overflow-x-auto max-h-[300px] overflow-y-auto">' +
-        '<table class="w-full text-sm">' +
-          '<thead class="bg-[#F0F4FA] dark:bg-[#0A1839] sticky top-0 z-10">' +
-            '<tr>' +
-              '<th class="p-2.5 text-left text-xs font-semibold text-[#0A1839] dark:text-[#B8C9E4]">Órgão</th>' +
-              '<th class="p-2.5 text-center text-xs font-semibold text-[#0A1839] dark:text-[#B8C9E4] w-16">UF</th>' +
-              '<th class="p-2.5 text-center text-xs font-semibold text-[#0A1839] dark:text-[#B8C9E4] w-20">Vagas</th>' +
-            '</tr>' +
-          '</thead>' +
-          '<tbody>' +
-            (concursosAbertos.length > 0 ? concursosAbertos.map((c, i) => {
-              const orgao = c['Órgão'] || c['orgao'] || 'N/A';
-              const vagas = c['Vagas'] || c['vagas'] || '-';
-              const rowBg = i % 2 === 0 ? 'bg-white dark:bg-[#0D1B3E]' : 'bg-[#F7F9FC] dark:bg-[#0A1839]/40';
-              return '<tr class="' + rowBg + ' border-b border-[#E8EDF5] dark:border-[#1A3A7F]/30 hover:bg-[#E8EDF5] dark:hover:bg-[#122D6A]/20 transition">' +
-                '<td class="p-2.5 text-xs text-[#1A2A4F] dark:text-[#D6E4F5] font-medium">' + orgao + '</td>' +
-                '<td class="p-2.5 text-center"><span class="text-[10px] font-bold text-[#122D6A] dark:text-[#7BC4FF] bg-[#E8EDF5] dark:bg-[#122D6A]/40 rounded px-1.5 py-0.5">' + c.uf + '</span></td>' +
-                '<td class="p-2.5 text-center text-xs font-semibold text-[#0A1839] dark:text-[#D6E4F5]">' + vagas + '</td>' +
-              '</tr>';
-            }).join('') : '<tr><td colspan="3" class="p-6 text-center text-[#5A6F9A] dark:text-[#8BA3D4] text-xs"><i class="fas fa-info-circle mr-1"></i>Nenhum concurso aberto encontrado</td></tr>') +
-          '</tbody>' +
-        '</table>' +
-      '</div>' +
-    '</div>' : ''}
+    <!-- Tabela ABERTOS -->
+    ${(concursosFilterTipo === 'todos' || concursosFilterTipo === 'abertos') ? renderTabelaConcursos(concursosAbertos, 'aberto', filtroLabel, t) : ''}
     
-    <!-- Tabela de concursos PREVISTOS -->
-    ${(concursosFilterTipo === 'todos' || concursosFilterTipo === 'previstos') ? '<div class="bg-white dark:bg-[#0D1B3E] border border-[#D6E4F5] dark:border-[#1A3A7F]/50 rounded-xl shadow-sm overflow-hidden">' +
-      '<div class="px-4 py-3 border-b border-[#D6E4F5] dark:border-[#1A3A7F]/50 flex items-center gap-2">' +
-        '<span class="w-2 h-2 rounded-full bg-amber-500"></span>' +
-        '<h3 class="font-semibold text-[#0A1839] dark:text-white text-sm">' +
-          '<i class="fas fa-clock text-amber-600 mr-1"></i>' +
-          'Concursos Previstos (' + concursosPrevistos.length + ')' +
-        '</h3>' +
-        '<span class="ml-auto text-xs text-[#5A6F9A] dark:text-[#8BA3D4]">' + filtroLabel + '</span>' +
-      '</div>' +
-      '<div class="overflow-x-auto max-h-[300px] overflow-y-auto">' +
-        '<table class="w-full text-sm">' +
-          '<thead class="bg-[#F0F4FA] dark:bg-[#0A1839] sticky top-0 z-10">' +
-            '<tr>' +
-              '<th class="p-2.5 text-left text-xs font-semibold text-[#0A1839] dark:text-[#B8C9E4]">Órgão</th>' +
-              '<th class="p-2.5 text-center text-xs font-semibold text-[#0A1839] dark:text-[#B8C9E4] w-16">UF</th>' +
-              '<th class="p-2.5 text-center text-xs font-semibold text-[#0A1839] dark:text-[#B8C9E4] w-20">Vagas</th>' +
-            '</tr>' +
-          '</thead>' +
-          '<tbody>' +
-            (concursosPrevistos.length > 0 ? concursosPrevistos.map((c, i) => {
-              const orgao = c['Órgão'] || c['orgao'] || 'N/A';
-              const vagas = c['Vagas'] || c['vagas'] || '-';
-              const rowBg = i % 2 === 0 ? 'bg-white dark:bg-[#0D1B3E]' : 'bg-[#F7F9FC] dark:bg-[#0A1839]/40';
-              return '<tr class="' + rowBg + ' border-b border-[#E8EDF5] dark:border-[#1A3A7F]/30 hover:bg-[#E8EDF5] dark:hover:bg-[#122D6A]/20 transition">' +
-                '<td class="p-2.5 text-xs text-[#1A2A4F] dark:text-[#D6E4F5] font-medium">' + orgao + '</td>' +
-                '<td class="p-2.5 text-center"><span class="text-[10px] font-bold text-[#122D6A] dark:text-[#7BC4FF] bg-[#E8EDF5] dark:bg-[#122D6A]/40 rounded px-1.5 py-0.5">' + c.uf + '</span></td>' +
-                '<td class="p-2.5 text-center text-xs font-semibold text-[#0A1839] dark:text-[#D6E4F5]">' + vagas + '</td>' +
-              '</tr>';
-            }).join('') : '<tr><td colspan="3" class="p-6 text-center text-[#5A6F9A] dark:text-[#8BA3D4] text-xs"><i class="fas fa-info-circle mr-1"></i>Nenhum concurso previsto encontrado</td></tr>') +
-          '</tbody>' +
-        '</table>' +
-      '</div>' +
-    '</div>' : ''}
+    <!-- Tabela PREVISTOS -->
+    ${(concursosFilterTipo === 'todos' || concursosFilterTipo === 'previstos') ? renderTabelaConcursos(concursosPrevistos, 'previsto', filtroLabel, t) : ''}
   `;
   
-  // Renderizar gráfico por região + event listeners
   setTimeout(() => {
     renderChartRegioes(regioes);
     
-    // Toggle ranking (colapsável)
     const btnToggle = document.getElementById('btn-toggle-ranking');
     const rankingBody = document.getElementById('ranking-estados-body');
     const iconToggle = document.getElementById('icon-toggle-ranking');
@@ -23634,7 +23565,6 @@ function renderizarConcursosContent() {
       });
     }
     
-    // Event listeners para os estados no mapa e top 10
     document.querySelectorAll('.mapa-uf-cell').forEach(g => {
       g.addEventListener('click', function() {
         const uf = this.getAttribute('data-uf');
@@ -23642,7 +23572,6 @@ function renderizarConcursosContent() {
       });
     });
     
-    // Botão limpar filtro
     const btnLimpar = document.getElementById('btn-limpar-filtro-uf');
     if (btnLimpar) {
       btnLimpar.addEventListener('click', function() {
@@ -23655,11 +23584,52 @@ function renderizarConcursosContent() {
   }, 100);
 }
 
-function renderMapaBrasil(stats) {
-  // Mapa SVG do Brasil com posições relativas dos estados
-  const maxTotal = Math.max(...Object.values(stats).map(s => s.total), 1);
+function renderTabelaConcursos(lista, tipo, filtroLabel, t) {
+  const isAberto = tipo === 'aberto';
+  const titulo = isAberto ? 'Concursos Abertos' : 'Concursos Previstos';
+  const icone = isAberto ? 'fa-check-circle text-emerald-600' : 'fa-clock text-amber-600';
+  const dot = isAberto ? 'bg-emerald-500' : 'bg-amber-500';
   
-  // Posições dos estados no grid do mapa (simulando a forma do Brasil)
+  return '<div class="' + t.card + ' border ' + t.border + ' rounded-xl overflow-hidden">' +
+    '<div class="px-4 py-3 border-b ' + t.border + ' flex items-center gap-2">' +
+      '<span class="w-2 h-2 rounded-full ' + dot + '"></span>' +
+      '<h3 class="font-semibold ' + t.text + ' text-sm">' +
+        '<i class="fas ' + icone + ' mr-1"></i>' +
+        titulo + ' (' + lista.length + ')' +
+      '</h3>' +
+      '<span class="ml-auto text-xs ' + t.textMuted + '">' + filtroLabel + '</span>' +
+    '</div>' +
+    '<div class="overflow-x-auto max-h-[300px] overflow-y-auto">' +
+      '<table class="w-full text-sm">' +
+        '<thead class="' + t.bgAlt + ' sticky top-0 z-10">' +
+          '<tr>' +
+            '<th class="p-2.5 text-left text-xs font-semibold ' + t.text + '">Órgão</th>' +
+            '<th class="p-2.5 text-center text-xs font-semibold ' + t.text + ' w-16">UF</th>' +
+            '<th class="p-2.5 text-center text-xs font-semibold ' + t.text + ' w-20">Vagas</th>' +
+          '</tr>' +
+        '</thead>' +
+        '<tbody>' +
+          (lista.length > 0 ? lista.map(function(c, i) {
+            const orgao = c['Órgão'] || c['orgao'] || 'N/A';
+            const vagas = c['Vagas'] || c['vagas'] || '-';
+            const stripe = i % 2 === 0 ? t.card : t.bgAlt;
+            return '<tr class="' + stripe + ' border-b ' + t.border + ' hover:bg-[#E8EDF5]/40 transition">' +
+              '<td class="p-2.5 text-xs ' + t.text + ' font-medium">' + orgao + '</td>' +
+              '<td class="p-2.5 text-center"><span class="text-[10px] font-bold text-[#122D6A] bg-[#E8EDF5] rounded px-1.5 py-0.5">' + c.uf + '</span></td>' +
+              '<td class="p-2.5 text-center text-xs font-semibold ' + t.text + '">' + vagas + '</td>' +
+            '</tr>';
+          }).join('') : '<tr><td colspan="3" class="p-6 text-center ' + t.textMuted + ' text-xs"><i class="fas fa-info-circle mr-1"></i>Nenhum concurso encontrado</td></tr>') +
+        '</tbody>' +
+      '</table>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderMapaBrasil(stats) {
+  const maxTotal = Math.max(...Object.values(stats).map(s => s.total), 1);
+  const isDark = currentTheme === 'dark';
+  
+  // Posições dos estados no grid (simulando forma do Brasil)
   const posicoes = {
     rr: [3, 0], ap: [5, 0],
     am: [2, 1], pa: [4, 1], ma: [6, 1],
@@ -23675,53 +23645,84 @@ function renderMapaBrasil(stats) {
   const svgW = 10 * cellW + 20;
   const svgH = 9.5 * cellH + 20;
   
-  let svgContent = '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '" class="w-full max-w-[420px]" xmlns="http://www.w3.org/2000/svg" style="display:block;">';
+  // Silhueta simplificada do Brasil (path SVG real)
+  const brasilOutline = 'M170,8 C190,5 220,10 250,8 C280,5 310,15 330,20 C350,25 370,18 390,25 C400,28 405,35 395,45 C385,55 395,65 400,75 C405,85 395,95 390,105 C385,115 375,120 365,130 C370,140 380,145 390,150 C395,155 405,160 410,170 C415,180 420,190 415,200 C410,210 405,220 400,230 C395,240 400,250 395,260 C390,270 380,275 370,280 C360,285 350,295 340,300 C330,305 320,310 310,315 C300,320 290,318 280,320 C270,325 260,330 250,335 C240,330 230,325 220,320 C210,315 200,320 190,315 C180,310 175,300 170,290 C165,280 160,270 155,260 C150,250 140,245 135,235 C130,225 125,215 120,205 C115,195 110,185 115,175 C120,165 115,155 110,145 C105,135 110,125 115,115 C120,105 125,95 130,85 C135,75 140,65 145,55 C150,45 155,35 160,25 C163,18 167,12 170,8 Z';
   
-  // Background shape hint (outline of Brazil shape)
-  svgContent += '<rect width="' + svgW + '" height="' + svgH + '" fill="none" rx="8" />';
+  let svg = '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '" class="w-full max-w-[420px]" xmlns="http://www.w3.org/2000/svg" style="display:block;">';
   
-  Object.entries(posicoes).forEach(function([uf, pos]) {
-    const x = pos[0], y = pos[1];
-    const s = stats[uf] || { total: 0, abertos: 0, previstos: 0 };
-    const intensity = s.total > 0 ? Math.max(0.2, Math.min(1, s.total / maxTotal)) : 0;
-    const isSelected = concursosFilterUF === uf;
+  // Silhueta do Brasil ao fundo
+  svg += '<path d="' + brasilOutline + '" fill="' + (isDark ? 'rgba(42,74,159,0.08)' : 'rgba(42,74,159,0.05)') + '" stroke="' + (isDark ? 'rgba(42,74,159,0.15)' : 'rgba(42,74,159,0.12)') + '" stroke-width="1.5" stroke-dasharray="4,3" />';
+  
+  // Tiles dos estados
+  Object.entries(posicoes).forEach(function(entry) {
+    var uf = entry[0], pos = entry[1];
+    var x = pos[0], y = pos[1];
+    var s = stats[uf] || { total: 0, abertos: 0, previstos: 0 };
+    var intensity = s.total > 0 ? Math.max(0.15, Math.min(1, s.total / maxTotal)) : 0;
+    var isSelected = concursosFilterUF === uf;
     
-    // Color gradient from light blue (no data) to dark navy (max data)
-    let fill;
+    var fill, textColor, subColor;
     if (s.total === 0) {
-      fill = '#CBD5E1';
+      fill = isDark ? '#374151' : '#E2E8F0';
+      textColor = isDark ? '#9CA3AF' : '#94A3B8';
+      subColor = isDark ? 'rgba(156,163,175,0.6)' : 'rgba(148,163,184,0.6)';
     } else {
-      const r = Math.round(200 - 190 * intensity);
-      const g = Math.round(220 - 175 * intensity);
-      const b = Math.round(255 - 95 * intensity);
+      // Gradiente: azul claro (pouco) → azul escuro (muito)
+      var r = Math.round(isDark ? (30 + 70 * (1 - intensity)) : (220 - 200 * intensity));
+      var g = Math.round(isDark ? (50 + 80 * (1 - intensity)) : (230 - 185 * intensity));
+      var b = Math.round(isDark ? (120 + 60 * (1 - intensity)) : (255 - 95 * intensity));
       fill = 'rgb(' + r + ',' + g + ',' + b + ')';
+      textColor = intensity > 0.4 ? 'white' : (isDark ? '#E5E7EB' : '#0A1839');
+      subColor = intensity > 0.4 ? 'rgba(255,255,255,0.75)' : (isDark ? 'rgba(229,231,235,0.6)' : 'rgba(10,24,57,0.55)');
     }
     
-    const stroke = isSelected ? '#F59E0B' : (s.total > 0 ? 'rgba(255,255,255,0.8)' : 'rgba(200,210,225,0.5)');
-    const strokeW = isSelected ? 3 : 1;
-    const px = 10 + x * cellW;
-    const py = 10 + y * cellH;
-    const textColor = intensity > 0.5 ? 'white' : (s.total > 0 ? '#0A1839' : '#94A3B8');
-    const subColor = intensity > 0.5 ? 'rgba(255,255,255,0.8)' : (s.total > 0 ? 'rgba(10,24,57,0.6)' : 'rgba(148,163,184,0.6)');
+    var stroke = isSelected ? '#F59E0B' : (isDark ? 'rgba(55,65,81,0.6)' : 'rgba(255,255,255,0.85)');
+    var strokeW = isSelected ? 3 : 1;
+    var px = 10 + x * cellW;
+    var py = 10 + y * cellH;
     
-    svgContent += '<g class="mapa-uf-cell" data-uf="' + uf + '" style="cursor:pointer;">' +
+    svg += '<g class="mapa-uf-cell" data-uf="' + uf + '" style="cursor:pointer;">' +
       '<rect x="' + px + '" y="' + py + '" width="' + (cellW - 3) + '" height="' + (cellH - 3) + '" rx="5" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + strokeW + '" />' +
       '<text x="' + (px + (cellW - 3) / 2) + '" y="' + (py + 14) + '" text-anchor="middle" fill="' + textColor + '" font-size="11" font-weight="bold" style="pointer-events:none">' + uf.toUpperCase() + '</text>' +
       '<text x="' + (px + (cellW - 3) / 2) + '" y="' + (py + 26) + '" text-anchor="middle" fill="' + subColor + '" font-size="9" style="pointer-events:none">' + s.total + '</text>' +
     '</g>';
   });
   
-  svgContent += '</svg>';
-  return svgContent;
+  // Legenda de intensidade
+  svg += '<g transform="translate(10,' + (svgH - 20) + ')">';
+  svg += '<text x="0" y="10" fill="' + (isDark ? '#9CA3AF' : '#64748B') + '" font-size="8">Menos</text>';
+  for (var i = 0; i < 5; i++) {
+    var lInt = i / 4;
+    var lr, lg, lb;
+    if (isDark) {
+      lr = Math.round(30 + 70 * (1 - lInt));
+      lg = Math.round(50 + 80 * (1 - lInt));
+      lb = Math.round(120 + 60 * (1 - lInt));
+    } else {
+      lr = Math.round(220 - 200 * lInt);
+      lg = Math.round(230 - 185 * lInt);
+      lb = Math.round(255 - 95 * lInt);
+    }
+    svg += '<rect x="' + (35 + i * 18) + '" y="2" width="16" height="10" rx="2" fill="rgb(' + lr + ',' + lg + ',' + lb + ')" />';
+  }
+  svg += '<text x="130" y="10" fill="' + (isDark ? '#9CA3AF' : '#64748B') + '" font-size="8">Mais</text>';
+  svg += '</g>';
+  
+  svg += '</svg>';
+  return svg;
 }
 
 function renderChartRegioes(regioes) {
   const ctx = document.getElementById('chart-concursos-regiao');
   if (!ctx) return;
   
+  const isDark = currentTheme === 'dark';
   const labels = Object.keys(regioes);
   const dataAbertos = labels.map(r => regioes[r].abertos);
   const dataPrevistos = labels.map(r => regioes[r].previstos);
+  const tickColor = isDark ? '#9CA3AF' : '#5A6F9A';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+  const legendColor = isDark ? '#D1D5DB' : '#0A1839';
   
   new Chart(ctx, {
     type: 'bar',
@@ -23738,7 +23739,7 @@ function renderChartRegioes(regioes) {
         {
           label: 'Previstos',
           data: dataPrevistos,
-          backgroundColor: '#93B8E8',
+          backgroundColor: isDark ? '#5B8DEF' : '#93B8E8',
           borderRadius: 4,
           barPercentage: 0.7
         }
@@ -23750,19 +23751,19 @@ function renderChartRegioes(regioes) {
       plugins: {
         legend: {
           position: 'top',
-          labels: { usePointStyle: true, padding: 12, font: { size: 11 }, color: '#0A1839' }
+          labels: { usePointStyle: true, padding: 12, font: { size: 11 }, color: legendColor }
         },
         tooltip: {
           callbacks: {
-            label: function(ctx) {
-              return ctx.dataset.label + ': ' + ctx.parsed.y + ' concurso' + (ctx.parsed.y !== 1 ? 's' : '');
+            label: function(c) {
+              return c.dataset.label + ': ' + c.parsed.y + ' concurso' + (c.parsed.y !== 1 ? 's' : '');
             }
           }
         }
       },
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#5A6F9A' } },
-        y: { beginAtZero: true, ticks: { stepSize: 5, font: { size: 10 }, color: '#5A6F9A' }, grid: { color: 'rgba(0,0,0,0.04)' } }
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: tickColor } },
+        y: { beginAtZero: true, ticks: { stepSize: 5, font: { size: 10 }, color: tickColor }, grid: { color: gridColor } }
       }
     }
   });

@@ -22330,7 +22330,7 @@ app.get('/api/admin/analytics', async (c) => {
 
 const UFS_BRASIL = ['ac','al','ap','am','ba','ce','df','es','go','ma','mt','ms','mg','pa','pb','pr','pe','pi','rj','rn','rs','ro','rr','sc','sp','se','to']
 
-// Buscar concursos de uma UF específica
+// Buscar concursos de uma UF específica (com cache D1 diário)
 app.get('/api/concursos/:uf', async (c) => {
   const uf = c.req.param('uf').toLowerCase()
   
@@ -22339,6 +22339,19 @@ app.get('/api/concursos/:uf', async (c) => {
   }
   
   try {
+    // Tentar buscar do cache D1 do dia
+    const hoje = new Date().toISOString().split('T')[0]
+    const cached = await c.env.DB.prepare(
+      'SELECT data_json FROM concursos_cache WHERE cache_date = ?'
+    ).bind(hoje).first() as any
+    
+    if (cached) {
+      const allData = JSON.parse(cached.data_json)
+      const ufData = allData.find((e: any) => (e.uf || '').toLowerCase() === uf)
+      if (ufData) return c.json(ufData)
+    }
+    
+    // Sem cache, buscar da API externa
     const response = await fetch(`https://concursos-api.deno.dev/${uf}`, {
       headers: { 'Accept': 'application/json' }
     })
@@ -22350,16 +22363,32 @@ app.get('/api/concursos/:uf', async (c) => {
   }
 })
 
-// Buscar concursos de TODAS as UFs (agregado - sem retry, rápido)
+// Buscar concursos de TODAS as UFs (cache D1 diário — 1 requisição por dia)
 app.get('/api/concursos', async (c) => {
   try {
-    const results: any[] = []
+    const hoje = new Date().toISOString().split('T')[0]
     
-    // Buscar TODAS as UFs em paralelo de uma vez (sem delay, sem retry)
+    // 1. Verificar cache D1 do dia
+    const cached = await c.env.DB.prepare(
+      'SELECT data_json, total_abertos, total_previstos, total_ufs FROM concursos_cache WHERE cache_date = ?'
+    ).bind(hoje).first() as any
+    
+    if (cached) {
+      const estados = JSON.parse(cached.data_json)
+      return c.json({
+        success: true,
+        total_ufs: cached.total_ufs || estados.length,
+        cached: true,
+        cache_date: hoje,
+        estados
+      })
+    }
+    
+    // 2. Sem cache do dia — buscar da API externa (todas as UFs em paralelo)
     const promises = UFS_BRASIL.map(async (uf) => {
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5s timeout por UF
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
         const response = await fetch(`https://concursos-api.deno.dev/${uf}`, {
           headers: { 'Accept': 'application/json' },
           signal: controller.signal
@@ -22374,10 +22403,33 @@ app.get('/api/concursos', async (c) => {
     
     const allResults = await Promise.all(promises)
     
-    return c.json({ 
-      success: true, 
+    // 3. Calcular totais
+    let totalAbertos = 0, totalPrevistos = 0
+    allResults.forEach((e: any) => {
+      totalAbertos += (e.concursos_abertos || []).length
+      totalPrevistos += (e.concursos_previstos || []).length
+    })
+    
+    // 4. Salvar no cache D1 (INSERT OR REPLACE para o dia)
+    try {
+      await c.env.DB.prepare(
+        'INSERT OR REPLACE INTO concursos_cache (cache_date, data_json, total_abertos, total_previstos, total_ufs) VALUES (?, ?, ?, ?, ?)'
+      ).bind(hoje, JSON.stringify(allResults), totalAbertos, totalPrevistos, allResults.length).run()
+      
+      // Limpar caches antigos (manter apenas 7 dias)
+      await c.env.DB.prepare(
+        'DELETE FROM concursos_cache WHERE cache_date < ?'
+      ).bind(new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]).run()
+    } catch (dbErr) {
+      console.error('Erro ao salvar cache concursos:', dbErr)
+    }
+    
+    return c.json({
+      success: true,
       total_ufs: allResults.length,
-      estados: allResults 
+      cached: false,
+      cache_date: hoje,
+      estados: allResults
     })
   } catch (error: any) {
     console.error('Erro ao buscar todos concursos:', error)
