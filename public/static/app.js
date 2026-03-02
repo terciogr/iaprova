@@ -16580,7 +16580,7 @@ window.abrirAnalyticsAdmin = async function() {
         <div class="p-5 overflow-y-auto flex-1 space-y-6">
           
           <!-- Totais de conteúdo -->
-          <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div class="grid grid-cols-2 md:grid-cols-7 gap-3">
             ${(function() {
               const tipos = data.conteudos?.totais || [];
               const tipoMap = {};
@@ -16591,11 +16591,13 @@ window.abrirAnalyticsAdmin = async function() {
                 { label: 'Resumos', icon: 'fa-sticky-note', val: tipoMap['resumo'] || 0 },
                 { label: 'Flashcards', icon: 'fa-clone', val: data.conteudos?.flashcards_total || 0 },
                 { label: 'Simulados', icon: 'fa-file-alt', val: data.conteudos?.simulados_total || 0 },
-                { label: 'Revisoes', icon: 'fa-redo', val: data.conteudos?.revisoes_total || 0 }
+                { label: 'Revisoes', icon: 'fa-redo', val: data.conteudos?.revisoes_total || 0 },
+                { label: 'Chats Lilu', icon: 'fa-robot', val: data.chat_lilu?.total || 0 }
               ];
               var blueShades = [
                 ['#0A1839', '#122D6A'], ['#122D6A', '#1A3A7F'], ['#1A3A7F', '#2A4A9F'],
-                ['#2A4A9F', '#3A5AB0'], ['#3A5AB0', '#4A90D9'], ['#4A90D9', '#6BB6FF']
+                ['#2A4A9F', '#3A5AB0'], ['#3A5AB0', '#4A90D9'], ['#4A90D9', '#6BB6FF'],
+                ['#6B21A8', '#9333EA']
               ];
               return items.map(function(i, idx) {
                 var shade = blueShades[idx % blueShades.length];
@@ -16620,17 +16622,46 @@ window.abrirAnalyticsAdmin = async function() {
           </div>
           
           <!-- Gráfico: Feedbacks por tipo -->
-          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
+          <div class="grid md:grid-cols-2 gap-4">
+            <!-- Card Lilu Chat Stats -->
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
+              <h3 class="font-bold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+                <i class="fas fa-robot text-[#9333EA]"></i>
+                Interacoes com a Lilu
+              </h3>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="bg-gradient-to-br from-[#6B21A8] to-[#9333EA] rounded-xl p-4 text-white text-center">
+                  <i class="fas fa-comments text-2xl opacity-80 mb-1"></i>
+                  <div class="text-3xl font-bold">${data.chat_lilu?.total || 0}</div>
+                  <div class="text-xs opacity-80">Total de mensagens</div>
+                </div>
+                <div class="bg-gradient-to-br from-[#7C3AED] to-[#A855F7] rounded-xl p-4 text-white text-center">
+                  <i class="fas fa-users text-2xl opacity-80 mb-1"></i>
+                  <div class="text-3xl font-bold">${data.chat_lilu?.usuarios_unicos || 0}</div>
+                  <div class="text-xs opacity-80">Usuarios unicos</div>
+                </div>
+              </div>
+            </div>
+          
+            <!-- Gráfico: Feedbacks por tipo -->
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
             <h3 class="font-bold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
               <i class="fas fa-star text-[#4A90D9]"></i>
               Feedbacks por Tipo
             </h3>
-            <div class="grid md:grid-cols-2 gap-4">
               <div style="height: 260px; position: relative;">
                 <canvas id="chart-feedbacks-tipo"></canvas>
               </div>
-              <div class="space-y-3">
-                <div class="grid grid-cols-2 gap-2">
+            </div>
+          </div>
+
+          <!-- Stats de Feedbacks -->
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
+            <h3 class="font-bold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
+              <i class="fas fa-chart-bar text-[#2A4A9F]"></i>
+              Estatisticas de Feedbacks
+            </h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div class="bg-[#E8EDF5] dark:bg-[#0A1839]/50 rounded-lg p-3 text-center">
                     <div class="text-2xl font-bold text-[#122D6A] dark:text-[#7BC4FF]">${data.feedbacks?.stats?.total || 0}</div>
                     <div class="text-xs ${themes[currentTheme].textSecondary}">Total feedbacks</div>
@@ -16647,8 +16678,6 @@ window.abrirAnalyticsAdmin = async function() {
                     <div class="text-2xl font-bold text-[#3A5AB0] dark:text-[#4A90D9]">${data.feedbacks?.stats?.positivos || 0}</div>
                     <div class="text-xs ${themes[currentTheme].textSecondary}">Positivos</div>
                   </div>
-                </div>
-              </div>
             </div>
           </div>
           
@@ -16736,6 +16765,7 @@ window.abrirAnalyticsAdmin = async function() {
         var flashcardsPorDia = data.conteudos?.flashcards_por_dia || [];
         var simuladosPorDia = data.conteudos?.simulados_por_dia || [];
         var exerciciosPorDia = data.conteudos?.exercicios_por_dia || [];
+        var chatPorDia = data.chat_lilu?.por_dia || [];
         
         // Coletar todas as datas únicas
         var allDates = new Set();
@@ -16743,6 +16773,7 @@ window.abrirAnalyticsAdmin = async function() {
         flashcardsPorDia.forEach(function(r) { allDates.add(r.dia); });
         simuladosPorDia.forEach(function(r) { allDates.add(r.dia); });
         exerciciosPorDia.forEach(function(r) { allDates.add(r.dia); });
+        chatPorDia.forEach(function(r) { allDates.add(r.dia); });
         
         // Se não há dados, gerar últimos 7 dias
         if (allDates.size === 0) {
@@ -16765,6 +16796,7 @@ window.abrirAnalyticsAdmin = async function() {
         var resumoMap = {};
         var flashcardsMap = {};
         var simuladosMap = {};
+        var chatMap = {};
         
         conteudoPorDia.forEach(function(r) {
           if (r.tipo === 'teoria') teoriaMap[r.dia] = (teoriaMap[r.dia] || 0) + r.total;
@@ -16781,13 +16813,17 @@ window.abrirAnalyticsAdmin = async function() {
         exerciciosPorDia.forEach(function(r) {
           exerciciosMap[r.dia] = (exerciciosMap[r.dia] || 0) + r.total;
         });
+        chatPorDia.forEach(function(r) {
+          chatMap[r.dia] = (chatMap[r.dia] || 0) + r.total;
+        });
         
         var datasets = [
           { label: 'Teoria', data: sortedDates.map(function(d) { return teoriaMap[d] || 0; }), borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.4 },
           { label: 'Exercicios', data: sortedDates.map(function(d) { return exerciciosMap[d] || 0; }), borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.4 },
           { label: 'Resumos', data: sortedDates.map(function(d) { return resumoMap[d] || 0; }), borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.1)', fill: true, tension: 0.4 },
           { label: 'Flashcards', data: sortedDates.map(function(d) { return flashcardsMap[d] || 0; }), borderColor: '#8B5CF6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.4 },
-          { label: 'Simulados', data: sortedDates.map(function(d) { return simuladosMap[d] || 0; }), borderColor: '#EF4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.4 }
+          { label: 'Simulados', data: sortedDates.map(function(d) { return simuladosMap[d] || 0; }), borderColor: '#EF4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.4 },
+          { label: 'Chats Lilu', data: sortedDates.map(function(d) { return chatMap[d] || 0; }), borderColor: '#9333EA', backgroundColor: 'rgba(147,51,234,0.1)', fill: true, tension: 0.4, borderDash: [5, 5] }
         ];
         
         new Chart(ctxConteudo, {
@@ -23047,6 +23083,55 @@ async function sendChatMessage() {
   }
 }
 
+// v72: Converter markdown para HTML no chat da LILU
+function formatarMarkdownChat(text) {
+  if (!text || typeof text !== 'string') return text;
+  
+  // Se já contém HTML (ex: loading spinner), retornar sem alterar
+  if (text.includes('<i class="fas') || text.includes('<strong>') || text.includes('<em>')) return text;
+  
+  let html = text;
+  
+  // Escapar HTML perigoso (mas preservar quebras de linha)
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  
+  // Negrito: **texto** ou __texto__
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>');
+  html = html.replace(/__(.+?)__/g, '<strong class="font-semibold">$1</strong>');
+  
+  // Itálico: *texto* ou _texto_ (mas não confundir com bold)
+  html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+  html = html.replace(/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/g, '<em>$1</em>');
+  
+  // Código inline: `texto`
+  html = html.replace(/`(.+?)`/g, '<code class="bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs font-mono">$1</code>');
+  
+  // Headers: ### título, ## título, # título
+  html = html.replace(/^### (.+)$/gm, '<div class="font-bold text-sm mt-3 mb-1 flex items-center gap-1.5"><i class="fas fa-chevron-right text-[8px] opacity-60"></i>$1</div>');
+  html = html.replace(/^## (.+)$/gm, '<div class="font-bold text-base mt-3 mb-1">$1</div>');
+  html = html.replace(/^# (.+)$/gm, '<div class="font-bold text-lg mt-3 mb-2">$1</div>');
+  
+  // Listas com bullet: - item ou * item
+  html = html.replace(/^[\-\*] (.+)$/gm, '<div class="flex items-start gap-2 ml-2 my-0.5"><span class="text-[#4A90D9] mt-1.5 text-[6px]">●</span><span>$1</span></div>');
+  
+  // Listas numeradas: 1. item, 2. item
+  html = html.replace(/^(\d+)\. (.+)$/gm, '<div class="flex items-start gap-2 ml-2 my-0.5"><span class="font-bold text-[#4A90D9] min-w-[18px]">$1.</span><span>$2</span></div>');
+  
+  // Emojis como ícones de seção (ex: 📚 Título)
+  html = html.replace(/^([\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]) (.+)$/gmu, '<div class="flex items-center gap-2 mt-2 mb-1"><span class="text-lg">$1</span><span class="font-semibold">$2</span></div>');
+  
+  // Separadores: --- ou ___
+  html = html.replace(/^[-_]{3,}$/gm, '<hr class="my-2 border-gray-200 dark:border-gray-600">');
+  
+  // Quebras de linha duplas para parágrafos
+  html = html.replace(/\n\n/g, '</p><p class="mt-2">');
+  
+  // Quebras de linha simples
+  html = html.replace(/\n/g, '<br>');
+  
+  return html;
+}
+
 function addChatMessage(role, content, id = null) {
   const messagesDiv = document.getElementById('chatMessages');
   const messageId = id || 'msg-' + Date.now();
@@ -23058,10 +23143,13 @@ function addChatMessage(role, content, id = null) {
     : 'bg-white text-gray-800 rounded-2xl rounded-tl-sm border border-blue-100';
   const alignment = isUser ? 'ml-auto' : 'mr-auto';
   
+  // v72: Formatar markdown para HTML nas mensagens da assistente
+  const formattedContent = (role === 'assistant') ? formatarMarkdownChat(content) : content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  
   const messageHtml = `
-    <div id="${messageId}" class="mb-3 ${alignment} max-w-[80%]">
-      <div class="${bgColor} px-4 py-2 shadow-md">
-        <p class="text-sm whitespace-pre-wrap">${content}</p>
+    <div id="${messageId}" class="mb-3 ${alignment} max-w-[85%]">
+      <div class="${bgColor} px-4 py-3 shadow-md">
+        <div class="text-sm leading-relaxed lilu-chat-content">${formattedContent}</div>
       </div>
     </div>
   `;

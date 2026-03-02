@@ -4691,6 +4691,25 @@ app.get('/api/admin/analytics', async (c) => {
         por_tipo: feedbackPorTipoRes.results || [],
         lista: feedbackListaRes.results || []
       },
+      chat_lilu: await (async () => {
+        try {
+          const chatTotal = await safeFirst(`SELECT COUNT(*) as total FROM chat_interactions`)
+          const chatUsuarios = await safeFirst(`SELECT COUNT(DISTINCT user_id) as total FROM chat_interactions`)
+          const chatPorDiaRes = await safeQuery(`
+            SELECT DATE(created_at) as dia, COUNT(*) as total
+            FROM chat_interactions
+            WHERE created_at >= datetime('now', '-30 days')
+            GROUP BY dia ORDER BY dia ASC
+          `)
+          return {
+            total: chatTotal?.total || 0,
+            usuarios_unicos: chatUsuarios?.total || 0,
+            por_dia: chatPorDiaRes.results || []
+          }
+        } catch (e) {
+          return { total: 0, usuarios_unicos: 0, por_dia: [] }
+        }
+      })(),
       atualizado_em: new Date().toISOString()
     })
     
@@ -18786,8 +18805,10 @@ INSTRUÇÕES PARA SUAS RESPOSTAS:
 - Se o usuário perguntar sobre funcionalidade, explique COM PASSOS
 - Se perguntar sobre seu progresso, use os dados acima
 - Se não souber algo específico do usuário, sugira onde encontrar no sistema
-- Mantenha respostas COMPLETAS mas CONCISAS (2-4 parágrafos curtos)
-- NUNCA deixe uma frase ou ideia pela metade — sempre conclua o raciocínio
+- Mantenha respostas COMPLETAS — se começou uma lista ou análise, TERMINE TUDO
+- NUNCA deixe uma frase, lista numerada ou ideia pela metade — sempre conclua o raciocínio inteiro
+- Se precisar de uma resposta longa para cobrir o assunto, seja longo — é melhor ser completo do que cortar
+- Use formatação Markdown: **negrito** para destaques, listas numeradas, bullets com -
 - Varie o tom: às vezes mais prática, às vezes mais motivacional, às vezes mais analítica
 - NÃO repita padrões de abertura/fechamento — cada resposta deve parecer fresca e única
 - Se a conversa já tem histórico, continue naturalmente sem recomeçar do zero`
@@ -18825,7 +18846,7 @@ INSTRUÇÕES PARA SUAS RESPOSTAS:
         contents: contents,
         generationConfig: {
           temperature: 0.8,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 16384,
           topP: 0.95
         }
       })
@@ -18844,21 +18865,35 @@ INSTRUÇÕES PARA SUAS RESPOSTAS:
     let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                   'Desculpe, não consegui processar sua mensagem.'
     
-    // ✅ v84: Verificar se a resposta foi cortada pelo limite de tokens
+    // v71: Verificar se a resposta foi cortada pelo limite de tokens
     const finishReason = data.candidates?.[0]?.finishReason
     if (finishReason === 'MAX_TOKENS' && reply.length > 50) {
-      // Tentar cortar no último parágrafo completo
-      const lastParagraph = reply.lastIndexOf('\n\n')
+      // Encontrar o último ponto final natural para não cortar no meio de frase
       const lastSentence = reply.lastIndexOf('. ')
       const lastExclamation = reply.lastIndexOf('! ')
       const lastQuestion = reply.lastIndexOf('? ')
-      const bestCut = Math.max(lastParagraph, lastSentence, lastExclamation, lastQuestion)
+      const lastNewline = reply.lastIndexOf('\n')
+      const bestCut = Math.max(lastSentence, lastExclamation, lastQuestion, lastNewline)
       
-      if (bestCut > reply.length * 0.5) {
-        // Cortar no ponto natural mais próximo do final
+      if (bestCut > reply.length * 0.7) {
         reply = reply.substring(0, bestCut + 1).trim()
       }
-      // Não adicionar "..." - simplesmente finalizar no último ponto natural
+      console.log(`⚠️ LILU resposta cortada por MAX_TOKENS (${reply.length} chars)`)
+    }
+    
+    // v71: Salvar interação do chat para analytics
+    try {
+      await DB.prepare(`
+        CREATE TABLE IF NOT EXISTS chat_interactions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          message_count INTEGER DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+      await DB.prepare('INSERT INTO chat_interactions (user_id) VALUES (?)').bind(user_id || 0).run()
+    } catch (e) {
+      console.log('⚠️ Erro ao salvar interação chat:', e)
     }
     
     return c.json({ reply })
@@ -22231,6 +22266,35 @@ app.get('/api/admin/analytics', async (c) => {
       FROM user_feedbacks
     `).first() as any
     
+    // ═══ 11. CHATS COM LILU - Totais e por dia ═══
+    let chatTotal = 0
+    let chatPorDia: any[] = []
+    let chatUsuariosUnicos = 0
+    try {
+      const chatTotaisResult = await DB.prepare(`
+        SELECT COUNT(*) as total FROM chat_interactions
+      `).first() as any
+      chatTotal = chatTotaisResult?.total || 0
+      
+      const chatPorDiaResult = await DB.prepare(`
+        SELECT 
+          DATE(created_at) as dia,
+          COUNT(*) as total
+        FROM chat_interactions
+        WHERE created_at >= datetime('now', '-30 days')
+        GROUP BY dia
+        ORDER BY dia ASC
+      `).all()
+      chatPorDia = chatPorDiaResult.results || []
+      
+      const chatUsuariosResult = await DB.prepare(`
+        SELECT COUNT(DISTINCT user_id) as total FROM chat_interactions
+      `).first() as any
+      chatUsuariosUnicos = chatUsuariosResult?.total || 0
+    } catch (e) {
+      console.log('⚠️ Tabela chat_interactions pode não existir ainda:', e)
+    }
+    
     return c.json({
       conteudos: {
         totais: conteudoTotais.results || [],
@@ -22248,6 +22312,11 @@ app.get('/api/admin/analytics', async (c) => {
         por_tipo: feedbacksPorTipo.results || [],
         por_dia: feedbacksPorDia.results || [],
         lista: feedbacksLista.results || []
+      },
+      chat_lilu: {
+        total: chatTotal,
+        por_dia: chatPorDia,
+        usuarios_unicos: chatUsuariosUnicos
       }
     })
   } catch (error: any) {
