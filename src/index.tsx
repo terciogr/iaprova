@@ -19305,7 +19305,7 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
     
     // ✅ REGRA: Teoria SEMPRE gera o MÁXIMO possível
     // Para resumo, usa configuração do usuário (padrão 20000)
-    let limiteCaracteres = 20000; // Padrão ALTO para conteúdo completo
+    let limiteCaracteres = 65000; // Padrão MÁXIMO para conteúdo completo (~70k chars)
     let limiteResumo = 20000; // Padrão ALTO para resumo
     
     // Configuração de extensão do resumo (escolhido pelo usuário)
@@ -19346,7 +19346,7 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
       curto: 'NO MÍNIMO 5000 caracteres',
       medio: 'NO MÍNIMO 10000 caracteres', 
       longo: 'NO MÍNIMO 15000 caracteres',
-      completo: 'NO MÍNIMO 20000 caracteres - conteúdo MÁXIMO e COMPLETO',
+      completo: 'NO MÍNIMO 50000 caracteres - conteúdo MÁXIMO e COMPLETO possível',
       personalizado: `NO MÍNIMO ${iaConfig.extensaoCustom} caracteres`
     }
     
@@ -19361,9 +19361,10 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
 2. ESTILO: Seja OBJETIVO, DIRETO e PRECISO. Sem rodeios ou enrolação.
 3. INTENSIDADE: ${intensidadeInstrucoes[iaConfig.intensidade] || intensidadeInstrucoes['intermediaria']}
 4. PROFUNDIDADE: ${profundidadeInstrucoes[iaConfig.profundidade] || profundidadeInstrucoes['aplicada']}
-${incluirLimiteExtensao ? `5. EXTENSÃO MÍNIMA: ${limiteCaracteres} caracteres (pode ultrapassar um pouco, mas NUNCA gere menos que isso)
+${incluirLimiteExtensao ? `5. EXTENSÃO MÍNIMA: ${limiteCaracteres} caracteres (pode ultrapassar, mas NUNCA gere menos que isso)
 
-⚠️ REGRA CRÍTICA: O conteúdo DEVE ter NO MÍNIMO ${limiteCaracteres} caracteres. Gere conteúdo COMPLETO e DETALHADO.` : `5. FORMATO: Siga EXATAMENTE o formato solicitado abaixo. NÃO gere texto corrido ou teoria.`}
+⚠️ REGRA CRÍTICA: O conteúdo DEVE ter NO MÍNIMO ${limiteCaracteres} caracteres. Gere conteúdo COMPLETO, DETALHADO e EXTENSO.
+Para TEORIA: gere o MÁXIMO possível, idealmente entre 50.000 e 70.000 caracteres.` : `5. FORMATO: Siga EXATAMENTE o formato solicitado abaixo. NÃO gere texto corrido ou teoria.`}
 
 🚫 PROIBIDO ABSOLUTAMENTE:
 - NÃO inicie com saudações como "Olá", "Olá futuro servidor", "Caro estudante", etc.
@@ -19416,9 +19417,10 @@ ${incluirLimiteExtensao ? `5. EXTENSÃO MÍNIMA: ${limiteCaracteres} caracteres 
 
 🔴🔴🔴 REGRA MÁXIMA E INVIOLÁVEL 🔴🔴🔴
 VOCÊ DEVE GERAR O CONTEÚDO MAIS COMPLETO E EXTENSO POSSÍVEL.
-NÃO HÁ LIMITE DE CARACTERES - QUANTO MAIS CONTEÚDO, MELHOR!
+GERE NO MÍNIMO 50.000 CARACTERES DE CONTEÚDO. IDEAL: 60.000-70.000 CARACTERES.
 SE FALTAR ASSUNTO NO TÓPICO, PODE EXTRAPOLAR PARA SUBTÓPICOS RELACIONADOS.
 NUNCA DEIXE NENHUM ASPECTO DO TÓPICO SEM COBRIR.
+NÃO RESUMA NADA. NÃO ENCURTE NADA. EXPANDA TUDO AO MÁXIMO.
 ==================================================
 
 FORMATO: ${formatoTeoria}
@@ -19736,12 +19738,8 @@ REGRAS OBRIGATÓRIAS:
       // v71: Resumo esquematizado completo - sem limite de tamanho
       maxTokens = 16000
     } else {
-      // Para teoria: garantir tokens suficientes para a extensão desejada
-      if (iaConfig.extensao === 'completo') {
-        maxTokens = 12000
-      } else {
-        maxTokens = Math.max(Math.ceil(limiteCaracteres / 1.5), 4000)
-      }
+      // Para teoria: MÁXIMO possível - Gemini 2.5 Flash suporta até 65536 tokens
+      maxTokens = 65536
     }
     
     console.log(`🎯 Configuração: temperatura=${temperaturaFixa}, maxTokens=${maxTokens}, extensão=${iaConfig.extensao} (${limiteCaracteres} chars)`)
@@ -20628,6 +20626,9 @@ app.get('/home', (c) => {
     
     <!-- Axios -->
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    
+    <!-- html2pdf.js para download de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
     
     <!-- Custom Styles -->
     <style>

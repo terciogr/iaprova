@@ -10991,15 +10991,15 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
   window._loadingProgressInterval = progressInterval;
   
   try {
-    // Obter configurações da IA do localStorage
-    const iaConfigSaved = localStorage.getItem('iaConfig');
-    const iaConfig = iaConfigSaved ? JSON.parse(iaConfigSaved) : {
+    // ✅ v76: Configurações padrão fixas da IA (gerenciadas pelo admin)
+    // Não usa mais localStorage do usuário - configuração padronizada
+    const iaConfig = {
       tom: 'didatico',
-      temperatura: 0.3, // Fixado em 0.3 para ser objetivo
+      temperatura: 0.3,
       intensidade: 'intermediaria',
       profundidade: 'aplicada',
-      extensao: 'completo', // Padrão: máximo conteúdo
-      extensaoCustom: 20000, // Padrão alto para conteúdo completo
+      extensao: 'completo',
+      extensaoCustom: 65000,
       formatoResumo: 'detalhado',
       formatoTeoria: 'completa',
       formatoFlashcards: 'objetivos',
@@ -11250,21 +11250,21 @@ window.exibirConteudoGerado = function(data) {
   ` : '';
   
   const modalHtml = `
-    <div id="modal-conteudo-gerado" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+    <div id="modal-conteudo-gerado" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-0 sm:p-4">
+      <div class="${themes[currentTheme].card} sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-w-5xl sm:max-h-[95vh] flex flex-col">
         <!-- Header fixo -->
-        <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-6 flex-shrink-0 rounded-t-2xl">
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-4 sm:p-6 flex-shrink-0 sm:rounded-t-2xl">
           <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-xl font-bold flex items-center gap-3">
+            <div class="flex-1 min-w-0">
+              <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2 sm:gap-3">
                 <i class="fas ${tipoLabel.icon}"></i>
-                ${tipoLabel.label}
+                <span class="truncate">${tipoLabel.label}</span>
                 ${badgeRegenerado}
               </h2>
-              <p class="mt-1 text-sm opacity-90">${topico_nome || 'Conteúdo'}</p>
-              <p class="text-xs opacity-75">${disciplina_nome || 'Material de Estudo'}</p>
+              <p class="mt-1 text-sm opacity-90 truncate">${topico_nome || 'Conteúdo'}</p>
+              <p class="text-xs opacity-75 truncate">${disciplina_nome || 'Material de Estudo'}</p>
             </div>
-            <div class="text-right">
+            <div class="text-right flex-shrink-0 ml-3">
               <p class="text-xs opacity-75">${numCaracteres.toLocaleString()} caracteres</p>
               <p class="text-xs opacity-75">${dataGeracao}</p>
             </div>
@@ -11283,14 +11283,14 @@ window.exibirConteudoGerado = function(data) {
         ` : ''}
         
         <!-- Conteúdo scrollável -->
-        <div class="flex-1 overflow-y-auto p-6">
-          <div class="${themes[currentTheme].text} prose prose-sm max-w-none">
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div class="${themes[currentTheme].text} prose prose-sm sm:prose max-w-none">
             <p class="mb-3">${conteudoHtml}</p>
           </div>
         </div>
         
         <!-- Área de Feedback -->
-        <div id="feedback-area" class="p-4 border-t ${themes[currentTheme].border} bg-gray-50">
+        <div id="feedback-area" class="p-3 sm:p-4 border-t ${themes[currentTheme].border} bg-gray-50">
           <div id="feedback-buttons" class="flex flex-col sm:flex-row items-center justify-center gap-3">
             <span class="text-sm text-gray-600 mr-2">Este conteúdo foi útil?</span>
             <div class="flex gap-2">
@@ -11348,16 +11348,20 @@ window.exibirConteudoGerado = function(data) {
         </div>
         
         <!-- Footer fixo -->
-        <div class="p-4 border-t ${themes[currentTheme].border} flex-shrink-0 flex gap-3 justify-end">
-          <button class="px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed flex items-center gap-2" disabled>
-            <i class="fas fa-check"></i>Salvo automaticamente
+        <div class="p-4 border-t ${themes[currentTheme].border} flex-shrink-0 flex flex-wrap gap-2 sm:gap-3 justify-end">
+          <button class="px-3 sm:px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed flex items-center gap-1 sm:gap-2 text-xs sm:text-sm" disabled>
+            <i class="fas fa-check"></i><span class="hidden sm:inline">Salvo automaticamente</span><span class="sm:hidden">Salvo</span>
+          </button>
+          <button onclick="baixarConteudoPDF()"
+                  class="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <i class="fas fa-file-pdf"></i><span class="hidden sm:inline">Baixar PDF</span><span class="sm:hidden">PDF</span>
           </button>
           <button onclick="copiarConteudoGerado()"
-                  class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex items-center gap-2">
+                  class="px-3 sm:px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <i class="fas fa-copy"></i>Copiar
           </button>
           <button onclick="fecharModalConteudoGerado()"
-                  class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition flex items-center gap-2">
+                  class="px-3 sm:px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <i class="fas fa-times"></i>Fechar
           </button>
         </div>
@@ -11408,8 +11412,8 @@ window.exibirResumoEsquematizado = function(data) {
   const conteudoVisual = parsearResumoEsquematizado(conteudoTexto);
   
   const modalHtml = `
-    <div id="modal-conteudo-gerado" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
+    <div id="modal-conteudo-gerado" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-0 sm:p-4">
+      <div class="${themes[currentTheme].card} sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-w-5xl sm:max-h-[95vh] flex flex-col overflow-hidden">
         <!-- Header com gradiente -->
         <div class="relative overflow-hidden flex-shrink-0">
           <div class="absolute inset-0 bg-gradient-to-br from-[#122D6A] via-[#1E3A7A] to-[#2A4A9F]"></div>
@@ -11486,6 +11490,10 @@ window.exibirResumoEsquematizado = function(data) {
               <button onclick="salvarConteudoGerado()" 
                       class="px-3 py-2 bg-[#122D6A] text-white rounded-lg text-xs hover:bg-[#0D1F4D] transition flex items-center gap-1.5 font-medium">
                 <i class="fas fa-save"></i> Salvar
+              </button>
+              <button onclick="baixarConteudoPDF()"
+                      class="px-3 py-2 bg-red-600 text-white rounded-lg text-xs hover:bg-red-700 transition flex items-center gap-1.5 font-medium">
+                <i class="fas fa-file-pdf"></i> PDF
               </button>
               <button onclick="copiarConteudoGerado()"
                       class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs hover:bg-gray-200 transition flex items-center gap-1.5">
@@ -12054,6 +12062,113 @@ window.fecharModalConteudoGerado = function() {
 }
 
 // Função para copiar conteúdo
+// ✅ v76: Função universal de download PDF para qualquer conteúdo gerado
+window.baixarConteudoPDF = async function() {
+  const modal = document.getElementById('modal-conteudo-gerado');
+  if (!modal) {
+    showToast('Nenhum conteúdo aberto para exportar', 'error');
+    return;
+  }
+  
+  const dados = window.conteudoAtualDados || {};
+  const nomeArquivo = (dados.topico_nome || 'conteudo').replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
+  const tipoLabel = { teoria: 'Teoria', exercicios: 'Exercicios', resumo: 'Resumo', flashcards: 'Flashcards', resumo_personalizado: 'Resumo_Personalizado' }[dados.tipo] || 'Conteudo';
+  
+  // Mostrar loading no botão
+  const btn = event?.target?.closest('button');
+  const btnOriginal = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Gerando PDF...';
+    btn.disabled = true;
+  }
+  
+  try {
+    // Clonar o conteúdo para manipular sem afetar a tela
+    const conteudoArea = modal.querySelector('.flex-1.overflow-y-auto');
+    if (!conteudoArea) {
+      showToast('Erro: área de conteúdo não encontrada', 'error');
+      return;
+    }
+    
+    // Criar container temporário com estilos para PDF
+    const container = document.createElement('div');
+    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;background:white;color:#1a1a2e;padding:40px;font-family:Inter,sans-serif;';
+    
+    // Header do PDF
+    const header = document.createElement('div');
+    header.style.cssText = 'border-bottom:3px solid #122D6A;padding-bottom:16px;margin-bottom:24px;';
+    header.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+        <div style="width:44px;height:44px;background:linear-gradient(135deg,#122D6A,#2A4A9F);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <span style="color:white;font-size:18px;font-weight:bold;">IA</span>
+        </div>
+        <div>
+          <h1 style="margin:0;font-size:20px;color:#122D6A;font-weight:700;">${tipoLabel} - IAprova</h1>
+          <p style="margin:2px 0 0;font-size:12px;color:#666;">${dados.disciplina_nome || ''}</p>
+        </div>
+      </div>
+      <h2 style="margin:8px 0 0;font-size:16px;color:#333;font-weight:600;">${dados.topico_nome || 'Conteúdo Gerado'}</h2>
+      <p style="margin:4px 0 0;font-size:11px;color:#999;">Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev</p>
+    `;
+    container.appendChild(header);
+    
+    // Clonar conteúdo
+    const clone = conteudoArea.cloneNode(true);
+    
+    // Forçar estilos de texto para dark → light (PDF sempre branco)
+    clone.querySelectorAll('*').forEach(el => {
+      const computed = window.getComputedStyle(el);
+      if (computed.color === 'rgb(255, 255, 255)' || computed.color === 'white') {
+        el.style.color = '#1a1a2e';
+      }
+      // Remover backgrounds escuros
+      const bg = computed.backgroundColor;
+      if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+        const rgb = bg.match(/\d+/g);
+        if (rgb && parseInt(rgb[0]) < 60 && parseInt(rgb[1]) < 60 && parseInt(rgb[2]) < 60) {
+          el.style.backgroundColor = '#f8f9fa';
+          el.style.color = '#1a1a2e';
+        }
+      }
+      // Garantir visibilidade de textos
+      if (el.classList.contains('text-white')) {
+        el.style.color = '#1a1a2e';
+      }
+    });
+    
+    // Remover botões e áreas interativas do clone
+    clone.querySelectorAll('button, .feedback-area, #feedback-area, [onclick]').forEach(el => el.remove());
+    
+    container.appendChild(clone);
+    document.body.appendChild(container);
+    
+    // Gerar PDF
+    const opt = {
+      margin: [10, 10, 15, 10],
+      filename: `${tipoLabel}_${nomeArquivo}.pdf`,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+    
+    await html2pdf().set(opt).from(container).save();
+    
+    // Limpar
+    document.body.removeChild(container);
+    showToast('✅ PDF baixado com sucesso!', 'success');
+    
+  } catch (error) {
+    console.error('Erro ao gerar PDF:', error);
+    showToast('Erro ao gerar PDF. Tente novamente.', 'error');
+  } finally {
+    if (btn) {
+      btn.innerHTML = btnOriginal;
+      btn.disabled = false;
+    }
+  }
+}
+
 window.copiarConteudoGerado = function() {
   if (window.conteudoGeradoOriginal) {
     navigator.clipboard.writeText(window.conteudoGeradoOriginal).then(() => {
@@ -15281,20 +15396,6 @@ window.abrirConfiguracoes = function() {
             '<div class="flex-1 min-w-0">' +
               '<h3 class="font-semibold ' + themes[currentTheme].text + ' mb-1">Importar / Exportar</h3>' +
               '<p class="text-sm ' + themes[currentTheme].textMuted + '">Backup dos seus dados, sincronização com Google e exportação</p>' +
-            '</div>' +
-            '<i class="fas fa-chevron-right ' + themes[currentTheme].textMuted + ' group-hover:translate-x-1 transition-transform"></i>' +
-          '</div>' +
-        '</button>' +
-        
-        // Personalizar IA
-        '<button onclick="openIAConfig()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
-          '<div class="flex items-start gap-4">' +
-            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A3A7F] to-[#122D6A] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition">' +
-              '<i class="fas fa-brain text-white text-lg"></i>' +
-            '</div>' +
-            '<div class="flex-1 min-w-0">' +
-              '<h3 class="font-semibold ' + themes[currentTheme].text + ' mb-1">Personalizar IA</h3>' +
-              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Configure preferências de geração de conteúdo e estilo da IA</p>' +
             '</div>' +
             '<i class="fas fa-chevron-right ' + themes[currentTheme].textMuted + ' group-hover:translate-x-1 transition-transform"></i>' +
           '</div>' +
@@ -26458,7 +26559,10 @@ function renderExercicioModal(questaoIndex) {
               <span class="text-green-400 font-bold">${acertosCount}✓</span>
               <span class="text-red-400 font-bold">${errosCount}✗</span>
             </div>
-            <!-- Botão fechar -->
+            <!-- Botão PDF e fechar -->
+            <button onclick="baixarExerciciosPDF()" class="p-2 hover:bg-white/10 rounded-lg transition" title="Baixar PDF">
+              <i class="fas fa-file-pdf text-lg"></i>
+            </button>
             <button onclick="fecharExercicios()" class="p-2 hover:bg-white/10 rounded-lg transition" title="Fechar simulado">
               <i class="fas fa-times text-lg"></i>
             </button>
@@ -26667,6 +26771,110 @@ window.fecharExercicios = function() {
   // NÃO redesenhar o dashboard inteiro, apenas atualizar os ícones
   if (typeof atualizarTodosIconesConteudo === 'function') {
     atualizarTodosIconesConteudo();
+  }
+}
+
+// ✅ v76: Download PDF dos exercícios com perguntas, respostas e comentários
+window.baixarExerciciosPDF = async function() {
+  if (!exercicioAtual || !exercicioAtual.questoes || exercicioAtual.questoes.length === 0) {
+    showToast('Nenhum exercício disponível', 'error');
+    return;
+  }
+  
+  const btn = event?.target?.closest('button');
+  const btnOriginal = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
+  
+  try {
+    const { questoes, respostas, verificadas, topicoNome, disciplinaNome } = exercicioAtual;
+    const nome = (topicoNome || 'Exercicios').replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
+    
+    const container = document.createElement('div');
+    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;background:white;color:#1a1a2e;padding:40px;font-family:Inter,sans-serif;';
+    
+    // Header
+    container.innerHTML = `
+      <div style="border-bottom:3px solid #122D6A;padding-bottom:16px;margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+          <div style="width:44px;height:44px;background:linear-gradient(135deg,#122D6A,#2A4A9F);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+            <span style="color:white;font-size:18px;font-weight:bold;">IA</span>
+          </div>
+          <div>
+            <h1 style="margin:0;font-size:20px;color:#122D6A;font-weight:700;">Exercícios - IAprova</h1>
+            <p style="margin:2px 0 0;font-size:12px;color:#666;">${disciplinaNome || ''}</p>
+          </div>
+        </div>
+        <h2 style="margin:8px 0 0;font-size:16px;color:#333;font-weight:600;">${topicoNome || 'Questões'}</h2>
+        <p style="margin:4px 0 0;font-size:11px;color:#999;">${questoes.length} questões | Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev</p>
+      </div>
+    `;
+    
+    // Questões
+    questoes.forEach((q, i) => {
+      const respUser = respostas[i];
+      const correta = q.correta || q.resposta || q.gabarito || '';
+      const acertou = respUser && respUser.toUpperCase() === correta.toUpperCase();
+      const comentario = q.comentario || q.explicacao || q.justificativa || '';
+      
+      let questaoHtml = `
+        <div style="margin-bottom:24px;page-break-inside:avoid;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+          <div style="background:#f0f4fa;padding:12px 16px;border-bottom:1px solid #e5e7eb;">
+            <strong style="color:#122D6A;font-size:14px;">Questão ${i + 1}</strong>
+          </div>
+          <div style="padding:16px;">
+            <p style="font-size:14px;color:#1a1a2e;margin:0 0 12px;line-height:1.6;">${q.enunciado || q.pergunta || q.texto || ''}</p>
+      `;
+      
+      // Alternativas
+      const alts = q.alternativas || q.opcoes || [];
+      if (alts.length > 0) {
+        alts.forEach(alt => {
+          const letra = alt.letra || alt.id || '';
+          const texto = alt.texto || alt.conteudo || '';
+          const isCorreta = letra.toUpperCase() === correta.toUpperCase();
+          const bgColor = isCorreta ? '#dcfce7' : '#ffffff';
+          const borderColor = isCorreta ? '#16a34a' : '#e5e7eb';
+          questaoHtml += `
+            <div style="padding:8px 12px;margin:4px 0;border:1px solid ${borderColor};border-radius:8px;background:${bgColor};font-size:13px;">
+              <strong style="color:#122D6A;">${letra})</strong> ${texto}
+              ${isCorreta ? ' <span style="color:#16a34a;font-weight:bold;">✓ Correta</span>' : ''}
+            </div>
+          `;
+        });
+      }
+      
+      // Gabarito e comentário
+      questaoHtml += `
+            <div style="margin-top:12px;padding:12px;background:#eff6ff;border-radius:8px;border-left:4px solid #122D6A;">
+              <p style="margin:0 0 4px;font-size:12px;color:#122D6A;font-weight:700;">Gabarito: ${correta.toUpperCase()}</p>
+              ${comentario ? `<p style="margin:0;font-size:12px;color:#374151;line-height:1.5;">${comentario}</p>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+      
+      container.innerHTML += questaoHtml;
+    });
+    
+    document.body.appendChild(container);
+    
+    const opt = {
+      margin: [10, 10, 15, 10],
+      filename: `Exercicios_${nome}.pdf`,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+    
+    await html2pdf().set(opt).from(container).save();
+    document.body.removeChild(container);
+    showToast('✅ PDF dos exercícios baixado!', 'success');
+  } catch (error) {
+    console.error('Erro ao gerar PDF exercícios:', error);
+    showToast('Erro ao gerar PDF', 'error');
+  } finally {
+    if (btn) { btn.innerHTML = btnOriginal; btn.disabled = false; }
   }
 }
 
@@ -27094,6 +27302,11 @@ function renderFlashcardsModal(flashcards, topicoNome, disciplinaNome, cardIndex
             </button>
           ` : '<div class="w-16 sm:w-24"></div>'}
           
+          <button onclick="baixarFlashcardsPDF()"
+                  class="px-3 sm:px-4 py-2 sm:py-3 bg-red-600/80 text-white rounded-xl hover:bg-red-700 transition font-medium backdrop-blur text-sm">
+            <i class="fas fa-file-pdf mr-1"></i><span class="hidden sm:inline">PDF</span>
+          </button>
+          
           <button onclick="fecharModalFlashcards()"
                   class="px-3 sm:px-6 py-2 sm:py-3 bg-gray-600/80 text-white rounded-xl hover:bg-gray-700 transition font-medium backdrop-blur text-sm">
             <i class="fas fa-times mr-1 sm:mr-2"></i><span class="hidden sm:inline">Fechar</span><span class="sm:hidden">X</span>
@@ -27193,6 +27406,93 @@ window.fecharModalFlashcards = function() {
   // NÃO redesenhar o dashboard inteiro, apenas atualizar os ícones
   if (typeof atualizarTodosIconesConteudo === 'function') {
     atualizarTodosIconesConteudo();
+  }
+}
+
+// ✅ v76: Download PDF dos flashcards
+window.baixarFlashcardsPDF = async function() {
+  const dados = window.conteudoAtualDados || {};
+  const conteudo = window.conteudoGeradoOriginal;
+  if (!conteudo) {
+    showToast('Nenhum flashcard disponível', 'error');
+    return;
+  }
+  
+  const btn = event?.target?.closest('button');
+  const btnOriginal = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
+  
+  try {
+    const flashcards = parseFlashcards(conteudo);
+    if (flashcards.length === 0) {
+      showToast('Erro ao parsear flashcards', 'error');
+      return;
+    }
+    
+    const nome = (dados.topico_nome || 'Flashcards').replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
+    
+    const container = document.createElement('div');
+    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;background:white;color:#1a1a2e;padding:40px;font-family:Inter,sans-serif;';
+    
+    container.innerHTML = `
+      <div style="border-bottom:3px solid #122D6A;padding-bottom:16px;margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+          <div style="width:44px;height:44px;background:linear-gradient(135deg,#122D6A,#2A4A9F);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+            <span style="color:white;font-size:18px;font-weight:bold;">IA</span>
+          </div>
+          <div>
+            <h1 style="margin:0;font-size:20px;color:#122D6A;font-weight:700;">Flashcards - IAprova</h1>
+            <p style="margin:2px 0 0;font-size:12px;color:#666;">${dados.disciplina_nome || ''}</p>
+          </div>
+        </div>
+        <h2 style="margin:8px 0 0;font-size:16px;color:#333;font-weight:600;">${dados.topico_nome || 'Flashcards'}</h2>
+        <p style="margin:4px 0 0;font-size:11px;color:#999;">${flashcards.length} cards | Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev</p>
+      </div>
+    `;
+    
+    // Grid 2 colunas de flashcards
+    let gridHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">';
+    flashcards.forEach((fc, i) => {
+      gridHtml += `
+        <div style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;page-break-inside:avoid;">
+          <div style="background:#122D6A;color:white;padding:8px 12px;font-size:11px;font-weight:700;">
+            Card ${i + 1}
+          </div>
+          <div style="padding:12px;">
+            <div style="background:#f0f4fa;padding:10px;border-radius:8px;margin-bottom:8px;">
+              <p style="margin:0;font-size:11px;color:#666;font-weight:600;">FRENTE:</p>
+              <p style="margin:4px 0 0;font-size:13px;color:#1a1a2e;font-weight:600;">${fc.frente}</p>
+            </div>
+            <div style="background:#f0fdf4;padding:10px;border-radius:8px;">
+              <p style="margin:0;font-size:11px;color:#666;font-weight:600;">VERSO:</p>
+              <p style="margin:4px 0 0;font-size:12px;color:#1a1a2e;line-height:1.5;">${fc.verso}</p>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    gridHtml += '</div>';
+    container.innerHTML += gridHtml;
+    
+    document.body.appendChild(container);
+    
+    const opt = {
+      margin: [10, 10, 15, 10],
+      filename: `Flashcards_${nome}.pdf`,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+    
+    await html2pdf().set(opt).from(container).save();
+    document.body.removeChild(container);
+    showToast('✅ PDF dos flashcards baixado!', 'success');
+  } catch (error) {
+    console.error('Erro ao gerar PDF flashcards:', error);
+    showToast('Erro ao gerar PDF', 'error');
+  } finally {
+    if (btn) { btn.innerHTML = btnOriginal; btn.disabled = false; }
   }
 }
 
@@ -29123,7 +29423,6 @@ const tutorialSteps = [
         <li>📚 <b class="text-[#122D6A]">Disciplinas:</b> Gerencie tópicos</li>
         <li>✍️ <b class="text-cyan-600">Simulados:</b> Faça testes</li>
         <li>📅 <b class="text-teal-600">Calendário:</b> Histórico de estudos</li>
-        <li>🎨 <b class="text-pink-600">Personalizar IA:</b> Configure a geração</li>
       </ul>
     `,
     target: '#fab-main',
