@@ -22350,50 +22350,34 @@ app.get('/api/concursos/:uf', async (c) => {
   }
 })
 
-// Buscar concursos de TODAS as UFs (agregado)
+// Buscar concursos de TODAS as UFs (agregado - sem retry, rápido)
 app.get('/api/concursos', async (c) => {
   try {
     const results: any[] = []
     
-    // Buscar todas as UFs em paralelo (em lotes de 5 com delay para não sobrecarregar API externa)
-    for (let i = 0; i < UFS_BRASIL.length; i += 5) {
-      const batch = UFS_BRASIL.slice(i, i + 5)
-      const promises = batch.map(async (uf) => {
-        try {
-          const response = await fetch(`https://concursos-api.deno.dev/${uf}`, {
-            headers: { 'Accept': 'application/json' }
-          })
-          const data = await response.json() as any
-          // Se veio com a message de "dados sendo coletados", retry uma vez após delay
-          if (data.message && !data.concursos_abertos) {
-            await new Promise(r => setTimeout(r, 1500))
-            try {
-              const retryResp = await fetch(`https://concursos-api.deno.dev/${uf}`, {
-                headers: { 'Accept': 'application/json' }
-              })
-              const retryData = await retryResp.json() as any
-              if (retryData.concursos_abertos || retryData.concursos_previstos) {
-                return retryData
-              }
-            } catch (e) { /* usar dados originais */ }
-          }
-          return data
-        } catch (e) {
-          return { uf, estado: uf.toUpperCase(), concursos_abertos: [], concursos_previstos: [], error: true }
-        }
-      })
-      const batchResults = await Promise.all(promises)
-      results.push(...batchResults)
-      // Pequeno delay entre batches
-      if (i + 5 < UFS_BRASIL.length) {
-        await new Promise(r => setTimeout(r, 300))
+    // Buscar TODAS as UFs em paralelo de uma vez (sem delay, sem retry)
+    const promises = UFS_BRASIL.map(async (uf) => {
+      try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5s timeout por UF
+        const response = await fetch(`https://concursos-api.deno.dev/${uf}`, {
+          headers: { 'Accept': 'application/json' },
+          signal: controller.signal
+        })
+        clearTimeout(timeoutId)
+        const data = await response.json() as any
+        return { ...data, uf: data.uf || uf }
+      } catch (e) {
+        return { uf, estado: uf.toUpperCase(), concursos_abertos: [], concursos_previstos: [] }
       }
-    }
+    })
+    
+    const allResults = await Promise.all(promises)
     
     return c.json({ 
       success: true, 
-      total_ufs: results.length,
-      estados: results 
+      total_ufs: allResults.length,
+      estados: allResults 
     })
   } catch (error: any) {
     console.error('Erro ao buscar todos concursos:', error)

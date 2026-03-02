@@ -23285,54 +23285,51 @@ window.abrirModalConcursos = async function() {
 
 async function carregarConcursosTodos() {
   try {
-    // Primeiro carrega o panorama geral (pode demorar)
-    const response = await axios.get('/api/concursos', { timeout: 120000 });
+    const response = await axios.get('/api/concursos', { timeout: 25000 });
     const data = response.data;
     
     if (data.success && data.estados) {
       concursosCache = {};
+      let comDados = 0;
       data.estados.forEach(estado => {
         if (estado.uf) {
           const uf = estado.uf.toLowerCase();
-          // Só cachear se tem dados reais
-          if (estado.concursos_abertos || estado.concursos_previstos) {
-            concursosCache[uf] = estado;
-          }
+          const abertos = estado.concursos_abertos || [];
+          const previstos = estado.concursos_previstos || [];
+          concursosCache[uf] = {
+            ...estado,
+            concursos_abertos: abertos,
+            concursos_previstos: previstos
+          };
+          if (abertos.length > 0 || previstos.length > 0) comDados++;
         }
       });
+      console.log('Concursos: ' + comDados + ' UFs com dados de ' + data.total_ufs);
     }
     
     renderizarConcursosContent();
   } catch (error) {
     console.error('Erro ao carregar concursos:', error);
-    const content = document.getElementById('concursos-content');
-    if (content) {
-      content.innerHTML = `
-        <div class="text-center py-12">
-          <i class="fas fa-exclamation-triangle text-4xl text-amber-500 mb-3"></i>
-          <p class="${themes[currentTheme].text} font-medium">Erro ao carregar concursos</p>
-          <p class="${themes[currentTheme].textSecondary} text-sm mt-1">Tente novamente em alguns instantes</p>
-          <button onclick="carregarConcursosTodos()" class="mt-4 px-4 py-2 bg-[#122D6A] text-white rounded-lg text-sm hover:bg-[#1A3A7F] transition">
-            <i class="fas fa-redo mr-1"></i> Tentar novamente
-          </button>
-        </div>
-      `;
-    }
+    // Mesmo com erro, renderizar com o que temos
+    renderizarConcursosContent();
   }
 }
 
-// Carregar UF individual (quando clica no mapa ou dropdown)
+// Carregar UF individual
 async function carregarConcursosUF(uf) {
   try {
-    const response = await axios.get('/api/concursos/' + uf, { timeout: 15000 });
+    const response = await axios.get('/api/concursos/' + uf, { timeout: 10000 });
     const data = response.data;
-    if (data.concursos_abertos || data.concursos_previstos) {
-      concursosCache[uf.toLowerCase()] = data;
-      return true;
-    }
-    return false;
+    const abertos = data.concursos_abertos || [];
+    const previstos = data.concursos_previstos || [];
+    concursosCache[uf.toLowerCase()] = {
+      ...data,
+      concursos_abertos: abertos,
+      concursos_previstos: previstos
+    };
+    return (abertos.length > 0 || previstos.length > 0);
   } catch (e) {
-    console.error('Erro ao carregar concursos ' + uf, e);
+    console.error('Erro concursos ' + uf, e);
     return false;
   }
 }
