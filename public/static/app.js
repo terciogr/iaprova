@@ -10563,8 +10563,8 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
                     id="btn-tipo-resumo"
                     class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#3A5AB0] hover:bg-[#3A5AB0]/5 transition text-left bg-white">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center">
-                  <i class="fas fa-project-diagram text-emerald-600"></i>
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#122D6A]/15 to-[#2A4A9F]/10 flex items-center justify-center">
+                  <i class="fas fa-project-diagram text-[#2A4A9F]"></i>
                 </div>
                 <div>
                   <p class="font-semibold text-gray-800">Resumo Esquematizado</p>
@@ -10686,16 +10686,16 @@ window.abrirSubtipoResumo = function(topicoId, topicoNome, disciplinaNome, metaI
             <!-- Opção: Resumo Esquematizado -->
             <button onclick="selecionarSubtipoResumo('esquematizado', ${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}', ${metaId || 'null'})"
                     class="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#3A5AB0] hover:bg-[#3A5AB0]/5 transition text-left bg-white group relative overflow-hidden">
-              <div class="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded-bl-lg font-bold">NOVO</div>
+              <div class="absolute top-0 right-0 bg-[#2A4A9F] text-white text-[10px] px-2 py-0.5 rounded-bl-lg font-bold">NOVO</div>
               <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:from-emerald-200 group-hover:to-emerald-100 transition">
-                  <i class="fas fa-project-diagram text-emerald-600 text-xl"></i>
+                <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-[#122D6A]/15 to-[#2A4A9F]/10 flex items-center justify-center flex-shrink-0 group-hover:from-[#122D6A]/25 group-hover:to-[#2A4A9F]/20 transition">
+                  <i class="fas fa-project-diagram text-[#2A4A9F] text-xl"></i>
                 </div>
                 <div class="flex-1">
                   <p class="font-bold text-gray-800 text-base">Resumo Esquematizado</p>
                   <p class="text-xs text-gray-500 mt-1">Visual com mapas mentais, diagramas, hierarquias, tabelas comparativas e caixas coloridas.</p>
                 </div>
-                <i class="fas fa-chevron-right text-gray-400 group-hover:text-emerald-600 transition"></i>
+                <i class="fas fa-chevron-right text-gray-400 group-hover:text-[#2A4A9F] transition"></i>
               </div>
             </button>
           </div>
@@ -11412,7 +11412,7 @@ window.exibirResumoEsquematizado = function(data) {
       <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
         <!-- Header com gradiente -->
         <div class="relative overflow-hidden flex-shrink-0">
-          <div class="absolute inset-0 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700"></div>
+          <div class="absolute inset-0 bg-gradient-to-br from-[#122D6A] via-[#1E3A7A] to-[#2A4A9F]"></div>
           <div class="absolute inset-0 opacity-10">
             <div class="absolute top-0 right-0 w-40 h-40 bg-white rounded-full -translate-y-1/2 translate-x-1/4"></div>
             <div class="absolute bottom-0 left-0 w-32 h-32 bg-white rounded-full translate-y-1/2 -translate-x-1/4"></div>
@@ -20560,7 +20560,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
             </div>
           </button>
           
-          <button onclick="abrirModalTamanhoResumo()" 
+          <button onclick="gerarConteudoTipo('resumo')" 
             class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#4A6AC0] hover:bg-[#E8EDF5] transition-all text-left group">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 bg-[#C5D1E8] rounded-lg flex items-center justify-center group-hover:bg-[#3A5AB0] transition-colors">
@@ -20568,7 +20568,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
               </div>
               <div>
                 <p class="font-semibold text-gray-800">Resumo</p>
-                <p class="text-xs text-gray-500">Escolha o tamanho</p>
+                <p class="text-xs text-gray-500">Esquematizado com IA</p>
               </div>
             </div>
           </button>
