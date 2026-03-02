@@ -23483,7 +23483,7 @@ function renderizarConcursosContent() {
         <h3 class="font-semibold ${themes[currentTheme].text} text-sm mb-3 flex items-center gap-2">
           <i class="fas fa-map-marked-alt text-[#2A4A9F]"></i>
           Mapa por Estado
-          ${concursosFilterUF ? '<span class="ml-auto text-xs text-[#2A4A9F] cursor-pointer hover:underline" onclick="filtrarConcursosUF(\\'\\'); document.getElementById(\\'concursos-filtro-uf\\').value=\\'\\';">✕ Limpar filtro</span>' : ''}
+          ${concursosFilterUF ? '<span id="btn-limpar-filtro-uf" class="ml-auto text-xs text-[#2A4A9F] cursor-pointer hover:underline">&#10005; Limpar filtro</span>' : ''}
         </h3>
         <div id="mapa-brasil-container" class="flex justify-center">
           ${renderMapaBrasil(stats)}
@@ -23572,7 +23572,7 @@ function renderizarConcursosContent() {
   // Renderizar gráfico por região
   setTimeout(() => {
     renderChartRegioes(regioes);
-    // Adicionar event listeners para os estados no mapa
+    // Adicionar event listeners para os estados no mapa e top 10
     document.querySelectorAll('.mapa-uf-cell').forEach(g => {
       g.addEventListener('click', function() {
         const uf = this.getAttribute('data-uf');
@@ -23590,6 +23590,16 @@ function renderizarConcursosContent() {
         if (rect) rect.setAttribute('opacity', '1');
       });
     });
+    // Botão limpar filtro
+    const btnLimpar = document.getElementById('btn-limpar-filtro-uf');
+    if (btnLimpar) {
+      btnLimpar.addEventListener('click', function() {
+        concursosFilterUF = '';
+        const sel = document.getElementById('concursos-filtro-uf');
+        if (sel) sel.value = '';
+        renderizarConcursosContent();
+      });
+    }
   }, 100);
 }
 
