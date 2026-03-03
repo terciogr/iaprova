@@ -12064,142 +12064,182 @@ window.fecharModalConteudoGerado = function() {
 // Função para copiar conteúdo
 // ✅ v77: Função universal de download PDF para qualquer conteúdo gerado
 // Usa conteúdo markdown original convertido para HTML com estilos inline
-// ========== FUNÇÃO UTILITÁRIA PARA GERAR PDF VIA PRINT ==========
-// Usa o motor nativo do browser (window.print) que é 100% confiável
-function gerarPDFviaPrint(htmlBody, titulo) {
-  const htmlCompleto = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>${titulo}</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; font-size: 13px; line-height: 1.7; padding: 30px 40px; background: #fff; }
-  h1 { font-size: 20px; font-weight: 800; color: #0D1F4D; margin: 24px 0 12px; }
-  h2 { font-size: 17px; font-weight: 700; color: #0D1F4D; margin: 20px 0 10px; border-bottom: 2px solid #122D6A; padding-bottom: 6px; }
-  h3 { font-size: 15px; font-weight: 700; color: #122D6A; margin: 16px 0 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
-  .pdf-header { border-bottom: 3px solid #122D6A; padding-bottom: 16px; margin-bottom: 20px; }
-  .pdf-header-flex { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-  .pdf-logo { width: 40px; height: 40px; background: linear-gradient(135deg, #122D6A, #2A4A9F); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; font-weight: bold; }
-  .pdf-tipo { font-size: 18px; color: #122D6A; font-weight: 700; }
-  .pdf-disc { font-size: 11px; color: #666; }
-  .pdf-topico { font-size: 15px; color: #333; font-weight: 600; margin-top: 6px; }
-  .pdf-data { font-size: 10px; color: #999; margin-top: 4px; }
-  .pdf-footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 9px; color: #999; }
-  .bullet { padding: 2px 0 2px 16px; position: relative; }
-  .bullet::before { content: '•'; position: absolute; left: 0; color: #122D6A; font-weight: bold; }
-  .numbered { padding: 2px 0 2px 20px; }
-  .questao-box { margin-bottom: 24px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; page-break-inside: avoid; }
-  .questao-header { background: #f0f4fa; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; }
-  .questao-body { padding: 16px; }
-  .alternativa { padding: 8px 12px; margin: 4px 0; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; }
-  .alternativa-correta { background: #dcfce7; border-color: #16a34a; }
-  .gabarito-box { margin-top: 12px; padding: 12px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #122D6A; }
-  .flash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .flash-card { border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; page-break-inside: avoid; }
-  .flash-card-header { background: #122D6A; color: white; padding: 8px 12px; font-size: 11px; font-weight: 700; }
-  .flash-card-body { padding: 12px; }
-  .flash-frente { background: #f0f4fa; padding: 10px; border-radius: 8px; margin-bottom: 8px; }
-  .flash-verso { background: #f0fdf4; padding: 10px; border-radius: 8px; }
-  .flash-label { font-size: 11px; color: #666; font-weight: 600; margin: 0; }
-  .flash-text { margin: 4px 0 0; font-size: 13px; color: #1a1a2e; }
-  @media print {
-    body { padding: 15px 25px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .no-print { display: none !important; }
+// ========== GERAÇÃO DE PDF COM jsPDF PURO — DOWNLOAD DIRETO ==========
+// Sem html2canvas, sem window.print, sem popup. Gera .pdf e baixa direto.
+
+function criarPDFjsPDF(titulo) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const pageW = doc.internal.pageSize.getWidth();   // 210
+  const pageH = doc.internal.pageSize.getHeight();  // 297
+  const marginL = 15, marginR = 15, marginT = 20, marginB = 20;
+  const contentW = pageW - marginL - marginR;       // 180
+  let curY = marginT;
+
+  function checkPage(needed) {
+    if (curY + needed > pageH - marginB) {
+      // Footer antes de virar
+      doc.setFontSize(7);
+      doc.setTextColor(160);
+      doc.text('IAprova - iaprova.pages.dev', pageW / 2, pageH - 10, { align: 'center' });
+      doc.addPage();
+      curY = marginT;
+    }
   }
-</style>
-</head>
-<body>
-${htmlBody}
-<script>
-  // Auto-print quando carrega e fecha a janela depois
-  window.onload = function() {
-    setTimeout(function() {
-      window.print();
-      setTimeout(function() { window.close(); }, 500);
-    }, 300);
-  };
-</script>
-</body>
-</html>`;
-  
-  const blob = new Blob([htmlCompleto], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const printWindow = window.open(url, '_blank', 'width=800,height=600');
-  
-  if (!printWindow) {
-    // Fallback se popup bloqueado: download direto do HTML
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = titulo.replace(/\s+/g, '_') + '.html';
-    a.click();
-    showToast('Popup bloqueado. Arquivo HTML baixado - abra e use Ctrl+P para salvar como PDF.', 'info');
+
+  function addHeader(tipoLabel, disciplina, topico) {
+    // Barra azul do logo
+    doc.setFillColor(18, 45, 106);
+    doc.roundedRect(marginL, curY, 12, 12, 2, 2, 'F');
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text('IA', marginL + 6, curY + 7.5, { align: 'center' });
+
+    // Tipo e disciplina
+    doc.setTextColor(18, 45, 106);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(tipoLabel, marginL + 16, curY + 5);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.setFont('helvetica', 'normal');
+    doc.text(disciplina || 'IAprova', marginL + 16, curY + 10);
+
+    curY += 16;
+
+    // Tópico
+    doc.setFontSize(12);
+    doc.setTextColor(50);
+    doc.setFont('helvetica', 'bold');
+    const topicoLines = doc.splitTextToSize(topico || 'Conteúdo', contentW);
+    doc.text(topicoLines, marginL, curY);
+    curY += topicoLines.length * 5 + 2;
+
+    // Data
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev`, marginL, curY);
+    curY += 4;
+
+    // Linha separadora
+    doc.setDrawColor(18, 45, 106);
+    doc.setLineWidth(0.8);
+    doc.line(marginL, curY, pageW - marginR, curY);
+    curY += 8;
   }
-  
-  // Limpar URL após uso
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+  function addFooter() {
+    doc.setFontSize(7);
+    doc.setTextColor(160);
+    doc.setFont('helvetica', 'normal');
+    doc.text('IAprova - Preparação Inteligente para Concursos | iaprova.pages.dev', pageW / 2, pageH - 10, { align: 'center' });
+  }
+
+  // Parsear markdown simples e escrever no PDF
+  function writeMarkdownContent(text) {
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i].trim();
+      if (!line) { curY += 3; continue; }
+
+      // Limpar marcadores markdown
+      let fontSize = 10, isBold = false, textColor = [30, 30, 46], leftIndent = 0;
+
+      if (line.startsWith('### ')) {
+        line = line.substring(4);
+        fontSize = 12; isBold = true; textColor = [18, 45, 106];
+        checkPage(10);
+        curY += 3;
+      } else if (line.startsWith('## ')) {
+        line = line.substring(3);
+        fontSize = 13; isBold = true; textColor = [13, 31, 77];
+        checkPage(12);
+        curY += 4;
+        // Linha sob h2
+        doc.setDrawColor(18, 45, 106);
+        doc.setLineWidth(0.3);
+      } else if (line.startsWith('# ')) {
+        line = line.substring(2);
+        fontSize = 15; isBold = true; textColor = [13, 31, 77];
+        checkPage(14);
+        curY += 5;
+      } else if (line.startsWith('- ') || line.startsWith('• ')) {
+        line = line.substring(2);
+        leftIndent = 5;
+        // Bullet
+        checkPage(6);
+        doc.setFillColor(18, 45, 106);
+        doc.circle(marginL + 2, curY + 1.2, 0.8, 'F');
+      } else if (/^\d+\.\s/.test(line)) {
+        leftIndent = 5;
+      } else if (line.startsWith('---')) {
+        checkPage(6);
+        doc.setDrawColor(200);
+        doc.setLineWidth(0.2);
+        doc.line(marginL, curY + 2, pageW - marginR, curY + 2);
+        curY += 6;
+        continue;
+      }
+
+      // Remover ** e * (bold/italic markers)
+      line = line.replace(/\*\*\*(.+?)\*\*\*/g, '$1');
+      line = line.replace(/\*\*(.+?)\*\*/g, '$1');
+      line = line.replace(/\*(.+?)\*/g, '$1');
+
+      doc.setFontSize(fontSize);
+      doc.setTextColor(...textColor);
+      doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+
+      const maxW = contentW - leftIndent;
+      const splitLines = doc.splitTextToSize(line, maxW);
+      const blockH = splitLines.length * (fontSize * 0.45 + 1);
+
+      checkPage(blockH + 2);
+      doc.text(splitLines, marginL + leftIndent, curY);
+      curY += blockH + 1.5;
+
+      // Linha decorativa abaixo de h2
+      if (fontSize === 13 && isBold) {
+        doc.setDrawColor(18, 45, 106);
+        doc.setLineWidth(0.3);
+        doc.line(marginL, curY - 0.5, marginL + 60, curY - 0.5);
+        curY += 2;
+      }
+    }
+  }
+
+  return { doc, checkPage, addHeader, addFooter, writeMarkdownContent, marginL, marginR, marginT, marginB, contentW, pageW, pageH, getCurY: () => curY, setCurY: (v) => { curY = v; } };
 }
 
 window.baixarConteudoPDF = async function() {
   const modal = document.getElementById('modal-conteudo-gerado');
-  if (!modal) {
-    showToast('Nenhum conteúdo aberto para exportar', 'error');
-    return;
-  }
+  if (!modal) { showToast('Nenhum conteúdo aberto para exportar', 'error'); return; }
   
   const dados = window.conteudoAtualDados || {};
   const conteudoOriginal = window.conteudoGeradoOriginal || '';
-  if (!conteudoOriginal) {
-    showToast('Nenhum conteúdo disponível para exportar', 'error');
-    return;
-  }
+  if (!conteudoOriginal) { showToast('Nenhum conteúdo disponível para exportar', 'error'); return; }
   
-  const tipoLabel = { teoria: 'Teoria', exercicios: 'Exercicios', resumo: 'Resumo', flashcards: 'Flashcards', resumo_personalizado: 'Resumo_Personalizado' }[dados.tipo] || 'Conteudo';
+  const btn = event?.target?.closest('button');
+  const btnOrig = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Gerando...'; btn.disabled = true; }
+  
+  const tipoLabel = { teoria: 'Teoria', exercicios: 'Exercícios', resumo: 'Resumo', flashcards: 'Flashcards', resumo_personalizado: 'Resumo Personalizado' }[dados.tipo] || 'Conteúdo';
+  const nomeArquivo = (dados.topico_nome || 'conteudo').replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').replace(/\s+/g, '_').substring(0, 40);
   
   try {
-    // Converter markdown para HTML
-    let htmlConteudo = conteudoOriginal
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/\*\*\*(.+?)\*\*\*/g, '<b><i>$1</i></b>')
-      .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
-      .replace(/\*(.+?)\*/g, '<i>$1</i>')
-      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-      .replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid #d1d5db;margin:16px 0;">')
-      .replace(/^- (.+)$/gm, '<div class="bullet">$1</div>')
-      .replace(/^• (.+)$/gm, '<div class="bullet">$1</div>')
-      .replace(/^(\d+)\. (.+)$/gm, '<div class="numbered"><b style="color:#122D6A;">$1.</b> $2</div>')
-      .replace(/\n\n/g, '<br><br>')
-      .replace(/\n/g, '<br>');
-    
-    const htmlBody = `
-      <div class="pdf-header">
-        <div class="pdf-header-flex">
-          <div class="pdf-logo">IA</div>
-          <div>
-            <div class="pdf-tipo">${tipoLabel}</div>
-            <div class="pdf-disc">${dados.disciplina_nome || 'IAprova'}</div>
-          </div>
-        </div>
-        <div class="pdf-topico">${dados.topico_nome || 'Conteúdo Gerado'}</div>
-        <div class="pdf-data">Gerado em ${new Date().toLocaleDateString('pt-BR')} • iaprova.pages.dev</div>
-      </div>
-      <div style="font-size:13px;line-height:1.7;color:#1a1a2e;">
-        ${htmlConteudo}
-      </div>
-      <div class="pdf-footer">
-        IAprova - Preparação Inteligente para Concursos • iaprova.pages.dev
-      </div>
-    `;
-    
-    gerarPDFviaPrint(htmlBody, `${tipoLabel} - ${dados.topico_nome || 'Conteúdo'}`);
-    showToast('✅ Use "Salvar como PDF" na janela de impressão', 'success');
-    
+    const pdf = criarPDFjsPDF(`${tipoLabel}_${nomeArquivo}`);
+    pdf.addHeader(tipoLabel, dados.disciplina_nome, dados.topico_nome);
+    pdf.writeMarkdownContent(conteudoOriginal);
+    pdf.addFooter();
+    pdf.doc.save(`${tipoLabel}_${nomeArquivo}.pdf`);
+    showToast('✅ PDF baixado com sucesso!', 'success');
   } catch (error) {
     console.error('Erro ao gerar PDF:', error);
     showToast('Erro ao gerar PDF. Tente novamente.', 'error');
+  } finally {
+    if (btn) { btn.innerHTML = btnOrig; btn.disabled = false; }
   }
 }
 
@@ -26811,76 +26851,135 @@ window.fecharExercicios = function() {
   }
 }
 
-// ✅ v79: Download PDF dos exercícios via print nativo (sem html2canvas)
+// ✅ v80: Download PDF dos exercícios com jsPDF puro — download direto
 window.baixarExerciciosPDF = async function() {
   if (!exercicioAtual || !exercicioAtual.questoes || exercicioAtual.questoes.length === 0) {
-    showToast('Nenhum exercício disponível', 'error');
-    return;
+    showToast('Nenhum exercício disponível', 'error'); return;
   }
   
+  const btn = event?.target?.closest('button');
+  const btnOrig = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
+  
   try {
-    const { questoes, respostas, verificadas, topicoNome, disciplinaNome } = exercicioAtual;
+    const { questoes, respostas, topicoNome, disciplinaNome } = exercicioAtual;
+    const nomeArquivo = (topicoNome || 'Exercicios').replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').replace(/\s+/g, '_').substring(0, 40);
     
-    let questoesHtml = '';
+    const pdf = criarPDFjsPDF(`Exercicios_${nomeArquivo}`);
+    pdf.addHeader('Exercícios', disciplinaNome, topicoNome || 'Questões');
+    
+    // Subtítulo
+    pdf.doc.setFontSize(9);
+    pdf.doc.setTextColor(150);
+    pdf.doc.text(`${questoes.length} questões | Gerado em ${new Date().toLocaleDateString('pt-BR')}`, pdf.marginL, pdf.getCurY());
+    pdf.setCurY(pdf.getCurY() + 6);
+    
     questoes.forEach((q, i) => {
       const correta = q.correta || q.resposta || q.gabarito || '';
       const comentario = q.comentario || q.explicacao || q.justificativa || '';
-      
-      let altHtml = '';
+      const enunciado = q.enunciado || q.pergunta || q.texto || '';
       const alts = q.alternativas || q.opcoes || [];
-      if (alts.length > 0) {
-        alts.forEach(alt => {
-          const letra = alt.letra || alt.id || '';
-          const texto = alt.texto || alt.conteudo || '';
-          const isCorreta = letra.toUpperCase() === correta.toUpperCase();
-          altHtml += `<div class="alternativa ${isCorreta ? 'alternativa-correta' : ''}">
-            <strong style="color:#122D6A;">${letra})</strong> ${texto}
-            ${isCorreta ? ' <span style="color:#16a34a;font-weight:bold;">✓ Correta</span>' : ''}
-          </div>`;
-        });
+      
+      // Estimar altura do bloco
+      const estH = 30 + alts.length * 8 + (comentario ? 15 : 0);
+      pdf.checkPage(Math.min(estH, 60));
+      
+      let y = pdf.getCurY();
+      
+      // Header da questão (fundo azul claro)
+      pdf.doc.setFillColor(240, 244, 250);
+      pdf.doc.roundedRect(pdf.marginL, y, pdf.contentW, 8, 1, 1, 'F');
+      pdf.doc.setFontSize(11);
+      pdf.doc.setTextColor(18, 45, 106);
+      pdf.doc.setFont('helvetica', 'bold');
+      pdf.doc.text(`Questão ${i + 1}`, pdf.marginL + 4, y + 5.5);
+      y += 11;
+      pdf.setCurY(y);
+      
+      // Enunciado
+      pdf.doc.setFontSize(10);
+      pdf.doc.setTextColor(30, 30, 46);
+      pdf.doc.setFont('helvetica', 'normal');
+      const enuncLines = pdf.doc.splitTextToSize(enunciado, pdf.contentW - 4);
+      for (const ln of enuncLines) {
+        pdf.checkPage(5);
+        pdf.doc.text(ln, pdf.marginL + 2, pdf.getCurY());
+        pdf.setCurY(pdf.getCurY() + 4.5);
+      }
+      pdf.setCurY(pdf.getCurY() + 2);
+      
+      // Alternativas
+      alts.forEach(alt => {
+        const letra = alt.letra || alt.id || '';
+        const texto = alt.texto || alt.conteudo || '';
+        const isCorreta = letra.toUpperCase() === correta.toUpperCase();
+        
+        pdf.checkPage(8);
+        const ay = pdf.getCurY();
+        
+        if (isCorreta) {
+          pdf.doc.setFillColor(220, 252, 231);
+          pdf.doc.roundedRect(pdf.marginL + 2, ay - 3, pdf.contentW - 4, 7, 1, 1, 'F');
+        }
+        
+        pdf.doc.setFontSize(9.5);
+        pdf.doc.setFont('helvetica', 'bold');
+        pdf.doc.setTextColor(18, 45, 106);
+        pdf.doc.text(`${letra})`, pdf.marginL + 4, ay);
+        
+        pdf.doc.setFont('helvetica', 'normal');
+        pdf.doc.setTextColor(50, 50, 50);
+        const altLines = pdf.doc.splitTextToSize(texto, pdf.contentW - 20);
+        pdf.doc.text(altLines, pdf.marginL + 12, ay);
+        
+        if (isCorreta) {
+          pdf.doc.setTextColor(22, 163, 74);
+          pdf.doc.setFont('helvetica', 'bold');
+          pdf.doc.text('✓', pdf.marginL + pdf.contentW - 6, ay);
+        }
+        
+        pdf.setCurY(ay + Math.max(altLines.length * 4, 5) + 2);
+      });
+      
+      // Gabarito
+      pdf.checkPage(12);
+      const gy = pdf.getCurY();
+      pdf.doc.setFillColor(239, 246, 255);
+      pdf.doc.setDrawColor(18, 45, 106);
+      pdf.doc.setLineWidth(0.5);
+      const gabH = comentario ? 16 + Math.ceil(comentario.length / 90) * 4 : 10;
+      pdf.doc.roundedRect(pdf.marginL + 2, gy - 2, pdf.contentW - 4, Math.min(gabH, 40), 1, 1, 'FD');
+      pdf.doc.line(pdf.marginL + 2, gy - 2, pdf.marginL + 2, gy - 2 + Math.min(gabH, 40));
+      
+      pdf.doc.setFontSize(9);
+      pdf.doc.setTextColor(18, 45, 106);
+      pdf.doc.setFont('helvetica', 'bold');
+      pdf.doc.text(`Gabarito: ${correta.toUpperCase()}`, pdf.marginL + 6, gy + 3);
+      
+      if (comentario) {
+        pdf.doc.setFont('helvetica', 'normal');
+        pdf.doc.setTextColor(55, 65, 81);
+        pdf.doc.setFontSize(8.5);
+        const comLines = pdf.doc.splitTextToSize(comentario, pdf.contentW - 14);
+        const maxComLines = comLines.slice(0, 8); // Limitar a 8 linhas
+        pdf.doc.text(maxComLines, pdf.marginL + 6, gy + 7.5);
+        pdf.setCurY(gy + 8 + maxComLines.length * 3.5 + 4);
+      } else {
+        pdf.setCurY(gy + 12);
       }
       
-      questoesHtml += `
-        <div class="questao-box">
-          <div class="questao-header">
-            <strong style="color:#122D6A;font-size:14px;">Questão ${i + 1}</strong>
-          </div>
-          <div class="questao-body">
-            <p style="font-size:14px;color:#1a1a2e;margin:0 0 12px;line-height:1.6;">${q.enunciado || q.pergunta || q.texto || ''}</p>
-            ${altHtml}
-            <div class="gabarito-box">
-              <p style="margin:0 0 4px;font-size:12px;color:#122D6A;font-weight:700;">Gabarito: ${correta.toUpperCase()}</p>
-              ${comentario ? `<p style="margin:0;font-size:12px;color:#374151;line-height:1.5;">${comentario}</p>` : ''}
-            </div>
-          </div>
-        </div>
-      `;
+      pdf.setCurY(pdf.getCurY() + 4);
     });
     
-    const htmlBody = `
-      <div class="pdf-header">
-        <div class="pdf-header-flex">
-          <div class="pdf-logo">IA</div>
-          <div>
-            <div class="pdf-tipo">Exercícios</div>
-            <div class="pdf-disc">${disciplinaNome || 'IAprova'}</div>
-          </div>
-        </div>
-        <div class="pdf-topico">${topicoNome || 'Questões'}</div>
-        <div class="pdf-data">${questoes.length} questões | Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev</div>
-      </div>
-      ${questoesHtml}
-      <div class="pdf-footer">
-        IAprova - Preparação Inteligente para Concursos • iaprova.pages.dev
-      </div>
-    `;
-    
-    gerarPDFviaPrint(htmlBody, `Exercícios - ${topicoNome || 'Questões'}`);
-    showToast('✅ Use "Salvar como PDF" na janela de impressão', 'success');
+    pdf.addFooter();
+    pdf.doc.save(`Exercicios_${nomeArquivo}.pdf`);
+    showToast('✅ PDF dos exercícios baixado!', 'success');
     
   } catch (error) {
     console.error('Erro ao gerar PDF exercícios:', error);
     showToast('Erro ao gerar PDF', 'error');
+  } finally {
+    if (btn) { btn.innerHTML = btnOrig; btn.disabled = false; }
   }
 }
 
@@ -27415,67 +27514,117 @@ window.fecharModalFlashcards = function() {
   }
 }
 
-// ✅ v76: Download PDF dos flashcards
-// ✅ v79: Download PDF dos flashcards via print nativo
+// ✅ v80: Download PDF dos flashcards com jsPDF puro — download direto
 window.baixarFlashcardsPDF = async function() {
   const dados = window.conteudoAtualDados || {};
   const conteudo = window.conteudoGeradoOriginal;
-  if (!conteudo) {
-    showToast('Nenhum flashcard disponível', 'error');
-    return;
-  }
+  if (!conteudo) { showToast('Nenhum flashcard disponível', 'error'); return; }
+  
+  const btn = event?.target?.closest('button');
+  const btnOrig = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
   
   try {
     const flashcards = parseFlashcards(conteudo);
-    if (flashcards.length === 0) {
-      showToast('Erro ao parsear flashcards', 'error');
-      return;
+    if (flashcards.length === 0) { showToast('Erro ao parsear flashcards', 'error'); return; }
+    
+    const nomeArquivo = (dados.topico_nome || 'Flashcards').replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').replace(/\s+/g, '_').substring(0, 40);
+    
+    const pdf = criarPDFjsPDF(`Flashcards_${nomeArquivo}`);
+    pdf.addHeader('Flashcards', dados.disciplina_nome, dados.topico_nome || 'Flashcards');
+    
+    pdf.doc.setFontSize(9);
+    pdf.doc.setTextColor(150);
+    pdf.doc.text(`${flashcards.length} cards | Gerado em ${new Date().toLocaleDateString('pt-BR')}`, pdf.marginL, pdf.getCurY());
+    pdf.setCurY(pdf.getCurY() + 6);
+    
+    // Renderizar cards em grid de 2 colunas
+    const colW = (pdf.contentW - 6) / 2; // largura de cada coluna
+    let col = 0;
+    let rowStartY = pdf.getCurY();
+    let maxRowH = 0;
+    
+    flashcards.forEach((fc, i) => {
+      // Estimar altura do card
+      const frenteLines = pdf.doc.splitTextToSize(fc.frente || '', colW - 8);
+      const versoLines = pdf.doc.splitTextToSize(fc.verso || '', colW - 8);
+      const cardH = 12 + frenteLines.length * 3.5 + 6 + versoLines.length * 3.5 + 8;
+      
+      if (col === 0) {
+        // Início de nova row
+        pdf.checkPage(Math.min(cardH, 50));
+        rowStartY = pdf.getCurY();
+        maxRowH = 0;
+      }
+      
+      const x = pdf.marginL + col * (colW + 6);
+      let y = rowStartY;
+      
+      // Card header (azul)
+      pdf.doc.setFillColor(18, 45, 106);
+      pdf.doc.roundedRect(x, y, colW, 8, 1.5, 1.5, 'F');
+      // Corrigir cantos inferiores (não arredondados)
+      pdf.doc.setFillColor(18, 45, 106);
+      pdf.doc.rect(x, y + 4, colW, 4, 'F');
+      pdf.doc.setFontSize(8);
+      pdf.doc.setTextColor(255, 255, 255);
+      pdf.doc.setFont('helvetica', 'bold');
+      pdf.doc.text(`Card ${i + 1}`, x + 4, y + 5.5);
+      y += 10;
+      
+      // Frente (fundo azul claro)
+      const frenteH = 6 + frenteLines.length * 3.5 + 2;
+      pdf.doc.setFillColor(240, 244, 250);
+      pdf.doc.roundedRect(x + 2, y, colW - 4, frenteH, 1, 1, 'F');
+      pdf.doc.setFontSize(7);
+      pdf.doc.setTextColor(100);
+      pdf.doc.setFont('helvetica', 'bold');
+      pdf.doc.text('FRENTE:', x + 4, y + 4);
+      pdf.doc.setFontSize(8.5);
+      pdf.doc.setTextColor(30, 30, 46);
+      pdf.doc.setFont('helvetica', 'bold');
+      pdf.doc.text(frenteLines, x + 4, y + 8);
+      y += frenteH + 2;
+      
+      // Verso (fundo verde claro)
+      const versoH = 6 + versoLines.length * 3.5 + 2;
+      pdf.doc.setFillColor(240, 253, 244);
+      pdf.doc.roundedRect(x + 2, y, colW - 4, versoH, 1, 1, 'F');
+      pdf.doc.setFontSize(7);
+      pdf.doc.setTextColor(100);
+      pdf.doc.setFont('helvetica', 'bold');
+      pdf.doc.text('VERSO:', x + 4, y + 4);
+      pdf.doc.setFontSize(8);
+      pdf.doc.setTextColor(30, 30, 46);
+      pdf.doc.setFont('helvetica', 'normal');
+      pdf.doc.text(versoLines, x + 4, y + 8);
+      y += versoH + 4;
+      
+      const thisCardH = y - rowStartY;
+      if (thisCardH > maxRowH) maxRowH = thisCardH;
+      
+      col++;
+      if (col >= 2) {
+        col = 0;
+        pdf.setCurY(rowStartY + maxRowH + 4);
+        maxRowH = 0;
+      }
+    });
+    
+    // Se terminou em coluna ímpar, avançar
+    if (col !== 0) {
+      pdf.setCurY(rowStartY + maxRowH + 4);
     }
     
-    let cardsHtml = '<div class="flash-grid">';
-    flashcards.forEach((fc, i) => {
-      cardsHtml += `
-        <div class="flash-card">
-          <div class="flash-card-header">Card ${i + 1}</div>
-          <div class="flash-card-body">
-            <div class="flash-frente">
-              <p class="flash-label">FRENTE:</p>
-              <p class="flash-text" style="font-weight:600;">${fc.frente}</p>
-            </div>
-            <div class="flash-verso">
-              <p class="flash-label">VERSO:</p>
-              <p class="flash-text" style="line-height:1.5;">${fc.verso}</p>
-            </div>
-          </div>
-        </div>
-      `;
-    });
-    cardsHtml += '</div>';
-    
-    const htmlBody = `
-      <div class="pdf-header">
-        <div class="pdf-header-flex">
-          <div class="pdf-logo">IA</div>
-          <div>
-            <div class="pdf-tipo">Flashcards</div>
-            <div class="pdf-disc">${dados.disciplina_nome || 'IAprova'}</div>
-          </div>
-        </div>
-        <div class="pdf-topico">${dados.topico_nome || 'Flashcards'}</div>
-        <div class="pdf-data">${flashcards.length} cards | Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev</div>
-      </div>
-      ${cardsHtml}
-      <div class="pdf-footer">
-        IAprova - Preparação Inteligente para Concursos • iaprova.pages.dev
-      </div>
-    `;
-    
-    gerarPDFviaPrint(htmlBody, `Flashcards - ${dados.topico_nome || 'Cards'}`);
-    showToast('✅ Use "Salvar como PDF" na janela de impressão', 'success');
+    pdf.addFooter();
+    pdf.doc.save(`Flashcards_${nomeArquivo}.pdf`);
+    showToast('✅ PDF dos flashcards baixado!', 'success');
     
   } catch (error) {
     console.error('Erro ao gerar PDF flashcards:', error);
     showToast('Erro ao gerar PDF', 'error');
+  } finally {
+    if (btn) { btn.innerHTML = btnOrig; btn.disabled = false; }
   }
 }
 

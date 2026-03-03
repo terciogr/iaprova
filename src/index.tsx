@@ -20627,8 +20627,8 @@ app.get('/home', (c) => {
     <!-- Axios -->
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     
-    <!-- html2pdf.js para download de PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
+    <!-- jsPDF para download direto de PDF -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
     
     <!-- Custom Styles -->
     <style>
