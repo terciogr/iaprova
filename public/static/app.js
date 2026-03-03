@@ -11112,7 +11112,7 @@ window.exibirConteudoGerado = function(data) {
   console.log('🔄 Iniciando exibição de conteúdo...', { regenerado, tipo });
   
   // Remover TODOS os modais de conteúdo existentes de forma robusta
-  const modaisAntigos = document.querySelectorAll('#modal-conteudo-gerado, #modal-loading-regeneracao');
+  const modaisAntigos = document.querySelectorAll('#modal-conteudo-gerado, #modal-loading-regeneracao, #loading-conteudo');
   modaisAntigos.forEach(modal => {
     console.log('🗑️ Removendo modal antigo:', modal.id);
     modal.remove();
@@ -11226,13 +11226,16 @@ window.exibirConteudoGerado = function(data) {
   
   // Converter markdown simples para HTML
   const conteudoHtml = conteudoProcessado
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/(\s|^)\*([^*\s][^*]*?)\*(\s|[.,;:!?)]|$)/gm, '$1<em>$2</em>$3')
+    .replace(/^#### (.+)$/gm, '<h4 class="text-base font-bold mt-3 mb-2 text-[#122D6A]">$1</h4>')
     .replace(/^### (.+)$/gm, '<h3 class="text-lg font-bold mt-4 mb-2">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold mt-6 mb-3 text-[#122D6A]">$1</h2>')
     .replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold mt-6 mb-4 text-[#0D1F4D]">$1</h1>')
     .replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
-    .replace(/^• (.+)$/gm, '<li class="ml-4">$1</li>')
+    .replace(/^\u2022 (.+)$/gm, '<li class="ml-4">$1</li>')
+    .replace(/^\* (.+)$/gm, '<li class="ml-4">$1</li>')
     .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4"><strong>$1.</strong> $2</li>')
     .replace(/---/g, '<hr class="my-4 border-gray-300">')
     .replace(/\n\n/g, '</p><p class="mb-3">')
@@ -11390,7 +11393,7 @@ window.exibirResumoEsquematizado = function(data) {
   const { topico_nome, disciplina_nome, disciplina_id, topico_id, tipo, conteudo, caracteres, gerado_em, material_id, regenerado } = data;
   
   // Remover modais existentes
-  document.querySelectorAll('#modal-conteudo-gerado, #modal-loading-regeneracao').forEach(m => m.remove());
+  document.querySelectorAll('#modal-conteudo-gerado, #modal-loading-regeneracao, #loading-conteudo').forEach(m => m.remove());
   
   // Guardar dados para salvar
   window.conteudoGeradoOriginal = typeof conteudo === 'string' ? conteudo : (conteudo?.texto || JSON.stringify(conteudo) || '');
@@ -12072,7 +12075,7 @@ function criarPDFjsPDF(titulo) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const pageW = doc.internal.pageSize.getWidth();   // 210
   const pageH = doc.internal.pageSize.getHeight();  // 297
-  const marginL = 15, marginR = 15, marginT = 32, marginB = 18;
+  const marginL = 15, marginR = 15, marginT = 32, marginB = 22;
   const contentW = pageW - marginL - marginR;       // 180
   let curY = marginT;
   let pageNum = 1;
@@ -12125,7 +12128,7 @@ function criarPDFjsPDF(titulo) {
     doc.setFontSize(7);
     doc.setTextColor(160);
     doc.setFont('helvetica', 'normal');
-    doc.text('IAprova - Preparação Inteligente para Concursos | iaprova.pages.dev', marginL, pageH - 8);
+    doc.text('IAprova - Preparação Inteligente para Concursos | iaprova.app', marginL, pageH - 8);
     doc.text(`${pageNum}`, pageW - marginR, pageH - 8, { align: 'right' });
   }
 
@@ -12139,6 +12142,10 @@ function criarPDFjsPDF(titulo) {
       pageNum++;
       drawPageHeader();
       curY = marginT;
+      // v83: RESET cor/fonte após header para evitar texto azul claro
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(30, 30, 46);
     }
   }
 
@@ -12160,7 +12167,7 @@ function criarPDFjsPDF(titulo) {
     doc.setFontSize(8);
     doc.setTextColor(130);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev`, marginL, curY);
+    doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.app`, marginL, curY);
     curY += 3;
 
     // Linha separadora elegante
@@ -12247,6 +12254,10 @@ function criarPDFjsPDF(titulo) {
             pageNum++;
             drawPageHeader();
             cy = marginT;
+            // v83: Reset cor/fonte após header
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(fontSize);
+            doc.setTextColor(...baseColor);
           }
         }
         
@@ -12271,7 +12282,14 @@ function criarPDFjsPDF(titulo) {
       let fontSize = 10, isHeading = false, textColor = [30, 30, 46], leftIndent = 0;
       let headingStyle = '';
 
-      if (line.startsWith('### ')) {
+      // v83: Suporte a #### heading (h4)
+      if (line.startsWith('#### ')) {
+        line = line.substring(5);
+        fontSize = 11; isHeading = true; textColor = [18, 45, 106];
+        headingStyle = 'h4';
+        checkPage(9);
+        curY += 3;
+      } else if (line.startsWith('### ')) {
         line = line.substring(4);
         fontSize = 12; isHeading = true; textColor = [18, 45, 106];
         headingStyle = 'h3';
@@ -12289,7 +12307,8 @@ function criarPDFjsPDF(titulo) {
         headingStyle = 'h1';
         checkPage(14);
         curY += 6;
-      } else if (line.startsWith('- ') || line.startsWith('• ')) {
+      } else if (line.startsWith('- ') || line.startsWith('• ') || (line.startsWith('* ') && !line.startsWith('**'))) {
+        // v83: Suporte a * como bullet (além de - e •)
         line = line.substring(2);
         leftIndent = 6;
         checkPage(6);
@@ -12466,6 +12485,10 @@ function criarPDFjsPDF(titulo) {
               pageNum++;
               drawPageHeader();
               cy = marginT;
+              // v83: Reset cor/fonte após header
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(fontSize);
+              doc.setTextColor(...color);
             }
           }
           doc.text(w, cx, cy);

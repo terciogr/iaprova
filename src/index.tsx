@@ -21485,7 +21485,7 @@ app.post('/api/admin/reengajamento/enviar', async (c) => {
     
     const RESEND_API_KEY = c.env.RESEND_API_KEY || 'seu_resend_api_key_aqui'
     const FROM_EMAIL = c.env.FROM_EMAIL || 'IAprova - Preparação para Concursos <noreply@iaprova.app>'
-    const APP_URL = c.env.APP_URL || 'https://iaprova.pages.dev'
+    const APP_URL = c.env.APP_URL || 'https://iaprova.app'
     
     if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
       return c.json({ error: 'RESEND_API_KEY não configurada' }, 400)
@@ -21884,7 +21884,7 @@ app.post('/api/cron/reengajamento', async (c) => {
   try {
     const RESEND_API_KEY = (c.env as any).RESEND_API_KEY || 'seu_resend_api_key_aqui'
     const FROM_EMAIL = (c.env as any).FROM_EMAIL || 'IAprova - Preparação para Concursos <noreply@iaprova.app>'
-    const APP_URL = (c.env as any).APP_URL || 'https://iaprova.pages.dev'
+    const APP_URL = (c.env as any).APP_URL || 'https://iaprova.app'
     
     if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
       return c.json({ error: 'RESEND_API_KEY não configurada', skipped: true }, 200)
@@ -22012,7 +22012,7 @@ app.post('/api/admin/reengajamento/enviar-individual', async (c) => {
     
     const RESEND_API_KEY = (c.env as any).RESEND_API_KEY || 'seu_resend_api_key_aqui'
     const FROM_EMAIL = (c.env as any).FROM_EMAIL || 'IAprova - Preparação para Concursos <noreply@iaprova.app>'
-    const APP_URL = (c.env as any).APP_URL || 'https://iaprova.pages.dev'
+    const APP_URL = (c.env as any).APP_URL || 'https://iaprova.app'
     
     if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
       return c.json({ error: 'RESEND_API_KEY não configurada' }, 400)
