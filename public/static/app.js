@@ -12346,7 +12346,445 @@ function criarPDFjsPDF(titulo) {
     }
   }
 
-  return { doc, checkPage, addHeader, addFooter, writeMarkdownContent, drawPageFooter, marginL, marginR, marginT, marginB, contentW, pageW, pageH, getCurY: () => curY, setCurY: (v) => { curY = v; }, getPageNum: () => pageNum };
+  return { doc, checkPage, addHeader, addFooter, writeMarkdownContent, writeResumoEsquematizado, drawPageFooter, marginL, marginR, marginT, marginB, contentW, pageW, pageH, getCurY: () => curY, setCurY: (v) => { curY = v; }, getPageNum: () => pageNum };
+
+  // ============================================================================
+  // v82: RESUMO ESQUEMATIZADO — Renderer profissional para PDF de estudo
+  // Reproduz cards coloridos, tabelas, negrito inline, ícones textuais
+  // ============================================================================
+  function writeResumoEsquematizado(text) {
+    // Paleta de cores RGB espelhando o frontend (10 cores)
+    const cores = [
+      { r:59,g:130,b:246, lr:219,lg:234,lb:254, dr:30,dg:64,db:175 },   // blue
+      { r:16,g:185,b:129, lr:209,lg:250,lb:229, dr:5,dg:120,db:85 },    // emerald
+      { r:245,g:158,b:11, lr:254,lg:243,lb:199, dr:180,dg:100,db:0 },   // amber
+      { r:168,g:85,b:247, lr:243,lg:232,lb:255, dr:110,dg:40,db:190 },  // purple
+      { r:244,g:63,b:94, lr:255,lg:228,lb:230, dr:190,dg:30,db:60 },    // rose
+      { r:6,g:182,b:212, lr:207,lg:250,lb:254, dr:0,dg:120,db:150 },    // cyan
+      { r:249,g:115,b:22, lr:255,lg:237,lb:213, dr:190,dg:80,db:5 },    // orange
+      { r:99,g:102,b:241, lr:224,lg:231,lb:255, dr:60,dg:60,db:190 },   // indigo
+      { r:20,g:184,b:166, lr:204,lg:251,lb:241, dr:10,dg:120,db:110 },  // teal
+      { r:236,g:72,b:153, lr:252,lg:231,lb:243, dr:180,dg:30,db:100 },  // pink
+    ];
+    let corIdx = 0;
+
+    // Mapa de emojis → texto descritivo (jsPDF não renderiza emojis Unicode)
+    const emojiMap = {
+      '\u{1F4CC}':'[*]', '\u{1F4CB}':'[#]', '\u{26A0}\u{FE0F}':'[!]', '\u{26A0}':'[!]',
+      '\u{1F3AF}':'[@]', '\u{2705}':'[v]', '\u{1F4A1}':'[i]',
+      '\u{1F511}':'[K]', '\u{1F4CA}':'[G]', '\u{1F534}':'[R]',
+      '\u{1F7E2}':'[V]', '\u{1F7E1}':'[A]',
+      '\u{1F4DD}':'[E]', '\u{1F9E0}':'[B]', '\u{2B50}':'[*]', '\u{1F517}':'[L]',
+      '\u{1F4D6}':'[L]', '\u{1F3DB}\u{FE0F}':'[P]', '\u{1F3DB}':'[P]',
+      '\u{2696}\u{FE0F}':'[J]', '\u{2696}':'[J]',
+      '\u{1F4DA}':'[L]', '\u{1F393}':'[G]', '\u{1F4BB}':'[C]',
+      '\u{1F4DC}':'[D]', '\u{1F512}':'[S]', '\u{1F4D0}':'[R]',
+      '\u{1F3C6}':'[T]', '\u{1F4B0}':'[$]', '\u{1F504}':'[~]',
+      '\u{1F4C8}':'[^]', '\u{1F5C2}\u{FE0F}':'[F]', '\u{1F5C2}':'[F]', '\u{1F50D}':'[?]',
+      '\u{1F4C5}':'[D]', '\u{1F4CE}':'[+]', '\u{1F4E2}':'[!]',
+      '\u{2714}\u{FE0F}':'[v]', '\u{2714}':'[v]', '\u{274C}':'[x]',
+      '\u{1F449}':'>', '\u{1F448}':'<', '\u{27A1}\u{FE0F}':'>>', '\u{27A1}':'>>',
+      '\u{2757}':'[!]', '\u{2753}':'[?]', '\u{1F4AF}':'[100]'
+    };
+
+    // Limpar todos os emojis unicode de forma abrangente
+    function limpar(t) {
+      // Primeiro substituir emojis conhecidos por texto
+      let result = t;
+      for (const [emoji, replacement] of Object.entries(emojiMap)) {
+        result = result.split(emoji).join(replacement);
+      }
+      // Remover quaisquer emojis/símbolos restantes
+      result = result.replace(/[\u{1F300}-\u{1FBFF}]/gu, '');
+      result = result.replace(/[\u{2600}-\u{27BF}]/gu, '');
+      result = result.replace(/[\u{FE00}-\u{FEFF}]/gu, '');
+      result = result.replace(/[\u{200D}]/gu, '');
+      result = result.replace(/[\u{20E3}]/gu, '');
+      result = result.replace(/[\u{E0020}-\u{E007F}]/gu, '');
+      result = result.replace(/[\u{1F900}-\u{1F9FF}]/gu, '');
+      result = result.replace(/[\u{1FA00}-\u{1FA6F}]/gu, '');
+      result = result.replace(/[\u{1FA70}-\u{1FAFF}]/gu, '');
+      result = result.replace(/[\u{2702}-\u{27B0}]/gu, '');
+      result = result.replace(/[\u{FE0F}]/gu, '');
+      return result.replace(/\s{2,}/g, ' ').trim();
+    }
+
+    // Parsear **bold** e *italic* inline → [{text, bold, italic}]
+    function parseSegments(text) {
+      const segments = [];
+      const pattern = /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*/g;
+      let lastIdx = 0;
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        if (match.index > lastIdx) {
+          segments.push({ text: text.substring(lastIdx, match.index), bold: false, italic: false });
+        }
+        if (match[1]) {
+          segments.push({ text: match[1], bold: true, italic: true });
+        } else if (match[2]) {
+          segments.push({ text: match[2], bold: true, italic: false });
+        } else if (match[3]) {
+          segments.push({ text: match[3], bold: false, italic: true });
+        }
+        lastIdx = match.index + match[0].length;
+      }
+      if (lastIdx < text.length) {
+        segments.push({ text: text.substring(lastIdx), bold: false, italic: false });
+      }
+      if (segments.length === 0) segments.push({ text: text, bold: false, italic: false });
+      return segments;
+    }
+
+    // Renderizar texto com negrito/itálico inline usando word-wrap
+    function writeRichText(x, y, text, fontSize, color, maxW) {
+      const segments = parseSegments(limpar(text));
+      let cx = x;
+      let cy = y;
+      const lh = fontSize * 0.42 + 1.2;
+      
+      for (const seg of segments) {
+        const fontStyle = seg.bold && seg.italic ? 'bolditalic' : 
+                          seg.bold ? 'bold' : seg.italic ? 'italic' : 'normal';
+        doc.setFont('helvetica', fontStyle);
+        doc.setFontSize(fontSize);
+        if (seg.bold) {
+          doc.setTextColor(25, 30, 45);
+        } else {
+          doc.setTextColor(...color);
+        }
+        
+        const words = seg.text.split(/(\s+)/);
+        for (const w of words) {
+          if (!w) continue;
+          const ww = doc.getTextWidth(w);
+          if (cx + ww > x + maxW && cx > x) {
+            cx = x;
+            cy += lh;
+            if (cy > pageH - marginB) {
+              drawPageFooter();
+              doc.addPage();
+              pageNum++;
+              drawPageHeader();
+              cy = marginT;
+            }
+          }
+          doc.text(w, cx, cy);
+          cx += ww;
+        }
+      }
+      doc.setFont('helvetica', 'normal');
+      return cy - y + lh;
+    }
+
+    // Renderizar tabela profissional no PDF
+    function renderTabelaPDF(linhasTab, cor) {
+      const dataLinhas = linhasTab.filter(l => {
+        const t = l.trim();
+        if (t.match(/^[\|\s\-:]+$/) && !t.match(/[a-zA-Z0-9]/)) return false;
+        return true;
+      });
+      if (dataLinhas.length < 1) return;
+      
+      const rows = dataLinhas.map(l => 
+        l.split('|').map(c => limpar(c.trim())).filter(c => c.length > 0)
+      );
+      if (rows.length === 0) return;
+      
+      const numCols = Math.max(...rows.map(r => r.length));
+      const tableX = marginL + 3;
+      const tableW = contentW - 6;
+      
+      // Calcular largura de cada coluna proporcionalmente ao conteúdo
+      let colWidths = [];
+      for (let ci = 0; ci < numCols; ci++) {
+        let maxLen = 0;
+        rows.forEach(r => { if (r[ci]) maxLen = Math.max(maxLen, r[ci].length); });
+        colWidths.push(Math.max(maxLen, 3));
+      }
+      const totalLen = colWidths.reduce((a, b) => a + b, 0);
+      colWidths = colWidths.map(w => (w / totalLen) * tableW);
+      
+      // Calcular altura de cada row (multi-line)
+      const baseRowH = 7;
+      
+      checkPage(Math.min(rows.length * baseRowH + 8, 60));
+      curY += 2;
+      
+      rows.forEach((row, ri) => {
+        // Calcular altura necessária para esta row
+        let maxCellLines = 1;
+        row.forEach((cel, ci) => {
+          doc.setFontSize(8);
+          doc.setFont('helvetica', ri === 0 ? 'bold' : 'normal');
+          const cellW = (colWidths[ci] || tableW/numCols) - 4;
+          const lines = doc.splitTextToSize(cel, cellW);
+          maxCellLines = Math.max(maxCellLines, lines.length);
+        });
+        const rowH = Math.max(baseRowH, maxCellLines * 3.5 + 3.5);
+        
+        checkPage(rowH + 2);
+        const ry = curY;
+        
+        if (ri === 0) {
+          // Header com cantos arredondados no topo
+          doc.setFillColor(cor.r, cor.g, cor.b);
+          doc.roundedRect(tableX, ry - 1, tableW, rowH, 1.5, 1.5, 'F');
+          doc.setFontSize(8);
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+        } else {
+          // Body rows com alternância de cor
+          if (ri % 2 === 0) {
+            doc.setFillColor(cor.lr, cor.lg, cor.lb);
+            doc.rect(tableX, ry - 1, tableW, rowH, 'F');
+          } else {
+            doc.setFillColor(255, 255, 255);
+            doc.rect(tableX, ry - 1, tableW, rowH, 'F');
+          }
+          doc.setFontSize(8);
+          doc.setTextColor(50, 55, 70);
+          doc.setFont('helvetica', 'normal');
+        }
+        
+        // Renderizar células
+        let cx = tableX;
+        row.forEach((cel, ci) => {
+          const colW = colWidths[ci] || tableW/numCols;
+          const cellW = colW - 4;
+          const cellX = cx + 2;
+          doc.setFontSize(8);
+          const celLines = doc.splitTextToSize(cel, cellW);
+          celLines.forEach((line, li) => {
+            if (li < 3) { // max 3 lines per cell
+              doc.text(line, cellX, ry + 3 + li * 3.5);
+            }
+          });
+          // Primeira coluna em bold mesmo no body
+          if (ci === 0 && ri > 0) {
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(40, 40, 55);
+            const firstLines = doc.splitTextToSize(cel, cellW);
+            firstLines.forEach((line, li) => {
+              if (li < 3) doc.text(line, cellX, ry + 3 + li * 3.5);
+            });
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(50, 55, 70);
+          }
+          cx += colW;
+        });
+        
+        // Borda inferior sutil
+        if (ri > 0) {
+          doc.setDrawColor(210, 215, 220);
+          doc.setLineWidth(0.1);
+          doc.line(tableX, ry + rowH - 1, tableX + tableW, ry + rowH - 1);
+        }
+        
+        curY += rowH;
+      });
+      
+      // Borda da tabela inteira
+      doc.setDrawColor(cor.r, cor.g, cor.b);
+      doc.setLineWidth(0.3);
+      const tableStartY = curY - rows.reduce((sum, _, ri) => {
+        let maxCellLines = 1;
+        rows[ri].forEach((cel, ci) => {
+          doc.setFontSize(8);
+          const cellW = (colWidths[ci] || tableW/numCols) - 4;
+          const lines = doc.splitTextToSize(cel, cellW);
+          maxCellLines = Math.max(maxCellLines, lines.length);
+        });
+        return sum + Math.max(baseRowH, maxCellLines * 3.5 + 3.5);
+      }, 0);
+      
+      curY += 4;
+    }
+
+    // ====== MAIN PARSING LOOP ======
+    const linhas = text.split('\n');
+    let i = 0;
+
+    while (i < linhas.length) {
+      let line = linhas[i].trim();
+      
+      if (!line) { curY += 2; i++; continue; }
+      
+      // Detectar início de seção (## ou # com ou sem emoji)
+      if (line.startsWith('## ') || (line.startsWith('# ') && !line.startsWith('## '))) {
+        const isH1 = line.startsWith('# ') && !line.startsWith('## ');
+        let titulo = isH1 ? line.substring(2) : line.substring(3);
+        titulo = limpar(titulo).replace(/^\*\*|\*\*$/g, '').replace(/^#+\s*/, '');
+        
+        const cor = cores[corIdx % cores.length];
+        
+        // Coletar linhas da seção até próximo ## ou # 
+        i++;
+        let secaoLinhas = [];
+        while (i < linhas.length) {
+          const nextTrim = linhas[i].trim();
+          if (nextTrim.startsWith('## ') || (nextTrim.startsWith('# ') && !nextTrim.startsWith('## '))) break;
+          secaoLinhas.push(linhas[i]);
+          i++;
+        }
+        
+        renderSecaoPDF(titulo, secaoLinhas, cor);
+        corIdx++;
+        continue;
+      }
+      
+      // Linhas soltas (fora de seção) — separadores
+      if (line.startsWith('---')) { curY += 3; i++; continue; }
+      
+      // Linhas soltas — texto normal
+      const cleanLine = limpar(line);
+      if (cleanLine) {
+        checkPage(7);
+        writeRichText(marginL + 2, curY, line, 9.5, [50, 55, 65], contentW - 4);
+        curY += 5;
+      }
+      i++;
+    }
+    
+    // ====== RENDER SEÇÃO (card colorido) ======
+    function renderSecaoPDF(titulo, linhas, cor) {
+      checkPage(28);
+      
+      // === HEADER DA SEÇÃO: retângulo colorido arredondado ===
+      doc.setFillColor(cor.r, cor.g, cor.b);
+      const tituloClean = titulo.replace(/^#+\s*/, '').replace(/^\*\*|\*\*$/g, '');
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      const tituloLines = doc.splitTextToSize(tituloClean, contentW - 18);
+      const headerH = 5 + tituloLines.length * 5;
+      doc.roundedRect(marginL, curY, contentW, headerH, 2.5, 2.5, 'F');
+      
+      // Ícone decorativo (quadrado branco)
+      doc.setFillColor(255, 255, 255, 0.3);
+      doc.roundedRect(marginL + 3, curY + (headerH/2) - 3.5, 7, 7, 1.5, 1.5, 'F');
+      doc.setFontSize(7);
+      doc.setTextColor(cor.r, cor.g, cor.b);
+      doc.setFont('helvetica', 'bold');
+      doc.text(String(corIdx + 1), marginL + 6.5, curY + (headerH/2) + 0.8, { align: 'center' });
+      
+      // Título em branco
+      doc.setFontSize(11);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.text(tituloLines, marginL + 13, curY + 4.5);
+      curY += headerH + 2;
+      
+      // === CONTEÚDO com barra lateral colorida ===
+      const barraStartY = curY;
+      const contentStartX = marginL + 4; // Espaço para a barra
+      const secContentW = contentW - 6;
+      
+      let j = 0;
+      let numLista = 0;
+      
+      while (j < linhas.length) {
+        let l = linhas[j].trim();
+        
+        if (!l) { curY += 1.5; j++; numLista = 0; continue; }
+        
+        // === SUB-CABEÇALHO (### ou **texto** sozinho na linha) ===
+        if (l.startsWith('### ') || l.match(/^\*\*[^*]+\*\*\s*$/)) {
+          numLista = 0;
+          let sub = l.replace(/^###\s*/, '').replace(/^\*\*|\*\*$/g, '');
+          sub = limpar(sub);
+          checkPage(10);
+          curY += 3;
+          
+          // Barra vertical decorativa + título
+          doc.setFillColor(cor.r, cor.g, cor.b);
+          doc.roundedRect(contentStartX, curY - 1.5, 2, 6, 0.5, 0.5, 'F');
+          doc.setFontSize(10);
+          doc.setTextColor(cor.dr, cor.dg, cor.db);
+          doc.setFont('helvetica', 'bold');
+          const subLines = doc.splitTextToSize(sub, secContentW - 10);
+          doc.text(subLines, contentStartX + 5, curY + 2);
+          curY += subLines.length * 4.5 + 4;
+          j++;
+          continue;
+        }
+        
+        // === TABELA MARKDOWN (linhas com |) ===
+        if (l.includes('|') && l.split('|').length >= 3) {
+          numLista = 0;
+          let tabelaLinhas = [];
+          while (j < linhas.length && linhas[j].trim().includes('|') && linhas[j].trim().split('|').length >= 3) {
+            tabelaLinhas.push(linhas[j].trim());
+            j++;
+          }
+          renderTabelaPDF(tabelaLinhas, cor);
+          continue;
+        }
+        
+        // === ITEM DE LISTA (-, •, 1., etc.) ===
+        if (l.match(/^[-\u2022\u25CF\u25B8\u25B9\u2192]\s/) || l.match(/^\d+[\.\)]\s/)) {
+          const isNum = l.match(/^\d+[\.\)]\s/);
+          let texto = l.replace(/^[-\u2022\u25CF\u25B8\u25B9\u2192]\s*/, '').replace(/^\d+[\.\)]\s*/, '');
+          const isSub = linhas[j].match(/^\s{2,}/);
+          
+          if (isNum) numLista++;
+          
+          checkPage(7);
+          
+          const bulletX = contentStartX + (isSub ? 8 : 1);
+          const textX = bulletX + (isNum ? 6 : 4.5);
+          const maxW = contentW - (textX - marginL) - 4;
+          
+          if (isSub) {
+            // Sub-item: bullet cinza menor
+            doc.setFillColor(170, 175, 185);
+            doc.circle(bulletX + 1, curY + 0.6, 0.5, 'F');
+          } else if (isNum) {
+            // Numerado: badge colorido
+            doc.setFillColor(cor.lr, cor.lg, cor.lb);
+            doc.roundedRect(bulletX, curY - 1.5, 4.5, 4.5, 1, 1, 'F');
+            doc.setFontSize(7);
+            doc.setTextColor(cor.dr, cor.dg, cor.db);
+            doc.setFont('helvetica', 'bold');
+            doc.text(String(numLista), bulletX + 2.25, curY + 1.5, { align: 'center' });
+          } else {
+            // Bullet: círculo colorido com check
+            doc.setFillColor(cor.lr, cor.lg, cor.lb);
+            doc.circle(bulletX + 1.5, curY + 0.5, 2, 'F');
+            doc.setFillColor(cor.r, cor.g, cor.b);
+            doc.circle(bulletX + 1.5, curY + 0.5, 0.8, 'F');
+          }
+          
+          // Texto com negrito inline
+          doc.setFontSize(9);
+          const h = writeRichText(textX, curY, texto, 9, [55, 60, 75], maxW);
+          curY += h + 0.8;
+          j++;
+          continue;
+        }
+        
+        // === TEXTO NORMAL (parágrafo) ===
+        const cleanL = limpar(l);
+        if (cleanL) {
+          checkPage(7);
+          doc.setFontSize(9);
+          const h = writeRichText(contentStartX + 2, curY, l, 9, [55, 60, 75], secContentW - 4);
+          curY += h + 1.5;
+        }
+        j++;
+      }
+      
+      // === BARRA LATERAL da seção (cor clara) ===
+      const barraEndY = curY;
+      if (barraEndY > barraStartY + 2) {
+        doc.setFillColor(cor.lr, cor.lg, cor.lb);
+        doc.roundedRect(marginL, barraStartY, 2.5, barraEndY - barraStartY, 1, 1, 'F');
+        // Linha de cor intensa no centro da barra
+        doc.setFillColor(cor.r, cor.g, cor.b);
+        doc.roundedRect(marginL + 0.3, barraStartY, 0.8, barraEndY - barraStartY, 0.4, 0.4, 'F');
+      }
+      
+      curY += 6;
+    }
+  }
 }
 
 window.baixarConteudoPDF = async function() {
@@ -12367,7 +12805,13 @@ window.baixarConteudoPDF = async function() {
   try {
     const pdf = criarPDFjsPDF(`${tipoLabel}_${nomeArquivo}`);
     pdf.addHeader(tipoLabel, dados.disciplina_nome, dados.topico_nome);
-    pdf.writeMarkdownContent(conteudoOriginal);
+    // v82: Usar renderer dedicado para resumo esquematizado
+    if (dados.tipo === 'resumo' || dados.tipo === 'resumo_personalizado') {
+      console.log('📄 PDF v82: Usando writeResumoEsquematizado para tipo:', dados.tipo);
+      pdf.writeResumoEsquematizado(conteudoOriginal);
+    } else {
+      pdf.writeMarkdownContent(conteudoOriginal);
+    }
     pdf.addFooter();
     pdf.doc.save(`${tipoLabel}_${nomeArquivo}.pdf`);
     showToast('✅ PDF baixado com sucesso!', 'success');
