@@ -12062,7 +12062,8 @@ window.fecharModalConteudoGerado = function() {
 }
 
 // Função para copiar conteúdo
-// ✅ v76: Função universal de download PDF para qualquer conteúdo gerado
+// ✅ v77: Função universal de download PDF para qualquer conteúdo gerado
+// Usa conteúdo markdown original convertido para HTML com estilos inline
 window.baixarConteudoPDF = async function() {
   const modal = document.getElementById('modal-conteudo-gerado');
   if (!modal) {
@@ -12071,101 +12072,107 @@ window.baixarConteudoPDF = async function() {
   }
   
   const dados = window.conteudoAtualDados || {};
+  const conteudoOriginal = window.conteudoGeradoOriginal || '';
+  if (!conteudoOriginal) {
+    showToast('Nenhum conteúdo disponível para exportar', 'error');
+    return;
+  }
+  
   const nomeArquivo = (dados.topico_nome || 'conteudo').replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
   const tipoLabel = { teoria: 'Teoria', exercicios: 'Exercicios', resumo: 'Resumo', flashcards: 'Flashcards', resumo_personalizado: 'Resumo_Personalizado' }[dados.tipo] || 'Conteudo';
   
-  // Mostrar loading no botão
   const btn = event?.target?.closest('button');
   const btnOriginal = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Gerando PDF...';
-    btn.disabled = true;
-  }
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Gerando...'; btn.disabled = true; }
   
   try {
-    // Clonar o conteúdo para manipular sem afetar a tela
-    const conteudoArea = modal.querySelector('.flex-1.overflow-y-auto');
-    if (!conteudoArea) {
-      showToast('Erro: área de conteúdo não encontrada', 'error');
-      return;
-    }
+    // Converter markdown para HTML com estilos inline
+    let htmlConteudo = conteudoOriginal
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/\*\*\*(.+?)\*\*\*/g, '<b><i>$1</i></b>')
+      .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+      .replace(/\*(.+?)\*/g, '<i>$1</i>')
+      .replace(/^### (.+)$/gm, '<h3 style="font-size:15px;font-weight:700;color:#122D6A;margin:16px 0 8px;border-bottom:1px solid #e5e7eb;padding-bottom:4px;">$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2 style="font-size:17px;font-weight:700;color:#0D1F4D;margin:20px 0 10px;border-bottom:2px solid #122D6A;padding-bottom:6px;">$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1 style="font-size:20px;font-weight:800;color:#0D1F4D;margin:24px 0 12px;">$1</h1>')
+      .replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid #d1d5db;margin:16px 0;">')
+      .replace(/^- (.+)$/gm, '<div style="padding:2px 0 2px 16px;position:relative;"><span style="position:absolute;left:0;color:#122D6A;font-weight:bold;">•</span> $1</div>')
+      .replace(/^• (.+)$/gm, '<div style="padding:2px 0 2px 16px;position:relative;"><span style="position:absolute;left:0;color:#122D6A;font-weight:bold;">•</span> $1</div>')
+      .replace(/^(\d+)\. (.+)$/gm, '<div style="padding:2px 0 2px 20px;"><b style="color:#122D6A;">$1.</b> $2</div>')
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/\n/g, '<br>');
     
-    // Criar container temporário com estilos para PDF
+    // Criar overlay de loading que cobre tudo enquanto o PDF renderiza
+    const pdfOverlay = document.createElement('div');
+    pdfOverlay.id = 'pdf-overlay';
+    pdfOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
+    pdfOverlay.innerHTML = '<div style="background:white;padding:24px 40px;border-radius:16px;text-align:center;"><div style="font-size:24px;margin-bottom:8px;">📄</div><div style="font-size:14px;color:#333;font-weight:600;">Gerando PDF...</div><div style="font-size:12px;color:#666;margin-top:4px;">Aguarde um momento</div></div>';
+    document.body.appendChild(pdfOverlay);
+    
+    // Container precisa estar visível para html2canvas capturar
     const container = document.createElement('div');
-    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;background:white;color:#1a1a2e;padding:40px;font-family:Inter,sans-serif;';
+    container.id = 'pdf-render-container';
+    container.style.cssText = 'position:fixed;top:0;left:0;width:794px;background:#ffffff;padding:40px 50px;font-family:Inter,-apple-system,sans-serif;color:#1a1a2e;font-size:13px;line-height:1.7;z-index:999998;overflow:auto;max-height:100vh;';
     
-    // Header do PDF
-    const header = document.createElement('div');
-    header.style.cssText = 'border-bottom:3px solid #122D6A;padding-bottom:16px;margin-bottom:24px;';
-    header.innerHTML = `
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-        <div style="width:44px;height:44px;background:linear-gradient(135deg,#122D6A,#2A4A9F);border-radius:10px;display:flex;align-items:center;justify-content:center;">
-          <span style="color:white;font-size:18px;font-weight:bold;">IA</span>
+    container.innerHTML = `
+      <div style="border-bottom:3px solid #122D6A;padding-bottom:16px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+          <div style="width:40px;height:40px;background:linear-gradient(135deg,#122D6A,#2A4A9F);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+            <span style="color:white;font-size:16px;font-weight:bold;">IA</span>
+          </div>
+          <div>
+            <div style="font-size:18px;color:#122D6A;font-weight:700;">${tipoLabel}</div>
+            <div style="font-size:11px;color:#666;">${dados.disciplina_nome || 'IAprova'}</div>
+          </div>
         </div>
-        <div>
-          <h1 style="margin:0;font-size:20px;color:#122D6A;font-weight:700;">${tipoLabel} - IAprova</h1>
-          <p style="margin:2px 0 0;font-size:12px;color:#666;">${dados.disciplina_nome || ''}</p>
-        </div>
+        <div style="font-size:15px;color:#333;font-weight:600;margin-top:6px;">${dados.topico_nome || 'Conteúdo Gerado'}</div>
+        <div style="font-size:10px;color:#999;margin-top:4px;">Gerado em ${new Date().toLocaleDateString('pt-BR')} • iaprova.pages.dev</div>
       </div>
-      <h2 style="margin:8px 0 0;font-size:16px;color:#333;font-weight:600;">${dados.topico_nome || 'Conteúdo Gerado'}</h2>
-      <p style="margin:4px 0 0;font-size:11px;color:#999;">Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev</p>
+      <div style="font-size:13px;line-height:1.7;color:#1a1a2e;">
+        ${htmlConteudo}
+      </div>
+      <div style="margin-top:30px;padding-top:12px;border-top:1px solid #e5e7eb;text-align:center;font-size:9px;color:#999;">
+        IAprova - Preparação Inteligente para Concursos • iaprova.pages.dev
+      </div>
     `;
-    container.appendChild(header);
     
-    // Clonar conteúdo
-    const clone = conteudoArea.cloneNode(true);
-    
-    // Forçar estilos de texto para dark → light (PDF sempre branco)
-    clone.querySelectorAll('*').forEach(el => {
-      const computed = window.getComputedStyle(el);
-      if (computed.color === 'rgb(255, 255, 255)' || computed.color === 'white') {
-        el.style.color = '#1a1a2e';
-      }
-      // Remover backgrounds escuros
-      const bg = computed.backgroundColor;
-      if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
-        const rgb = bg.match(/\d+/g);
-        if (rgb && parseInt(rgb[0]) < 60 && parseInt(rgb[1]) < 60 && parseInt(rgb[2]) < 60) {
-          el.style.backgroundColor = '#f8f9fa';
-          el.style.color = '#1a1a2e';
-        }
-      }
-      // Garantir visibilidade de textos
-      if (el.classList.contains('text-white')) {
-        el.style.color = '#1a1a2e';
-      }
-    });
-    
-    // Remover botões e áreas interativas do clone
-    clone.querySelectorAll('button, .feedback-area, #feedback-area, [onclick]').forEach(el => el.remove());
-    
-    container.appendChild(clone);
     document.body.appendChild(container);
     
-    // Gerar PDF
+    // Pequeno delay para garantir render
+    await new Promise(r => setTimeout(r, 100));
+    
     const opt = {
-      margin: [10, 10, 15, 10],
+      margin: [8, 5, 10, 5],
       filename: `${tipoLabel}_${nomeArquivo}.pdf`,
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        logging: false, 
+        backgroundColor: '#ffffff',
+        width: 794,
+        windowWidth: 794,
+        scrollY: -window.scrollY,
+        scrollX: 0
+      },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      pagebreak: { mode: ['css', 'legacy'], avoid: ['h1','h2','h3','b','div'] }
     };
     
     await html2pdf().set(opt).from(container).save();
     
-    // Limpar
     document.body.removeChild(container);
+    const ov1 = document.getElementById('pdf-overlay'); if (ov1) ov1.remove();
     showToast('✅ PDF baixado com sucesso!', 'success');
     
   } catch (error) {
     console.error('Erro ao gerar PDF:', error);
+    const errContainer = document.getElementById('pdf-render-container');
+    if (errContainer) errContainer.remove();
+    const ov2 = document.getElementById('pdf-overlay'); if (ov2) ov2.remove();
     showToast('Erro ao gerar PDF. Tente novamente.', 'error');
   } finally {
-    if (btn) {
-      btn.innerHTML = btnOriginal;
-      btn.disabled = false;
-    }
+    if (btn) { btn.innerHTML = btnOriginal; btn.disabled = false; }
   }
 }
 
@@ -24358,49 +24365,51 @@ function renderCalendarioSemanal() {
   const percentualSemana = semana.metas_totais > 0 ? Math.round((semana.metas_concluidas / semana.metas_totais) * 100) : 0;
   
   container.innerHTML = `
-    <!-- Header Responsivo da Semana -->
-    <div class="${themes[currentTheme].card} rounded-xl shadow-sm p-2 sm:p-3 mb-3 border ${themes[currentTheme].border}">
-      <!-- Layout Mobile: empilhado / Desktop: lado a lado -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
-        <!-- Info da Semana -->
-        <div class="flex items-center gap-2 sm:gap-3">
-          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center flex-shrink-0">
-            <i class="fas fa-calendar-week text-white text-xs sm:text-sm"></i>
-          </div>
-          <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 min-w-0">
-            <div class="flex items-center gap-2">
-              <span class="text-xs sm:text-sm font-semibold ${themes[currentTheme].text}">Sem ${semana.numero_semana}</span>
-              <span class="text-[10px] sm:text-xs ${themes[currentTheme].textSecondary}">${dataInicioFormatada} - ${dataFimFormatada}</span>
+    <!-- Container Unificado da Semana -->
+    <div class="${themes[currentTheme].card} rounded-xl shadow-sm border ${themes[currentTheme].border} overflow-hidden">
+      <!-- Header da Semana -->
+      <div class="p-2 sm:p-3 border-b ${themes[currentTheme].border}">
+        <!-- Layout Mobile: empilhado / Desktop: lado a lado -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+          <!-- Info da Semana -->
+          <div class="flex items-center gap-2 sm:gap-3">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-calendar-week text-white text-xs sm:text-sm"></i>
             </div>
-            <div class="flex items-center gap-2 mt-1 sm:mt-0">
-              <div class="w-16 sm:w-20 bg-gray-200 rounded-full h-1.5">
-                <div class="bg-[#122D6A] h-1.5 rounded-full" style="width: ${percentualSemana}%"></div>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-xs sm:text-sm font-semibold ${themes[currentTheme].text}">Sem ${semana.numero_semana}</span>
+                <span class="text-[10px] sm:text-xs ${themes[currentTheme].textSecondary}">${dataInicioFormatada} - ${dataFimFormatada}</span>
               </div>
-              <span class="text-[10px] sm:text-xs font-medium ${themes[currentTheme].text}">${percentualSemana}%</span>
+              <div class="flex items-center gap-2 mt-1 sm:mt-0">
+                <div class="w-16 sm:w-20 bg-gray-200 rounded-full h-1.5">
+                  <div class="bg-[#122D6A] h-1.5 rounded-full" style="width: ${percentualSemana}%"></div>
+                </div>
+                <span class="text-[10px] sm:text-xs font-medium ${themes[currentTheme].text}">${percentualSemana}%</span>
+              </div>
             </div>
           </div>
-        </div>
-        <!-- Botões de Ação -->
-        <div class="flex items-center gap-1 sm:gap-2 justify-end">
-          <button onclick="toggleTodosDias(false)" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Recolher todos">
-            <i class="fas fa-compress-alt text-gray-600 text-xs sm:text-sm"></i>
-          </button>
-          <button onclick="toggleTodosDias(true)" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Expandir todos">
-            <i class="fas fa-expand-alt text-gray-600 text-xs sm:text-sm"></i>
-          </button>
-          <button onclick="abrirSemanasAnteriores()" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Semanas anteriores">
-            <i class="fas fa-history text-gray-600 text-xs sm:text-sm"></i>
-          </button>
-          <button onclick="gerarMetasSemana()" class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#122D6A] text-white rounded-lg text-[10px] sm:text-xs font-medium hover:bg-[#0D1F4D] transition">
-            <i class="fas fa-magic"></i>
-            <span class="hidden xs:inline">Gerar</span>
-          </button>
+          <!-- Botões de Ação -->
+          <div class="flex items-center gap-1 sm:gap-2 justify-end">
+            <button onclick="toggleTodosDias(false)" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Recolher todos">
+              <i class="fas fa-compress-alt text-gray-600 text-xs sm:text-sm"></i>
+            </button>
+            <button onclick="toggleTodosDias(true)" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Expandir todos">
+              <i class="fas fa-expand-alt text-gray-600 text-xs sm:text-sm"></i>
+            </button>
+            <button onclick="abrirSemanasAnteriores()" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Semanas anteriores">
+              <i class="fas fa-history text-gray-600 text-xs sm:text-sm"></i>
+            </button>
+            <button onclick="gerarMetasSemana()" class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#122D6A] text-white rounded-lg text-[10px] sm:text-xs font-medium hover:bg-[#0D1F4D] transition">
+              <i class="fas fa-magic"></i>
+              <span class="hidden xs:inline">Gerar</span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Calendário Semanal com Acordeão -->
-    <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} shadow-sm overflow-hidden">
+      <!-- Calendário Semanal com Acordeão -->
+      <div>
       ${[1, 2, 3, 4, 5, 6, 7].map(diaSemana => {
         const metasDoDia = metas.filter(m => m.dia_semana === diaSemana)
         const metasConcluidasDia = metasDoDia.filter(m => m.concluida).length
@@ -24552,6 +24561,7 @@ function renderCalendarioSemanal() {
           </div>
         `
       }).join('')}
+      </div>
     </div>
   `
 }
@@ -26789,8 +26799,16 @@ window.baixarExerciciosPDF = async function() {
     const { questoes, respostas, verificadas, topicoNome, disciplinaNome } = exercicioAtual;
     const nome = (topicoNome || 'Exercicios').replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
     
+    // Overlay de loading
+    const pdfOverlay = document.createElement('div');
+    pdfOverlay.id = 'pdf-overlay';
+    pdfOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
+    pdfOverlay.innerHTML = '<div style="background:white;padding:24px 40px;border-radius:16px;text-align:center;"><div style="font-size:24px;margin-bottom:8px;">📄</div><div style="font-size:14px;color:#333;font-weight:600;">Gerando PDF...</div><div style="font-size:12px;color:#666;margin-top:4px;">Aguarde um momento</div></div>';
+    document.body.appendChild(pdfOverlay);
+    
     const container = document.createElement('div');
-    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;background:white;color:#1a1a2e;padding:40px;font-family:Inter,sans-serif;';
+    container.id = 'pdf-render-container';
+    container.style.cssText = 'position:fixed;top:0;left:0;width:794px;background:#ffffff;padding:40px 50px;font-family:Inter,-apple-system,sans-serif;color:#1a1a2e;font-size:13px;line-height:1.7;z-index:999998;overflow:auto;max-height:100vh;';
     
     // Header
     container.innerHTML = `
@@ -26857,21 +26875,25 @@ window.baixarExerciciosPDF = async function() {
     });
     
     document.body.appendChild(container);
+    await new Promise(r => setTimeout(r, 100));
     
     const opt = {
-      margin: [10, 10, 15, 10],
+      margin: [8, 5, 10, 5],
       filename: `Exercicios_${nome}.pdf`,
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', width: 794, windowWidth: 794, scrollY: -window.scrollY, scrollX: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      pagebreak: { mode: ['css', 'legacy'] }
     };
     
     await html2pdf().set(opt).from(container).save();
     document.body.removeChild(container);
+    const ov3 = document.getElementById('pdf-overlay'); if (ov3) ov3.remove();
     showToast('✅ PDF dos exercícios baixado!', 'success');
   } catch (error) {
     console.error('Erro ao gerar PDF exercícios:', error);
+    const errC = document.getElementById('pdf-render-container'); if (errC) errC.remove();
+    const ov4 = document.getElementById('pdf-overlay'); if (ov4) ov4.remove();
     showToast('Erro ao gerar PDF', 'error');
   } finally {
     if (btn) { btn.innerHTML = btnOriginal; btn.disabled = false; }
@@ -27431,8 +27453,16 @@ window.baixarFlashcardsPDF = async function() {
     
     const nome = (dados.topico_nome || 'Flashcards').replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
     
+    // Overlay de loading
+    const pdfOverlay = document.createElement('div');
+    pdfOverlay.id = 'pdf-overlay';
+    pdfOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
+    pdfOverlay.innerHTML = '<div style="background:white;padding:24px 40px;border-radius:16px;text-align:center;"><div style="font-size:24px;margin-bottom:8px;">📄</div><div style="font-size:14px;color:#333;font-weight:600;">Gerando PDF...</div><div style="font-size:12px;color:#666;margin-top:4px;">Aguarde um momento</div></div>';
+    document.body.appendChild(pdfOverlay);
+    
     const container = document.createElement('div');
-    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;background:white;color:#1a1a2e;padding:40px;font-family:Inter,sans-serif;';
+    container.id = 'pdf-render-container';
+    container.style.cssText = 'position:fixed;top:0;left:0;width:794px;background:#ffffff;padding:40px 50px;font-family:Inter,-apple-system,sans-serif;color:#1a1a2e;font-size:13px;line-height:1.7;z-index:999998;overflow:auto;max-height:100vh;';
     
     container.innerHTML = `
       <div style="border-bottom:3px solid #122D6A;padding-bottom:16px;margin-bottom:24px;">
@@ -27475,21 +27505,25 @@ window.baixarFlashcardsPDF = async function() {
     container.innerHTML += gridHtml;
     
     document.body.appendChild(container);
+    await new Promise(r => setTimeout(r, 100));
     
     const opt = {
-      margin: [10, 10, 15, 10],
+      margin: [8, 5, 10, 5],
       filename: `Flashcards_${nome}.pdf`,
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', width: 794, windowWidth: 794, scrollY: -window.scrollY, scrollX: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      pagebreak: { mode: ['css', 'legacy'] }
     };
     
     await html2pdf().set(opt).from(container).save();
     document.body.removeChild(container);
+    const ov5 = document.getElementById('pdf-overlay'); if (ov5) ov5.remove();
     showToast('✅ PDF dos flashcards baixado!', 'success');
   } catch (error) {
     console.error('Erro ao gerar PDF flashcards:', error);
+    const errC = document.getElementById('pdf-render-container'); if (errC) errC.remove();
+    const ov6 = document.getElementById('pdf-overlay'); if (ov6) ov6.remove();
     showToast('Erro ao gerar PDF', 'error');
   } finally {
     if (btn) { btn.innerHTML = btnOriginal; btn.disabled = false; }
