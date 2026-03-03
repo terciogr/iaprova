@@ -12064,6 +12064,83 @@ window.fecharModalConteudoGerado = function() {
 // Função para copiar conteúdo
 // ✅ v77: Função universal de download PDF para qualquer conteúdo gerado
 // Usa conteúdo markdown original convertido para HTML com estilos inline
+// ========== FUNÇÃO UTILITÁRIA PARA GERAR PDF VIA PRINT ==========
+// Usa o motor nativo do browser (window.print) que é 100% confiável
+function gerarPDFviaPrint(htmlBody, titulo) {
+  const htmlCompleto = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>${titulo}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; font-size: 13px; line-height: 1.7; padding: 30px 40px; background: #fff; }
+  h1 { font-size: 20px; font-weight: 800; color: #0D1F4D; margin: 24px 0 12px; }
+  h2 { font-size: 17px; font-weight: 700; color: #0D1F4D; margin: 20px 0 10px; border-bottom: 2px solid #122D6A; padding-bottom: 6px; }
+  h3 { font-size: 15px; font-weight: 700; color: #122D6A; margin: 16px 0 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+  .pdf-header { border-bottom: 3px solid #122D6A; padding-bottom: 16px; margin-bottom: 20px; }
+  .pdf-header-flex { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .pdf-logo { width: 40px; height: 40px; background: linear-gradient(135deg, #122D6A, #2A4A9F); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; font-weight: bold; }
+  .pdf-tipo { font-size: 18px; color: #122D6A; font-weight: 700; }
+  .pdf-disc { font-size: 11px; color: #666; }
+  .pdf-topico { font-size: 15px; color: #333; font-weight: 600; margin-top: 6px; }
+  .pdf-data { font-size: 10px; color: #999; margin-top: 4px; }
+  .pdf-footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 9px; color: #999; }
+  .bullet { padding: 2px 0 2px 16px; position: relative; }
+  .bullet::before { content: '•'; position: absolute; left: 0; color: #122D6A; font-weight: bold; }
+  .numbered { padding: 2px 0 2px 20px; }
+  .questao-box { margin-bottom: 24px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; page-break-inside: avoid; }
+  .questao-header { background: #f0f4fa; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; }
+  .questao-body { padding: 16px; }
+  .alternativa { padding: 8px 12px; margin: 4px 0; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; }
+  .alternativa-correta { background: #dcfce7; border-color: #16a34a; }
+  .gabarito-box { margin-top: 12px; padding: 12px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #122D6A; }
+  .flash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .flash-card { border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; page-break-inside: avoid; }
+  .flash-card-header { background: #122D6A; color: white; padding: 8px 12px; font-size: 11px; font-weight: 700; }
+  .flash-card-body { padding: 12px; }
+  .flash-frente { background: #f0f4fa; padding: 10px; border-radius: 8px; margin-bottom: 8px; }
+  .flash-verso { background: #f0fdf4; padding: 10px; border-radius: 8px; }
+  .flash-label { font-size: 11px; color: #666; font-weight: 600; margin: 0; }
+  .flash-text { margin: 4px 0 0; font-size: 13px; color: #1a1a2e; }
+  @media print {
+    body { padding: 15px 25px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
+${htmlBody}
+<script>
+  // Auto-print quando carrega e fecha a janela depois
+  window.onload = function() {
+    setTimeout(function() {
+      window.print();
+      setTimeout(function() { window.close(); }, 500);
+    }, 300);
+  };
+</script>
+</body>
+</html>`;
+  
+  const blob = new Blob([htmlCompleto], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const printWindow = window.open(url, '_blank', 'width=800,height=600');
+  
+  if (!printWindow) {
+    // Fallback se popup bloqueado: download direto do HTML
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = titulo.replace(/\s+/g, '_') + '.html';
+    a.click();
+    showToast('Popup bloqueado. Arquivo HTML baixado - abra e use Ctrl+P para salvar como PDF.', 'info');
+  }
+  
+  // Limpar URL após uso
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 window.baixarConteudoPDF = async function() {
   const modal = document.getElementById('modal-conteudo-gerado');
   if (!modal) {
@@ -12078,101 +12155,51 @@ window.baixarConteudoPDF = async function() {
     return;
   }
   
-  const nomeArquivo = (dados.topico_nome || 'conteudo').replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
   const tipoLabel = { teoria: 'Teoria', exercicios: 'Exercicios', resumo: 'Resumo', flashcards: 'Flashcards', resumo_personalizado: 'Resumo_Personalizado' }[dados.tipo] || 'Conteudo';
   
-  const btn = event?.target?.closest('button');
-  const btnOriginal = btn ? btn.innerHTML : '';
-  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Gerando...'; btn.disabled = true; }
-  
   try {
-    // Converter markdown para HTML com estilos inline
+    // Converter markdown para HTML
     let htmlConteudo = conteudoOriginal
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/\*\*\*(.+?)\*\*\*/g, '<b><i>$1</i></b>')
       .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
       .replace(/\*(.+?)\*/g, '<i>$1</i>')
-      .replace(/^### (.+)$/gm, '<h3 style="font-size:15px;font-weight:700;color:#122D6A;margin:16px 0 8px;border-bottom:1px solid #e5e7eb;padding-bottom:4px;">$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2 style="font-size:17px;font-weight:700;color:#0D1F4D;margin:20px 0 10px;border-bottom:2px solid #122D6A;padding-bottom:6px;">$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1 style="font-size:20px;font-weight:800;color:#0D1F4D;margin:24px 0 12px;">$1</h1>')
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
       .replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid #d1d5db;margin:16px 0;">')
-      .replace(/^- (.+)$/gm, '<div style="padding:2px 0 2px 16px;position:relative;"><span style="position:absolute;left:0;color:#122D6A;font-weight:bold;">•</span> $1</div>')
-      .replace(/^• (.+)$/gm, '<div style="padding:2px 0 2px 16px;position:relative;"><span style="position:absolute;left:0;color:#122D6A;font-weight:bold;">•</span> $1</div>')
-      .replace(/^(\d+)\. (.+)$/gm, '<div style="padding:2px 0 2px 20px;"><b style="color:#122D6A;">$1.</b> $2</div>')
+      .replace(/^- (.+)$/gm, '<div class="bullet">$1</div>')
+      .replace(/^• (.+)$/gm, '<div class="bullet">$1</div>')
+      .replace(/^(\d+)\. (.+)$/gm, '<div class="numbered"><b style="color:#122D6A;">$1.</b> $2</div>')
       .replace(/\n\n/g, '<br><br>')
       .replace(/\n/g, '<br>');
     
-    // Criar overlay de loading que cobre tudo enquanto o PDF renderiza
-    const pdfOverlay = document.createElement('div');
-    pdfOverlay.id = 'pdf-overlay';
-    pdfOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
-    pdfOverlay.innerHTML = '<div style="background:white;padding:24px 40px;border-radius:16px;text-align:center;"><div style="font-size:24px;margin-bottom:8px;">📄</div><div style="font-size:14px;color:#333;font-weight:600;">Gerando PDF...</div><div style="font-size:12px;color:#666;margin-top:4px;">Aguarde um momento</div></div>';
-    document.body.appendChild(pdfOverlay);
-    
-    // Container precisa estar visível para html2canvas capturar
-    const container = document.createElement('div');
-    container.id = 'pdf-render-container';
-    container.style.cssText = 'position:fixed;top:0;left:0;width:794px;background:#ffffff;padding:40px 50px;font-family:Inter,-apple-system,sans-serif;color:#1a1a2e;font-size:13px;line-height:1.7;z-index:999998;overflow:auto;max-height:100vh;';
-    
-    container.innerHTML = `
-      <div style="border-bottom:3px solid #122D6A;padding-bottom:16px;margin-bottom:20px;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-          <div style="width:40px;height:40px;background:linear-gradient(135deg,#122D6A,#2A4A9F);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-            <span style="color:white;font-size:16px;font-weight:bold;">IA</span>
-          </div>
+    const htmlBody = `
+      <div class="pdf-header">
+        <div class="pdf-header-flex">
+          <div class="pdf-logo">IA</div>
           <div>
-            <div style="font-size:18px;color:#122D6A;font-weight:700;">${tipoLabel}</div>
-            <div style="font-size:11px;color:#666;">${dados.disciplina_nome || 'IAprova'}</div>
+            <div class="pdf-tipo">${tipoLabel}</div>
+            <div class="pdf-disc">${dados.disciplina_nome || 'IAprova'}</div>
           </div>
         </div>
-        <div style="font-size:15px;color:#333;font-weight:600;margin-top:6px;">${dados.topico_nome || 'Conteúdo Gerado'}</div>
-        <div style="font-size:10px;color:#999;margin-top:4px;">Gerado em ${new Date().toLocaleDateString('pt-BR')} • iaprova.pages.dev</div>
+        <div class="pdf-topico">${dados.topico_nome || 'Conteúdo Gerado'}</div>
+        <div class="pdf-data">Gerado em ${new Date().toLocaleDateString('pt-BR')} • iaprova.pages.dev</div>
       </div>
       <div style="font-size:13px;line-height:1.7;color:#1a1a2e;">
         ${htmlConteudo}
       </div>
-      <div style="margin-top:30px;padding-top:12px;border-top:1px solid #e5e7eb;text-align:center;font-size:9px;color:#999;">
+      <div class="pdf-footer">
         IAprova - Preparação Inteligente para Concursos • iaprova.pages.dev
       </div>
     `;
     
-    document.body.appendChild(container);
-    
-    // Pequeno delay para garantir render
-    await new Promise(r => setTimeout(r, 100));
-    
-    const opt = {
-      margin: [8, 5, 10, 5],
-      filename: `${tipoLabel}_${nomeArquivo}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true, 
-        logging: false, 
-        backgroundColor: '#ffffff',
-        width: 794,
-        windowWidth: 794,
-        scrollY: -window.scrollY,
-        scrollX: 0
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'], avoid: ['h1','h2','h3','b','div'] }
-    };
-    
-    await html2pdf().set(opt).from(container).save();
-    
-    document.body.removeChild(container);
-    const ov1 = document.getElementById('pdf-overlay'); if (ov1) ov1.remove();
-    showToast('✅ PDF baixado com sucesso!', 'success');
+    gerarPDFviaPrint(htmlBody, `${tipoLabel} - ${dados.topico_nome || 'Conteúdo'}`);
+    showToast('✅ Use "Salvar como PDF" na janela de impressão', 'success');
     
   } catch (error) {
     console.error('Erro ao gerar PDF:', error);
-    const errContainer = document.getElementById('pdf-render-container');
-    if (errContainer) errContainer.remove();
-    const ov2 = document.getElementById('pdf-overlay'); if (ov2) ov2.remove();
     showToast('Erro ao gerar PDF. Tente novamente.', 'error');
-  } finally {
-    if (btn) { btn.innerHTML = btnOriginal; btn.disabled = false; }
   }
 }
 
@@ -26784,119 +26811,76 @@ window.fecharExercicios = function() {
   }
 }
 
-// ✅ v76: Download PDF dos exercícios com perguntas, respostas e comentários
+// ✅ v79: Download PDF dos exercícios via print nativo (sem html2canvas)
 window.baixarExerciciosPDF = async function() {
   if (!exercicioAtual || !exercicioAtual.questoes || exercicioAtual.questoes.length === 0) {
     showToast('Nenhum exercício disponível', 'error');
     return;
   }
   
-  const btn = event?.target?.closest('button');
-  const btnOriginal = btn ? btn.innerHTML : '';
-  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
-  
   try {
     const { questoes, respostas, verificadas, topicoNome, disciplinaNome } = exercicioAtual;
-    const nome = (topicoNome || 'Exercicios').replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
     
-    // Overlay de loading
-    const pdfOverlay = document.createElement('div');
-    pdfOverlay.id = 'pdf-overlay';
-    pdfOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
-    pdfOverlay.innerHTML = '<div style="background:white;padding:24px 40px;border-radius:16px;text-align:center;"><div style="font-size:24px;margin-bottom:8px;">📄</div><div style="font-size:14px;color:#333;font-weight:600;">Gerando PDF...</div><div style="font-size:12px;color:#666;margin-top:4px;">Aguarde um momento</div></div>';
-    document.body.appendChild(pdfOverlay);
-    
-    const container = document.createElement('div');
-    container.id = 'pdf-render-container';
-    container.style.cssText = 'position:fixed;top:0;left:0;width:794px;background:#ffffff;padding:40px 50px;font-family:Inter,-apple-system,sans-serif;color:#1a1a2e;font-size:13px;line-height:1.7;z-index:999998;overflow:auto;max-height:100vh;';
-    
-    // Header
-    container.innerHTML = `
-      <div style="border-bottom:3px solid #122D6A;padding-bottom:16px;margin-bottom:24px;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-          <div style="width:44px;height:44px;background:linear-gradient(135deg,#122D6A,#2A4A9F);border-radius:10px;display:flex;align-items:center;justify-content:center;">
-            <span style="color:white;font-size:18px;font-weight:bold;">IA</span>
-          </div>
-          <div>
-            <h1 style="margin:0;font-size:20px;color:#122D6A;font-weight:700;">Exercícios - IAprova</h1>
-            <p style="margin:2px 0 0;font-size:12px;color:#666;">${disciplinaNome || ''}</p>
-          </div>
-        </div>
-        <h2 style="margin:8px 0 0;font-size:16px;color:#333;font-weight:600;">${topicoNome || 'Questões'}</h2>
-        <p style="margin:4px 0 0;font-size:11px;color:#999;">${questoes.length} questões | Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev</p>
-      </div>
-    `;
-    
-    // Questões
+    let questoesHtml = '';
     questoes.forEach((q, i) => {
-      const respUser = respostas[i];
       const correta = q.correta || q.resposta || q.gabarito || '';
-      const acertou = respUser && respUser.toUpperCase() === correta.toUpperCase();
       const comentario = q.comentario || q.explicacao || q.justificativa || '';
       
-      let questaoHtml = `
-        <div style="margin-bottom:24px;page-break-inside:avoid;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-          <div style="background:#f0f4fa;padding:12px 16px;border-bottom:1px solid #e5e7eb;">
-            <strong style="color:#122D6A;font-size:14px;">Questão ${i + 1}</strong>
-          </div>
-          <div style="padding:16px;">
-            <p style="font-size:14px;color:#1a1a2e;margin:0 0 12px;line-height:1.6;">${q.enunciado || q.pergunta || q.texto || ''}</p>
-      `;
-      
-      // Alternativas
+      let altHtml = '';
       const alts = q.alternativas || q.opcoes || [];
       if (alts.length > 0) {
         alts.forEach(alt => {
           const letra = alt.letra || alt.id || '';
           const texto = alt.texto || alt.conteudo || '';
           const isCorreta = letra.toUpperCase() === correta.toUpperCase();
-          const bgColor = isCorreta ? '#dcfce7' : '#ffffff';
-          const borderColor = isCorreta ? '#16a34a' : '#e5e7eb';
-          questaoHtml += `
-            <div style="padding:8px 12px;margin:4px 0;border:1px solid ${borderColor};border-radius:8px;background:${bgColor};font-size:13px;">
-              <strong style="color:#122D6A;">${letra})</strong> ${texto}
-              ${isCorreta ? ' <span style="color:#16a34a;font-weight:bold;">✓ Correta</span>' : ''}
-            </div>
-          `;
+          altHtml += `<div class="alternativa ${isCorreta ? 'alternativa-correta' : ''}">
+            <strong style="color:#122D6A;">${letra})</strong> ${texto}
+            ${isCorreta ? ' <span style="color:#16a34a;font-weight:bold;">✓ Correta</span>' : ''}
+          </div>`;
         });
       }
       
-      // Gabarito e comentário
-      questaoHtml += `
-            <div style="margin-top:12px;padding:12px;background:#eff6ff;border-radius:8px;border-left:4px solid #122D6A;">
+      questoesHtml += `
+        <div class="questao-box">
+          <div class="questao-header">
+            <strong style="color:#122D6A;font-size:14px;">Questão ${i + 1}</strong>
+          </div>
+          <div class="questao-body">
+            <p style="font-size:14px;color:#1a1a2e;margin:0 0 12px;line-height:1.6;">${q.enunciado || q.pergunta || q.texto || ''}</p>
+            ${altHtml}
+            <div class="gabarito-box">
               <p style="margin:0 0 4px;font-size:12px;color:#122D6A;font-weight:700;">Gabarito: ${correta.toUpperCase()}</p>
               ${comentario ? `<p style="margin:0;font-size:12px;color:#374151;line-height:1.5;">${comentario}</p>` : ''}
             </div>
           </div>
         </div>
       `;
-      
-      container.innerHTML += questaoHtml;
     });
     
-    document.body.appendChild(container);
-    await new Promise(r => setTimeout(r, 100));
+    const htmlBody = `
+      <div class="pdf-header">
+        <div class="pdf-header-flex">
+          <div class="pdf-logo">IA</div>
+          <div>
+            <div class="pdf-tipo">Exercícios</div>
+            <div class="pdf-disc">${disciplinaNome || 'IAprova'}</div>
+          </div>
+        </div>
+        <div class="pdf-topico">${topicoNome || 'Questões'}</div>
+        <div class="pdf-data">${questoes.length} questões | Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev</div>
+      </div>
+      ${questoesHtml}
+      <div class="pdf-footer">
+        IAprova - Preparação Inteligente para Concursos • iaprova.pages.dev
+      </div>
+    `;
     
-    const opt = {
-      margin: [8, 5, 10, 5],
-      filename: `Exercicios_${nome}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', width: 794, windowWidth: 794, scrollY: -window.scrollY, scrollX: 0 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'] }
-    };
+    gerarPDFviaPrint(htmlBody, `Exercícios - ${topicoNome || 'Questões'}`);
+    showToast('✅ Use "Salvar como PDF" na janela de impressão', 'success');
     
-    await html2pdf().set(opt).from(container).save();
-    document.body.removeChild(container);
-    const ov3 = document.getElementById('pdf-overlay'); if (ov3) ov3.remove();
-    showToast('✅ PDF dos exercícios baixado!', 'success');
   } catch (error) {
     console.error('Erro ao gerar PDF exercícios:', error);
-    const errC = document.getElementById('pdf-render-container'); if (errC) errC.remove();
-    const ov4 = document.getElementById('pdf-overlay'); if (ov4) ov4.remove();
     showToast('Erro ao gerar PDF', 'error');
-  } finally {
-    if (btn) { btn.innerHTML = btnOriginal; btn.disabled = false; }
   }
 }
 
@@ -27432,6 +27416,7 @@ window.fecharModalFlashcards = function() {
 }
 
 // ✅ v76: Download PDF dos flashcards
+// ✅ v79: Download PDF dos flashcards via print nativo
 window.baixarFlashcardsPDF = async function() {
   const dados = window.conteudoAtualDados || {};
   const conteudo = window.conteudoGeradoOriginal;
@@ -27440,10 +27425,6 @@ window.baixarFlashcardsPDF = async function() {
     return;
   }
   
-  const btn = event?.target?.closest('button');
-  const btnOriginal = btn ? btn.innerHTML : '';
-  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
-  
   try {
     const flashcards = parseFlashcards(conteudo);
     if (flashcards.length === 0) {
@@ -27451,82 +27432,50 @@ window.baixarFlashcardsPDF = async function() {
       return;
     }
     
-    const nome = (dados.topico_nome || 'Flashcards').replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
-    
-    // Overlay de loading
-    const pdfOverlay = document.createElement('div');
-    pdfOverlay.id = 'pdf-overlay';
-    pdfOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
-    pdfOverlay.innerHTML = '<div style="background:white;padding:24px 40px;border-radius:16px;text-align:center;"><div style="font-size:24px;margin-bottom:8px;">📄</div><div style="font-size:14px;color:#333;font-weight:600;">Gerando PDF...</div><div style="font-size:12px;color:#666;margin-top:4px;">Aguarde um momento</div></div>';
-    document.body.appendChild(pdfOverlay);
-    
-    const container = document.createElement('div');
-    container.id = 'pdf-render-container';
-    container.style.cssText = 'position:fixed;top:0;left:0;width:794px;background:#ffffff;padding:40px 50px;font-family:Inter,-apple-system,sans-serif;color:#1a1a2e;font-size:13px;line-height:1.7;z-index:999998;overflow:auto;max-height:100vh;';
-    
-    container.innerHTML = `
-      <div style="border-bottom:3px solid #122D6A;padding-bottom:16px;margin-bottom:24px;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-          <div style="width:44px;height:44px;background:linear-gradient(135deg,#122D6A,#2A4A9F);border-radius:10px;display:flex;align-items:center;justify-content:center;">
-            <span style="color:white;font-size:18px;font-weight:bold;">IA</span>
-          </div>
-          <div>
-            <h1 style="margin:0;font-size:20px;color:#122D6A;font-weight:700;">Flashcards - IAprova</h1>
-            <p style="margin:2px 0 0;font-size:12px;color:#666;">${dados.disciplina_nome || ''}</p>
-          </div>
-        </div>
-        <h2 style="margin:8px 0 0;font-size:16px;color:#333;font-weight:600;">${dados.topico_nome || 'Flashcards'}</h2>
-        <p style="margin:4px 0 0;font-size:11px;color:#999;">${flashcards.length} cards | Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev</p>
-      </div>
-    `;
-    
-    // Grid 2 colunas de flashcards
-    let gridHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">';
+    let cardsHtml = '<div class="flash-grid">';
     flashcards.forEach((fc, i) => {
-      gridHtml += `
-        <div style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;page-break-inside:avoid;">
-          <div style="background:#122D6A;color:white;padding:8px 12px;font-size:11px;font-weight:700;">
-            Card ${i + 1}
-          </div>
-          <div style="padding:12px;">
-            <div style="background:#f0f4fa;padding:10px;border-radius:8px;margin-bottom:8px;">
-              <p style="margin:0;font-size:11px;color:#666;font-weight:600;">FRENTE:</p>
-              <p style="margin:4px 0 0;font-size:13px;color:#1a1a2e;font-weight:600;">${fc.frente}</p>
+      cardsHtml += `
+        <div class="flash-card">
+          <div class="flash-card-header">Card ${i + 1}</div>
+          <div class="flash-card-body">
+            <div class="flash-frente">
+              <p class="flash-label">FRENTE:</p>
+              <p class="flash-text" style="font-weight:600;">${fc.frente}</p>
             </div>
-            <div style="background:#f0fdf4;padding:10px;border-radius:8px;">
-              <p style="margin:0;font-size:11px;color:#666;font-weight:600;">VERSO:</p>
-              <p style="margin:4px 0 0;font-size:12px;color:#1a1a2e;line-height:1.5;">${fc.verso}</p>
+            <div class="flash-verso">
+              <p class="flash-label">VERSO:</p>
+              <p class="flash-text" style="line-height:1.5;">${fc.verso}</p>
             </div>
           </div>
         </div>
       `;
     });
-    gridHtml += '</div>';
-    container.innerHTML += gridHtml;
+    cardsHtml += '</div>';
     
-    document.body.appendChild(container);
-    await new Promise(r => setTimeout(r, 100));
+    const htmlBody = `
+      <div class="pdf-header">
+        <div class="pdf-header-flex">
+          <div class="pdf-logo">IA</div>
+          <div>
+            <div class="pdf-tipo">Flashcards</div>
+            <div class="pdf-disc">${dados.disciplina_nome || 'IAprova'}</div>
+          </div>
+        </div>
+        <div class="pdf-topico">${dados.topico_nome || 'Flashcards'}</div>
+        <div class="pdf-data">${flashcards.length} cards | Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev</div>
+      </div>
+      ${cardsHtml}
+      <div class="pdf-footer">
+        IAprova - Preparação Inteligente para Concursos • iaprova.pages.dev
+      </div>
+    `;
     
-    const opt = {
-      margin: [8, 5, 10, 5],
-      filename: `Flashcards_${nome}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', width: 794, windowWidth: 794, scrollY: -window.scrollY, scrollX: 0 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'] }
-    };
+    gerarPDFviaPrint(htmlBody, `Flashcards - ${dados.topico_nome || 'Cards'}`);
+    showToast('✅ Use "Salvar como PDF" na janela de impressão', 'success');
     
-    await html2pdf().set(opt).from(container).save();
-    document.body.removeChild(container);
-    const ov5 = document.getElementById('pdf-overlay'); if (ov5) ov5.remove();
-    showToast('✅ PDF dos flashcards baixado!', 'success');
   } catch (error) {
     console.error('Erro ao gerar PDF flashcards:', error);
-    const errC = document.getElementById('pdf-render-container'); if (errC) errC.remove();
-    const ov6 = document.getElementById('pdf-overlay'); if (ov6) ov6.remove();
     showToast('Erro ao gerar PDF', 'error');
-  } finally {
-    if (btn) { btn.innerHTML = btnOriginal; btn.disabled = false; }
   }
 }
 
