@@ -3759,6 +3759,22 @@ function detectarAreaPorCargo(cargo) {
     return 'tribunais';
   }
   
+  // Bancária
+  if (cargoLower.includes('banc') || cargoLower.includes('caixa') ||
+      cargoLower.includes('banco') || cargoLower.includes('bb ') ||
+      cargoLower.includes('cef ') || cargoLower.includes('bradesco') ||
+      cargoLower.includes('itau') || cargoLower.includes('financeiro')) {
+    return 'bancaria';
+  }
+  
+  // Jurídica
+  if (cargoLower.includes('juiz') || cargoLower.includes('promotor') ||
+      cargoLower.includes('procurador') || cargoLower.includes('defensor') ||
+      cargoLower.includes('advogado') || cargoLower.includes('magistrat') ||
+      cargoLower.includes('juridic')) {
+    return 'juridica';
+  }
+  
   return null; // Não detectado, usuário escolherá manualmente
 }
 
@@ -5703,6 +5719,8 @@ function renderAreaGeral() {
     { id: 'policial', nome: 'Policial', icon: 'fa-shield-alt', color: 'from-[#2A4A9F] to-[#3A5AB0]' },
     { id: 'tribunais', nome: 'Tribunais', icon: 'fa-gavel', color: 'from-[#3A5AB0] to-[#4A6AC0]' },
     { id: 'administrativo', nome: 'Administrativo', icon: 'fa-building', color: 'from-gray-500 to-gray-600' },
+    { id: 'bancaria', nome: 'Bancária', icon: 'fa-university', color: 'from-[#0D47A1] to-[#1565C0]' },
+    { id: 'juridica', nome: 'Jurídica', icon: 'fa-balance-scale', color: 'from-[#4A148C] to-[#7B1FA2]' },
     { id: 'saude', nome: 'Saúde', icon: 'fa-heartbeat', color: 'from-[#1A3D7A] to-[#2A4A9F]' },
     { id: 'educacao', nome: 'Educação', icon: 'fa-graduation-cap', color: 'from-[#2A4A9F] to-[#3A5AB0]' }
   ];
@@ -6726,6 +6744,195 @@ async function renderEntrevistaStep3() {
           'Educacao de jovens e adultos (EJA)', 'Educacao a distancia (EAD)',
           'Educacao do campo', 'Educacao indigena e quilombola',
           'Educacao e direitos humanos', 'Educacao ambiental'
+        ]}
+      ],
+
+      // ════════ BANCÁRIA ════════
+      bancaria: [
+        { nome: 'Conhecimentos Bancarios', topicos: [
+          'Sistema Financeiro Nacional (CMN, BACEN, CVM)', 'Bancos comerciais, multiplos e cooperativas',
+          'Produtos bancarios (conta corrente, poupanca, CDB, LCI/LCA)',
+          'Credito (CDC, consignado, capital de giro, financiamento)',
+          'Mercado de capitais (acoes, fundos, debentures)', 'Politica monetaria',
+          'SPB, PIX, TED, DOC', 'Open Finance'
+        ]},
+        { nome: 'Matematica Financeira', topicos: [
+          'Juros simples e compostos', 'Descontos', 'Taxas equivalentes e proporcionais',
+          'Sistemas de amortizacao (SAC, Price)', 'Valor presente e valor futuro',
+          'Series de pagamentos'
+        ]},
+        { nome: 'Matematica e Raciocinio Logico', topicos: [
+          'Porcentagem', 'Regra de tres', 'Analise combinatoria',
+          'Probabilidade', 'Logica proposicional', 'Sequencias e padroes'
+        ]},
+        { nome: 'Mercado Financeiro', topicos: [
+          'SELIC', 'CDI', 'Inflacao (IPCA)', 'Titulos publicos',
+          'Derivativos (nocoes)', 'Risco x retorno'
+        ]},
+        { nome: 'Vendas e Atendimento', topicos: [
+          'Tecnicas de vendas', 'Negociacao', 'Perfil do cliente',
+          'Etica no atendimento', 'Produtos sob demanda', 'Pos-venda'
+        ]},
+        { nome: 'Compliance e Etica', topicos: [
+          'LGPD', 'Prevencao a lavagem de dinheiro', 'Codigo de etica bancario',
+          'Governanca corporativa'
+        ]}
+      ],
+
+      // ════════ JURÍDICA ════════
+      juridica: [
+        { nome: 'Direito Constitucional', topicos: [
+          'Principios fundamentais da CF/88', 'Direitos e garantias fundamentais',
+          'Direitos sociais', 'Nacionalidade e direitos politicos',
+          'Organizacao politico-administrativa do Estado', 'Administracao Publica (arts. 37 a 41)',
+          'Poder Legislativo: estrutura, funcionamento, atribuicoes', 'Processo legislativo (arts. 59 a 69)',
+          'Poder Executivo: atribuicoes, responsabilidade', 'Poder Judiciario: organizacao, competencias, garantias',
+          'Funcoes essenciais a Justica (MP, Advocacia, Defensoria)',
+          'Controle de constitucionalidade: difuso e concentrado', 'ADI, ADC, ADPF, ADO',
+          'Remedios constitucionais (habeas corpus, mandado de seguranca, habeas data, mandado de injuncao, acao popular)',
+          'Ordem economica e financeira', 'Ordem social',
+          'Direitos fundamentais: teoria geral, eficacia horizontal e vertical',
+          'Principio da proporcionalidade e razoabilidade',
+          'Hermeneutica constitucional', 'Supremacia da Constituicao',
+          'Poder constituinte originario e derivado', 'Clausulas petreas',
+          'Intervencao federal e estadual', 'Estado de defesa e estado de sitio',
+          'Reparticao de competencias', 'Tributacao e orcamento na CF/88',
+          'Previdencia social na CF/88', 'Meio ambiente na CF/88',
+          'Sumulas vinculantes e repercussao geral', 'Emendas constitucionais recentes'
+        ]},
+        { nome: 'Direito Administrativo', topicos: [
+          'Principios da Administracao Publica', 'Organizacao administrativa (direta e indireta)',
+          'Poderes administrativos (hierarquico, disciplinar, regulamentar, de policia)',
+          'Atos administrativos: conceito, atributos, elementos, classificacao, extincao',
+          'Licitacoes e contratos (Lei 14.133/2021)', 'Servicos publicos',
+          'Servidores publicos: regime juridico, direitos e deveres',
+          'Responsabilidade civil do Estado', 'Controle da Administracao Publica',
+          'Improbidade administrativa (Lei 8.429/92)', 'Processo administrativo (Lei 9.784/99)',
+          'Bens publicos', 'Agencias reguladoras e executivas',
+          'Consorcio publico e convênio', 'Terceiro setor (OS, OSCIP)',
+          'Desapropriacao', 'Intervencao do Estado na propriedade'
+        ]},
+        { nome: 'Direito Civil', topicos: [
+          'Lei de Introducao as Normas do Direito Brasileiro (LINDB)', 'Pessoa natural e juridica',
+          'Bens', 'Fato juridico, ato juridico e negocio juridico', 'Prescricao e decadencia',
+          'Obrigacoes: modalidades, transmissao, adimplemento, inadimplemento',
+          'Contratos em geral', 'Contratos em especie', 'Responsabilidade civil',
+          'Posse e propriedade', 'Direito de familia', 'Direito das sucessoes',
+          'Direitos reais', 'Registro publico', 'Tutela e curatela'
+        ]},
+        { nome: 'Direito Processual Civil', topicos: [
+          'Principios do processo civil', 'Normas fundamentais do CPC/2015',
+          'Jurisdicao e competencia', 'Partes e procuradores', 'Litisconsorcio e intervencao de terceiros',
+          'Atos processuais', 'Tutela provisoria (urgencia e evidencia)', 'Formacao do processo',
+          'Citacao, intimacao e notificacao', 'Peticao inicial e contestacao',
+          'Provas no processo civil', 'Sentenca e coisa julgada', 'Recursos',
+          'Cumprimento de sentenca', 'Execucao de titulo extrajudicial',
+          'Procedimentos especiais', 'Juizados Especiais Civeis'
+        ]},
+        { nome: 'Direito Penal', topicos: [
+          'Principios do Direito Penal', 'Aplicacao da lei penal no tempo e espaco',
+          'Crime: conceito, elementos, classificacao', 'Fato tipico',
+          'Ilicitude e causas de exclusao', 'Culpabilidade', 'Dolo e culpa',
+          'Tentativa e consumacao', 'Concurso de crimes', 'Concurso de pessoas',
+          'Penas: especie, aplicacao, dosimetria', 'Crimes contra a pessoa',
+          'Crimes contra o patrimonio', 'Crimes contra a dignidade sexual',
+          'Crimes contra a Administracao Publica', 'Crimes contra a fe publica',
+          'Lei de Drogas (Lei 11.343/2006)', 'Crimes hediondos (Lei 8.072/1990)'
+        ]},
+        { nome: 'Direito Processual Penal', topicos: [
+          'Principios do processo penal', 'Inquerito policial', 'Acao penal publica e privada',
+          'Jurisdicao e competencia', 'Provas: conceito, especies, obtencao',
+          'Prisao em flagrante', 'Prisao preventiva', 'Prisao temporaria',
+          'Liberdade provisoria', 'Medidas cautelares', 'Habeas corpus',
+          'Citacao, intimacao e notificacao', 'Procedimentos (ordinario, sumario, sumarissimo)',
+          'Juizados Especiais Criminais (Lei 9.099/95)', 'Tribunal do Juri',
+          'Recursos no processo penal', 'Execucao penal (Lei 7.210/84)'
+        ]},
+        { nome: 'Direito Tributario', topicos: [
+          'Sistema Tributario Nacional', 'Competencia tributaria', 'Limitacoes ao poder de tributar',
+          'Impostos federais, estaduais e municipais', 'Obrigacao tributaria',
+          'Credito tributario (constituicao, suspensao, extincao, exclusao)', 'Lancamento tributario',
+          'Administracao tributaria', 'Fiscalizacao', 'Divida ativa',
+          'Certidoes negativas', 'Codigo Tributario Nacional (CTN)', 'Responsabilidade tributaria',
+          'Processo administrativo tributario'
+        ]},
+        { nome: 'Direito Financeiro e Orcamentario', topicos: [
+          'Orcamento publico: conceitos e principios', 'Ciclo orcamentario',
+          'PPA, LDO e LOA', 'Creditos adicionais', 'Classificacoes orcamentarias',
+          'Receita e despesa publica', 'Programacao financeira',
+          'LRF - Lei de Responsabilidade Fiscal (LC 101/2000)', 'Divida publica',
+          'Controle interno e externo', 'Tribunais de Contas'
+        ]},
+        { nome: 'Direito Legislativo', topicos: [
+          'Estrutura do Poder Legislativo (federal, estadual, municipal)',
+          'Processo legislativo: fases, procedimentos, especies normativas',
+          'Tecnica legislativa e redacao de leis', 'Lei Complementar 95/1998',
+          'Fiscalizacao parlamentar (CPIs, controle externo, sustacao de atos)',
+          'Regimentos internos (Camara, Senado, Assembleias)',
+          'Imunidades e prerrogativas parlamentares', 'Medidas provisorias',
+          'Delegacao legislativa', 'Emendas constitucionais: tramitacao e limites',
+          'Comissoes parlamentares', 'Processo orcamentario no Legislativo'
+        ]},
+        { nome: 'Direitos Humanos', topicos: [
+          'Teoria geral dos direitos humanos', 'Geracoes/dimensoes dos direitos humanos',
+          'Declaracao Universal dos Direitos Humanos (1948)', 'Pacto de San Jose da Costa Rica',
+          'Convencao contra a Tortura', 'Sistema Interamericano de Direitos Humanos',
+          'Corte Interamericana', 'Comissao Interamericana', 'Direitos humanos na CF/88',
+          'Protecao a mulher, crianca, idoso e deficiente', 'Racismo e discriminacao'
+        ]},
+        { nome: 'Hermeneutica Juridica', topicos: [
+          'Conceito e objeto da hermeneutica juridica', 'Metodos de interpretacao (gramatical, logico, historico, sistematico, teleologico)',
+          'Interpretacao constitucional', 'Principios de interpretacao das normas constitucionais',
+          'Lacunas do direito e integracao (analogia, costumes, principios gerais)',
+          'Antinomias juridicas e criterios de solucao', 'Escolas hermeneuticas',
+          'Hermeneutica e argumentacao juridica', 'Normas-regras e normas-principios',
+          'Ponderacao e proporcionalidade'
+        ]},
+        { nome: 'Filosofia do Direito', topicos: [
+          'Conceito e objeto da Filosofia do Direito', 'Jusnaturalismo e juspositivismo',
+          'Teoria pura do Direito (Kelsen)', 'Realismo juridico',
+          'Teoria tridimensional do Direito (Miguel Reale)', 'Justica: conceitos e teorias',
+          'Etica e Direito', 'Direito e moral', 'Fontes do Direito',
+          'Direito e linguagem', 'Teorias contemporaneas da justica (Rawls, Dworkin, Alexy)'
+        ]},
+        { nome: 'Teoria Geral do Estado', topicos: [
+          'Conceito e elementos do Estado', 'Formas de Estado (unitario, federal, confederacao)',
+          'Formas de governo (monarquia, republica)', 'Sistemas de governo (presidencialismo, parlamentarismo)',
+          'Regimes politicos (democracia, autocracia)', 'Separacao de poderes',
+          'Soberania', 'Nacionalidade e cidadania', 'Direitos politicos',
+          'Partidos politicos e sistemas eleitorais', 'Federalismo brasileiro'
+        ]},
+        { nome: 'Direito Eleitoral', topicos: [
+          'Direitos politicos na CF/88', 'Partidos politicos', 'Alistamento eleitoral',
+          'Elegibilidade e inelegibilidade', 'Registro de candidatura',
+          'Propaganda eleitoral', 'Votacao e apuracao', 'Recursos eleitorais',
+          'Crimes eleitorais', 'Acoes eleitorais', 'Organizacao da Justica Eleitoral'
+        ]},
+        { nome: 'Direito Ambiental', topicos: [
+          'Principios do Direito Ambiental (precaucao, prevencao, poluidor-pagador)',
+          'Politica Nacional do Meio Ambiente (Lei 6.938/81)', 'SISNAMA',
+          'Licenciamento ambiental', 'EIA/RIMA', 'Areas de preservacao permanente (APP)',
+          'Reserva legal', 'Unidades de conservacao (SNUC - Lei 9.985/2000)',
+          'Responsabilidade civil, penal e administrativa ambiental',
+          'Crimes ambientais (Lei 9.605/98)', 'Codigo Florestal (Lei 12.651/2012)',
+          'Recursos hidricos (Lei 9.433/97)', 'Meio ambiente na CF/88 (art. 225)'
+        ]},
+        { nome: 'Direito Empresarial', topicos: [
+          'Empresa e empresario', 'Registro de empresa', 'Nome empresarial',
+          'Estabelecimento empresarial', 'Sociedades empresariais: tipos e caracteristicas',
+          'Sociedade limitada', 'Sociedade anonima (Lei 6.404/76)',
+          'Titulos de credito', 'Falencia e recuperacao judicial (Lei 11.101/2005)',
+          'Contratos empresariais', 'Propriedade industrial',
+          'Direito concorrencial'
+        ]},
+        { nome: 'Direito Previdenciario', topicos: [
+          'Seguridade social na CF/88', 'Regime Geral de Previdencia Social (RGPS)',
+          'Regimes proprios de previdencia (RPPS)', 'Segurados e dependentes',
+          'Filiacao e inscricao', 'Carencia', 'Salario de contribuicao',
+          'Beneficios previdenciarios (aposentadoria, pensao, auxilio)',
+          'Acidente de trabalho', 'Custeio da previdencia',
+          'Prescricao e decadencia no Direito Previdenciario',
+          'Processo administrativo previdenciario', 'Reforma da Previdencia (EC 103/2019)'
         ]}
       ]
     };
@@ -8565,7 +8772,9 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
         'fiscal': 'Área Fiscal',
         'policial': 'Área Policial',
         'tribunais': 'Área de Tribunais',
-        'administrativo': 'Área Administrativa'
+        'administrativo': 'Área Administrativa',
+        'bancaria': 'Área Bancária',
+        'juridica': 'Área Jurídica'
       };
       concursoInfo.titulo = areasNomes[entrevista.area_geral] || 'Área Geral';
       concursoInfo.subtitulo = 'Preparação geral para a área';
@@ -12254,8 +12463,8 @@ function criarPDFjsPDF(titulo) {
             pageNum++;
             drawPageHeader();
             cy = marginT;
-            // v83: Reset cor/fonte após header
-            doc.setFont('helvetica', 'normal');
+            // v84: Reset cor/fonte mantendo estilo correto
+            doc.setFont('helvetica', fontStyle);
             doc.setFontSize(fontSize);
             doc.setTextColor(...baseColor);
           }
@@ -12454,7 +12663,8 @@ function criarPDFjsPDF(titulo) {
       return segments;
     }
 
-    // Renderizar texto com negrito/itálico inline usando word-wrap
+    // v84: Renderizar texto com negrito/itálico inline usando word-wrap
+    // Atualiza curY diretamente para evitar corte em quebras de página
     function writeRichText(x, y, text, fontSize, color, maxW) {
       const segments = parseSegments(limpar(text));
       let cx = x;
@@ -12479,16 +12689,22 @@ function criarPDFjsPDF(titulo) {
           if (cx + ww > x + maxW && cx > x) {
             cx = x;
             cy += lh;
+            curY = cy; // v84: sync curY
             if (cy > pageH - marginB) {
               drawPageFooter();
               doc.addPage();
               pageNum++;
               drawPageHeader();
               cy = marginT;
-              // v83: Reset cor/fonte após header
-              doc.setFont('helvetica', 'normal');
+              curY = marginT;
+              // v84: Reset cor/fonte mantendo estilo do segmento
+              doc.setFont('helvetica', fontStyle);
               doc.setFontSize(fontSize);
-              doc.setTextColor(...color);
+              if (seg.bold) {
+                doc.setTextColor(25, 30, 45);
+              } else {
+                doc.setTextColor(...color);
+              }
             }
           }
           doc.text(w, cx, cy);
@@ -12496,10 +12712,13 @@ function criarPDFjsPDF(titulo) {
         }
       }
       doc.setFont('helvetica', 'normal');
-      return cy - y + lh;
+      doc.setTextColor(...color);
+      const totalH = cy - y + lh;
+      curY = cy + lh; // v84: atualizar curY diretamente
+      return totalH;
     }
 
-    // Renderizar tabela profissional no PDF
+    // v84: Renderizar tabela profissional no PDF — corrigido corte da 1ª coluna
     function renderTabelaPDF(linhasTab, cor) {
       const dataLinhas = linhasTab.filter(l => {
         const t = l.trim();
@@ -12517,30 +12736,45 @@ function criarPDFjsPDF(titulo) {
       const tableX = marginL + 3;
       const tableW = contentW - 6;
       
-      // Calcular largura de cada coluna proporcionalmente ao conteúdo
+      // v84: Calcular largura baseado no conteúdo real medido com jsPDF
       let colWidths = [];
       for (let ci = 0; ci < numCols; ci++) {
-        let maxLen = 0;
-        rows.forEach(r => { if (r[ci]) maxLen = Math.max(maxLen, r[ci].length); });
-        colWidths.push(Math.max(maxLen, 3));
+        let maxW = 0;
+        rows.forEach(r => {
+          if (r[ci]) {
+            doc.setFontSize(8);
+            doc.setFont('helvetica', ci === 0 ? 'bold' : 'normal');
+            const tw = doc.getTextWidth(r[ci]);
+            maxW = Math.max(maxW, tw);
+          }
+        });
+        colWidths.push(Math.max(maxW + 6, 18)); // mínimo 18mm + padding
       }
-      const totalLen = colWidths.reduce((a, b) => a + b, 0);
-      colWidths = colWidths.map(w => (w / totalLen) * tableW);
+      const totalMeasured = colWidths.reduce((a, b) => a + b, 0);
+      if (totalMeasured > tableW) {
+        colWidths = colWidths.map(w => (w / totalMeasured) * tableW);
+      } else {
+        const extra = tableW - totalMeasured;
+        colWidths = colWidths.map(w => w + (w / totalMeasured) * extra);
+      }
+      // Garantir mínimo para primeira coluna
+      if (numCols === 2 && colWidths[0] < tableW * 0.3) {
+        colWidths[0] = tableW * 0.3;
+        colWidths[1] = tableW - colWidths[0];
+      }
       
-      // Calcular altura de cada row (multi-line)
       const baseRowH = 7;
       
       checkPage(Math.min(rows.length * baseRowH + 8, 60));
       curY += 2;
       
       rows.forEach((row, ri) => {
-        // Calcular altura necessária para esta row
         let maxCellLines = 1;
         row.forEach((cel, ci) => {
           doc.setFontSize(8);
-          doc.setFont('helvetica', ri === 0 ? 'bold' : 'normal');
-          const cellW = (colWidths[ci] || tableW/numCols) - 4;
-          const lines = doc.splitTextToSize(cel, cellW);
+          doc.setFont('helvetica', ri === 0 ? 'bold' : (ci === 0 ? 'bold' : 'normal'));
+          const cellW = (colWidths[ci] || tableW/numCols) - 5;
+          const lines = doc.splitTextToSize(cel, Math.max(cellW, 10));
           maxCellLines = Math.max(maxCellLines, lines.length);
         });
         const rowH = Math.max(baseRowH, maxCellLines * 3.5 + 3.5);
@@ -12549,14 +12783,12 @@ function criarPDFjsPDF(titulo) {
         const ry = curY;
         
         if (ri === 0) {
-          // Header com cantos arredondados no topo
           doc.setFillColor(cor.r, cor.g, cor.b);
           doc.roundedRect(tableX, ry - 1, tableW, rowH, 1.5, 1.5, 'F');
           doc.setFontSize(8);
           doc.setTextColor(255, 255, 255);
           doc.setFont('helvetica', 'bold');
         } else {
-          // Body rows com alternância de cor
           if (ri % 2 === 0) {
             doc.setFillColor(cor.lr, cor.lg, cor.lb);
             doc.rect(tableX, ry - 1, tableW, rowH, 'F');
@@ -12569,34 +12801,32 @@ function criarPDFjsPDF(titulo) {
           doc.setFont('helvetica', 'normal');
         }
         
-        // Renderizar células
+        // v84: Renderizar células — primeira coluna sempre bold (sem duplicar texto)
         let cx = tableX;
         row.forEach((cel, ci) => {
           const colW = colWidths[ci] || tableW/numCols;
-          const cellW = colW - 4;
-          const cellX = cx + 2;
+          const cellW = colW - 5;
+          const cellX = cx + 2.5;
           doc.setFontSize(8);
-          const celLines = doc.splitTextToSize(cel, cellW);
-          celLines.forEach((line, li) => {
-            if (li < 3) { // max 3 lines per cell
-              doc.text(line, cellX, ry + 3 + li * 3.5);
-            }
-          });
-          // Primeira coluna em bold mesmo no body
           if (ci === 0 && ri > 0) {
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(40, 40, 55);
-            const firstLines = doc.splitTextToSize(cel, cellW);
-            firstLines.forEach((line, li) => {
-              if (li < 3) doc.text(line, cellX, ry + 3 + li * 3.5);
-            });
+          } else if (ri === 0) {
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+          } else {
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(50, 55, 70);
           }
+          const celLines = doc.splitTextToSize(cel, Math.max(cellW, 10));
+          celLines.forEach((line, li) => {
+            if (li < 4) {
+              doc.text(line, cellX, ry + 3 + li * 3.5);
+            }
+          });
           cx += colW;
         });
         
-        // Borda inferior sutil
         if (ri > 0) {
           doc.setDrawColor(210, 215, 220);
           doc.setLineWidth(0.1);
@@ -12605,20 +12835,6 @@ function criarPDFjsPDF(titulo) {
         
         curY += rowH;
       });
-      
-      // Borda da tabela inteira
-      doc.setDrawColor(cor.r, cor.g, cor.b);
-      doc.setLineWidth(0.3);
-      const tableStartY = curY - rows.reduce((sum, _, ri) => {
-        let maxCellLines = 1;
-        rows[ri].forEach((cel, ci) => {
-          doc.setFontSize(8);
-          const cellW = (colWidths[ci] || tableW/numCols) - 4;
-          const lines = doc.splitTextToSize(cel, cellW);
-          maxCellLines = Math.max(maxCellLines, lines.length);
-        });
-        return sum + Math.max(baseRowH, maxCellLines * 3.5 + 3.5);
-      }, 0);
       
       curY += 4;
     }
@@ -12663,7 +12879,7 @@ function criarPDFjsPDF(titulo) {
       if (cleanLine) {
         checkPage(7);
         writeRichText(marginL + 2, curY, line, 9.5, [50, 55, 65], contentW - 4);
-        curY += 5;
+        curY += 2;
       }
       i++;
     }
@@ -12697,9 +12913,20 @@ function criarPDFjsPDF(titulo) {
       curY += headerH + 2;
       
       // === CONTEÚDO com barra lateral colorida ===
-      const barraStartY = curY;
+      // v84: Sidebar desenhada por página para evitar barras gigantes cross-page
+      let barraStartY = curY;
       const contentStartX = marginL + 4; // Espaço para a barra
       const secContentW = contentW - 6;
+      
+      // v84: Helper para desenhar barra lateral parcial
+      function drawSidebarSegment() {
+        if (curY > barraStartY + 2) {
+          doc.setFillColor(cor.lr, cor.lg, cor.lb);
+          doc.roundedRect(marginL, barraStartY, 2.5, curY - barraStartY, 1, 1, 'F');
+          doc.setFillColor(cor.r, cor.g, cor.b);
+          doc.roundedRect(marginL + 0.3, barraStartY, 0.8, curY - barraStartY, 0.4, 0.4, 'F');
+        }
+      }
       
       let j = 0;
       let numLista = 0;
@@ -12709,12 +12936,15 @@ function criarPDFjsPDF(titulo) {
         
         if (!l) { curY += 1.5; j++; numLista = 0; continue; }
         
-        // === SUB-CABEÇALHO (### ou **texto** sozinho na linha) ===
-        if (l.startsWith('### ') || l.match(/^\*\*[^*]+\*\*\s*$/)) {
+        // === SUB-CABEÇALHO (###, ####, ou **texto** sozinho na linha) ===
+        if (l.startsWith('#### ') || l.startsWith('### ') || l.match(/^\*\*[^*]+\*\*\s*$/)) {
           numLista = 0;
-          let sub = l.replace(/^###\s*/, '').replace(/^\*\*|\*\*$/g, '');
+          let sub = l.replace(/^####\s*/, '').replace(/^###\s*/, '').replace(/^\*\*|\*\*$/g, '');
           sub = limpar(sub);
+          // v84: Track page change for sidebar
+          const prevPageSub = pageNum;
           checkPage(10);
+          if (pageNum > prevPageSub) { drawSidebarSegment(); barraStartY = marginT; }
           curY += 3;
           
           // Barra vertical decorativa + título
@@ -12742,15 +12972,19 @@ function criarPDFjsPDF(titulo) {
           continue;
         }
         
-        // === ITEM DE LISTA (-, •, 1., etc.) ===
-        if (l.match(/^[-\u2022\u25CF\u25B8\u25B9\u2192]\s/) || l.match(/^\d+[\.\)]\s/)) {
+        // === ITEM DE LISTA (-, •, *, 1., etc.) ===
+        // v84: Adicionado suporte a * como bullet
+        if (l.match(/^[-\u2022\u25CF\u25B8\u25B9\u2192\*]\s/) || l.match(/^\d+[\.\)]\s/)) {
           const isNum = l.match(/^\d+[\.\)]\s/);
-          let texto = l.replace(/^[-\u2022\u25CF\u25B8\u25B9\u2192]\s*/, '').replace(/^\d+[\.\)]\s*/, '');
+          let texto = l.replace(/^[-\u2022\u25CF\u25B8\u25B9\u2192\*]\s*/, '').replace(/^\d+[\.\)]\s*/, '');
           const isSub = linhas[j].match(/^\s{2,}/);
           
           if (isNum) numLista++;
           
+          // v84: Track page change for sidebar
+          const prevPageList = pageNum;
           checkPage(7);
+          if (pageNum > prevPageList) { drawSidebarSegment(); barraStartY = marginT; }
           
           const bulletX = contentStartX + (isSub ? 8 : 1);
           const textX = bulletX + (isNum ? 6 : 4.5);
@@ -12776,10 +13010,10 @@ function criarPDFjsPDF(titulo) {
             doc.circle(bulletX + 1.5, curY + 0.5, 0.8, 'F');
           }
           
-          // Texto com negrito inline
+          // v84: Texto com negrito inline (writeRichText atualiza curY diretamente)
           doc.setFontSize(9);
-          const h = writeRichText(textX, curY, texto, 9, [55, 60, 75], maxW);
-          curY += h + 0.8;
+          writeRichText(textX, curY, texto, 9, [55, 60, 75], maxW);
+          curY += 0.8;
           j++;
           continue;
         }
@@ -12787,23 +13021,19 @@ function criarPDFjsPDF(titulo) {
         // === TEXTO NORMAL (parágrafo) ===
         const cleanL = limpar(l);
         if (cleanL) {
+          // v84: Track page change for sidebar
+          const prevPagePara = pageNum;
           checkPage(7);
+          if (pageNum > prevPagePara) { drawSidebarSegment(); barraStartY = marginT; }
           doc.setFontSize(9);
-          const h = writeRichText(contentStartX + 2, curY, l, 9, [55, 60, 75], secContentW - 4);
-          curY += h + 1.5;
+          writeRichText(contentStartX + 2, curY, l, 9, [55, 60, 75], secContentW - 4);
+          curY += 1.5;
         }
         j++;
       }
       
-      // === BARRA LATERAL da seção (cor clara) ===
-      const barraEndY = curY;
-      if (barraEndY > barraStartY + 2) {
-        doc.setFillColor(cor.lr, cor.lg, cor.lb);
-        doc.roundedRect(marginL, barraStartY, 2.5, barraEndY - barraStartY, 1, 1, 'F');
-        // Linha de cor intensa no centro da barra
-        doc.setFillColor(cor.r, cor.g, cor.b);
-        doc.roundedRect(marginL + 0.3, barraStartY, 0.8, barraEndY - barraStartY, 0.4, 0.4, 'F');
-      }
+      // v84: Desenhar último segmento da barra lateral
+      drawSidebarSegment();
       
       curY += 6;
     }
@@ -23062,11 +23292,11 @@ async function carregarPlanos() {
     
     planosList.innerHTML = planos.map(plano => `
       <div class="${plano.ativo ? 'bg-gradient-to-r from-[#E8EDF5] to-blue-100 border-blue-600' : themes[currentTheme].card + ' ${themes[currentTheme].border}'} border-2 rounded-lg p-4 transition hover:shadow-md">
-        <div class="flex items-start justify-between">
-          <div class="flex-1">
-            <div class="flex items-center gap-2 mb-2">
+        <div class="flex flex-col sm:flex-row items-start justify-between gap-3">
+          <div class="flex-1 min-w-0 w-full">
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
               ${plano.ativo ? '<span class="bg-[#0D1F4D] text-white text-xs px-2 py-1 rounded-full font-semibold">ATIVO</span>' : ''}
-              <h3 class="font-bold ${themes[currentTheme].text} text-lg" id="plano-nome-${plano.id}">
+              <h3 class="font-bold ${themes[currentTheme].text} text-base sm:text-lg" id="plano-nome-${plano.id}">
                 ${plano.nome || 'Sem nome'}
               </h3>
               <button onclick="editarNomePlano(${plano.id}, '${(plano.nome || '').replace(/'/g, "\\'")}')" 
@@ -23117,16 +23347,16 @@ async function carregarPlanos() {
               ${plano.concurso_nome || 'Concurso não especificado'}
             </p>
           </div>
-          <div class="flex flex-col gap-2 ml-4">
+          <div class="flex flex-row gap-2 w-full sm:w-auto sm:flex-col sm:ml-4 flex-shrink-0">
             ${!plano.ativo ? `
               <button onclick="window.ativarPlano(${plano.id})" 
-                class="bg-[#0D1F4D] text-white px-3 py-1 rounded text-sm hover:bg-[#0A1839] transition whitespace-nowrap">
-                <i class="fas fa-check mr-1"></i>Ativar
+                class="bg-[#0D1F4D] text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm hover:bg-[#0A1839] transition whitespace-nowrap">
+                <i class="fas fa-check mr-1"></i><span class="hidden sm:inline">Ativar</span><span class="sm:hidden">Ativar</span>
               </button>
             ` : ''}
             <button onclick="window.excluirPlano(${plano.id}, '${(plano.nome || 'este plano').replace(/'/g, "\\'")}')" 
-              class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition whitespace-nowrap">
-              <i class="fas fa-trash mr-1"></i>Excluir
+              class="bg-red-500 text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm hover:bg-red-600 transition whitespace-nowrap">
+              <i class="fas fa-trash mr-1"></i><span class="hidden sm:inline">Excluir</span><span class="sm:hidden">Excluir</span>
             </button>
           </div>
         </div>
