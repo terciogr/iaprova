@@ -12065,152 +12065,288 @@ window.fecharModalConteudoGerado = function() {
 // ✅ v77: Função universal de download PDF para qualquer conteúdo gerado
 // Usa conteúdo markdown original convertido para HTML com estilos inline
 // ========== GERAÇÃO DE PDF COM jsPDF PURO — DOWNLOAD DIRETO ==========
-// Sem html2canvas, sem window.print, sem popup. Gera .pdf e baixa direto.
+// v81: Negrito inline, header em todas as páginas, paginação profissional
 
 function criarPDFjsPDF(titulo) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const pageW = doc.internal.pageSize.getWidth();   // 210
   const pageH = doc.internal.pageSize.getHeight();  // 297
-  const marginL = 15, marginR = 15, marginT = 20, marginB = 20;
+  const marginL = 15, marginR = 15, marginT = 32, marginB = 18;
   const contentW = pageW - marginL - marginR;       // 180
   let curY = marginT;
+  let pageNum = 1;
+  let _headerInfo = { tipo: '', disciplina: '', topico: '' };
+
+  // ---- Header em todas as páginas ----
+  function drawPageHeader() {
+    // Faixa superior azul escuro
+    doc.setFillColor(18, 45, 106);
+    doc.rect(0, 0, pageW, 22, 'F');
+    
+    // Logo quadrado branco com IA
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(marginL, 4, 14, 14, 2, 2, 'F');
+    doc.setFontSize(10);
+    doc.setTextColor(18, 45, 106);
+    doc.setFont('helvetica', 'bold');
+    doc.text('IA', marginL + 7, 13, { align: 'center' });
+    
+    // Nome "IAprova" 
+    doc.setFontSize(13);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text('IAprova', marginL + 18, 10);
+    
+    // Subtítulo tipo + disciplina
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(200, 210, 240);
+    const sub = [_headerInfo.tipo, _headerInfo.disciplina].filter(Boolean).join(' | ');
+    doc.text(sub, marginL + 18, 15);
+    
+    // Paginação à direita
+    doc.setFontSize(8);
+    doc.setTextColor(200, 210, 240);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Página ${pageNum}`, pageW - marginR, 13, { align: 'right' });
+    
+    // Linha fina decorativa abaixo
+    doc.setDrawColor(42, 74, 159);
+    doc.setLineWidth(0.5);
+    doc.line(0, 22, pageW, 22);
+  }
+  
+  // ---- Footer em todas as páginas ----
+  function drawPageFooter() {
+    doc.setDrawColor(220);
+    doc.setLineWidth(0.2);
+    doc.line(marginL, pageH - 12, pageW - marginR, pageH - 12);
+    doc.setFontSize(7);
+    doc.setTextColor(160);
+    doc.setFont('helvetica', 'normal');
+    doc.text('IAprova - Preparação Inteligente para Concursos | iaprova.pages.dev', marginL, pageH - 8);
+    doc.text(`${pageNum}`, pageW - marginR, pageH - 8, { align: 'right' });
+  }
+
+  // Desenhar header na primeira página
+  drawPageHeader();
 
   function checkPage(needed) {
     if (curY + needed > pageH - marginB) {
-      // Footer antes de virar
-      doc.setFontSize(7);
-      doc.setTextColor(160);
-      doc.text('IAprova - iaprova.pages.dev', pageW / 2, pageH - 10, { align: 'center' });
+      drawPageFooter();
       doc.addPage();
+      pageNum++;
+      drawPageHeader();
       curY = marginT;
     }
   }
 
   function addHeader(tipoLabel, disciplina, topico) {
-    // Barra azul do logo
-    doc.setFillColor(18, 45, 106);
-    doc.roundedRect(marginL, curY, 12, 12, 2, 2, 'F');
-    doc.setFontSize(10);
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.text('IA', marginL + 6, curY + 7.5, { align: 'center' });
-
-    // Tipo e disciplina
+    _headerInfo = { tipo: tipoLabel, disciplina: disciplina || '', topico: topico || '' };
+    // Re-desenhar o header da página 1 com info atualizada
+    drawPageHeader();
+    
+    // Tópico grande
+    curY = marginT + 2;
+    doc.setFontSize(14);
     doc.setTextColor(18, 45, 106);
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text(tipoLabel, marginL + 16, curY + 5);
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.setFont('helvetica', 'normal');
-    doc.text(disciplina || 'IAprova', marginL + 16, curY + 10);
-
-    curY += 16;
-
-    // Tópico
-    doc.setFontSize(12);
-    doc.setTextColor(50);
     doc.setFont('helvetica', 'bold');
     const topicoLines = doc.splitTextToSize(topico || 'Conteúdo', contentW);
     doc.text(topicoLines, marginL, curY);
-    curY += topicoLines.length * 5 + 2;
+    curY += topicoLines.length * 6 + 2;
 
-    // Data
+    // Data e badge
     doc.setFontSize(8);
-    doc.setTextColor(150);
+    doc.setTextColor(130);
     doc.setFont('helvetica', 'normal');
     doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')} | iaprova.pages.dev`, marginL, curY);
-    curY += 4;
+    curY += 3;
 
-    // Linha separadora
+    // Linha separadora elegante
     doc.setDrawColor(18, 45, 106);
-    doc.setLineWidth(0.8);
-    doc.line(marginL, curY, pageW - marginR, curY);
-    curY += 8;
+    doc.setLineWidth(0.6);
+    doc.line(marginL, curY, marginL + 40, curY);
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.2);
+    doc.line(marginL + 40, curY, pageW - marginR, curY);
+    curY += 7;
   }
 
   function addFooter() {
-    doc.setFontSize(7);
-    doc.setTextColor(160);
-    doc.setFont('helvetica', 'normal');
-    doc.text('IAprova - Preparação Inteligente para Concursos | iaprova.pages.dev', pageW / 2, pageH - 10, { align: 'center' });
+    drawPageFooter();
   }
 
-  // Parsear markdown simples e escrever no PDF
+  // ---- Escrever texto com negrito inline ----
+  // Divide a linha em segmentos {text, bold} e renderiza cada um
+  function writeLineWithBold(x, y, line, fontSize, baseColor, maxW) {
+    // Regex para capturar trechos **bold** e ***bolditalic***
+    const segments = [];
+    let remaining = line;
+    
+    // Pattern: ***text*** → bold+italic, **text** → bold, *text* → italic
+    const pattern = /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*/g;
+    let lastIdx = 0;
+    let match;
+    
+    while ((match = pattern.exec(remaining)) !== null) {
+      // Texto antes do match
+      if (match.index > lastIdx) {
+        segments.push({ text: remaining.substring(lastIdx, match.index), style: 'normal' });
+      }
+      if (match[1]) {
+        segments.push({ text: match[1], style: 'bolditalic' });
+      } else if (match[2]) {
+        segments.push({ text: match[2], style: 'bold' });
+      } else if (match[3]) {
+        segments.push({ text: match[3], style: 'italic' });
+      }
+      lastIdx = match.index + match[0].length;
+    }
+    // Texto restante
+    if (lastIdx < remaining.length) {
+      segments.push({ text: remaining.substring(lastIdx), style: 'normal' });
+    }
+    
+    // Se não tem nenhum segmento com formatação, renderizar simples
+    if (segments.length <= 1 && (!segments[0] || segments[0].style === 'normal')) {
+      const cleanText = segments.length ? segments[0].text : line;
+      doc.setFont('helvetica', 'normal');
+      const lines = doc.splitTextToSize(cleanText, maxW);
+      doc.text(lines, x, y);
+      return lines.length * (fontSize * 0.45 + 1);
+    }
+    
+    // Renderizar segmentos inline com wrap
+    let cx = x;
+    let cy = y;
+    const lineH = fontSize * 0.45 + 1;
+    const spaceW = doc.getTextWidth(' ');
+    
+    for (const seg of segments) {
+      const fontStyle = seg.style === 'bolditalic' ? 'bolditalic' : 
+                        seg.style === 'bold' ? 'bold' : 
+                        seg.style === 'italic' ? 'italic' : 'normal';
+      doc.setFont('helvetica', fontStyle);
+      doc.setTextColor(...baseColor);
+      
+      // Dividir em palavras para word-wrap
+      const words = seg.text.split(/(\s+)/);
+      for (const word of words) {
+        if (!word) continue;
+        const wordW = doc.getTextWidth(word);
+        
+        // Se passa da margem, quebrar linha
+        if (cx + wordW > x + maxW && cx > x) {
+          cx = x;
+          cy += lineH;
+          // Checar página
+          if (cy > pageH - marginB) {
+            drawPageFooter();
+            doc.addPage();
+            pageNum++;
+            drawPageHeader();
+            cy = marginT;
+          }
+        }
+        
+        doc.text(word, cx, cy);
+        cx += wordW;
+      }
+      
+      // Restaurar normal após segmento
+      doc.setFont('helvetica', 'normal');
+    }
+    
+    return (cy - y) + lineH;
+  }
+
+  // Parsear markdown e escrever no PDF
   function writeMarkdownContent(text) {
     const lines = text.split('\n');
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i].trim();
       if (!line) { curY += 3; continue; }
 
-      // Limpar marcadores markdown
-      let fontSize = 10, isBold = false, textColor = [30, 30, 46], leftIndent = 0;
+      let fontSize = 10, isHeading = false, textColor = [30, 30, 46], leftIndent = 0;
+      let headingStyle = '';
 
       if (line.startsWith('### ')) {
         line = line.substring(4);
-        fontSize = 12; isBold = true; textColor = [18, 45, 106];
+        fontSize = 12; isHeading = true; textColor = [18, 45, 106];
+        headingStyle = 'h3';
         checkPage(10);
-        curY += 3;
+        curY += 4;
       } else if (line.startsWith('## ')) {
         line = line.substring(3);
-        fontSize = 13; isBold = true; textColor = [13, 31, 77];
+        fontSize = 13; isHeading = true; textColor = [13, 31, 77];
+        headingStyle = 'h2';
         checkPage(12);
-        curY += 4;
-        // Linha sob h2
-        doc.setDrawColor(18, 45, 106);
-        doc.setLineWidth(0.3);
+        curY += 5;
       } else if (line.startsWith('# ')) {
         line = line.substring(2);
-        fontSize = 15; isBold = true; textColor = [13, 31, 77];
+        fontSize = 15; isHeading = true; textColor = [13, 31, 77];
+        headingStyle = 'h1';
         checkPage(14);
-        curY += 5;
+        curY += 6;
       } else if (line.startsWith('- ') || line.startsWith('• ')) {
         line = line.substring(2);
-        leftIndent = 5;
-        // Bullet
+        leftIndent = 6;
         checkPage(6);
+        // Bullet circle
         doc.setFillColor(18, 45, 106);
-        doc.circle(marginL + 2, curY + 1.2, 0.8, 'F');
+        doc.circle(marginL + 2.5, curY + 1, 0.9, 'F');
       } else if (/^\d+\.\s/.test(line)) {
-        leftIndent = 5;
+        leftIndent = 2;
       } else if (line.startsWith('---')) {
         checkPage(6);
-        doc.setDrawColor(200);
+        doc.setDrawColor(210);
         doc.setLineWidth(0.2);
         doc.line(marginL, curY + 2, pageW - marginR, curY + 2);
         curY += 6;
         continue;
       }
 
-      // Remover ** e * (bold/italic markers)
-      line = line.replace(/\*\*\*(.+?)\*\*\*/g, '$1');
-      line = line.replace(/\*\*(.+?)\*\*/g, '$1');
-      line = line.replace(/\*(.+?)\*/g, '$1');
-
       doc.setFontSize(fontSize);
       doc.setTextColor(...textColor);
-      doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-
+      
       const maxW = contentW - leftIndent;
-      const splitLines = doc.splitTextToSize(line, maxW);
-      const blockH = splitLines.length * (fontSize * 0.45 + 1);
+      const xStart = marginL + leftIndent;
 
-      checkPage(blockH + 2);
-      doc.text(splitLines, marginL + leftIndent, curY);
-      curY += blockH + 1.5;
-
-      // Linha decorativa abaixo de h2
-      if (fontSize === 13 && isBold) {
-        doc.setDrawColor(18, 45, 106);
-        doc.setLineWidth(0.3);
-        doc.line(marginL, curY - 0.5, marginL + 60, curY - 0.5);
-        curY += 2;
+      if (isHeading) {
+        // Headings: remover markdown e renderizar bold
+        line = line.replace(/\*\*\*(.+?)\*\*\*/g, '$1').replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
+        doc.setFont('helvetica', 'bold');
+        const splitLines = doc.splitTextToSize(line, maxW);
+        const blockH = splitLines.length * (fontSize * 0.45 + 1);
+        checkPage(blockH + 2);
+        doc.text(splitLines, xStart, curY);
+        curY += blockH + 1;
+        
+        // Decoração abaixo de h2
+        if (headingStyle === 'h2') {
+          doc.setDrawColor(18, 45, 106);
+          doc.setLineWidth(0.4);
+          doc.line(marginL, curY, marginL + 50, curY);
+          doc.setDrawColor(200);
+          doc.setLineWidth(0.15);
+          doc.line(marginL + 50, curY, pageW - marginR, curY);
+          curY += 3;
+        } else if (headingStyle === 'h1') {
+          doc.setDrawColor(18, 45, 106);
+          doc.setLineWidth(0.5);
+          doc.line(marginL, curY, pageW - marginR, curY);
+          curY += 3;
+        }
+      } else {
+        // Texto normal: suporte a negrito inline via **texto**
+        const blockH = writeLineWithBold(xStart, curY, line, fontSize, textColor, maxW);
+        curY += blockH + 1;
       }
     }
   }
 
-  return { doc, checkPage, addHeader, addFooter, writeMarkdownContent, marginL, marginR, marginT, marginB, contentW, pageW, pageH, getCurY: () => curY, setCurY: (v) => { curY = v; } };
+  return { doc, checkPage, addHeader, addFooter, writeMarkdownContent, drawPageFooter, marginL, marginR, marginT, marginB, contentW, pageW, pageH, getCurY: () => curY, setCurY: (v) => { curY = v; }, getPageNum: () => pageNum };
 }
 
 window.baixarConteudoPDF = async function() {
