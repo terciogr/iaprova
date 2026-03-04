@@ -13761,6 +13761,180 @@ app.post('/api/metas/concluir', async (c) => {
   return c.json({ success: true, tipo: 'diaria' })
 })
 
+// ✅ v86: Endpoint para concluir tópico via modal (resolve mapeamento edital_topicos → topicos_edital)
+app.post('/api/metas/concluir-topico', async (c) => {
+  const { DB } = c.env
+  const { user_id, disciplina_id, topico_nome, plano_id, meta_id } = await c.req.json()
+
+  console.log(`🎯 v86: Concluir tópico via modal - user=${user_id}, disc=${disciplina_id}, nome="${topico_nome}", plano=${plano_id}, meta=${meta_id}`)
+
+  if (!user_id || !topico_nome || !plano_id) {
+    return c.json({ error: 'user_id, topico_nome e plano_id são obrigatórios' }, 400)
+  }
+
+  try {
+    // 1️⃣ Buscar o topico_id CORRETO na tabela topicos_edital (usada pela tela Disciplinas)
+    let topicoEdital = null as any
+    
+    // Tentar busca exata por nome + disciplina + plano
+    if (disciplina_id) {
+      topicoEdital = await DB.prepare(`
+        SELECT id, nome FROM topicos_edital 
+        WHERE disciplina_id = ? AND plano_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
+        LIMIT 1
+      `).bind(disciplina_id, plano_id, topico_nome).first()
+    }
+    
+    // Fallback: busca por nome + plano (sem disciplina)
+    if (!topicoEdital) {
+      topicoEdital = await DB.prepare(`
+        SELECT id, nome FROM topicos_edital 
+        WHERE plano_id = ? AND LOWER(TRIM(nome)) = LOWER(TRIM(?))
+        LIMIT 1
+      `).bind(plano_id, topico_nome).first()
+    }
+    
+    // Fallback: busca LIKE para nomes com diferenças menores
+    if (!topicoEdital && disciplina_id) {
+      topicoEdital = await DB.prepare(`
+        SELECT id, nome FROM topicos_edital 
+        WHERE disciplina_id = ? AND plano_id = ? AND LOWER(TRIM(nome)) LIKE '%' || LOWER(TRIM(?)) || '%'
+        LIMIT 1
+      `).bind(disciplina_id, plano_id, topico_nome).first()
+    }
+
+    if (!topicoEdital) {
+      console.log(`⚠️ v86: Tópico "${topico_nome}" não encontrado em topicos_edital para plano ${plano_id}`)
+      return c.json({ success: false, error: 'Tópico não encontrado em topicos_edital', topico_nome })
+    }
+
+    console.log(`✅ v86: Mapeado "${topico_nome}" → topicos_edital.id = ${topicoEdital.id}`)
+
+    // 2️⃣ Atualizar progresso para nivel_dominio = 10 (concluído)
+    const existing = await DB.prepare(`
+      SELECT id FROM user_topicos_progresso WHERE user_id = ? AND topico_id = ? AND plano_id = ?
+    `).bind(user_id, topicoEdital.id, plano_id).first() as any
+
+    if (existing) {
+      await DB.prepare(`
+        UPDATE user_topicos_progresso 
+        SET nivel_dominio = 10, vezes_estudado = COALESCE(vezes_estudado, 0) + 1, ultima_vez = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(existing.id).run()
+      console.log(`✅ v86: Progresso atualizado para topicos_edital.id=${topicoEdital.id} (UPDATE)`)
+    } else {
+      // Checar se existe registro sem plano_id (constraint UNIQUE(user_id, topico_id) antiga)
+      const existingSemPlano = await DB.prepare(`
+        SELECT id FROM user_topicos_progresso WHERE user_id = ? AND topico_id = ?
+      `).bind(user_id, topicoEdital.id).first() as any
+      
+      if (existingSemPlano) {
+        await DB.prepare(`
+          UPDATE user_topicos_progresso 
+          SET nivel_dominio = 10, vezes_estudado = COALESCE(vezes_estudado, 0) + 1, ultima_vez = CURRENT_TIMESTAMP, plano_id = ?
+          WHERE id = ?
+        `).bind(plano_id, existingSemPlano.id).run()
+        console.log(`✅ v86: Progresso atualizado e plano_id definido (UPDATE sem plano)`)
+      } else {
+        await DB.prepare(`
+          INSERT INTO user_topicos_progresso (user_id, topico_id, plano_id, nivel_dominio, vezes_estudado, ultima_vez)
+          VALUES (?, ?, ?, 10, 1, CURRENT_TIMESTAMP)
+        `).bind(user_id, topicoEdital.id, plano_id).run()
+        console.log(`✅ v86: Novo progresso criado para topicos_edital.id=${topicoEdital.id} (INSERT)`)
+      }
+    }
+
+    // 3️⃣ Avançar metas futuras que tenham o mesmo tópico para o próximo tópico da disciplina
+    let avancou = 0
+    if (meta_id && disciplina_id) {
+      try {
+        // Buscar a meta atual para saber semana e dados
+        const metaAtual = await DB.prepare(`
+          SELECT ms.id, ms.semana_id, ms.disciplina_id, ms.topicos_sugeridos, ms.dia_semana, ms.data
+          FROM metas_semana ms
+          WHERE ms.id = ?
+        `).bind(meta_id).first() as any
+
+        if (metaAtual && metaAtual.semana_id) {
+          // Buscar metas FUTURAS da mesma disciplina na mesma semana que tenham o mesmo tópico
+          const { results: metasFuturas } = await DB.prepare(`
+            SELECT id, topicos_sugeridos, dia_semana, data
+            FROM metas_semana
+            WHERE semana_id = ? AND disciplina_id = ? AND concluida = 0 AND id != ?
+            ORDER BY dia_semana ASC, data ASC
+          `).bind(metaAtual.semana_id, disciplina_id, meta_id).all()
+
+          if (metasFuturas && metasFuturas.length > 0) {
+            // Buscar tópicos do edital para saber qual é o próximo
+            // Primeiro descobrir edital_disciplina_id
+            const editalDisc = await DB.prepare(`
+              SELECT ed.id as edital_disciplina_id
+              FROM edital_disciplinas ed
+              JOIN editais e ON ed.edital_id = e.id
+              WHERE e.user_id = ? AND ed.disciplina_id = ?
+              ORDER BY e.created_at DESC
+              LIMIT 1
+            `).bind(user_id, disciplina_id).first() as any
+
+            if (editalDisc) {
+              const { results: todosTopicosEdital } = await DB.prepare(`
+                SELECT id, nome, ordem FROM edital_topicos 
+                WHERE edital_disciplina_id = ? 
+                ORDER BY ordem ASC
+              `).bind(editalDisc.edital_disciplina_id).all()
+
+              if (todosTopicosEdital && todosTopicosEdital.length > 0) {
+                // Encontrar índice do tópico atual
+                const indiceAtual = todosTopicosEdital.findIndex((t: any) => 
+                  t.nome?.toLowerCase().trim() === topico_nome?.toLowerCase().trim()
+                )
+
+                for (const metaFutura of metasFuturas as any[]) {
+                  try {
+                    const topicosF = JSON.parse(metaFutura.topicos_sugeridos || '[]')
+                    if (topicosF.length > 0 && topicosF[0].nome?.toLowerCase().trim() === topico_nome?.toLowerCase().trim()) {
+                      // Esta meta futura tem o mesmo tópico! Avançar para o próximo
+                      const proximoIndice = (indiceAtual >= 0 && indiceAtual + 1 < todosTopicosEdital.length) 
+                        ? indiceAtual + 1 
+                        : 0
+                      const proximoTopico = todosTopicosEdital[proximoIndice] as any
+                      
+                      const novosTopicos = [{ id: proximoTopico.id, nome: proximoTopico.nome }]
+                      await DB.prepare(`
+                        UPDATE metas_semana 
+                        SET topicos_sugeridos = ?
+                        WHERE id = ?
+                      `).bind(JSON.stringify(novosTopicos), metaFutura.id).run()
+                      
+                      avancou++
+                      console.log(`🔄 v86: Meta ${metaFutura.id} (dia ${metaFutura.dia_semana}) avançada: "${topico_nome}" → "${proximoTopico.nome}"`)
+                    }
+                  } catch (e) {
+                    // Ignorar erros de parse individuais
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('⚠️ v86: Erro ao avançar metas futuras:', e)
+        // Não bloquear — o tópico já foi concluído
+      }
+    }
+
+    return c.json({ 
+      success: true, 
+      topico_edital_id: topicoEdital.id, 
+      topico_nome: topicoEdital.nome,
+      metas_avancadas: avancou
+    })
+  } catch (error: any) {
+    console.error('❌ v86: Erro ao concluir tópico:', error)
+    return c.json({ error: 'Erro ao concluir tópico: ' + error.message }, 500)
+  }
+})
+
 // Atualizar meta (desmarcar conclusão ou editar)
 app.put('/api/metas/:meta_id', async (c) => {
   const { DB } = c.env

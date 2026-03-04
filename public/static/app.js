@@ -9472,7 +9472,8 @@ async function marcarMetaConcluida(metaId, disciplinaNome, topicoNome, topicoId,
   // Guardar dados para uso na confirmação
   window._metaConcluirDados = { metaId, disciplinaNome, topicoNome, topicoId, disciplinaId, planoId };
   
-  const temTopicoId = topicoId && topicoId !== 'null' && topicoId !== null;
+  // v86: Mostrar checkbox sempre que tiver nome do tópico (o mapeamento é feito pelo backend por nome)
+  const temTopicoInfo = (topicoNome && topicoNome !== 'null' && topicoNome.trim() !== '') || (topicoId && topicoId !== 'null' && topicoId !== null);
   
   modal.innerHTML = `
     <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
@@ -9521,7 +9522,7 @@ async function marcarMetaConcluida(metaId, disciplinaNome, topicoNome, topicoId,
       </div>
       
       <!-- Checkbox: Concluir tópico na disciplina -->
-      ${temTopicoId ? `
+      ${temTopicoInfo ? `
       <div class="mb-4 bg-emerald-50 rounded-xl p-3 border border-emerald-200">
         <label class="flex items-start gap-3 cursor-pointer select-none">
           <input type="checkbox" id="concluir-topico-checkbox" checked
@@ -9585,25 +9586,27 @@ async function confirmarConclusaoMeta(metaId) {
       tempo_real_minutos: tempo
     });
     
-    // 2. v85: Se checkbox marcado, concluir tópico na disciplina (nivel_dominio = 10)
+    // 2. v86: Se checkbox marcado, concluir tópico usando novo endpoint que resolve o mapeamento correto
     const planoIdAtual = dados.planoId || window.planoAtivo?.id || window.currentPlano?.id || null;
-    if (deveConcluirTopico && dados.topicoId && dados.topicoId !== 'null' && parseInt(dados.topicoId) > 0 && currentUser?.id) {
+    let metasAvancadas = 0;
+    if (deveConcluirTopico && dados.topicoNome && dados.topicoNome !== 'null' && currentUser?.id && planoIdAtual) {
       try {
-        console.log(`🔄 v85: Concluindo tópico ID=${dados.topicoId} (${dados.topicoNome}) para user ${currentUser.id}, plano ${planoIdAtual}`);
-        await axios.post('/api/user-topicos/progresso', {
+        console.log(`🔄 v86: Concluindo tópico "${dados.topicoNome}" (disc=${dados.disciplinaId}) para user ${currentUser.id}, plano ${planoIdAtual}`);
+        const resTopico = await axios.post('/api/metas/concluir-topico', {
           user_id: currentUser.id,
-          topico_id: parseInt(dados.topicoId),
-          vezes_estudado: 1,
-          nivel_dominio: 10,  // 10 = concluído (mesmo comportamento de marcarTopicoConcluido)
-          plano_id: planoIdAtual ? parseInt(planoIdAtual) : undefined
+          disciplina_id: dados.disciplinaId ? parseInt(dados.disciplinaId) : null,
+          topico_nome: dados.topicoNome,
+          plano_id: parseInt(planoIdAtual),
+          meta_id: metaId
         });
-        console.log(`✅ v85: Tópico ${dados.topicoId} (${dados.topicoNome}) marcado como concluído na disciplina (plano: ${planoIdAtual})`);
+        metasAvancadas = resTopico.data?.metas_avancadas || 0;
+        console.log(`✅ v86: Tópico "${dados.topicoNome}" concluído via mapeamento correto. Metas avançadas: ${metasAvancadas}`);
       } catch (errTopico) {
         console.error('❌ Erro ao marcar tópico como concluído:', errTopico);
         // Não bloquear — a meta já foi concluída
       }
     } else {
-      console.log(`ℹ️ v85: Tópico não concluído - checkbox=${deveConcluirTopico}, topicoId=${dados.topicoId}, userId=${currentUser?.id}`);
+      console.log(`ℹ️ v86: Tópico não concluído - checkbox=${deveConcluirTopico}, topicoNome=${dados.topicoNome}, userId=${currentUser?.id}, plano=${planoIdAtual}`);
     }
     
     fecharModalConcluir();
@@ -9619,7 +9622,13 @@ async function confirmarConclusaoMeta(metaId) {
     await atualizarProgressoPlanoUI();
     
     // Mostrar feedback
-    const msgExtra = deveConcluirTopico && dados.topicoId ? '\n📌 Tópico marcado como concluído!' : '';
+    let msgExtra = '';
+    if (deveConcluirTopico && dados.topicoNome) {
+      msgExtra = '\n📌 Tópico marcado como concluído em Disciplinas!';
+      if (metasAvancadas > 0) {
+        msgExtra += `\n🔄 ${metasAvancadas} meta(s) futura(s) avançou para o próximo tópico.`;
+      }
+    }
     showModal('✅ Meta concluída com sucesso!' + msgExtra);
   } catch (error) {
     console.error('Erro ao concluir meta:', error);
