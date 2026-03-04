@@ -10369,16 +10369,16 @@ app.post('/api/user-topicos/progresso', async (c) => {
     `).bind(user_id, topico_id).first() as any
     
     if (existing) {
-      // ✅ Atualizar o registro existente E definir o plano_id correto
+      // ✅ v85: Atualizar registro e FORÇAR plano_id quando fornecido
       await DB.prepare(`
         UPDATE user_topicos_progresso 
         SET vezes_estudado = ?, 
             nivel_dominio = ?, 
             ultima_vez = CURRENT_TIMESTAMP,
-            plano_id = COALESCE(?, plano_id)
+            plano_id = ?
         WHERE user_id = ? AND topico_id = ?
-      `).bind(vezes_estudado, nivel_dominio, planoAtivo, user_id, topico_id).run()
-      console.log(`✅ Progresso atualizado (UPDATE) para tópico ${topico_id}, plano: ${planoAtivo}`)
+      `).bind(vezes_estudado, nivel_dominio, planoAtivo || existing.plano_id, user_id, topico_id).run()
+      console.log(`✅ Progresso atualizado (UPDATE) para tópico ${topico_id}, plano: ${planoAtivo || existing.plano_id}`)
     } else {
       // ✅ Inserir novo registro
       await DB.prepare(`

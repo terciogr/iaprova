@@ -9462,15 +9462,15 @@ function cancelarConclusao(metaId) {
 }
 
 // Marcar meta como concluída rapidamente (do calendário semanal)
-// v84: Agora recebe info da disciplina/tópico para exibir no modal e permitir concluir tópico
-async function marcarMetaConcluida(metaId, disciplinaNome, topicoNome, topicoId, disciplinaId) {
+// v85: Agora recebe info da disciplina/tópico para exibir no modal e permitir concluir tópico
+async function marcarMetaConcluida(metaId, disciplinaNome, topicoNome, topicoId, disciplinaId, planoId) {
   // Mostrar modal para confirmar e informar tempo
   const modal = document.createElement('div');
   modal.id = 'modal-concluir-meta';
   modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
   
   // Guardar dados para uso na confirmação
-  window._metaConcluirDados = { metaId, disciplinaNome, topicoNome, topicoId, disciplinaId };
+  window._metaConcluirDados = { metaId, disciplinaNome, topicoNome, topicoId, disciplinaId, planoId };
   
   const temTopicoId = topicoId && topicoId !== 'null' && topicoId !== null;
   
@@ -9585,20 +9585,25 @@ async function confirmarConclusaoMeta(metaId) {
       tempo_real_minutos: tempo
     });
     
-    // 2. v84: Se checkbox marcado, concluir tópico na disciplina (nivel_dominio = 10)
-    if (deveConcluirTopico && dados.topicoId && dados.topicoId !== 'null' && currentUser?.id) {
+    // 2. v85: Se checkbox marcado, concluir tópico na disciplina (nivel_dominio = 10)
+    const planoIdAtual = dados.planoId || window.planoAtivo?.id || window.currentPlano?.id || null;
+    if (deveConcluirTopico && dados.topicoId && dados.topicoId !== 'null' && parseInt(dados.topicoId) > 0 && currentUser?.id) {
       try {
+        console.log(`🔄 v85: Concluindo tópico ID=${dados.topicoId} (${dados.topicoNome}) para user ${currentUser.id}, plano ${planoIdAtual}`);
         await axios.post('/api/user-topicos/progresso', {
           user_id: currentUser.id,
-          topico_id: dados.topicoId,
+          topico_id: parseInt(dados.topicoId),
           vezes_estudado: 1,
-          nivel_dominio: 10  // 10 = concluído (mesmo comportamento de marcarTopicoConcluido)
+          nivel_dominio: 10,  // 10 = concluído (mesmo comportamento de marcarTopicoConcluido)
+          plano_id: planoIdAtual ? parseInt(planoIdAtual) : undefined
         });
-        console.log(`✅ v84: Tópico ${dados.topicoId} (${dados.topicoNome}) marcado como concluído na disciplina`);
+        console.log(`✅ v85: Tópico ${dados.topicoId} (${dados.topicoNome}) marcado como concluído na disciplina (plano: ${planoIdAtual})`);
       } catch (errTopico) {
-        console.error('Erro ao marcar tópico como concluído:', errTopico);
+        console.error('❌ Erro ao marcar tópico como concluído:', errTopico);
         // Não bloquear — a meta já foi concluída
       }
+    } else {
+      console.log(`ℹ️ v85: Tópico não concluído - checkbox=${deveConcluirTopico}, topicoId=${dados.topicoId}, userId=${currentUser?.id}`);
     }
     
     fecharModalConcluir();
@@ -25510,7 +25515,7 @@ function renderCalendarioSemanal() {
                             <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Upload</span>
                           </button>
                           ${!meta.concluida ? `
-                            <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${disciplinaNomeEscaped}', '${topicoNomeEscaped}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'})" class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 transition touch-manipulation group" title="Concluir">
+                            <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${disciplinaNomeEscaped}', '${topicoNomeEscaped}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 transition touch-manipulation group" title="Concluir">
                               <i class="fas fa-check text-sm text-emerald-600"></i>
                               <span class="text-[9px] mt-0.5 text-emerald-600">OK</span>
                             </button>
