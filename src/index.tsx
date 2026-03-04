@@ -11864,9 +11864,9 @@ app.post('/api/interviews', async (c) => {
     if (data.disciplinasCustom && data.disciplinasCustom.length > 0) {
       console.log(`📚 v81 BATCH: Processando ${data.disciplinasCustom.length} disciplinas personalizadas/pré-definidas...`)
       
-      // Buscar todas em batch (primeiro por nome+area exato)
+      // ✅ v86: Buscar por NOME apenas (tabela disciplinas tem UNIQUE(nome), ignorar area)
       const batchBuscaCustom = data.disciplinasCustom.map((disc: any) =>
-        DB.prepare('SELECT id FROM disciplinas WHERE nome = ? AND area = ?').bind(disc.nome, disc.area)
+        DB.prepare('SELECT id, nome, area FROM disciplinas WHERE nome = ?').bind(disc.nome)
       )
       const resBuscaCustom = await DB.batch(batchBuscaCustom)
       
@@ -11884,18 +11884,44 @@ app.post('/api/interviews', async (c) => {
         }
       })
       
-      // Criar novas em batch
+      // ✅ v86: Criar novas em batch usando INSERT OR IGNORE para evitar UNIQUE constraint error
       if (discParaCriarCustom.length > 0) {
+        // Tentar criar as que não existem, com INSERT OR IGNORE para segurança
         const batchCriarCustom = discParaCriarCustom.map((disc: any) =>
-          DB.prepare('INSERT INTO disciplinas (nome, area, descricao) VALUES (?, ?, ?)')
+          DB.prepare('INSERT OR IGNORE INTO disciplinas (nome, area, descricao) VALUES (?, ?, ?)')
             .bind(disc.nome, disc.area, disc._is_predefined ? 'Disciplina pré-definida da área ' + disc.area : 'Disciplina personalizada criada pelo usuário')
         )
         const resCriarCustom = await DB.batch(batchCriarCustom)
+        
+        // ✅ v86: Para cada disciplina, verificar se foi criada ou se INSERT OR IGNORE ignorou
+        // Se last_row_id é 0, significa que UNIQUE constraint impediu - buscar ID existente
+        const discPrecisaBuscarId: { idx: number, nome: string }[] = []
         resCriarCustom.forEach((r: any, i: number) => {
           const idx = discParaCriarIndices[i]
-          data.disciplinasCustom[idx].disciplina_id = Number(r.meta?.last_row_id)
-          console.log(`✅ Disciplina "${data.disciplinasCustom[idx].nome}" criada com ID ${r.meta?.last_row_id} (type: ${typeof r.meta?.last_row_id})`)
+          const lastId = Number(r.meta?.last_row_id)
+          if (lastId > 0) {
+            data.disciplinasCustom[idx].disciplina_id = lastId
+            console.log(`✅ Disciplina "${data.disciplinasCustom[idx].nome}" criada com ID ${lastId}`)
+          } else {
+            // INSERT OR IGNORE ignorou — buscar ID existente
+            discPrecisaBuscarId.push({ idx, nome: data.disciplinasCustom[idx].nome })
+          }
         })
+        
+        // Buscar IDs das disciplinas que já existiam (ignoradas pelo INSERT OR IGNORE)
+        if (discPrecisaBuscarId.length > 0) {
+          const batchBuscaFallback = discPrecisaBuscarId.map(item =>
+            DB.prepare('SELECT id FROM disciplinas WHERE nome = ?').bind(item.nome)
+          )
+          const resBuscaFallback = await DB.batch(batchBuscaFallback)
+          resBuscaFallback.forEach((r: any, i: number) => {
+            const rows = r.results || []
+            if (rows.length > 0) {
+              data.disciplinasCustom[discPrecisaBuscarId[i].idx].disciplina_id = Number(rows[0].id)
+              console.log(`ℹ️ Disciplina "${discPrecisaBuscarId[i].nome}" já existia (ID ${rows[0].id}), usando existente`)
+            }
+          })
+        }
       }
       
       // ✅ v81: Criar tópicos para disciplinas pré-definidas que têm tópicos

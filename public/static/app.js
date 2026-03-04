@@ -6761,10 +6761,6 @@ async function renderEntrevistaStep3() {
           'Sistemas de amortizacao (SAC, Price)', 'Valor presente e valor futuro',
           'Series de pagamentos'
         ]},
-        { nome: 'Matematica e Raciocinio Logico', topicos: [
-          'Porcentagem', 'Regra de tres', 'Analise combinatoria',
-          'Probabilidade', 'Logica proposicional', 'Sequencias e padroes'
-        ]},
         { nome: 'Mercado Financeiro', topicos: [
           'SELIC', 'CDI', 'Inflacao (IPCA)', 'Titulos publicos',
           'Derivativos (nocoes)', 'Risco x retorno'
