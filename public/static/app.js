@@ -9462,22 +9462,50 @@ function cancelarConclusao(metaId) {
 }
 
 // Marcar meta como concluída rapidamente (do calendário semanal)
-async function marcarMetaConcluida(metaId) {
+// v84: Agora recebe info da disciplina/tópico para exibir no modal e permitir concluir tópico
+async function marcarMetaConcluida(metaId, disciplinaNome, topicoNome, topicoId, disciplinaId) {
   // Mostrar modal para confirmar e informar tempo
   const modal = document.createElement('div');
   modal.id = 'modal-concluir-meta';
   modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
+  
+  // Guardar dados para uso na confirmação
+  window._metaConcluirDados = { metaId, disciplinaNome, topicoNome, topicoId, disciplinaId };
+  
+  const temTopicoId = topicoId && topicoId !== 'null' && topicoId !== null;
+  
   modal.innerHTML = `
     <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
       <div class="text-center mb-4">
         <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
           <i class="fas fa-check-circle text-emerald-500 text-3xl"></i>
         </div>
-        <h3 class="text-lg font-bold text-gray-800">Concluir Meta</h3>
-        <p class="text-sm text-gray-500">Quanto tempo você estudou?</p>
+        <h3 class="text-lg font-bold text-gray-800">Concluir Estudo</h3>
       </div>
       
+      <!-- Info da Disciplina e Tópico -->
+      <div class="bg-gray-50 rounded-xl p-3 mb-4 border border-gray-100">
+        <div class="flex items-start gap-2 mb-1">
+          <i class="fas fa-book text-[#122D6A] text-xs mt-0.5"></i>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs text-gray-500 leading-none">Disciplina</p>
+            <p class="text-sm font-semibold text-gray-800 truncate">${disciplinaNome || 'Não informada'}</p>
+          </div>
+        </div>
+        ${topicoNome ? `
+        <div class="flex items-start gap-2">
+          <i class="fas fa-bookmark text-[#2A4A9F] text-xs mt-0.5"></i>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs text-gray-500 leading-none">Tópico</p>
+            <p class="text-sm font-medium text-gray-700 truncate">${topicoNome}</p>
+          </div>
+        </div>
+        ` : ''}
+      </div>
+      
+      <!-- Tempo de estudo -->
       <div class="mb-4">
+        <p class="text-sm text-gray-600 text-center mb-2 font-medium">Quanto tempo você estudou?</p>
         <div class="flex items-center justify-center gap-2">
           <button onclick="setTempoRapido(15)" class="px-3 py-2 text-sm bg-gray-100 hover:bg-[#122D6A]/10 hover:text-blue-700 rounded-lg transition">15min</button>
           <button onclick="setTempoRapido(30)" class="px-3 py-2 text-sm bg-gray-100 hover:bg-[#122D6A]/10 hover:text-blue-700 rounded-lg transition">30min</button>
@@ -9491,6 +9519,20 @@ async function marcarMetaConcluida(metaId) {
           <p class="text-xs text-gray-400 text-center mt-1">minutos (máx. 240)</p>
         </div>
       </div>
+      
+      <!-- Checkbox: Concluir tópico na disciplina -->
+      ${temTopicoId ? `
+      <div class="mb-4 bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+        <label class="flex items-start gap-3 cursor-pointer select-none">
+          <input type="checkbox" id="concluir-topico-checkbox" checked
+            class="mt-0.5 w-5 h-5 accent-emerald-500 rounded cursor-pointer flex-shrink-0">
+          <div>
+            <span class="text-sm font-semibold text-emerald-800">Marcar tópico como concluído</span>
+            <p class="text-xs text-emerald-600 mt-0.5">Equivale a concluir o tópico em "Disciplinas", atualizando o progresso do edital automaticamente.</p>
+          </div>
+        </label>
+      </div>
+      ` : ''}
       
       <div class="flex gap-2">
         <button onclick="fecharModalConcluir()" class="flex-1 px-4 py-3 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition">
@@ -9531,22 +9573,49 @@ async function confirmarConclusaoMeta(metaId) {
     return;
   }
   
+  // v84: Verificar se deve concluir tópico na disciplina
+  const concluirTopicoCheckbox = document.getElementById('concluir-topico-checkbox');
+  const deveConcluirTopico = concluirTopicoCheckbox && concluirTopicoCheckbox.checked;
+  const dados = window._metaConcluirDados || {};
+  
   try {
+    // 1. Concluir a meta (registrar tempo de estudo)
     await axios.post('/api/metas/concluir', {
       meta_id: metaId,
       tempo_real_minutos: tempo
     });
     
+    // 2. v84: Se checkbox marcado, concluir tópico na disciplina (nivel_dominio = 10)
+    if (deveConcluirTopico && dados.topicoId && dados.topicoId !== 'null' && currentUser?.id) {
+      try {
+        await axios.post('/api/user-topicos/progresso', {
+          user_id: currentUser.id,
+          topico_id: dados.topicoId,
+          vezes_estudado: 1,
+          nivel_dominio: 10  // 10 = concluído (mesmo comportamento de marcarTopicoConcluido)
+        });
+        console.log(`✅ v84: Tópico ${dados.topicoId} (${dados.topicoNome}) marcado como concluído na disciplina`);
+      } catch (errTopico) {
+        console.error('Erro ao marcar tópico como concluído:', errTopico);
+        // Não bloquear — a meta já foi concluída
+      }
+    }
+    
     fecharModalConcluir();
+    window._metaConcluirDados = null;
     
     // Recarregar calendário semanal
     await carregarSemanaAtiva();
     
-    // ✅ NOVO: Atualizar estatísticas no header
+    // ✅ Atualizar estatísticas no header
     await atualizarEstatisticasHeader();
     
+    // ✅ Atualizar progresso do plano (barra de edital)
+    await atualizarProgressoPlanoUI();
+    
     // Mostrar feedback
-    showModal('✅ Meta concluída com sucesso!');
+    const msgExtra = deveConcluirTopico && dados.topicoId ? '\n📌 Tópico marcado como concluído!' : '';
+    showModal('✅ Meta concluída com sucesso!' + msgExtra);
   } catch (error) {
     console.error('Erro ao concluir meta:', error);
     showModal('❌ Erro ao salvar. Tente novamente.');
@@ -25441,7 +25510,7 @@ function renderCalendarioSemanal() {
                             <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Upload</span>
                           </button>
                           ${!meta.concluida ? `
-                            <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id})" class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 transition touch-manipulation group" title="Concluir">
+                            <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${disciplinaNomeEscaped}', '${topicoNomeEscaped}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'})" class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 transition touch-manipulation group" title="Concluir">
                               <i class="fas fa-check text-sm text-emerald-600"></i>
                               <span class="text-[9px] mt-0.5 text-emerald-600">OK</span>
                             </button>
