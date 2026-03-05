@@ -16618,35 +16618,41 @@ window.abrirMinhaAssinatura = async function() {
   const statusIcon = getStatusIcon(subscriptionDetails.status);
   const progressWidth = (planosInfo.total / planosInfo.limite) * 100;
   
+  // ✅ v88d: Variáveis de legibilidade do modal
+  const isDark = currentTheme === 'dark';
+  const _mBorder = isDark ? 'border-gray-700' : 'border-gray-200';
+  const _mText = isDark ? 'text-gray-100' : 'text-gray-900';
+  const _mTextSec = isDark ? 'text-gray-300' : 'text-gray-600';
+  
   let priceSection = '';
   if (subscriptionDetails.price > 0) {
-    priceSection = '<div class="text-center py-3 border-t ' + themes[currentTheme].border + '">' +
-      '<p class="text-gray-700 dark:text-gray-300 text-sm">Valor do plano</p>' +
-      '<p class="text-2xl font-bold text-gray-900 dark:text-gray-100">R$ ' + subscriptionDetails.price.toFixed(2).replace('.', ',') + '</p>' +
+    priceSection = '<div class="text-center py-3 border-t ' + _mBorder + '">' +
+      '<p class="text-sm font-medium ' + _mTextSec + '">Valor do plano</p>' +
+      '<p class="text-2xl font-bold ' + _mText + '">R$ ' + subscriptionDetails.price.toFixed(2).replace('.', ',') + '</p>' +
     '</div>';
   }
   
   let startDateSection = '';
   if (subscriptionDetails.startDate) {
-    startDateSection = '<div class="flex justify-between items-center py-2 border-b ' + themes[currentTheme].border + '">' +
-      '<span class="text-gray-700 dark:text-gray-300">Início do plano</span>' +
-      '<span class="font-medium text-gray-900 dark:text-gray-100">' + formatDate(subscriptionDetails.startDate) + '</span>' +
+    startDateSection = '<div class="flex justify-between items-center py-3 border-b ' + _mBorder + '">' +
+      '<span class="text-sm font-medium ' + _mTextSec + '">Início do plano</span>' +
+      '<span class="text-sm font-semibold ' + _mText + '">' + formatDate(subscriptionDetails.startDate) + '</span>' +
     '</div>';
   }
   
   let expiresSection = '';
   if (subscriptionDetails.expiresAt) {
-    const daysClass = subscriptionDetails.daysRemaining <= 7 ? 'text-red-600' : themes[currentTheme].text;
-    const daysValueClass = subscriptionDetails.daysRemaining <= 7 ? 'text-red-600' : 'text-emerald-600';
+    const daysClass = subscriptionDetails.daysRemaining <= 7 ? 'text-red-600' : _mText;
+    const daysValueClass = subscriptionDetails.daysRemaining <= 7 ? 'text-red-600 font-bold' : 'text-emerald-600 font-bold';
     const daysText = subscriptionDetails.daysRemaining === -1 ? '∞ Ilimitado' : subscriptionDetails.daysRemaining + ' dias';
     
-    expiresSection = '<div class="flex justify-between items-center py-2 border-b ' + themes[currentTheme].border + '">' +
-      '<span class="text-gray-700 dark:text-gray-300">Válido até</span>' +
-      '<span class="font-medium ' + daysClass + '">' + formatDate(subscriptionDetails.expiresAt) + '</span>' +
+    expiresSection = '<div class="flex justify-between items-center py-3 border-b ' + _mBorder + '">' +
+      '<span class="text-sm font-medium ' + _mTextSec + '">Válido até</span>' +
+      '<span class="text-sm font-semibold ' + daysClass + '">' + formatDate(subscriptionDetails.expiresAt) + '</span>' +
     '</div>' +
-    '<div class="flex justify-between items-center py-2 border-b ' + themes[currentTheme].border + '">' +
-      '<span class="text-gray-700 dark:text-gray-300">Dias restantes</span>' +
-      '<span class="font-bold ' + daysValueClass + '">' + daysText + '</span>' +
+    '<div class="flex justify-between items-center py-3 border-b ' + _mBorder + '">' +
+      '<span class="text-sm font-medium ' + _mTextSec + '">Dias restantes</span>' +
+      '<span class="' + daysValueClass + '">' + daysText + '</span>' +
     '</div>';
   }
   
@@ -16657,13 +16663,14 @@ window.abrirMinhaAssinatura = async function() {
   let paymentHistorySection = '';
   if (subscriptionDetails.paymentHistory && subscriptionDetails.paymentHistory.length > 0) {
     let historyItems = '';
+    const _histBg = isDark ? 'bg-gray-800' : 'bg-gray-50';
+    const _histMuted = isDark ? 'text-gray-400' : 'text-gray-500';
     subscriptionDetails.paymentHistory.forEach(function(p) {
-      // ✅ CORREÇÃO v11: Exibir paymentId e mais detalhes
-      const paymentIdText = p.paymentId ? '<p class="text-xs ' + themes[currentTheme].textMuted + '">ID: ' + p.paymentId.substring(0, 12) + '...</p>' : '';
-      historyItems += '<div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">' +
+      const paymentIdText = p.paymentId ? '<p class="text-xs ' + _histMuted + '">ID: ' + p.paymentId.substring(0, 12) + '...</p>' : '';
+      historyItems += '<div class="flex items-center justify-between p-3 rounded-lg ' + _histBg + '">' +
         '<div>' +
-          '<p class="font-medium ' + themes[currentTheme].text + '">' + p.plan + '</p>' +
-          '<p class="text-xs ' + themes[currentTheme].textMuted + '">' + formatDate(p.date) + '</p>' +
+          '<p class="font-medium ' + _mText + '">' + p.plan + '</p>' +
+          '<p class="text-xs ' + _histMuted + '">' + formatDate(p.date) + '</p>' +
           paymentIdText +
         '</div>' +
         '<div class="text-right">' +
@@ -16674,8 +16681,8 @@ window.abrirMinhaAssinatura = async function() {
     });
     
     paymentHistorySection = '<div class="mb-6">' +
-      '<h4 class="font-semibold ' + themes[currentTheme].text + ' mb-3">' +
-        '<i class="fas fa-history mr-2 text-gray-500"></i>Histórico de Pagamentos' +
+      '<h4 class="font-semibold ' + _mText + ' mb-3">' +
+        '<i class="fas fa-history mr-2 ' + _histMuted + '"></i>Histórico de Pagamentos' +
       '</h4>' +
       '<div class="space-y-2">' + historyItems + '</div>' +
     '</div>';
@@ -16780,31 +16787,40 @@ window.abrirMinhaAssinatura = async function() {
     '</div>';
   }
   
+  // ✅ v88d: Modal de assinatura com legibilidade garantida
+  const modalBg = isDark ? 'bg-gray-900' : 'bg-white';
+  const modalText = isDark ? 'text-gray-100' : 'text-gray-900';
+  const modalTextSec = isDark ? 'text-gray-300' : 'text-gray-600';
+  const modalTextMuted = isDark ? 'text-gray-400' : 'text-gray-500';
+  const modalBorder = isDark ? 'border-gray-700' : 'border-gray-200';
+  const modalCardBg = isDark ? 'bg-gray-800' : 'bg-gray-50';
+  const closeBtn = isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800';
+  
   const modal = document.createElement('div');
   modal.id = 'modal-assinatura';
   modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4';
-  modal.innerHTML = '<div class="' + themes[currentTheme].card + ' rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">' +
+  modal.innerHTML = '<div class="' + modalBg + ' rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">' +
     '<div class="flex items-center justify-between mb-6">' +
       '<div class="flex items-center gap-3">' +
         '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] flex items-center justify-center">' +
           '<i class="fas fa-credit-card text-white text-xl"></i>' +
         '</div>' +
         '<div>' +
-          '<h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Minha Assinatura</h3>' +
-          '<p class="text-gray-600 dark:text-gray-400 text-sm">Detalhes do seu plano</p>' +
+          '<h3 class="text-lg font-bold ' + modalText + '">Minha Assinatura</h3>' +
+          '<p class="' + modalTextSec + ' text-sm">Detalhes do seu plano</p>' +
         '</div>' +
       '</div>' +
-      '<button onclick="document.getElementById(\'modal-assinatura\').remove()" class="' + themes[currentTheme].textSecondary + ' hover:text-gray-600">' +
+      '<button onclick="document.getElementById(\'modal-assinatura\').remove()" class="' + closeBtn + '">' +
         '<i class="fas fa-times text-xl"></i>' +
       '</button>' +
     '</div>' +
-    '<div class="mb-6 p-4 rounded-xl border ' + themes[currentTheme].border + ' ' + themes[currentTheme].card + '">' +
+    '<div class="mb-6 p-4 rounded-xl border ' + modalBorder + ' ' + modalCardBg + '">' +
       '<div class="flex items-center gap-4 mb-4">' +
         '<div class="w-16 h-16 rounded-full ' + statusColor + ' flex items-center justify-center">' +
           '<i class="' + statusIcon + ' text-2xl"></i>' +
         '</div>' +
         '<div class="flex-1">' +
-          '<h4 class="text-xl font-bold ' + themes[currentTheme].text + '">' + subscriptionDetails.currentPlan + '</h4>' +
+          '<h4 class="text-xl font-bold ' + modalText + '">' + subscriptionDetails.currentPlan + '</h4>' +
           '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ' + statusColor + '">' +
             '<i class="' + statusIcon + ' text-xs"></i>' +
             subscriptionDetails.statusLabel +
@@ -16813,32 +16829,32 @@ window.abrirMinhaAssinatura = async function() {
       '</div>' +
       priceSection +
     '</div>' +
-    '<div class="space-y-3 mb-6">' +
-      '<div class="flex justify-between items-center py-2 border-b ' + themes[currentTheme].border + '">' +
-        '<span class="text-gray-700 dark:text-gray-300">Membro desde</span>' +
-        '<span class="font-medium text-gray-900 dark:text-gray-100">' + formatDate(subscriptionDetails.memberSince) + '</span>' +
+    '<div class="space-y-0 mb-6">' +
+      '<div class="flex justify-between items-center py-3 border-b ' + modalBorder + '">' +
+        '<span class="text-sm font-medium ' + modalTextSec + '">Membro desde</span>' +
+        '<span class="text-sm font-semibold ' + modalText + '">' + formatDate(subscriptionDetails.memberSince) + '</span>' +
       '</div>' +
       startDateSection +
       expiresSection +
     '</div>' +
-    '<div class="mb-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700">' +
+    '<div class="mb-6 p-4 rounded-xl ' + (isDark ? 'bg-blue-900/40 border-blue-700' : 'bg-blue-50 border-blue-200') + ' border">' +
       '<div class="flex items-center gap-2 mb-2">' +
-        '<i class="fas fa-book-open text-[#122D6A] dark:text-blue-400"></i>' +
-        '<span class="font-semibold text-[#122D6A] dark:text-blue-300">Planos de Estudo</span>' +
+        '<i class="fas fa-book-open ' + (isDark ? 'text-blue-400' : 'text-[#122D6A]') + '"></i>' +
+        '<span class="font-semibold ' + (isDark ? 'text-blue-300' : 'text-[#122D6A]') + '">Planos de Estudo</span>' +
       '</div>' +
       '<div class="flex items-center justify-between">' +
-        '<span class="text-gray-700 dark:text-gray-300">Utilizados</span>' +
-        '<span class="font-bold text-gray-900 dark:text-gray-100">' + planosInfo.total + ' de ' + planosInfo.limite + '</span>' +
+        '<span class="text-sm ' + modalTextSec + '">Utilizados</span>' +
+        '<span class="font-bold ' + modalText + '">' + planosInfo.total + ' de ' + planosInfo.limite + '</span>' +
       '</div>' +
-      '<div class="w-full bg-gray-200 rounded-full h-2 mt-2 dark:bg-gray-700">' +
+      '<div class="w-full ' + (isDark ? 'bg-gray-700' : 'bg-gray-200') + ' rounded-full h-2 mt-2">' +
         '<div class="bg-[#122D6A] h-2 rounded-full transition-all" style="width: ' + progressWidth + '%"></div>' +
       '</div>' +
-      '<p class="text-xs text-gray-600 dark:text-gray-400 mt-2">' + planosText + '</p>' +
+      '<p class="text-xs ' + modalTextMuted + ' mt-2">' + planosText + '</p>' +
     '</div>' +
     paymentHistorySection +
     upgradeSection +
-    '<div class="mt-6 pt-4 border-t ' + themes[currentTheme].border + ' text-center">' +
-      '<p class="text-xs text-gray-600 dark:text-gray-400">Dúvidas sobre sua assinatura? Entre em contato pelo suporte.</p>' +
+    '<div class="mt-6 pt-4 border-t ' + modalBorder + ' text-center">' +
+      '<p class="text-xs ' + modalTextMuted + '">Dúvidas sobre sua assinatura? Entre em contato pelo suporte.</p>' +
     '</div>' +
   '</div>';
   
@@ -25470,8 +25486,8 @@ function renderCalendarioSemanal() {
         </div>
       </div>
 
-      <!-- ✅ v88b: Tabs dos Dias da Semana -->
-      <div class="flex items-center border-b ${themes[currentTheme].border} bg-gray-50 dark:bg-gray-800/50 overflow-x-auto" id="dias-tabs-container">
+      <!-- ✅ v88d: Tabs dos Dias da Semana - Fundo branco, seleção amarela -->
+      <div class="flex items-center border-b ${themes[currentTheme].border} bg-white dark:bg-gray-900 overflow-x-auto" id="dias-tabs-container">
         ${[1, 2, 3, 4, 5, 6, 7].map(diaSemana => {
           const metasDoDia = metas.filter(m => m.dia_semana === diaSemana)
           const metasConcluidasDia = metasDoDia.filter(m => m.concluida).length
@@ -25484,14 +25500,16 @@ function renderCalendarioSemanal() {
           const progressColor = percentualDia === 100 ? 'bg-emerald-500' : percentualDia >= 50 ? 'bg-[#122D6A]' : percentualDia > 0 ? 'bg-amber-400' : 'bg-gray-300'
           const isSelected = isHoje
           
+          const selectedClasses = 'bg-amber-50 dark:bg-amber-900/30 text-[#122D6A] dark:text-amber-300 font-bold border-b-2 border-[#122D6A] dark:border-amber-400'
+          const normalClasses = 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-[#122D6A]'
+          
           return '<button onclick="selecionarDiaSemana(' + diaSemana + ')" ' +
             'id="tab-dia-' + diaSemana + '" ' +
-            'class="flex-1 min-w-[52px] flex flex-col items-center py-2 px-1 sm:px-2 transition-all relative ' +
-            (isSelected ? 'text-[#122D6A] font-bold' : (themes[currentTheme].textSecondary || 'text-gray-500') + ' hover:text-[#122D6A]') + '">' +
+            'class="flex-1 min-w-[52px] flex flex-col items-center py-2.5 px-1 sm:px-2 transition-all relative ' +
+            (isSelected ? selectedClasses : normalClasses) + '">' +
             '<span class="text-xs font-semibold">' + diasSemanaAbrev[diaSemana - 1] + '</span>' +
-            (isHoje ? '<span class="text-[7px] font-bold text-[#122D6A] leading-none mt-0.5">HOJE</span>' : '<span class="text-[8px] leading-none mt-0.5">' + metasConcluidasDia + '/' + metasDoDia.length + '</span>') +
-            '<div class="w-full mt-1 bg-gray-200 rounded-full h-1"><div class="' + progressColor + ' h-1 rounded-full" style="width: ' + percentualDia + '%"></div></div>' +
-            (isSelected ? '<div class="absolute bottom-0 left-1 right-1 h-0.5 bg-[#122D6A] rounded-t"></div>' : '') +
+            (isHoje ? '<span class="text-[7px] font-bold leading-none mt-0.5">' + (isSelected ? 'HOJE' : metasConcluidasDia + '/' + metasDoDia.length) + '</span>' : '<span class="text-[8px] leading-none mt-0.5">' + metasConcluidasDia + '/' + metasDoDia.length + '</span>') +
+            '<div class="w-full mt-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1"><div class="' + progressColor + ' h-1 rounded-full" style="width: ' + percentualDia + '%"></div></div>' +
           '</button>'
         }).join('')}
       </div>
@@ -25622,17 +25640,18 @@ function renderCalendarioSemanal() {
 
 // ✅ v88b: Selecionar dia da semana (tabs)
 window.selecionarDiaSemana = function(diaSemana) {
-  // Esconder todos os painéis de conteúdo
+  // Classes para tabs
+  const selectedClasses = ['bg-amber-50', 'dark:bg-amber-900/30', 'text-[#122D6A]', 'dark:text-amber-300', 'font-bold', 'border-b-2', 'border-[#122D6A]', 'dark:border-amber-400'];
+  const normalClasses = ['bg-white', 'dark:bg-gray-900', 'text-gray-500', 'dark:text-gray-400', 'hover:bg-gray-50', 'dark:hover:bg-gray-800', 'hover:text-[#122D6A]'];
+  
+  // Esconder todos os painéis e resetar tabs
   for (let d = 1; d <= 7; d++) {
     const panel = document.getElementById('metas-dia-' + d);
     const tab = document.getElementById('tab-dia-' + d);
     if (panel) panel.classList.add('hidden');
     if (tab) {
-      tab.classList.remove('text-[#122D6A]', 'font-bold');
-      tab.classList.add(currentTheme === 'dark' ? 'text-gray-400' : 'text-gray-500');
-      // Remover indicador ativo
-      const indicator = tab.querySelector('.absolute');
-      if (indicator) indicator.remove();
+      selectedClasses.forEach(c => tab.classList.remove(c));
+      normalClasses.forEach(c => tab.classList.add(c));
     }
   }
   
@@ -25641,12 +25660,8 @@ window.selecionarDiaSemana = function(diaSemana) {
   const tab = document.getElementById('tab-dia-' + diaSemana);
   if (panel) panel.classList.remove('hidden');
   if (tab) {
-    tab.classList.add('text-[#122D6A]', 'font-bold');
-    tab.classList.remove(currentTheme === 'dark' ? 'text-gray-400' : 'text-gray-500');
-    // Adicionar indicador ativo
-    const indicator = document.createElement('div');
-    indicator.className = 'absolute bottom-0 left-1 right-1 h-0.5 bg-[#122D6A] rounded-t';
-    tab.appendChild(indicator);
+    normalClasses.forEach(c => tab.classList.remove(c));
+    selectedClasses.forEach(c => tab.classList.add(c));
   }
 }
 
