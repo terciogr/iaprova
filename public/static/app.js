@@ -21824,20 +21824,25 @@ async function atualizarIconesConteudoMeta(metaId) {
         if (temConteudo) {
           // ✅ v64: Adicionar badge verde no canto superior direito
           const badge = document.createElement('div');
-          badge.className = 'conteudo-badge absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-sm z-10';
+          badge.className = 'conteudo-badge absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 shadow-sm z-10 ' + (currentTheme === 'light' ? 'border-white' : 'border-gray-800');
           badge.title = 'Conteúdo disponível';
           btn.style.position = 'relative';
           btn.appendChild(badge);
           
-          // Também mudar background
-          btn.classList.remove('bg-gray-100');
-          btn.classList.add('bg-emerald-50', 'ring-1', 'ring-emerald-200');
+          // Também mudar background (respeitando tema)
+          btn.classList.remove('bg-gray-100', 'bg-emerald-50', 'bg-emerald-900/30', 'ring-1', 'ring-emerald-200', 'ring-emerald-700');
+          if (currentTheme === 'light') {
+            btn.classList.add('bg-emerald-50', 'ring-1', 'ring-emerald-200');
+          } else {
+            btn.classList.add('bg-emerald-900/30', 'ring-1', 'ring-emerald-700');
+            btn.style.color = '#6ee7b7';
+          }
           btn.setAttribute('data-conteudo-id', data.tipos_gerados[tipo]);
           console.log(`✅ v64: Ícone ${tipo} marcado como disponível para meta ${metaId}`);
         } else {
           // Sem conteúdo - estado normal
-          btn.classList.remove('bg-emerald-50', 'ring-1', 'ring-emerald-200');
-          btn.classList.add('bg-gray-100');
+          btn.classList.remove('bg-emerald-50', 'bg-emerald-900/30', 'ring-1', 'ring-emerald-200', 'ring-emerald-700');
+          btn.style.color = '';
         }
       }
     });
@@ -21858,14 +21863,19 @@ function mostrarIconeConteudo(metaId, tipo, conteudoId) {
     
     // Adicionar badge verde
     const badge = document.createElement('div');
-    badge.className = 'conteudo-badge absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-sm z-10';
+    badge.className = 'conteudo-badge absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 shadow-sm z-10 ' + (currentTheme === 'light' ? 'border-white' : 'border-gray-800');
     badge.title = 'Conteúdo disponível';
     btn.style.position = 'relative';
     btn.appendChild(badge);
     
-    // Mudar background
-    btn.classList.remove('bg-gray-100');
-    btn.classList.add('bg-emerald-50', 'ring-1', 'ring-emerald-200');
+    // Mudar background (respeitando tema)
+    btn.classList.remove('bg-gray-100', 'bg-emerald-50', 'bg-emerald-900/30', 'ring-1', 'ring-emerald-200', 'ring-emerald-700');
+    if (currentTheme === 'light') {
+      btn.classList.add('bg-emerald-50', 'ring-1', 'ring-emerald-200');
+    } else {
+      btn.classList.add('bg-emerald-900/30', 'ring-1', 'ring-emerald-700');
+      btn.style.color = '#6ee7b7';
+    }
     btn.setAttribute('data-conteudo-id', conteudoId);
     btn.setAttribute('data-source', 'materiais_salvos');
     console.log(`✅ v64: Ícone ${tipo} marcado para meta ${metaId}, conteudo_id=${conteudoId}`);
@@ -23225,11 +23235,13 @@ async function carregarPlanos() {
     }
     
     planosList.innerHTML = planos.map(plano => `
-      <div class="${plano.ativo ? 'bg-gradient-to-r from-[#E8EDF5] to-blue-100 border-blue-600' : themes[currentTheme].card + ' ${themes[currentTheme].border}'} border-2 rounded-lg p-4 transition hover:shadow-md">
+      <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-lg p-4 transition hover:shadow-md">
         <div class="flex flex-col sm:flex-row items-start justify-between gap-3">
           <div class="flex-1 min-w-0 w-full">
             <div class="flex items-center gap-2 mb-2 flex-wrap">
-              ${plano.ativo ? '<span class="bg-[#0D1F4D] text-white text-xs px-2 py-1 rounded-full font-semibold">ATIVO</span>' : ''}
+              ${plano.ativo 
+                ? '<span class="bg-emerald-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide">Ativo</span>' 
+                : '<span class="bg-gray-400 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide">Inativo</span>'}
               <h3 class="font-bold ${themes[currentTheme].text} text-base sm:text-lg" id="plano-nome-${plano.id}">
                 ${plano.nome || 'Sem nome'}
               </h3>

@@ -15058,6 +15058,31 @@ app.post('/api/metas/sincronizar-dia/:user_id', async (c) => {
   }
 })
 
+// 1b. Listar todas as semanas de um usuário (para histórico)
+app.get('/api/metas/semanas/:user_id', async (c) => {
+  const { DB } = c.env
+  const user_id = parseInt(c.req.param('user_id'))
+
+  try {
+    const { results: semanas } = await DB.prepare(`
+      SELECT 
+        se.id, se.numero_semana, se.data_inicio, se.data_fim, se.status,
+        COUNT(ms.id) as metas_totais,
+        SUM(CASE WHEN ms.concluida = 1 THEN 1 ELSE 0 END) as metas_concluidas
+      FROM semanas_estudo se
+      LEFT JOIN metas_semana ms ON ms.semana_id = se.id
+      WHERE se.user_id = ?
+      GROUP BY se.id
+      ORDER BY se.data_inicio DESC
+    `).bind(user_id).all()
+
+    return c.json(semanas || [])
+  } catch (error) {
+    console.error('❌ Erro ao listar semanas:', error)
+    return c.json([], 200)
+  }
+})
+
 // 2. Buscar metas de uma semana
 app.get('/api/metas/semana/:semana_id', async (c) => {
   const { DB } = c.env
