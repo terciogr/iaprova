@@ -8953,7 +8953,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
         </div>
         
         <!-- COMMAND CENTER - Painel Expansível Premium -->
-        <div id="command-panel" class="hidden border-t border-white/20 bg-gradient-to-r from-[#0A1839] to-[#122D6A]" style="overflow: hidden;">
+        <div id="command-panel" class="hidden border-t ${currentTheme === 'light' ? 'border-gray-200 bg-white shadow-lg' : 'border-white/20 bg-gray-900'}" style="overflow: hidden;">
           <div class="max-w-7xl mx-auto px-3 sm:px-4 py-3">
             <!-- Layout Responsivo do Painel -->
             <div class="space-y-3">
@@ -9086,7 +9086,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               </div>
               
               <!-- Footer do Painel - Info Simplificada -->
-              <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-white/20">
+              <div class="flex flex-wrap items-center gap-2 pt-2 border-t ${currentTheme === 'light' ? 'border-gray-200' : 'border-gray-700'}">
                 <div class="flex items-center gap-1.5 px-2 py-1 rounded-full ${currentTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800/50'}">
                   <i class="fas fa-book text-[#122D6A] text-[9px]"></i>
                   <span class="text-[9px] ${themes[currentTheme].text}">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0} disc.</span>
@@ -25435,7 +25435,6 @@ function renderCalendarioSemanal() {
     <div class="${themes[currentTheme].card} rounded-xl shadow-sm border ${themes[currentTheme].border} overflow-hidden">
       <!-- Header da Semana -->
       <div class="p-2 sm:p-3 border-b ${themes[currentTheme].border}">
-        <!-- Layout Mobile: empilhado / Desktop: lado a lado -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
           <!-- Info da Semana -->
           <div class="flex items-center gap-2 sm:gap-3">
@@ -25457,12 +25456,6 @@ function renderCalendarioSemanal() {
           </div>
           <!-- Botões de Ação -->
           <div class="flex items-center gap-1 sm:gap-2 justify-end">
-            <button onclick="toggleTodosDias(false)" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Recolher todos">
-              <i class="fas fa-compress-alt text-gray-600 text-xs sm:text-sm"></i>
-            </button>
-            <button onclick="toggleTodosDias(true)" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Expandir todos">
-              <i class="fas fa-expand-alt text-gray-600 text-xs sm:text-sm"></i>
-            </button>
             <button onclick="abrirSemanasAnteriores()" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Semanas anteriores">
               <i class="fas fa-history text-gray-600 text-xs sm:text-sm"></i>
             </button>
@@ -25477,156 +25470,142 @@ function renderCalendarioSemanal() {
         </div>
       </div>
 
-      <!-- Calendário Semanal com Acordeão -->
-      <div>
+      <!-- ✅ v88b: Tabs dos Dias da Semana -->
+      <div class="flex items-center border-b ${themes[currentTheme].border} bg-gray-50 dark:bg-gray-800/50 overflow-x-auto" id="dias-tabs-container">
+        ${[1, 2, 3, 4, 5, 6, 7].map(diaSemana => {
+          const metasDoDia = metas.filter(m => m.dia_semana === diaSemana)
+          const metasConcluidasDia = metasDoDia.filter(m => m.concluida).length
+          const percentualDia = metasDoDia.length > 0 ? Math.round((metasConcluidasDia / metasDoDia.length) * 100) : 0
+          
+          const hoje = new Date()
+          const diaSemanaAtual = hoje.getDay() === 0 ? 7 : hoje.getDay()
+          const isHoje = diaSemana === diaSemanaAtual
+          
+          const progressColor = percentualDia === 100 ? 'bg-emerald-500' : percentualDia >= 50 ? 'bg-[#122D6A]' : percentualDia > 0 ? 'bg-amber-400' : 'bg-gray-300'
+          const isSelected = isHoje
+          
+          return '<button onclick="selecionarDiaSemana(' + diaSemana + ')" ' +
+            'id="tab-dia-' + diaSemana + '" ' +
+            'class="flex-1 min-w-[52px] flex flex-col items-center py-2 px-1 sm:px-2 transition-all relative ' +
+            (isSelected ? 'text-[#122D6A] font-bold' : (themes[currentTheme].textSecondary || 'text-gray-500') + ' hover:text-[#122D6A]') + '">' +
+            '<span class="text-xs font-semibold">' + diasSemanaAbrev[diaSemana - 1] + '</span>' +
+            (isHoje ? '<span class="text-[7px] font-bold text-[#122D6A] leading-none mt-0.5">HOJE</span>' : '<span class="text-[8px] leading-none mt-0.5">' + metasConcluidasDia + '/' + metasDoDia.length + '</span>') +
+            '<div class="w-full mt-1 bg-gray-200 rounded-full h-1"><div class="' + progressColor + ' h-1 rounded-full" style="width: ' + percentualDia + '%"></div></div>' +
+            (isSelected ? '<div class="absolute bottom-0 left-1 right-1 h-0.5 bg-[#122D6A] rounded-t"></div>' : '') +
+          '</button>'
+        }).join('')}
+      </div>
+
+      <!-- Conteúdo do Dia Selecionado -->
+      <div id="conteudo-dia-selecionado">
       ${[1, 2, 3, 4, 5, 6, 7].map(diaSemana => {
         const metasDoDia = metas.filter(m => m.dia_semana === diaSemana)
-        const metasConcluidasDia = metasDoDia.filter(m => m.concluida).length
-        const percentualDia = metasDoDia.length > 0 ? Math.round((metasConcluidasDia / metasDoDia.length) * 100) : 0
         
         const hoje = new Date()
         const diaSemanaAtual = hoje.getDay() === 0 ? 7 : hoje.getDay()
         const isHoje = diaSemana === diaSemanaAtual
-        
-        // Por padrão, só o dia de hoje fica aberto
         const isAberto = isHoje
         
-        const progressColor = percentualDia === 100 ? 'bg-emerald-500' : percentualDia >= 50 ? 'bg-[#122D6A]' : percentualDia > 0 ? 'bg-amber-400' : 'bg-gray-200'
-        
         return `
-          <div class="${isHoje ? 'bg-blue-50/50 border-l-4 border-l-[#122D6A]' : ''} ${diaSemana < 7 ? 'border-b ' + themes[currentTheme].border : ''}" data-dia-semana="${diaSemana}">
-            <!-- Header Clicável do Acordeão -->
-            <div class="flex items-center justify-between p-2.5 cursor-pointer hover:bg-gray-50/50 transition-colors select-none" 
-                 onclick="toggleDiaSemana(${diaSemana})">
-              <div class="flex items-center gap-2">
-                <span class="w-8 h-8 rounded-lg ${isHoje ? 'bg-[#122D6A] text-white' : 'bg-gray-100 text-gray-600'} flex items-center justify-center text-xs font-bold">
-                  ${diasSemanaAbrev[diaSemana - 1]}
-                </span>
-                ${isHoje ? '<span class="text-[10px] font-semibold text-[#122D6A] bg-blue-100 px-1.5 py-0.5 rounded">HOJE</span>' : ''}
-              </div>
-              <div class="flex items-center gap-2">
-                <div class="w-16 bg-gray-200 rounded-full h-1.5">
-                  <div class="${progressColor} h-1.5 rounded-full" style="width: ${percentualDia}%"></div>
-                </div>
-                <span class="text-xs font-medium ${themes[currentTheme].textSecondary}">${metasConcluidasDia}/${metasDoDia.length}</span>
-                <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform duration-200 ${isAberto ? 'rotate-180' : ''}" id="chevron-dia-${diaSemana}"></i>
-              </div>
-            </div>
-            
-            <!-- Conteúdo Colapsável das Metas -->
-            <div id="metas-dia-${diaSemana}" class="${isAberto ? '' : 'hidden'} px-2.5 pb-2.5">
-            ${metasDoDia.length > 0 ? `
-              <div class="grid gap-2 ${
-                metasDoDia.length === 1 ? 'grid-cols-1 max-w-xs' :
-                metasDoDia.length === 2 ? 'grid-cols-2' :
-                metasDoDia.length === 3 ? 'grid-cols-3' :
-                metasDoDia.length === 4 ? 'grid-cols-2 sm:grid-cols-4' :
-                metasDoDia.length === 5 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' :
-                metasDoDia.length === 6 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6' :
-                'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6'
-              }">
-                ${metasDoDia.map(meta => {
-                  const tipoIcon = meta.tipo === 'teoria' ? 'fa-book' : meta.tipo === 'exercicios' ? 'fa-pencil-alt' : 'fa-sync'
-                  const tipoBg = meta.tipo === 'teoria' ? 'text-[#122D6A]' : meta.tipo === 'exercicios' ? 'text-[#2A4A9F]' : 'text-amber-600'
-                  
-                  // ✅ v68: Extrair topico_nome e topico_id de forma robusta
-                  let topicoNome = meta.topico_nome || '';
-                  let topicoId = meta.topico_id || null;
-                  
-                  // Se não tem topico_nome direto, tentar extrair de topicos_sugeridos
-                  if (!topicoNome && meta.topicos_sugeridos) {
-                    const topicos = Array.isArray(meta.topicos_sugeridos) ? meta.topicos_sugeridos : [];
-                    if (topicos.length > 0) {
-                      topicoNome = topicos[0].nome || '';
-                      topicoId = topicos[0].id || null;
-                    }
+          <div id="metas-dia-${diaSemana}" class="${isAberto ? '' : 'hidden'} p-2.5">
+          ${metasDoDia.length > 0 ? `
+            <div class="grid gap-2 ${
+              metasDoDia.length === 1 ? 'grid-cols-1 max-w-xs' :
+              metasDoDia.length === 2 ? 'grid-cols-2' :
+              metasDoDia.length === 3 ? 'grid-cols-3' :
+              metasDoDia.length === 4 ? 'grid-cols-2 sm:grid-cols-4' :
+              metasDoDia.length === 5 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' :
+              metasDoDia.length === 6 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6' :
+              'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6'
+            }">
+              ${metasDoDia.map(meta => {
+                const tipoIcon = meta.tipo === 'teoria' ? 'fa-book' : meta.tipo === 'exercicios' ? 'fa-pencil-alt' : 'fa-sync'
+                const tipoBg = meta.tipo === 'teoria' ? 'text-[#122D6A]' : meta.tipo === 'exercicios' ? 'text-[#2A4A9F]' : 'text-amber-600'
+                
+                let topicoNome = meta.topico_nome || '';
+                let topicoId = meta.topico_id || null;
+                
+                if (!topicoNome && meta.topicos_sugeridos) {
+                  const topicos = Array.isArray(meta.topicos_sugeridos) ? meta.topicos_sugeridos : [];
+                  if (topicos.length > 0) {
+                    topicoNome = topicos[0].nome || '';
+                    topicoId = topicos[0].id || null;
                   }
-                  
-                  // Escapar aspas para uso em strings
-                  const topicoNomeEscaped = (topicoNome || '').replace(/'/g, "\\'");
-                  const disciplinaNomeEscaped = (meta.disciplina_nome || '').replace(/'/g, "\\'");
-                  
-                  return `
-                    <div class="meta-card group flex flex-col p-2 rounded-lg border transition-all cursor-pointer ${meta.concluida 
-                      ? 'bg-emerald-50 border-emerald-200' 
-                      : 'bg-white border-gray-200 hover:border-[#122D6A] hover:shadow-sm'}">
+                }
+                
+                const topicoNomeEscaped = (topicoNome || '').replace(/'/g, "\\'");
+                const disciplinaNomeEscaped = (meta.disciplina_nome || '').replace(/'/g, "\\'");
+                
+                return `
+                  <div class="meta-card group flex flex-col p-2 rounded-lg border transition-all cursor-pointer ${meta.concluida 
+                    ? 'bg-emerald-50 border-emerald-200' 
+                    : 'bg-white border-gray-200 hover:border-[#122D6A] hover:shadow-sm'}">
+                    
+                    <div class="flex items-center justify-between mb-1">
+                      <i class="fas ${tipoIcon} text-xs ${tipoBg}"></i>
+                      ${meta.concluida 
+                        ? '<i class="fas fa-check-circle text-emerald-500 text-xs"></i>' 
+                        : '<span class="text-[9px] text-gray-400">' + (meta.tempo_minutos || 60) + 'm</span>'}
+                    </div>
+                    
+                    <div class="flex items-start gap-1 mb-1.5">
+                      <p class="text-xs font-medium text-gray-800 line-clamp-2 flex-1 ${meta.concluida ? 'line-through opacity-60' : ''}">${meta.disciplina_nome}</p>
+                      ${!meta.concluida ? '<button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(' + meta.id + ', ' + meta.plano_id + ', \\'' + disciplinaNomeEscaped + '\\', \\'' + topicoNomeEscaped + '\\', ' + meta.dia_semana + ')" class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 transition" title="Trocar disciplina/tópico"><i class="fas fa-pencil-alt text-[9px] text-gray-400 hover:text-[#122D6A]"></i></button>' : ''}
+                    </div>
+                    
+                    <div class="flex flex-col gap-2 mt-auto">
+                      <button onclick="event.stopPropagation(); abrirConteudo(${meta.id})" class="w-full flex items-center justify-center py-2 text-xs font-medium ${meta.concluida ? 'text-emerald-600 bg-emerald-100' : 'text-white bg-[#122D6A]'} rounded-lg transition">
+                        ${meta.concluida ? 'Ver' : 'Estudar'}
+                      </button>
                       
-                      <!-- Header: Tipo + Status -->
-                      <div class="flex items-center justify-between mb-1">
-                        <i class="fas ${tipoIcon} text-xs ${tipoBg}"></i>
-                        ${meta.concluida 
-                          ? '<i class="fas fa-check-circle text-emerald-500 text-xs"></i>' 
-                          : `<span class="text-[9px] text-gray-400">${meta.tempo_minutos || 60}m</span>`}
-                      </div>
-                      
-                      <!-- Disciplina com botão editar -->
-                      <div class="flex items-start gap-1 mb-1.5">
-                        <p class="text-xs font-medium text-gray-800 line-clamp-2 flex-1 ${meta.concluida ? 'line-through opacity-60' : ''}">${meta.disciplina_nome}</p>
-                        ${!meta.concluida ? `
-                          <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${disciplinaNomeEscaped}', '${topicoNomeEscaped}', ${meta.dia_semana})" 
-                                  class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 transition" 
-                                  title="Trocar disciplina/tópico">
-                            <i class="fas fa-pencil-alt text-[9px] text-gray-400 hover:text-[#122D6A]"></i>
-                          </button>
-                        ` : ''}</div>
-                      
-                      <!-- Ações - Botões maiores com labels -->
-                      <div class="flex flex-col gap-2 mt-auto">
-                        <!-- Linha 1: Botão principal Estudar/Ver -->
-                        <button onclick="event.stopPropagation(); abrirConteudo(${meta.id})" class="w-full flex items-center justify-center py-2 text-xs font-medium ${meta.concluida ? 'text-emerald-600 bg-emerald-100' : 'text-white bg-[#122D6A]'} rounded-lg transition">
-                          ${meta.concluida ? 'Ver' : 'Estudar'}
+                      <div class="grid grid-cols-3 gap-1.5" id="conteudos-meta-${meta.id}">
+                        <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'teoria')" 
+                          class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#122D6A] hover:text-white active:bg-[#122D6A] active:text-white transition touch-manipulation group" 
+                          title="Teoria" data-tipo="teoria" id="icon-teoria-${meta.id}">
+                          <i class="fas fa-book text-sm text-[#122D6A] group-hover:text-white"></i>
+                          <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Teoria</span>
                         </button>
-                        
-                        <!-- Linha 2: Botões de conteúdo com labels -->
-                        <div class="grid grid-cols-3 gap-1.5" id="conteudos-meta-${meta.id}">
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'teoria')" 
-                            class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#122D6A] hover:text-white active:bg-[#122D6A] active:text-white transition touch-manipulation group" 
-                            title="Teoria" data-tipo="teoria" id="icon-teoria-${meta.id}">
-                            <i class="fas fa-book text-sm text-[#122D6A] group-hover:text-white"></i>
-                            <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Teoria</span>
+                        <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'exercicios')" 
+                          class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#2A4A9F] hover:text-white active:bg-[#2A4A9F] active:text-white transition touch-manipulation group" 
+                          title="Exercícios" data-tipo="exercicios" id="icon-exercicios-${meta.id}">
+                          <i class="fas fa-tasks text-sm text-[#2A4A9F] group-hover:text-white"></i>
+                          <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Questões</span>
+                        </button>
+                        <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'resumo')" 
+                          class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#3A5AB0] hover:text-white active:bg-[#3A5AB0] active:text-white transition touch-manipulation group" 
+                          title="Resumo" data-tipo="resumo" id="icon-resumo-${meta.id}">
+                          <i class="fas fa-file-alt text-sm text-[#3A5AB0] group-hover:text-white"></i>
+                          <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Resumo</span>
+                        </button>
+                        <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'flashcards')" 
+                          class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#4A6AC0] hover:text-white active:bg-[#4A6AC0] active:text-white transition touch-manipulation group" 
+                          title="Flashcards" data-tipo="flashcards" id="icon-flashcards-${meta.id}">
+                          <i class="fas fa-clone text-sm text-[#4A6AC0] group-hover:text-white"></i>
+                          <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Flash</span>
+                        </button>
+                        <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; abrirModalResumoPersonalizado(${meta.id})" 
+                          class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#8B5CF6] hover:text-white active:bg-[#8B5CF6] active:text-white transition touch-manipulation group" 
+                          title="Upload" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">
+                          <i class="fas fa-file-upload text-sm text-[#8B5CF6] group-hover:text-white"></i>
+                          <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Upload</span>
+                        </button>
+                        ${!meta.concluida ? `
+                          <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${disciplinaNomeEscaped}', '${topicoNomeEscaped}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 transition touch-manipulation group" title="Concluir">
+                            <i class="fas fa-check text-sm text-emerald-600"></i>
+                            <span class="text-[9px] mt-0.5 text-emerald-600">OK</span>
                           </button>
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'exercicios')" 
-                            class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#2A4A9F] hover:text-white active:bg-[#2A4A9F] active:text-white transition touch-manipulation group" 
-                            title="Exercícios" data-tipo="exercicios" id="icon-exercicios-${meta.id}">
-                            <i class="fas fa-tasks text-sm text-[#2A4A9F] group-hover:text-white"></i>
-                            <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Questões</span>
-                          </button>
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'resumo')" 
-                            class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#3A5AB0] hover:text-white active:bg-[#3A5AB0] active:text-white transition touch-manipulation group" 
-                            title="Resumo" data-tipo="resumo" id="icon-resumo-${meta.id}">
-                            <i class="fas fa-file-alt text-sm text-[#3A5AB0] group-hover:text-white"></i>
-                            <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Resumo</span>
-                          </button>
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'flashcards')" 
-                            class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#4A6AC0] hover:text-white active:bg-[#4A6AC0] active:text-white transition touch-manipulation group" 
-                            title="Flashcards" data-tipo="flashcards" id="icon-flashcards-${meta.id}">
-                            <i class="fas fa-clone text-sm text-[#4A6AC0] group-hover:text-white"></i>
-                            <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Flash</span>
-                          </button>
-                          <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; abrirModalResumoPersonalizado(${meta.id})" 
-                            class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#8B5CF6] hover:text-white active:bg-[#8B5CF6] active:text-white transition touch-manipulation group" 
-                            title="Upload" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">
-                            <i class="fas fa-file-upload text-sm text-[#8B5CF6] group-hover:text-white"></i>
-                            <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Upload</span>
-                          </button>
-                          ${!meta.concluida ? `
-                            <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${disciplinaNomeEscaped}', '${topicoNomeEscaped}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 transition touch-manipulation group" title="Concluir">
-                              <i class="fas fa-check text-sm text-emerald-600"></i>
-                              <span class="text-[9px] mt-0.5 text-emerald-600">OK</span>
-                            </button>
-                          ` : ''}
-                        </div>
+                        ` : ''}
                       </div>
                     </div>
-                  `
-                }).join('')}
-              </div>
-            ` : `
-              <div class="flex items-center justify-center py-2 ${themes[currentTheme].textSecondary}">
-                <span class="text-[10px]">—</span>
-              </div>
-            `}
+                  </div>
+                `
+              }).join('')}
             </div>
+          ` : `
+            <div class="flex items-center justify-center py-6 ${themes[currentTheme].textSecondary}">
+              <span class="text-sm">Nenhuma meta para este dia</span>
+            </div>
+          `}
           </div>
         `
       }).join('')}
@@ -25635,52 +25614,70 @@ function renderCalendarioSemanal() {
   `
 }
 
-// Função para abrir/fechar acordeão do dia da semana
-window.toggleDiaSemana = function(diaSemana) {
-  const container = document.getElementById('metas-dia-' + diaSemana);
-  const chevron = document.getElementById('chevron-dia-' + diaSemana);
-  
-  if (container && chevron) {
-    container.classList.toggle('hidden');
-    chevron.classList.toggle('rotate-180');
-  }
-}
-
-// Função para expandir/colapsar todos os dias
-window.toggleTodosDias = function(expandir) {
-  for (let dia = 1; dia <= 7; dia++) {
-    const container = document.getElementById('metas-dia-' + dia);
-    const chevron = document.getElementById('chevron-dia-' + dia);
-    
-    if (container && chevron) {
-      if (expandir) {
-        container.classList.remove('hidden');
-        chevron.classList.add('rotate-180');
-      } else {
-        container.classList.add('hidden');
-        chevron.classList.remove('rotate-180');
-      }
+// ✅ v88b: Selecionar dia da semana (tabs)
+window.selecionarDiaSemana = function(diaSemana) {
+  // Esconder todos os painéis de conteúdo
+  for (let d = 1; d <= 7; d++) {
+    const panel = document.getElementById('metas-dia-' + d);
+    const tab = document.getElementById('tab-dia-' + d);
+    if (panel) panel.classList.add('hidden');
+    if (tab) {
+      tab.classList.remove('text-[#122D6A]', 'font-bold');
+      tab.classList.add(currentTheme === 'dark' ? 'text-gray-400' : 'text-gray-500');
+      // Remover indicador ativo
+      const indicator = tab.querySelector('.absolute');
+      if (indicator) indicator.remove();
     }
   }
+  
+  // Mostrar o dia selecionado
+  const panel = document.getElementById('metas-dia-' + diaSemana);
+  const tab = document.getElementById('tab-dia-' + diaSemana);
+  if (panel) panel.classList.remove('hidden');
+  if (tab) {
+    tab.classList.add('text-[#122D6A]', 'font-bold');
+    tab.classList.remove(currentTheme === 'dark' ? 'text-gray-400' : 'text-gray-500');
+    // Adicionar indicador ativo
+    const indicator = document.createElement('div');
+    indicator.className = 'absolute bottom-0 left-1 right-1 h-0.5 bg-[#122D6A] rounded-t';
+    tab.appendChild(indicator);
+  }
 }
 
-// ✅ v88: Baixar calendário semanal como Excel (CSV com BOM para Excel)
+// Função para abrir/fechar acordeão do dia da semana (compatibilidade)
+window.toggleDiaSemana = function(diaSemana) {
+  selecionarDiaSemana(diaSemana);
+}
+
+// Função para expandir/colapsar todos os dias (compatibilidade - agora seleciona dia)
+window.toggleTodosDias = function(expandir) {
+  // Na nova UI de tabs, expandir mostra o dia de hoje
+  const hoje = new Date();
+  const diaSemanaAtual = hoje.getDay() === 0 ? 7 : hoje.getDay();
+  selecionarDiaSemana(diaSemanaAtual);
+}
+
+// ✅ v88b: Baixar calendário semanal como XLSX com formatação bonita (SheetJS)
 window.baixarCalendarioExcel = function() {
   if (!semanaAtual || !semanaAtual.metas || semanaAtual.metas.length === 0) {
     showToast('Nenhuma meta semanal para exportar', 'warning');
     return;
   }
   
+  if (typeof XLSX === 'undefined') {
+    showToast('Aguarde o carregamento da biblioteca Excel...', 'warning');
+    return;
+  }
+  
   const { semana, metas } = semanaAtual;
   const diasNomes = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
   
-  // Agrupar metas por disciplina
+  // Agrupar metas: para cada disciplina, pegar o tópico de cada dia
   const disciplinas = {};
   metas.forEach(meta => {
     const disc = meta.disciplina_nome || 'Sem disciplina';
     if (!disciplinas[disc]) disciplinas[disc] = {};
     
-    // Extrair tópico
     let topico = meta.topico_nome || '';
     if (!topico && meta.topicos_sugeridos) {
       const topicos = Array.isArray(meta.topicos_sugeridos) ? meta.topicos_sugeridos : [];
@@ -25690,18 +25687,30 @@ window.baixarCalendarioExcel = function() {
     const dia = meta.dia_semana; // 1-7
     if (!disciplinas[disc][dia]) disciplinas[disc][dia] = [];
     
-    const tipo = meta.tipo === 'teoria' ? 'T' : meta.tipo === 'exercicios' ? 'E' : 'R';
-    const status = meta.concluida ? ' [OK]' : '';
-    disciplinas[disc][dia].push((topico || disc) + ' (' + tipo + ')' + status);
+    const tipo = meta.tipo === 'teoria' ? 'Teoria' : meta.tipo === 'exercicios' ? 'Exercícios' : 'Revisão';
+    const status = meta.concluida ? ' ✓' : '';
+    const tempo = meta.tempo_minutos ? ` (${meta.tempo_minutos}min)` : '';
+    disciplinas[disc][dia].push((topico || disc) + ' - ' + tipo + tempo + status);
   });
   
   const disciplinasOrdenadas = Object.keys(disciplinas).sort();
   
-  // Encontrar o número máximo de linhas por disciplina (pode ter mais de um tópico por dia)
-  const linhas = [];
+  // Construir dados da planilha
+  const dataIni = semana.data_inicio ? new Date(semana.data_inicio).toLocaleDateString('pt-BR') : '';
+  const dataFim = semana.data_fim ? new Date(semana.data_fim).toLocaleDateString('pt-BR') : '';
   
+  const wsData = [];
+  
+  // Linha título
+  wsData.push(['Cronograma de Estudos - IAprova']);
+  wsData.push(['Semana ' + (semana.numero_semana || '') + ' | ' + dataIni + ' a ' + dataFim]);
+  wsData.push([]); // linha vazia
+  
+  // Header
+  wsData.push(['Disciplina', ...diasNomes]);
+  
+  // Dados
   disciplinasOrdenadas.forEach(disc => {
-    // Quantas linhas precisa para essa disciplina (max de tópicos em qualquer dia)
     let maxTopicos = 0;
     for (let d = 1; d <= 7; d++) {
       const tpcs = (disciplinas[disc][d] || []).length;
@@ -25714,34 +25723,50 @@ window.baixarCalendarioExcel = function() {
         const tpcs = disciplinas[disc][d] || [];
         row.push(tpcs[t] || '');
       }
-      linhas.push(row);
+      wsData.push(row);
     }
   });
   
-  // Montar CSV
-  const header = ['Disciplina'].concat(diasNomes);
-  const csvRows = [header.map(h => '"' + h + '"').join(';')];
+  // Linha vazia + legenda
+  wsData.push([]);
+  wsData.push(['Legenda: ✓ = Concluído']);
   
-  linhas.forEach(row => {
-    csvRows.push(row.map(cell => '"' + (cell || '').replace(/"/g, '""') + '"').join(';'));
-  });
+  // Criar workbook
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
   
-  // Info da semana no final
-  const dataIni = semana.data_inicio ? new Date(semana.data_inicio).toLocaleDateString('pt-BR') : '';
-  const dataFim = semana.data_fim ? new Date(semana.data_fim).toLocaleDateString('pt-BR') : '';
-  csvRows.push('');
-  csvRows.push('"Semana ' + (semana.numero_semana || '') + ' - ' + dataIni + ' a ' + dataFim + '"');
-  csvRows.push('"T = Teoria; E = Exercícios; R = Revisão; [OK] = Concluído"');
+  // Larguras de coluna
+  ws['!cols'] = [
+    { wch: 30 }, // Disciplina
+    { wch: 28 }, // Seg
+    { wch: 28 }, // Ter
+    { wch: 28 }, // Qua
+    { wch: 28 }, // Qui
+    { wch: 28 }, // Sex
+    { wch: 28 }, // Sab
+    { wch: 28 }  // Dom
+  ];
   
-  const csv = '\uFEFF' + csvRows.join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'cronograma_semana_' + (semana.numero_semana || '') + '_' + new Date().toISOString().split('T')[0] + '.csv';
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('✅ Cronograma exportado para Excel!', 'success');
+  // Merge título (A1:H1) e subtítulo (A2:H2)
+  ws['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }
+  ];
+  
+  // Altura das linhas
+  ws['!rows'] = [
+    { hpt: 30 }, // Título
+    { hpt: 22 }, // Subtítulo
+    { hpt: 10 }, // Linha vazia
+    { hpt: 25 }  // Header
+  ];
+  
+  XLSX.utils.book_append_sheet(wb, ws, 'Cronograma');
+  
+  // Gerar arquivo
+  const fileName = 'cronograma_semana_' + (semana.numero_semana || '') + '_' + new Date().toISOString().split('T')[0] + '.xlsx';
+  XLSX.writeFile(wb, fileName);
+  showToast('✅ Cronograma exportado em Excel!', 'success');
 };
 
 function renderGraficosProgresso() {

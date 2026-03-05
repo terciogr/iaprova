@@ -20863,6 +20863,7 @@ app.get('/home', (c) => {
     
     <!-- jsPDF para download direto de PDF -->
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <!-- Custom Styles -->
     <style>
