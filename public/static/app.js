@@ -9120,160 +9120,57 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
       </header>
 
       <div class="max-w-7xl mx-auto px-4 py-4">
-        <!-- CARDS DE AÇÕES: Data, Disciplinas, Progresso, Simulados, Desempenho, Calendário -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3 mb-4">
-          
-          <!-- Card Contagem Regressiva / Data da Prova — v73: Olá, nome -->
-          ${(() => {
-            const primeiroNome = (currentUser.name || currentUser.email?.split('@')[0] || 'Estudante').split(' ')[0];
-            
-            if (contagemRegressiva) {
-              if (contagemRegressiva.passada) {
-                return `
-              <div onclick="abrirModalEditarDataProva()" class="cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-gray-400 hover:shadow-xl transition-all">
-                <div class="flex items-center gap-2 md:gap-3">
-                  <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
-                    <i class="fas fa-check text-white text-sm md:text-xl"></i>
+        <!-- ✅ v89: Stats Row Minimalista conforme mockup -->
+        <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} p-4 mb-4">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <!-- Hoje + Progresso do Dia -->
+            <div class="flex items-center gap-4">
+              <div>
+                <p class="text-sm font-semibold ${themes[currentTheme].text}">Hoje: ${new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '')}</p>
+                <div class="flex items-center gap-2 mt-1.5">
+                  <div class="w-32 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full">
+                    <div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${progressoDia}%"></div>
                   </div>
-                  <div class="text-left flex-1 min-w-0">
-                    <p class="text-xs md:text-sm font-semibold ${themes[currentTheme].text} truncate">Olá, ${primeiroNome}!</p>
-                    <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">
-                      Prova realizada em ${contagemRegressiva.dataFormatada}
-                    </p>
-                  </div>
-                  <i class="fas fa-pen text-xs ${themes[currentTheme].textSecondary} group-hover:text-gray-500 transition-colors"></i>
+                  <span class="text-xs ${themes[currentTheme].textSecondary}">${progressoDia}%</span>
                 </div>
-              </div>`;
-              } else if (contagemRegressiva.hoje) {
-                return `
-              <div class="group ${themes[currentTheme].card} rounded-xl border-2 border-[#2A4A9F] p-2 md:p-4 hover:shadow-xl transition-all animate-pulse">
-                <div class="flex items-center gap-2 md:gap-3">
-                  <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center shadow-lg flex-shrink-0">
-                    <i class="fas fa-trophy text-white text-sm md:text-xl"></i>
-                  </div>
-                  <div class="text-left flex-1 min-w-0">
-                    <p class="text-xs md:text-sm font-semibold text-[#2A4A9F] truncate">Olá, ${primeiroNome}!</p>
-                    <p class="text-[10px] md:text-xs text-[#2A4A9F] mt-0.5 font-bold">
-                      🎯 Hoje é o dia da prova!
-                    </p>
-                  </div>
-                </div>
-              </div>`;
-              } else {
-                // Dias restantes até a prova
-                const urgente = contagemRegressiva.urgente;
-                const muitoUrgente = contagemRegressiva.muitoUrgente;
-                const corBorda = muitoUrgente ? 'border-red-400' : urgente ? 'border-amber-400' : themes[currentTheme].border;
-                const corBg = muitoUrgente ? 'from-red-500 to-red-700' : urgente ? 'from-amber-500 to-orange-600' : 'from-[#122D6A] to-[#2A4A9F]';
-                
-                return `
-              <div onclick="abrirModalEditarDataProva()" class="cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 ${corBorda} p-2 md:p-4 hover:border-[#122D6A] hover:shadow-xl transition-all">
-                <div class="flex items-center gap-2 md:gap-3">
-                  <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br ${corBg} flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
-                    <span class="text-white text-sm md:text-xl font-bold">${contagemRegressiva.dias}</span>
-                  </div>
-                  <div class="text-left flex-1 min-w-0">
-                    <p class="text-xs md:text-sm font-semibold ${themes[currentTheme].text} truncate">Olá, ${primeiroNome}!</p>
-                    <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">
-                      ${muitoUrgente ? '⚡' : urgente ? '⏰' : '📅'} Faltam <strong>${contagemRegressiva.dias} dias</strong> para sua prova
-                    </p>
-                  </div>
-                </div>
-              </div>`;
-              }
-            } else {
-              // Sem data de prova definida
-              return `
-            <div onclick="abrirModalEditarDataProva()" class="cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 border-dashed ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#122D6A] hover:shadow-xl transition-all">
-              <div class="flex items-center gap-2 md:gap-3">
-                <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0 group-hover:from-[#122D6A] group-hover:to-[#2A4A9F]">
-                  <i class="fas fa-calendar-plus text-white text-sm md:text-xl"></i>
-                </div>
-                <div class="text-left flex-1 min-w-0">
-                  <p class="text-xs md:text-sm font-semibold ${themes[currentTheme].text} truncate">Olá, ${primeiroNome}!</p>
-                  <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">
-                    Defina a data da sua prova
-                  </p>
-                </div>
-              </div>
-            </div>`;
-            }
-          })()}
-          
-          <!-- Botão Disciplinas -->
-          <button onclick="renderPortfolioDisciplinas()" class="group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#122D6A] hover:shadow-xl transition-all">
-            <div class="flex items-center gap-2 md:gap-4">
-              <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
-                <i class="fas fa-book-open text-white text-sm md:text-xl"></i>
-              </div>
-              <div class="text-left flex-1 min-w-0">
-                <div class="flex items-baseline gap-1 md:gap-2">
-                  <span class="text-xl md:text-3xl font-bold ${themes[currentTheme].text}">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0}</span>
-                </div>
-                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">Disciplinas</p>
               </div>
             </div>
-          </button>
-          
-          <!-- Card Progresso -->
-          <div onclick="renderPortfolioDisciplinas()" class="progresso-geral-card cursor-pointer group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#3A5AB0] hover:shadow-xl transition-all">
-            <div class="flex items-center gap-2 md:gap-4">
-              <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br ${
-                progressoGeral?.progresso_percentual >= 70 ? 'from-[#122D6A] to-[#2A4A9F]' :
-                progressoGeral?.progresso_percentual >= 50 ? 'from-[#2A4A9F] to-[#3A5AB0]' :
-                progressoGeral?.progresso_percentual >= 25 ? 'from-[#3A5AB0] to-[#4A6AC0]' :
-                'from-gray-400 to-gray-500'
-              } flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
-                <span class="text-white text-sm md:text-lg font-bold">${progressoGeral?.progresso_percentual || 0}%</span>
-              </div>
-              <div class="text-left flex-1 min-w-0">
+            
+            <!-- KPIs inline -->
+            <div class="flex items-center gap-6 md:gap-8 overflow-x-auto">
+              <div onclick="renderPortfolioDisciplinas()" class="cursor-pointer flex flex-col items-start min-w-fit">
+                <span class="text-[10px] uppercase tracking-wider ${themes[currentTheme].textSecondary}">Progresso Geral</span>
                 <div class="flex items-center gap-2">
-                  <div class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div class="h-full rounded-full bg-[#122D6A]" style="width: ${progressoGeral?.progresso_percentual || 0}%"></div>
-                  </div>
+                  <span class="text-xl font-bold ${themes[currentTheme].text}">${progressoGeral?.progresso_percentual || 0}%</span>
+                  <div class="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${progressoGeral?.progresso_percentual || 0}%"></div></div>
                 </div>
-                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-1">
-                  Progresso
-                </p>
+              </div>
+              <div class="w-px h-8 bg-gray-200 dark:bg-gray-700 hidden md:block"></div>
+              <div class="flex flex-col items-start min-w-fit">
+                <span class="text-[10px] uppercase tracking-wider ${themes[currentTheme].textSecondary}">Tempo Estudado</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xl font-bold ${themes[currentTheme].text}">${stats.horas_totais}h</span>
+                  <div class="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${Math.min(stats.dias_estudados * 10, 100)}%"></div></div>
+                </div>
+              </div>
+              <div class="w-px h-8 bg-gray-200 dark:bg-gray-700 hidden md:block"></div>
+              <div onclick="renderPortfolioDisciplinas()" class="cursor-pointer flex flex-col items-start min-w-fit">
+                <span class="text-[10px] uppercase tracking-wider ${themes[currentTheme].textSecondary}">Disciplinas</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xl font-bold ${themes[currentTheme].text}">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0}</span>
+                  <div class="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: 100%"></div></div>
+                </div>
+              </div>
+              <div class="w-px h-8 bg-gray-200 dark:bg-gray-700 hidden md:block"></div>
+              <div onclick="window.renderDashboardSimulados()" class="cursor-pointer flex flex-col items-start min-w-fit">
+                <span class="text-[10px] uppercase tracking-wider ${themes[currentTheme].textSecondary}">Simulados</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xl font-bold ${themes[currentTheme].text}">${scoreData.score}/10</span>
+                  <div class="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${scoreData.score * 10}%"></div></div>
+                </div>
               </div>
             </div>
           </div>
-          
-          <!-- Botão Simulados -->
-          <button onclick="window.renderDashboardSimulados()" class="group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#4A6AC0] hover:shadow-xl transition-all">
-            <div class="flex items-center gap-2 md:gap-4">
-              <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-[#3A5AB0] to-[#122D6A] flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
-                <i class="fas fa-edit text-white text-sm md:text-xl"></i>
-              </div>
-              <div class="text-left flex-1 min-w-0">
-                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">Simulados</p>
-              </div>
-            </div>
-          </button>
-          
-          <!-- Botão Dashboard de Desempenho -->
-          <button onclick="window.renderDashboardDesempenho()" class="group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#6BB6FF] hover:shadow-xl transition-all">
-            <div class="flex items-center gap-2 md:gap-4">
-              <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-[#6BB6FF] to-[#2A4A9F] flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
-                <i class="fas fa-chart-pie text-white text-sm md:text-xl"></i>
-              </div>
-              <div class="text-left flex-1 min-w-0">
-                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">Desempenho</p>
-              </div>
-            </div>
-          </button>
-          
-          <!-- Botão Calendário -->
-          <button onclick="renderCalendario()" class="group ${themes[currentTheme].card} rounded-xl border-2 ${themes[currentTheme].border} p-2 md:p-4 hover:border-[#122D6A] hover:shadow-xl transition-all">
-            <div class="flex items-center gap-2 md:gap-4">
-              <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-[#122D6A] to-[#3A5AB0] flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg flex-shrink-0">
-                <i class="fas fa-calendar-alt text-white text-sm md:text-xl"></i>
-              </div>
-              <div class="text-left flex-1 min-w-0">
-                <p class="text-[10px] md:text-xs ${themes[currentTheme].textSecondary} mt-0.5">Calendário</p>
-              </div>
-            </div>
-          </button>
         </div>
 
         <!-- Calendário Semanal com Botão Gerar Metas Integrado -->
@@ -9282,22 +9179,29 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
         <!-- Container para modais -->
         <div id="modal-container" class="hidden"></div>
 
-        <!-- Gestão de Planos -->
-        <div class="${themes[currentTheme].card} rounded-2xl shadow-lg p-6 border ${themes[currentTheme].border}">
+        <!-- ✅ v89: Gestão de Planos - Minimalista conforme mockup -->
+        <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} p-5">
           <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-xl flex items-center justify-center">
-                <i class="fas fa-layer-group text-white"></i>
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 bg-[#122D6A] rounded-lg flex items-center justify-center">
+                <i class="fas fa-layer-group text-white text-sm"></i>
               </div>
-              <h2 class="text-lg font-bold ${themes[currentTheme].text}">Meus Planos</h2>
+              <h2 class="text-base font-bold ${themes[currentTheme].text}">Meus Planos</h2>
             </div>
-            <button onclick="iniciarEntrevista()" 
-              class="px-4 py-2 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg hover:shadow-lg transition flex items-center gap-2 text-sm">
-              <i class="fas fa-plus"></i>
-              <span>Novo</span>
-            </button>
+            <div class="flex items-center gap-2">
+              <button onclick="iniciarEntrevista()" 
+                class="px-3 py-1.5 ${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-lg hover:border-[#122D6A] transition flex items-center gap-1.5 text-xs font-medium ${themes[currentTheme].text}">
+                <i class="fas fa-pen text-xs"></i>
+                Editar
+              </button>
+              <button onclick="iniciarEntrevista()" 
+                class="px-3 py-1.5 ${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-lg hover:border-[#122D6A] transition flex items-center gap-1.5 text-xs font-medium ${themes[currentTheme].text}">
+                <i class="fas fa-trash text-xs"></i>
+                Excluir
+              </button>
+            </div>
           </div>
-          <div id="planos-list" class="space-y-2">
+          <div id="planos-list" class="space-y-3">
             <p class="${themes[currentTheme].textSecondary} text-center py-4 text-sm">Carregando planos...</p>
           </div>
         </div>
@@ -25440,94 +25344,67 @@ function renderCalendarioSemanal() {
   console.log(`📊 CRONOGRAMA - Disciplinas exibidas (${disciplinasOrdenadas.length}):`, disciplinasOrdenadas.join(', '))
   console.log(`📊 CRONOGRAMA - Total de metas:`, metas.length)
   
-  const dataInicioFormatada = new Date(semana.data_inicio).toLocaleDateString('pt-BR')
-  const dataFimFormatada = new Date(semana.data_fim).toLocaleDateString('pt-BR')
+  const dataInicioFormatada = new Date(semana.data_inicio).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  const dataFimFormatada = new Date(semana.data_fim).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
   const diasSemanaAbrev = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
   const percentualSemana = semana.metas_totais > 0 ? Math.round((semana.metas_concluidas / semana.metas_totais) * 100) : 0;
   
   container.innerHTML = `
-    <!-- Container Unificado da Semana -->
-    <div class="${themes[currentTheme].card} rounded-xl shadow-sm border ${themes[currentTheme].border} overflow-hidden">
-      <!-- Header da Semana -->
-      <div class="p-2 sm:p-3 border-b ${themes[currentTheme].border}">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
-          <!-- Info da Semana -->
-          <div class="flex items-center gap-2 sm:gap-3">
-            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center flex-shrink-0">
-              <i class="fas fa-calendar-week text-white text-xs sm:text-sm"></i>
-            </div>
-            <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="text-xs sm:text-sm font-semibold ${themes[currentTheme].text}">Sem ${semana.numero_semana}</span>
-                <span class="text-[10px] sm:text-xs ${themes[currentTheme].textSecondary}">${dataInicioFormatada} - ${dataFimFormatada}</span>
-              </div>
-              <div class="flex items-center gap-2 mt-1 sm:mt-0">
-                <div class="w-16 sm:w-20 bg-gray-200 rounded-full h-1.5">
-                  <div class="bg-[#122D6A] h-1.5 rounded-full" style="width: ${percentualSemana}%"></div>
-                </div>
-                <span class="text-[10px] sm:text-xs font-medium ${themes[currentTheme].text}">${percentualSemana}%</span>
-              </div>
-            </div>
+    <!-- ✅ v89: Calendário Semanal Minimalista -->
+    <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} overflow-hidden">
+      <!-- Header -->
+      <div class="px-4 pt-4 pb-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-bold uppercase ${themes[currentTheme].text}">Semana ${semana.numero_semana}</span>
+            <span class="text-xs ${themes[currentTheme].textSecondary}">— ${dataInicioFormatada} → ${dataFimFormatada}</span>
+            <div class="w-8 h-1.5 bg-[#122D6A] rounded-full ml-1"></div>
           </div>
-          <!-- Botões de Ação -->
-          <div class="flex items-center gap-1 sm:gap-2 justify-end">
-            <button onclick="abrirSemanasAnteriores()" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Semanas anteriores">
-              <i class="fas fa-history text-gray-600 text-xs sm:text-sm"></i>
+          <div class="flex items-center gap-1.5">
+            <button onclick="abrirSemanasAnteriores()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Semanas anteriores">
+              <i class="fas fa-history text-gray-400 text-xs"></i>
             </button>
-            <button onclick="baixarCalendarioExcel()" class="p-1.5 sm:p-2 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition" title="Baixar cronograma em Excel">
-              <i class="fas fa-file-excel text-emerald-600 text-xs sm:text-sm"></i>
+            <button onclick="baixarCalendarioExcel()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Baixar Excel">
+              <i class="fas fa-file-excel text-gray-400 text-xs"></i>
             </button>
-            <button onclick="gerarMetasSemana()" class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#122D6A] text-white rounded-lg text-[10px] sm:text-xs font-medium hover:bg-[#0D1F4D] transition">
-              <i class="fas fa-magic"></i>
-              <span class="hidden xs:inline">Gerar</span>
+            <button onclick="gerarMetasSemana()" class="w-8 h-8 bg-[#122D6A] text-white rounded-lg flex items-center justify-center hover:bg-[#0D1F4D] transition" title="Gerar Metas">
+              <i class="fas fa-magic text-xs"></i>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- ✅ v88f: Tabs minimalistas - cores explícitas via JS, sem dark: -->
-      <div class="flex items-center overflow-x-auto border-b ${themes[currentTheme].border}" style="background: ${currentTheme === 'dark' ? '#111827' : '#ffffff'}" id="dias-tabs-container">
+      <!-- Tabs dos Dias - Minimalista com underline -->
+      <div class="flex items-center px-4 border-b ${themes[currentTheme].border}" id="dias-tabs-container">
         ${(() => {
           const _dk = currentTheme === 'dark';
-          const _tabBg = _dk ? '#111827' : '#ffffff';
-          const _tabText = _dk ? '#9CA3AF' : '#374151';
-          const _tabHover = _dk ? '#1F2937' : '#EFF6FF';
-          const _progBg = _dk ? '#374151' : '#E5E7EB';
           return [1, 2, 3, 4, 5, 6, 7].map(diaSemana => {
             const metasDoDia = metas.filter(m => m.dia_semana === diaSemana);
-            const metasConcluidasDia = metasDoDia.filter(m => m.concluida).length;
-            const percentualDia = metasDoDia.length > 0 ? Math.round((metasConcluidasDia / metasDoDia.length) * 100) : 0;
             const hoje = new Date();
             const diaSemanaAtual = hoje.getDay() === 0 ? 7 : hoje.getDay();
             const isHoje = diaSemana === diaSemanaAtual;
             const isSelected = isHoje;
-            const countText = metasConcluidasDia + '/' + metasDoDia.length;
-            const progFill = percentualDia === 100 ? '#10B981' : percentualDia > 0 ? '#122D6A' : '#D1D5DB';
             
-            if (isSelected) {
-              return '<button onclick="selecionarDiaSemana(' + diaSemana + ')" id="tab-dia-' + diaSemana + '" ' +
-                'class="dia-tab flex-1 min-w-[48px] flex flex-col items-center py-2 px-1 transition-all rounded-lg mx-0.5 shadow-sm" ' +
-                'style="background: #122D6A; color: #ffffff;">' +
-                '<span class="text-[11px] font-bold tracking-wide">'+diasSemanaAbrev[diaSemana-1]+'</span>' +
-                '<span class="text-[7px] font-bold leading-none mt-0.5" style="color: #93C5FD;">HOJE</span>' +
-                (metasDoDia.length > 0 ? '<div class="w-4/5 mt-1 rounded-full h-[3px]" style="background: rgba(255,255,255,0.3);"><div class="rounded-full h-[3px]" style="background: #fff; width:'+percentualDia+'%;"></div></div>' : '') +
-              '</button>';
-            } else {
-              return '<button onclick="selecionarDiaSemana(' + diaSemana + ')" id="tab-dia-' + diaSemana + '" ' +
-                'class="dia-tab flex-1 min-w-[48px] flex flex-col items-center py-2 px-1 transition-all" ' +
-                'style="background: '+_tabBg+'; color: '+_tabText+';" ' +
-                'onmouseenter="this.style.background=\''+_tabHover+'\'" onmouseleave="this.style.background=\''+_tabBg+'\'">' +
-                '<span class="text-[11px] font-bold tracking-wide">'+diasSemanaAbrev[diaSemana-1]+'</span>' +
-                (isHoje ? '<span class="text-[7px] font-bold leading-none mt-0.5" style="color: #122D6A;">HOJE</span>' : '<span class="text-[8px] leading-none mt-0.5">'+countText+'</span>') +
-                (metasDoDia.length > 0 ? '<div class="w-4/5 mt-1 rounded-full h-[3px]" style="background: '+_progBg+';"><div class="rounded-full h-[3px]" style="background: '+progFill+'; width:'+percentualDia+'%;"></div></div>' : '') +
-              '</button>';
-            }
+            const textColor = isSelected 
+              ? (_dk ? '#F3F4F6' : '#1E293B') 
+              : (_dk ? '#6B7280' : '#9CA3AF');
+            const fontWeight = isSelected ? '700' : '400';
+            const borderBottom = isSelected ? '2px solid ' + (_dk ? '#F3F4F6' : '#1E293B') : '2px solid transparent';
+            const textTransform = isSelected ? 'uppercase' : 'none';
+            
+            return '<button onclick="selecionarDiaSemana(' + diaSemana + ')" ' +
+              'id="tab-dia-' + diaSemana + '" ' +
+              'class="dia-tab flex-1 py-3 text-center transition-all" ' +
+              'style="color: ' + textColor + '; font-weight: ' + fontWeight + '; border-bottom: ' + borderBottom + '; font-size: 13px; text-transform: ' + textTransform + ';">' +
+              diasSemanaAbrev[diaSemana - 1] +
+              (isHoje && !isSelected ? '' : '') +
+            '</button>';
           }).join('');
         })()}
       </div>
 
-      <!-- Conteúdo do Dia Selecionado -->
+      <!-- ✅ v89: Cards de estudo conforme mockup -->
       <div id="conteudo-dia-selecionado">
       ${[1, 2, 3, 4, 5, 6, 7].map(diaSemana => {
         const metasDoDia = metas.filter(m => m.dia_semana === diaSemana)
@@ -25537,109 +25414,74 @@ function renderCalendarioSemanal() {
         const isHoje = diaSemana === diaSemanaAtual
         const isAberto = isHoje
         
+        const concluidas = metasDoDia.filter(m => m.concluida)
+        const ativas = metasDoDia.filter(m => !m.concluida)
+        
         return `
-          <div id="metas-dia-${diaSemana}" class="${isAberto ? '' : 'hidden'} p-2.5">
+          <div id="metas-dia-${diaSemana}" class="${isAberto ? '' : 'hidden'} p-4">
           ${metasDoDia.length > 0 ? `
-            <div class="grid gap-2 ${
-              metasDoDia.length === 1 ? 'grid-cols-1 max-w-xs' :
-              metasDoDia.length === 2 ? 'grid-cols-2' :
-              metasDoDia.length === 3 ? 'grid-cols-3' :
-              metasDoDia.length === 4 ? 'grid-cols-2 sm:grid-cols-4' :
-              metasDoDia.length === 5 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' :
-              metasDoDia.length === 6 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6' :
-              'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6'
-            }">
-              ${metasDoDia.map(meta => {
-                const tipoIcon = meta.tipo === 'teoria' ? 'fa-book' : meta.tipo === 'exercicios' ? 'fa-pencil-alt' : 'fa-sync'
-                const tipoBg = meta.tipo === 'teoria' ? 'text-[#122D6A]' : meta.tipo === 'exercicios' ? 'text-[#2A4A9F]' : 'text-amber-600'
-                
-                let topicoNome = meta.topico_nome || '';
-                let topicoId = meta.topico_id || null;
-                
-                if (!topicoNome && meta.topicos_sugeridos) {
-                  const topicos = Array.isArray(meta.topicos_sugeridos) ? meta.topicos_sugeridos : [];
-                  if (topicos.length > 0) {
-                    topicoNome = topicos[0].nome || '';
-                    topicoId = topicos[0].id || null;
+            <div class="flex flex-col md:flex-row gap-3">
+              ${concluidas.length > 0 ? `
+              <!-- Concluídas - empilhadas à esquerda -->
+              <div class="flex flex-col gap-2 ${ativas.length > 0 ? 'md:w-1/4 flex-shrink-0' : 'flex-1'}">
+                ${concluidas.map(meta => {
+                  return `
+                  <div class="flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" style="border-left: 3px solid #10B981;">
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">${meta.disciplina_nome}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Concluído</p>
+                    </div>
+                    <i class="fas fa-check-circle text-emerald-500 text-lg ml-2 flex-shrink-0"></i>
+                  </div>`
+                }).join('')}
+              </div>
+              ` : ''}
+              
+              ${ativas.length > 0 ? `
+              <!-- Ativas - cards maiores à direita -->
+              <div class="flex-1 grid gap-3 ${
+                ativas.length === 1 ? 'grid-cols-1 max-w-sm' :
+                ativas.length === 2 ? 'grid-cols-1 sm:grid-cols-2' :
+                ativas.length === 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
+                'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+              }">
+                ${ativas.map(meta => {
+                  let topicoNome = meta.topico_nome || '';
+                  let topicoId = meta.topico_id || null;
+                  if (!topicoNome && meta.topicos_sugeridos) {
+                    const topicos = Array.isArray(meta.topicos_sugeridos) ? meta.topicos_sugeridos : [];
+                    if (topicos.length > 0) { topicoNome = topicos[0].nome || ''; topicoId = topicos[0].id || null; }
                   }
-                }
-                
-                const topicoNomeEscaped = (topicoNome || '').replace(/'/g, "\\'");
-                const disciplinaNomeEscaped = (meta.disciplina_nome || '').replace(/'/g, "\\'");
-                
-                return `
-                  <div class="meta-card group flex flex-col p-2 rounded-lg border transition-all cursor-pointer ${meta.concluida 
-                    ? 'bg-emerald-50 border-emerald-200' 
-                    : 'bg-white border-gray-200 hover:border-[#122D6A] hover:shadow-sm'}">
-                    
-                    <div class="flex items-center justify-between mb-1">
-                      <i class="fas ${tipoIcon} text-xs ${tipoBg}"></i>
-                      ${meta.concluida 
-                        ? '<i class="fas fa-check-circle text-emerald-500 text-xs"></i>' 
-                        : '<span class="text-[9px] text-gray-400">' + (meta.tempo_minutos || 60) + 'm</span>'}
-                    </div>
-                    
-                    <div class="flex items-start gap-1 mb-1.5">
-                      <p class="text-xs font-medium text-gray-800 line-clamp-2 flex-1 ${meta.concluida ? 'line-through opacity-60' : ''}">${meta.disciplina_nome}</p>
-                      ${!meta.concluida ? `
-                          <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${disciplinaNomeEscaped}', '${topicoNomeEscaped}', ${meta.dia_semana})" 
-                                  class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 transition" 
-                                  title="Trocar disciplina/tópico">
-                            <i class="fas fa-pencil-alt text-[9px] text-gray-400 hover:text-[#122D6A]"></i>
-                          </button>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="flex flex-col gap-2 mt-auto">
-                      <button onclick="event.stopPropagation(); abrirConteudo(${meta.id})" class="w-full flex items-center justify-center py-2 text-xs font-medium ${meta.concluida ? 'text-emerald-600 bg-emerald-100' : 'text-white bg-[#122D6A]'} rounded-lg transition">
-                        ${meta.concluida ? 'Ver' : 'Estudar'}
-                      </button>
-                      
-                      <div class="grid grid-cols-3 gap-1.5" id="conteudos-meta-${meta.id}">
-                        <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'teoria')" 
-                          class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#122D6A] hover:text-white active:bg-[#122D6A] active:text-white transition touch-manipulation group" 
-                          title="Teoria" data-tipo="teoria" id="icon-teoria-${meta.id}">
-                          <i class="fas fa-book text-sm text-[#122D6A] group-hover:text-white"></i>
-                          <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Teoria</span>
-                        </button>
-                        <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'exercicios')" 
-                          class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#2A4A9F] hover:text-white active:bg-[#2A4A9F] active:text-white transition touch-manipulation group" 
-                          title="Exercícios" data-tipo="exercicios" id="icon-exercicios-${meta.id}">
-                          <i class="fas fa-tasks text-sm text-[#2A4A9F] group-hover:text-white"></i>
-                          <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Questões</span>
-                        </button>
-                        <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'resumo')" 
-                          class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#3A5AB0] hover:text-white active:bg-[#3A5AB0] active:text-white transition touch-manipulation group" 
-                          title="Resumo" data-tipo="resumo" id="icon-resumo-${meta.id}">
-                          <i class="fas fa-file-alt text-sm text-[#3A5AB0] group-hover:text-white"></i>
-                          <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Resumo</span>
-                        </button>
-                        <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; verConteudoGerado(${meta.id}, 'flashcards')" 
-                          class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#4A6AC0] hover:text-white active:bg-[#4A6AC0] active:text-white transition touch-manipulation group" 
-                          title="Flashcards" data-tipo="flashcards" id="icon-flashcards-${meta.id}">
-                          <i class="fas fa-clone text-sm text-[#4A6AC0] group-hover:text-white"></i>
-                          <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Flash</span>
-                        </button>
-                        <button onclick="event.stopPropagation(); window.metaAtual = { id: ${meta.id}, topico_nome: '${topicoNomeEscaped}', disciplina_nome: '${disciplinaNomeEscaped}', topico_id: ${topicoId || 'null'}, disciplina_id: ${meta.disciplina_id || 'null'} }; abrirModalResumoPersonalizado(${meta.id})" 
-                          class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-gray-100 hover:bg-[#8B5CF6] hover:text-white active:bg-[#8B5CF6] active:text-white transition touch-manipulation group" 
-                          title="Upload" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">
-                          <i class="fas fa-file-upload text-sm text-[#8B5CF6] group-hover:text-white"></i>
-                          <span class="text-[9px] mt-0.5 text-gray-600 group-hover:text-white">Upload</span>
-                        </button>
-                        ${!meta.concluida ? `
-                          <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${disciplinaNomeEscaped}', '${topicoNomeEscaped}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="flex flex-col items-center justify-center py-1.5 px-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 active:bg-emerald-300 transition touch-manipulation group" title="Concluir">
-                            <i class="fas fa-check text-sm text-emerald-600"></i>
-                            <span class="text-[9px] mt-0.5 text-emerald-600">OK</span>
-                          </button>
-                        ` : ''}
+                  const tn = (topicoNome || '').replace(/'/g, "\\'");
+                  const dn = (meta.disciplina_nome || '').replace(/'/g, "\\'");
+                  const setMeta = "window.metaAtual={id:" + meta.id + ",topico_nome:'" + tn + "',disciplina_nome:'" + dn + "',topico_id:" + (topicoId || 'null') + ",disciplina_id:" + (meta.disciplina_id || 'null') + "};";
+                  return `
+                  <div class="flex flex-col p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-bold text-gray-800 dark:text-gray-100">${meta.disciplina_nome}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${meta.tempo_minutos || 60} min</p>
                       </div>
+                      <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${dn}', '${tn}', ${meta.dia_semana})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition flex-shrink-0" title="Editar">
+                        <i class="fas fa-pencil-alt text-[10px] text-gray-400"></i>
+                      </button>
                     </div>
-                  </div>
-                `
-              }).join('')}
+                    <button onclick="event.stopPropagation(); abrirConteudo(${meta.id})" class="w-full py-2.5 text-sm font-semibold text-white bg-[#1B2A4A] rounded-lg hover:bg-[#122D6A] transition mb-3">Estudar</button>
+                    <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 flex-wrap" id="conteudos-meta-${meta.id}">
+                      <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'teoria')" class="hover:text-[#122D6A] transition" data-tipo="teoria" id="icon-teoria-${meta.id}">Teoria</button>
+                      <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'exercicios')" class="hover:text-[#122D6A] transition" data-tipo="exercicios" id="icon-exercicios-${meta.id}">Questões</button>
+                      <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'resumo')" class="hover:text-[#122D6A] transition" data-tipo="resumo" id="icon-resumo-${meta.id}">Resumo</button>
+                      <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'flashcards')" class="hover:text-[#122D6A] transition" data-tipo="flashcards" id="icon-flashcards-${meta.id}">Flash</button>
+                      <button onclick="event.stopPropagation(); ${setMeta} abrirModalResumoPersonalizado(${meta.id})" class="hover:text-[#122D6A] transition" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">Upload</button>
+                      <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="text-emerald-500 hover:text-emerald-700 transition font-medium"><i class="fas fa-check mr-0.5"></i>OK</button>
+                    </div>
+                  </div>`
+                }).join('')}
+              </div>
+              ` : ''}
             </div>
           ` : `
-            <div class="flex items-center justify-center py-6 ${themes[currentTheme].textSecondary}">
+            <div class="flex items-center justify-center py-8 ${themes[currentTheme].textSecondary}">
               <span class="text-sm">Nenhuma meta para este dia</span>
             </div>
           `}
@@ -25653,56 +25495,31 @@ function renderCalendarioSemanal() {
 
 // ✅ v88b: Selecionar dia da semana (tabs)
 window.selecionarDiaSemana = function(diaSemana) {
-  // ✅ v88f: Inline styles para garantir cores certas
+  // ✅ v89: Underline-only tabs, sem background
   const _dk = (typeof currentTheme !== 'undefined' && currentTheme === 'dark');
-  const _tabBg = _dk ? '#111827' : '#ffffff';
-  const _tabText = _dk ? '#9CA3AF' : '#374151';
-  const _tabHover = _dk ? '#1F2937' : '#EFF6FF';
+  const activeColor = _dk ? '#F3F4F6' : '#1E293B';
+  const inactiveColor = _dk ? '#6B7280' : '#9CA3AF';
   
   for (let d = 1; d <= 7; d++) {
     const panel = document.getElementById('metas-dia-' + d);
     const tab = document.getElementById('tab-dia-' + d);
     if (panel) panel.classList.add('hidden');
     if (tab) {
-      // Resetar para normal
-      tab.style.background = _tabBg;
-      tab.style.color = _tabText;
-      tab.classList.remove('rounded-lg', 'mx-0.5', 'shadow-sm');
-      tab.onmouseenter = function() { this.style.background = _tabHover; };
-      tab.onmouseleave = function() { this.style.background = _tabBg; };
-      // Label HOJE volta para azul
-      const spans = tab.querySelectorAll('span');
-      if (spans[1] && spans[1].textContent === 'HOJE') {
-        spans[1].style.color = '#122D6A';
-      }
-      // Progress bar volta ao normal
-      const progContainer = tab.querySelector('.rounded-full');
-      if (progContainer) {
-        progContainer.style.background = _dk ? '#374151' : '#E5E7EB';
-        const progBar = progContainer.querySelector('.rounded-full');
-        if (progBar) progBar.style.background = '';
-      }
+      tab.style.color = inactiveColor;
+      tab.style.fontWeight = '400';
+      tab.style.borderBottom = '2px solid transparent';
+      tab.style.textTransform = 'none';
     }
   }
   
-  // Ativar selecionado
   const panel = document.getElementById('metas-dia-' + diaSemana);
   const tab = document.getElementById('tab-dia-' + diaSemana);
   if (panel) panel.classList.remove('hidden');
   if (tab) {
-    tab.style.background = '#122D6A';
-    tab.style.color = '#ffffff';
-    tab.classList.add('rounded-lg', 'mx-0.5', 'shadow-sm');
-    tab.onmouseenter = null;
-    tab.onmouseleave = null;
-    const spans = tab.querySelectorAll('span');
-    if (spans[1]) spans[1].style.color = '#93C5FD';
-    const progContainer = tab.querySelector('.rounded-full');
-    if (progContainer) {
-      progContainer.style.background = 'rgba(255,255,255,0.3)';
-      const progBar = progContainer.querySelector('.rounded-full');
-      if (progBar) progBar.style.background = '#ffffff';
-    }
+    tab.style.color = activeColor;
+    tab.style.fontWeight = '700';
+    tab.style.borderBottom = '2px solid ' + activeColor;
+    tab.style.textTransform = 'uppercase';
   }
 }
 
