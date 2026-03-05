@@ -25486,8 +25486,8 @@ function renderCalendarioSemanal() {
         </div>
       </div>
 
-      <!-- ✅ v88d: Tabs dos Dias da Semana - Fundo branco, seleção amarela -->
-      <div class="flex items-center border-b ${themes[currentTheme].border} bg-white dark:bg-gray-900 overflow-x-auto" id="dias-tabs-container">
+      <!-- ✅ v88e: Tabs minimalistas - fundo branco, seleção azul -->
+      <div class="flex items-center bg-white dark:bg-gray-900 overflow-x-auto border-b ${themes[currentTheme].border}" id="dias-tabs-container">
         ${[1, 2, 3, 4, 5, 6, 7].map(diaSemana => {
           const metasDoDia = metas.filter(m => m.dia_semana === diaSemana)
           const metasConcluidasDia = metasDoDia.filter(m => m.concluida).length
@@ -25496,20 +25496,23 @@ function renderCalendarioSemanal() {
           const hoje = new Date()
           const diaSemanaAtual = hoje.getDay() === 0 ? 7 : hoje.getDay()
           const isHoje = diaSemana === diaSemanaAtual
-          
-          const progressColor = percentualDia === 100 ? 'bg-emerald-500' : percentualDia >= 50 ? 'bg-[#122D6A]' : percentualDia > 0 ? 'bg-amber-400' : 'bg-gray-300'
           const isSelected = isHoje
           
-          const selectedClasses = 'bg-amber-50 dark:bg-amber-900/30 text-[#122D6A] dark:text-amber-300 font-bold border-b-2 border-[#122D6A] dark:border-amber-400'
-          const normalClasses = 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-[#122D6A]'
+          const countText = metasConcluidasDia + '/' + metasDoDia.length
           
           return '<button onclick="selecionarDiaSemana(' + diaSemana + ')" ' +
             'id="tab-dia-' + diaSemana + '" ' +
-            'class="flex-1 min-w-[52px] flex flex-col items-center py-2.5 px-1 sm:px-2 transition-all relative ' +
-            (isSelected ? selectedClasses : normalClasses) + '">' +
-            '<span class="text-xs font-semibold">' + diasSemanaAbrev[diaSemana - 1] + '</span>' +
-            (isHoje ? '<span class="text-[7px] font-bold leading-none mt-0.5">' + (isSelected ? 'HOJE' : metasConcluidasDia + '/' + metasDoDia.length) + '</span>' : '<span class="text-[8px] leading-none mt-0.5">' + metasConcluidasDia + '/' + metasDoDia.length + '</span>') +
-            '<div class="w-full mt-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1"><div class="' + progressColor + ' h-1 rounded-full" style="width: ' + percentualDia + '%"></div></div>' +
+            'class="dia-tab flex-1 min-w-[48px] flex flex-col items-center py-2 px-1 transition-all ' +
+            (isSelected 
+              ? 'bg-[#122D6A] text-white rounded-lg mx-0.5 shadow-sm' 
+              : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-gray-800') + '">' +
+            '<span class="text-[11px] font-bold tracking-wide">' + diasSemanaAbrev[diaSemana - 1] + '</span>' +
+            (isHoje 
+              ? '<span class="text-[7px] font-bold leading-none mt-0.5 ' + (isSelected ? 'text-blue-200' : 'text-[#122D6A]') + '">HOJE</span>' 
+              : '<span class="text-[8px] leading-none mt-0.5 ' + (isSelected ? 'text-blue-200' : '') + '">' + countText + '</span>') +
+            (metasDoDia.length > 0 
+              ? '<div class="w-4/5 mt-1 ' + (isSelected ? 'bg-white/30' : 'bg-gray-200 dark:bg-gray-700') + ' rounded-full h-[3px]"><div class="' + (isSelected ? 'bg-white' : (percentualDia === 100 ? 'bg-emerald-500' : percentualDia > 0 ? 'bg-[#122D6A]' : 'bg-gray-300')) + ' h-[3px] rounded-full" style="width: ' + percentualDia + '%"></div></div>' 
+              : '') +
           '</button>'
         }).join('')}
       </div>
@@ -25640,28 +25643,57 @@ function renderCalendarioSemanal() {
 
 // ✅ v88b: Selecionar dia da semana (tabs)
 window.selecionarDiaSemana = function(diaSemana) {
-  // Classes para tabs
-  const selectedClasses = ['bg-amber-50', 'dark:bg-amber-900/30', 'text-[#122D6A]', 'dark:text-amber-300', 'font-bold', 'border-b-2', 'border-[#122D6A]', 'dark:border-amber-400'];
-  const normalClasses = ['bg-white', 'dark:bg-gray-900', 'text-gray-500', 'dark:text-gray-400', 'hover:bg-gray-50', 'dark:hover:bg-gray-800', 'hover:text-[#122D6A]'];
+  // ✅ v88e: Classes minimalistas - seleção azul, fundo branco
+  const selectedCls = ['bg-[#122D6A]', 'text-white', 'rounded-lg', 'mx-0.5', 'shadow-sm'];
+  const normalCls = ['bg-white', 'dark:bg-gray-900', 'text-gray-500', 'dark:text-gray-400', 'hover:bg-blue-50', 'dark:hover:bg-gray-800'];
   
-  // Esconder todos os painéis e resetar tabs
+  // Resetar todas as tabs
   for (let d = 1; d <= 7; d++) {
     const panel = document.getElementById('metas-dia-' + d);
     const tab = document.getElementById('tab-dia-' + d);
     if (panel) panel.classList.add('hidden');
     if (tab) {
-      selectedClasses.forEach(c => tab.classList.remove(c));
-      normalClasses.forEach(c => tab.classList.add(c));
+      selectedCls.forEach(c => tab.classList.remove(c));
+      normalCls.forEach(c => tab.classList.add(c));
+      // Atualizar cores internas para normal
+      const hojeLabel = tab.querySelector('span:nth-child(2)');
+      if (hojeLabel) {
+        hojeLabel.classList.remove('text-blue-200');
+        if (hojeLabel.textContent === 'HOJE') hojeLabel.classList.add('text-[#122D6A]');
+      }
+      // Progress bar colors
+      const progressBg = tab.querySelector('div > div:first-child') || tab.querySelector('.rounded-full');
+      if (progressBg && progressBg.parentElement) {
+        progressBg.parentElement.classList.remove('bg-white/30');
+        progressBg.parentElement.classList.add('bg-gray-200', 'dark:bg-gray-700');
+        progressBg.classList.remove('bg-white');
+      }
     }
   }
   
-  // Mostrar o dia selecionado
+  // Ativar tab selecionada
   const panel = document.getElementById('metas-dia-' + diaSemana);
   const tab = document.getElementById('tab-dia-' + diaSemana);
   if (panel) panel.classList.remove('hidden');
   if (tab) {
-    normalClasses.forEach(c => tab.classList.remove(c));
-    selectedClasses.forEach(c => tab.classList.add(c));
+    normalCls.forEach(c => tab.classList.remove(c));
+    selectedCls.forEach(c => tab.classList.add(c));
+    // Atualizar cores internas para selecionado
+    const hojeLabel = tab.querySelector('span:nth-child(2)');
+    if (hojeLabel) {
+      hojeLabel.classList.remove('text-[#122D6A]');
+      hojeLabel.classList.add('text-blue-200');
+    }
+    // Progress bar branca no selecionado
+    const progressContainer = tab.querySelector('.rounded-full');
+    if (progressContainer) {
+      progressContainer.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+      progressContainer.classList.add('bg-white/30');
+      const progressBar = progressContainer.querySelector('.rounded-full');
+      if (progressBar) {
+        progressBar.classList.add('bg-white');
+      }
+    }
   }
 }
 
