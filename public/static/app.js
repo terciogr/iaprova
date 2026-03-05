@@ -1190,6 +1190,13 @@ function createUnifiedFAB() {
         </button>
       </div>
       
+      <button onclick="abrirNovidades(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textSecondary}; font-size: 13px; font-weight: 400; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-gift" style="font-size: 13px; color: #6B7280;"></i>
+        </div>
+        <span>Novidades <span style="font-size:10px;color:#4A90D9;font-weight:600;margin-left:4px;">v2.0</span></span>
+      </button>
+      
       <!-- Separador -->
       <div style="height: 1px; background: ${borderColor}; margin: 10px 12px;"></div>
       
@@ -17350,7 +17357,7 @@ window.abrirPainelAdmin = async function() {
               <div class="space-y-3">
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Versão</span>
-                  <span class="font-bold ${themes[currentTheme].text}">1.5.0</span>
+                  <span class="font-bold ${themes[currentTheme].text}">2.0.0</span>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Ambiente</span>
@@ -17478,12 +17485,12 @@ window.abrirChatAdmin = async function() {
   document.body.appendChild(modal);
   
   try {
-    const [convRes, usersRes] = await Promise.all([
+    const results = await Promise.allSettled([
       axios.get('/api/admin/messages/conversations', { params: { admin_id: currentUser.id } }),
       axios.get('/api/admin/users', { headers: { 'X-User-ID': currentUser.id } })
     ]);
-    const conversations = convRes.data.conversations || [];
-    const allUsers = usersRes.data.users || [];
+    const conversations = results[0].status === 'fulfilled' ? (results[0].value.data.conversations || []) : [];
+    const allUsers = results[1].status === 'fulfilled' ? (results[1].value.data.users || []) : [];
     const _d = currentTheme === 'dark';
     
     let html = '';
@@ -17770,6 +17777,63 @@ setInterval(function() {
 setTimeout(function() {
   if (typeof verificarMensagensAdmin === 'function') verificarMensagensAdmin();
 }, 5000);
+
+// ============== NOVIDADES / CHANGELOG ==============
+window.abrirNovidades = function() {
+  var _d = currentTheme === 'dark';
+  var bgCard = _d ? '#1F2937' : '#FFFFFF';
+  var textMain = _d ? '#F3F4F6' : '#1E293B';
+  var textSec = _d ? '#9CA3AF' : '#6B7280';
+  var borderC = _d ? '#374151' : '#E5E7EB';
+  var tagBg = _d ? 'rgba(42,74,159,0.25)' : '#EFF6FF';
+  
+  var modal = document.createElement('div');
+  modal.id = 'modal-novidades';
+  modal.className = 'fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-[9999] p-0 sm:p-4';
+  modal.innerHTML = [
+    '<div style="background:' + bgCard + ';max-width:480px;width:100%;max-height:85vh;border-radius:16px 16px 0 0;overflow:hidden;display:flex;flex-direction:column;" class="sm:rounded-2xl">',
+    '  <div style="background:linear-gradient(135deg,#122D6A,#2A4A9F);padding:20px;color:white;flex-shrink:0;">',
+    '    <div style="display:flex;align-items:center;justify-content:space-between;">',
+    '      <div style="display:flex;align-items:center;gap:10px;">',
+    '        <i class="fas fa-rocket" style="font-size:20px;"></i>',
+    '        <div><h3 style="font-size:16px;font-weight:700;margin:0;">Novidades do IAprova</h3>',
+    '        <p style="font-size:11px;opacity:0.7;margin:0;">Versão 2.0 · Março 2026</p></div>',
+    '      </div>',
+    '      <button onclick="document.getElementById(\'modal-novidades\')?.remove()" style="width:32px;height:32px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;">',
+    '        <i class="fas fa-times"></i>',
+    '      </button>',
+    '    </div>',
+    '  </div>',
+    '  <div style="padding:16px;overflow-y:auto;flex:1;">',
+    
+    // Itens do changelog
+    _novidadeItem('Plano de Estudos com IA', 'Entrevista inteligente que monta seu plano personalizado com base no edital, cargo e tempo disponível.', 'fa-brain', '#4A90D9', tagBg, textMain, textSec, borderC),
+    _novidadeItem('Conteúdo Gerado por IA', 'Teoria, exercícios, resumos e flashcards gerados automaticamente pela IA com base nos tópicos do seu edital.', 'fa-magic', '#10B981', tagBg, textMain, textSec, borderC),
+    _novidadeItem('Metas Semanais Inteligentes', 'Cronograma semanal com distribuição automática de disciplinas, barra de progresso e acompanhamento diário.', 'fa-calendar-check', '#8B5CF6', tagBg, textMain, textSec, borderC),
+    _novidadeItem('Simulados com Análise', 'Simulados cronometrados com análise de desempenho por disciplina, evolução temporal e comparativo com meta.', 'fa-clipboard-list', '#F59E0B', tagBg, textMain, textSec, borderC),
+    _novidadeItem('Dashboard de Desempenho', 'Visão completa do progresso: KPIs, cumprimento de metas por semana/mês, nível de domínio por matéria.', 'fa-chart-line', '#EF4444', tagBg, textMain, textSec, borderC),
+    _novidadeItem('Concursos Atualizados', 'Mapa de concursos por estado com filtros por região, banca e situação. Dados atualizados periodicamente.', 'fa-landmark', '#122D6A', tagBg, textMain, textSec, borderC),
+    _novidadeItem('Assistente Lilu', 'Chat com IA para tirar dúvidas sobre estudos, técnicas de memorização, cronograma e muito mais.', 'fa-headset', '#EC4899', tagBg, textMain, textSec, borderC),
+    _novidadeItem('Upload de Material', 'Envie PDFs e documentos para a IA gerar resumos personalizados com base no seu material de estudo.', 'fa-file-upload', '#06B6D4', tagBg, textMain, textSec, borderC),
+    _novidadeItem('Tema Claro/Escuro', 'Interface adaptável com tema claro e escuro para estudar a qualquer hora com conforto visual.', 'fa-moon', '#6366F1', tagBg, textMain, textSec, borderC),
+    _novidadeItem('Chat com Suporte', 'Receba mensagens diretas da equipe IAprova e responda sem sair do app.', 'fa-comments', '#14B8A6', tagBg, textMain, textSec, borderC),
+    
+    '    <div style="text-align:center;padding:12px 0 4px;"><p style="font-size:11px;color:' + textSec + ';">Feito com dedicação para concurseiros 💙</p></div>',
+    '  </div>',
+    '</div>'
+  ].join('');
+  document.body.appendChild(modal);
+};
+
+function _novidadeItem(titulo, desc, icone, cor, tagBg, textMain, textSec, borderC) {
+  return '<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid ' + borderC + ';">' +
+    '<div style="width:36px;height:36px;border-radius:10px;background:' + tagBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+    '<i class="fas ' + icone + '" style="font-size:14px;color:' + cor + ';"></i></div>' +
+    '<div style="flex:1;min-width:0;">' +
+    '<p style="font-size:13px;font-weight:600;color:' + textMain + ';margin:0 0 2px;">' + titulo + '</p>' +
+    '<p style="font-size:11px;color:' + textSec + ';margin:0;line-height:1.4;">' + desc + '</p>' +
+    '</div></div>';
+}
 
 // ============== ANALYTICS ADMIN (Conteúdos + Feedbacks) ==============
 window.abrirAnalyticsAdmin = async function() {

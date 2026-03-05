@@ -22837,6 +22837,17 @@ app.get('/api/admin/messages/conversations', async (c) => {
   }
   
   try {
+    // Criar tabela se não existir
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      sender_type TEXT NOT NULL DEFAULT 'admin',
+      message TEXT NOT NULL,
+      read_at DATETIME DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`).run();
+    
     const conversations = await env.DB.prepare(`
       SELECT 
         am.user_id,
@@ -22854,7 +22865,8 @@ app.get('/api/admin/messages/conversations', async (c) => {
     `).all();
     
     return c.json({ conversations: conversations.results || [] });
-  } catch (e) {
+  } catch (e: any) {
+    console.error('Erro conversations:', e?.message || e);
     return c.json({ conversations: [] });
   }
 });
