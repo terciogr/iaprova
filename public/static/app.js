@@ -1086,6 +1086,9 @@ function createUnifiedFAB() {
   const hoverBg = isDark ? '#374151' : '#f0f4ff';
   const borderColor = isDark ? '#374151' : '#e5e7eb';
   const headerBg = isDark ? '#111827' : '#122D6A';
+  // v108: Cores dos ícones do sidebar com alto contraste
+  const iconBg = isDark ? '#2A4A8C' : '#EEF2FF';  // fundo do ícone: azul médio no dark, lavanda no light
+  const iconColor = isDark ? '#ffffff' : '#122D6A'; // cor do ícone: branco no dark, azul no light
   
   sidebar.style.background = bgColor;
   
@@ -1120,43 +1123,43 @@ function createUnifiedFAB() {
       <p style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: ${textSecondary}; padding: 8px 12px 6px; margin: 0;">Navegação</p>
       
       <button onclick="renderDashboard(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <i class="fas fa-home" style="font-size: 13px; color: #122D6A;"></i>
+        <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-home" style="font-size: 13px; color: ${iconColor};"></i>
         </div>
         Dashboard
       </button>
       
       <button onclick="renderPortfolioDisciplinas(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <i class="fas fa-book" style="font-size: 13px; color: #122D6A;"></i>
+        <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-book" style="font-size: 13px; color: ${iconColor};"></i>
         </div>
         Disciplinas
       </button>
       
       <button onclick="window.renderDashboardSimulados(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <i class="fas fa-clipboard-list" style="font-size: 13px; color: #122D6A;"></i>
+        <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-clipboard-list" style="font-size: 13px; color: ${iconColor};"></i>
         </div>
         Simulados
       </button>
       
       <button onclick="renderCalendario(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <i class="fas fa-calendar-alt" style="font-size: 13px; color: #122D6A;"></i>
+        <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-calendar-alt" style="font-size: 13px; color: ${iconColor};"></i>
         </div>
         Calendário
       </button>
       
       <button onclick="window.renderDashboardDesempenho(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <i class="fas fa-chart-line" style="font-size: 13px; color: #122D6A;"></i>
+        <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-chart-line" style="font-size: 13px; color: ${iconColor};"></i>
         </div>
         Desempenho
       </button>
       
       <button onclick="abrirModalConcursos(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <i class="fas fa-landmark" style="font-size: 13px; color: #122D6A;"></i>
+        <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-landmark" style="font-size: 13px; color: ${iconColor};"></i>
         </div>
         Concursos
       </button>
@@ -1168,31 +1171,31 @@ function createUnifiedFAB() {
       <p style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: ${textSecondary}; padding: 8px 12px 6px; margin: 0;">Ferramentas</p>
       
       <button onclick="toggleChat(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <i class="fas fa-headset" style="font-size: 13px; color: #122D6A;"></i>
+        <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-headset" style="font-size: 13px; color: ${iconColor};"></i>
         </div>
         Assistente Lilu
       </button>
       
       <button onclick="abrirModalFeedback(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <i class="fas fa-comment-dots" style="font-size: 13px; color: #122D6A;"></i>
+        <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-comment-dots" style="font-size: 13px; color: ${iconColor};"></i>
         </div>
         Enviar Feedback
       </button>
       
       <div id="fab-install-app">
         <button onclick="showInstallInstructions(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-          <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-            <i class="fas fa-download" style="font-size: 13px; color: #122D6A;"></i>
+          <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i class="fas fa-download" style="font-size: 13px; color: ${iconColor};"></i>
           </div>
           Instalar App
         </button>
       </div>
       
       <button onclick="abrirNovidades(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textSecondary}; font-size: 13px; font-weight: 400; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <i class="fas fa-gift" style="font-size: 13px; color: #6B7280;"></i>
+        <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-gift" style="font-size: 13px; color: ${isDark ? '#9CA3AF' : '#6B7280'};"></i>
         </div>
         <span>Novidades <span style="font-size:10px;color:#4A90D9;font-weight:600;margin-left:4px;">v2.1</span></span>
       </button>
@@ -1204,16 +1207,16 @@ function createUnifiedFAB() {
       <p style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: ${textSecondary}; padding: 8px 12px 6px; margin: 0;">Sistema</p>
       
       <button onclick="abrirConfiguracoes(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <i class="fas fa-cog" style="font-size: 13px; color: #122D6A;"></i>
+        <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-cog" style="font-size: 13px; color: ${iconColor};"></i>
         </div>
         Configurações
       </button>
       
       <div id="fab-admin-panel" style="display: none;">
         <button onclick="abrirPainelAdmin(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-          <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-            <i class="fas fa-shield-alt" style="font-size: 13px; color: #122D6A;"></i>
+          <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i class="fas fa-shield-alt" style="font-size: 13px; color: ${iconColor};"></i>
           </div>
           Painel Admin
         </button>
