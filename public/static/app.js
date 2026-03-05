@@ -11074,12 +11074,13 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       tipo: tipo,
       quantidade: quantidade,
       meta_id: metaId,
-      config_ia: iaConfig,  // Enviar configurações da IA
-      subtipo_resumo: tipo === 'resumo' ? 'esquematizado' : undefined  // ✅ v71: resumo é sempre esquematizado
+      config_ia: iaConfig,
+      subtipo_resumo: tipo === 'resumo' ? 'esquematizado' : undefined
     }, {
       headers: {
         'X-User-ID': currentUser?.id || 1
-      }
+      },
+      timeout: 180000 // 3 minutos - geração pode demorar
     });
     
     // Remover loading e limpar interval de progresso
@@ -11090,11 +11091,10 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
     document.getElementById('loading-conteudo')?.remove();
     
     if (response.data.success) {
-      // Mostrar ícone do conteúdo gerado se tiver metaId
+      console.log(`✅ v93: Conteúdo ${tipo} gerado com sucesso!`, { material_id: response.data.material_id, meta_id: metaId });
+      
+      // Atualizar cache e ícones imediatamente
       if (metaId && response.data.material_id) {
-        console.log(`✅ Conteúdo ${tipo} gerado com sucesso! Material ID: ${response.data.material_id}, Meta ID: ${metaId}`);
-        
-        // Atualizar cache imediatamente
         if (!window.conteudosMetaCache[metaId]) {
           window.conteudosMetaCache[metaId] = { tipos_gerados: {}, tipos_sources: {} };
         }
@@ -11102,44 +11102,32 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
         window.conteudosMetaCache[metaId].tipos_sources[tipo] = { id: response.data.material_id, source: 'materiais_salvos' };
         window.conteudosMetaCache[metaId][`tem_${tipo}`] = true;
         
-        // Aguardar um momento para garantir que o DOM está pronto
+        // Atualizar ícones em paralelo (não bloquear)
         setTimeout(() => {
-          mostrarIconeConteudo(metaId, tipo, response.data.material_id);
-          
-          // Forçar atualização visual adicional
-          const btn = document.getElementById(`icon-${tipo}-${metaId}`);
-          if (btn) {
-            console.log(`🎆 Forçando visibilidade do ícone ${tipo} para meta ${metaId}`);
-            btn.style.opacity = '1';
-            btn.style.filter = 'none';
-            btn.classList.remove('opacity-40', 'hover:opacity-80');
-            btn.classList.add('opacity-100');
-          } else {
-            console.warn(`⚠️ Botão icon-${tipo}-${metaId} não encontrado no DOM`);
-          }
-          
-          // Também atualizar via API para garantir persistência
-          setTimeout(() => {
-            atualizarIconesConteudoMeta(metaId);
-          }, 1000);
-        }, 500);
+          marcarBotaoConteudoDisponivel(metaId, tipo, response.data.material_id);
+          atualizarIconesConteudoMeta(metaId);
+        }, 300);
       }
       
-      // Exibir conteúdo baseado no tipo
-      if (response.data.tipo === 'exercicios') {
-        // Exercícios interativos
-        exibirExerciciosInterativos(response.data);
-      } else if (response.data.tipo === 'flashcards') {
-        // Flashcards visuais
-        exibirFlashcardsVisuais(response.data);
-      } else if (response.data.tipo === 'resumo' && response.data.subtipo_resumo === 'esquematizado') {
-        // ✅ v70: Resumo esquematizado com renderização visual
-        exibirResumoEsquematizado(response.data);
-      } else {
-        // Teoria ou Resumo escrito - exibição padrão formatada
-        exibirConteudoGerado(response.data);
+      // ✅ v93: ABRIR CONTEÚDO AUTOMATICAMENTE APÓS GERAÇÃO
+      showToast('Conteúdo gerado com sucesso! Abrindo...', 'success');
+      
+      try {
+        if (response.data.tipo === 'exercicios') {
+          exibirExerciciosInterativos(response.data);
+        } else if (response.data.tipo === 'flashcards') {
+          exibirFlashcardsVisuais(response.data);
+        } else if (response.data.tipo === 'resumo' && response.data.subtipo_resumo === 'esquematizado') {
+          exibirResumoEsquematizado(response.data);
+        } else {
+          exibirConteudoGerado(response.data);
+        }
+      } catch (exibirError) {
+        console.error('❌ v93: Erro ao exibir conteúdo:', exibirError);
+        // Fallback: exibir como texto puro
+        showToast('Conteúdo gerado! Clique no botão para visualizar.', 'info');
       }
-      // ✅ v70: Resetar subtipo de resumo após uso
+      
       subtipoResumoSelecionado = null;
     } else {
       showToast('Erro ao gerar conteúdo: ' + (response.data.error || 'Erro no servidor. Tente novamente.'), 'error');
@@ -11150,13 +11138,35 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       window._loadingProgressInterval = null;
     }
     document.getElementById('loading-conteudo')?.remove();
-    console.error('Erro ao gerar conteúdo:', error);
+    console.error('❌ v93: Erro ao gerar conteúdo:', error);
     
-    // Mensagem mais amigável para rate limit
-    const errorMsg = error.response?.data?.error || error.message;
-    const errorDetails = error.response?.data?.details || '';
+    const errorMsg = error.response?.data?.error || error.message || '';
+    const isTimeout = error.code === 'ECONNABORTED' || errorMsg.includes('timeout');
+    const isRateLimit = error.response?.status === 429 || errorMsg.includes('rate') || errorMsg.includes('indisponível');
     
-    if (error.response?.status === 429 || errorMsg.includes('rate') || errorMsg.includes('indisponível')) {
+    if (isTimeout) {
+      // v93: Se timeout, o conteúdo PODE ter sido gerado no servidor
+      // Tentar buscar da API após um delay
+      showToast('A geração demorou mais que o esperado. Verificando...', 'warning');
+      if (metaId) {
+        setTimeout(async () => {
+          try {
+            await atualizarIconesConteudoMeta(metaId);
+            const cache = window.conteudosMetaCache[metaId];
+            if (cache && cache[`tem_${tipo}`]) {
+              showToast('Conteúdo encontrado! Clique no botão para visualizar.', 'success');
+              marcarBotaoConteudoDisponivel(metaId, tipo, cache.tipos_gerados?.[tipo]);
+            } else {
+              showToast('Tempo esgotado. Tente novamente em 1-2 minutos.', 'error');
+            }
+          } catch (e) {
+            showToast('Tempo esgotado. Tente novamente em 1-2 minutos.', 'error');
+          }
+        }, 3000);
+      } else {
+        showToast('Tempo esgotado. Tente novamente.', 'error');
+      }
+    } else if (isRateLimit) {
       showToast('API ocupada. Aguarde 1-2 minutos e tente novamente.', 'warning');
     } else {
       showToast('Erro ao gerar conteúdo: ' + errorMsg, 'error');
@@ -21800,12 +21810,43 @@ window.gerarConteudoTipo = async function(tipo) {
 // Cache de conteúdos gerados por meta
 window.conteudosMetaCache = {};
 
+// ✅ v93: Função centralizada para marcar visualmente um botão de conteúdo como disponível
+function marcarBotaoConteudoDisponivel(metaId, tipo, conteudoId) {
+  const btn = document.getElementById(`icon-${tipo}-${metaId}`);
+  if (!btn) return;
+  
+  // Remover marcação anterior
+  const badgeExistente = btn.querySelector('.conteudo-badge');
+  if (badgeExistente) badgeExistente.remove();
+  
+  // Texto do botão com check
+  const tipoLabels = { teoria: 'Teoria', exercicios: 'Questões', resumo: 'Resumo', flashcards: 'Flash', resumo_personalizado: 'Upload' };
+  const label = tipoLabels[tipo] || tipo;
+  btn.innerHTML = `<i class="fas fa-check-circle mr-0.5"></i>${label}`;
+  
+  // Estilizar com cores visiveis
+  btn.style.position = 'relative';
+  btn.classList.remove('bg-gray-100', 'bg-emerald-50', 'bg-emerald-900/30', 'ring-1', 'ring-emerald-200', 'ring-emerald-700');
+  
+  if (currentTheme === 'light') {
+    btn.style.cssText += 'background:#ecfdf5;color:#047857;font-weight:600;border-radius:6px;padding:2px 6px;border:1.5px solid #6ee7b7;';
+  } else {
+    btn.style.cssText += 'background:rgba(6,78,59,0.4);color:#6ee7b7;font-weight:600;border-radius:6px;padding:2px 6px;border:1.5px solid #34d399;';
+  }
+  
+  btn.setAttribute('data-conteudo-id', conteudoId || '');
+  btn.setAttribute('data-tem-conteudo', 'true');
+  console.log(`✅ v93: Botão ${tipo} marcado como disponível para meta ${metaId}`);
+}
+window.marcarBotaoConteudoDisponivel = marcarBotaoConteudoDisponivel;
+
 // Buscar e atualizar ícones de conteúdo de uma meta
-// v64: Adiciona badge verde quando conteúdo existe (mais visível que opacidade)
+// ✅ v93: Reescrito para marcação visual muito mais clara
 async function atualizarIconesConteudoMeta(metaId) {
   try {
     const response = await axios.get(`/api/conteudos/meta/${metaId}`, {
-      headers: { 'X-User-ID': currentUser?.id || localStorage.getItem('userId') }
+      headers: { 'X-User-ID': currentUser?.id || localStorage.getItem('userId') },
+      timeout: 10000
     });
     const data = response.data;
     
@@ -21813,36 +21854,20 @@ async function atualizarIconesConteudoMeta(metaId) {
     
     const tipos = ['teoria', 'exercicios', 'resumo', 'flashcards', 'resumo_personalizado'];
     tipos.forEach(tipo => {
-      const btn = document.getElementById(`icon-${tipo}-${metaId}`);
-      if (btn) {
-        const temConteudo = data[`tem_${tipo}`];
-        
-        // Remover badge existente para recriá-lo
-        const badgeExistente = btn.querySelector('.conteudo-badge');
-        if (badgeExistente) badgeExistente.remove();
-        
-        if (temConteudo) {
-          // ✅ v64: Adicionar badge verde no canto superior direito
-          const badge = document.createElement('div');
-          badge.className = 'conteudo-badge absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 shadow-sm z-10 ' + (currentTheme === 'light' ? 'border-white' : 'border-gray-800');
-          badge.title = 'Conteúdo disponível';
-          btn.style.position = 'relative';
-          btn.appendChild(badge);
-          
-          // Também mudar background (respeitando tema)
-          btn.classList.remove('bg-gray-100', 'bg-emerald-50', 'bg-emerald-900/30', 'ring-1', 'ring-emerald-200', 'ring-emerald-700');
-          if (currentTheme === 'light') {
-            btn.classList.add('bg-emerald-50', 'ring-1', 'ring-emerald-200');
-          } else {
-            btn.classList.add('bg-emerald-900/30', 'ring-1', 'ring-emerald-700');
-            btn.style.color = '#6ee7b7';
-          }
-          btn.setAttribute('data-conteudo-id', data.tipos_gerados[tipo]);
-          console.log(`✅ v64: Ícone ${tipo} marcado como disponível para meta ${metaId}`);
-        } else {
-          // Sem conteúdo - estado normal
+      const temConteudo = data[`tem_${tipo}`];
+      if (temConteudo) {
+        marcarBotaoConteudoDisponivel(metaId, tipo, data.tipos_gerados?.[tipo]);
+      } else {
+        // Resetar para estado normal
+        const btn = document.getElementById(`icon-${tipo}-${metaId}`);
+        if (btn) {
+          btn.removeAttribute('data-tem-conteudo');
+          btn.removeAttribute('data-conteudo-id');
           btn.classList.remove('bg-emerald-50', 'bg-emerald-900/30', 'ring-1', 'ring-emerald-200', 'ring-emerald-700');
-          btn.style.color = '';
+          btn.style.cssText = '';
+          // Restaurar label original
+          const tipoLabels = { teoria: 'Teoria', exercicios: 'Questões', resumo: 'Resumo', flashcards: 'Flash', resumo_personalizado: 'Upload' };
+          btn.textContent = tipoLabels[tipo] || tipo;
         }
       }
     });
@@ -21852,54 +21877,32 @@ async function atualizarIconesConteudoMeta(metaId) {
 }
 window.atualizarIconesConteudoMeta = atualizarIconesConteudoMeta;
 
-// Mostrar ícone específico após gerar conteúdo
-// v64: Usa badge verde em vez de apenas opacidade
+// Alias para compatibilidade
 function mostrarIconeConteudo(metaId, tipo, conteudoId) {
-  const btn = document.getElementById(`icon-${tipo}-${metaId}`);
-  if (btn) {
-    // Remover badge existente para recriá-lo
-    const badgeExistente = btn.querySelector('.conteudo-badge');
-    if (badgeExistente) badgeExistente.remove();
-    
-    // Adicionar badge verde
-    const badge = document.createElement('div');
-    badge.className = 'conteudo-badge absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 shadow-sm z-10 ' + (currentTheme === 'light' ? 'border-white' : 'border-gray-800');
-    badge.title = 'Conteúdo disponível';
-    btn.style.position = 'relative';
-    btn.appendChild(badge);
-    
-    // Mudar background (respeitando tema)
-    btn.classList.remove('bg-gray-100', 'bg-emerald-50', 'bg-emerald-900/30', 'ring-1', 'ring-emerald-200', 'ring-emerald-700');
-    if (currentTheme === 'light') {
-      btn.classList.add('bg-emerald-50', 'ring-1', 'ring-emerald-200');
-    } else {
-      btn.classList.add('bg-emerald-900/30', 'ring-1', 'ring-emerald-700');
-      btn.style.color = '#6ee7b7';
-    }
-    btn.setAttribute('data-conteudo-id', conteudoId);
-    btn.setAttribute('data-source', 'materiais_salvos');
-    console.log(`✅ v64: Ícone ${tipo} marcado para meta ${metaId}, conteudo_id=${conteudoId}`);
-    
-    // Atualizar cache
-    if (!window.conteudosMetaCache[metaId]) {
-      window.conteudosMetaCache[metaId] = { tipos_gerados: {}, tipos_sources: {} };
-    }
-    window.conteudosMetaCache[metaId].tipos_gerados[tipo] = conteudoId;
-    window.conteudosMetaCache[metaId].tipos_sources[tipo] = { id: conteudoId, source: 'materiais_salvos' };
-    window.conteudosMetaCache[metaId][`tem_${tipo}`] = true;
+  marcarBotaoConteudoDisponivel(metaId, tipo, conteudoId);
+  
+  // Atualizar cache
+  if (!window.conteudosMetaCache[metaId]) {
+    window.conteudosMetaCache[metaId] = { tipos_gerados: {}, tipos_sources: {} };
   }
+  window.conteudosMetaCache[metaId].tipos_gerados[tipo] = conteudoId;
+  window.conteudosMetaCache[metaId].tipos_sources[tipo] = { id: conteudoId, source: 'materiais_salvos' };
+  window.conteudosMetaCache[metaId][`tem_${tipo}`] = true;
 }
 window.mostrarIconeConteudo = mostrarIconeConteudo;
 
 // Atualizar todos os ícones de conteúdo visíveis
+// ✅ v93: Atualizar todos os ícones em paralelo (mais rápido)
 async function atualizarTodosIconesConteudo() {
   const containers = document.querySelectorAll('[id^="conteudos-meta-"]');
+  const promises = [];
   for (const container of containers) {
     const metaId = container.id.replace('conteudos-meta-', '');
     if (metaId && !isNaN(parseInt(metaId))) {
-      await atualizarIconesConteudoMeta(parseInt(metaId));
+      promises.push(atualizarIconesConteudoMeta(parseInt(metaId)));
     }
   }
+  await Promise.allSettled(promises);
 }
 window.atualizarTodosIconesConteudo = atualizarTodosIconesConteudo;
 
