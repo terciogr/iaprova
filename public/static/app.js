@@ -25426,10 +25426,10 @@ function renderCalendarioSemanal() {
               <div class="flex flex-col gap-2 ${ativas.length > 0 ? 'md:w-1/4 flex-shrink-0' : 'flex-1'}">
                 ${concluidas.map(meta => {
                   return `
-                  <div class="flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" style="border-left: 3px solid #10B981;">
+                  <div class="flex items-center justify-between p-3 rounded-xl ${themes[currentTheme].card} border ${themes[currentTheme].border}" style="border-left: 3px solid #10B981;">
                     <div class="flex-1 min-w-0">
-                      <p class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">${meta.disciplina_nome}</p>
-                      <p class="text-xs text-gray-500 dark:text-gray-400">Concluído</p>
+                      <p class="text-sm font-semibold ${themes[currentTheme].text} truncate">${meta.disciplina_nome}</p>
+                      <p class="text-xs ${themes[currentTheme].textSecondary}">Concluído</p>
                     </div>
                     <i class="fas fa-check-circle text-emerald-500 text-lg ml-2 flex-shrink-0"></i>
                   </div>`
@@ -25456,18 +25456,18 @@ function renderCalendarioSemanal() {
                   const dn = (meta.disciplina_nome || '').replace(/'/g, "\\'");
                   const setMeta = "window.metaAtual={id:" + meta.id + ",topico_nome:'" + tn + "',disciplina_nome:'" + dn + "',topico_id:" + (topicoId || 'null') + ",disciplina_id:" + (meta.disciplina_id || 'null') + "};";
                   return `
-                  <div class="flex flex-col p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                  <div class="flex flex-col p-4 rounded-xl ${themes[currentTheme].card} border ${themes[currentTheme].border}">
                     <div class="flex items-start justify-between mb-2">
                       <div class="flex-1 min-w-0">
-                        <p class="text-sm font-bold text-gray-800 dark:text-gray-100">${meta.disciplina_nome}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${meta.tempo_minutos || 60} min</p>
+                        <p class="text-sm font-bold ${themes[currentTheme].text}">${meta.disciplina_nome}</p>
+                        <p class="text-xs ${themes[currentTheme].textSecondary} mt-0.5">${meta.tempo_minutos || 60} min</p>
                       </div>
-                      <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${dn}', '${tn}', ${meta.dia_semana})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition flex-shrink-0" title="Editar">
+                      <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${dn}', '${tn}', ${meta.dia_semana})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 transition flex-shrink-0" title="Editar">
                         <i class="fas fa-pencil-alt text-[10px] text-gray-400"></i>
                       </button>
                     </div>
                     <button onclick="event.stopPropagation(); abrirConteudo(${meta.id})" class="w-full py-2.5 text-sm font-semibold text-white bg-[#1B2A4A] rounded-lg hover:bg-[#122D6A] transition mb-3">Estudar</button>
-                    <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 flex-wrap" id="conteudos-meta-${meta.id}">
+                    <div class="flex items-center gap-3 text-xs ${themes[currentTheme].textSecondary} flex-wrap" id="conteudos-meta-${meta.id}">
                       <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'teoria')" class="hover:text-[#122D6A] transition" data-tipo="teoria" id="icon-teoria-${meta.id}">Teoria</button>
                       <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'exercicios')" class="hover:text-[#122D6A] transition" data-tipo="exercicios" id="icon-exercicios-${meta.id}">Questões</button>
                       <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'resumo')" class="hover:text-[#122D6A] transition" data-tipo="resumo" id="icon-resumo-${meta.id}">Resumo</button>
