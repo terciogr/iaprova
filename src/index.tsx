@@ -19623,7 +19623,7 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
 ${incluirLimiteExtensao ? `5. EXTENSÃO MÍNIMA: ${limiteCaracteres} caracteres (pode ultrapassar, mas NUNCA gere menos que isso)
 
 ⚠️ REGRA CRÍTICA: O conteúdo DEVE ter NO MÍNIMO ${limiteCaracteres} caracteres. Gere conteúdo COMPLETO, DETALHADO e EXTENSO.
-Para TEORIA: gere o MÁXIMO possível, idealmente entre 50.000 e 70.000 caracteres.` : `5. FORMATO: Siga EXATAMENTE o formato solicitado abaixo. NÃO gere texto corrido ou teoria.`}
+Para TEORIA: gere conteúdo detalhado com 10.000-20.000 caracteres.` : `5. FORMATO: Siga EXATAMENTE o formato solicitado abaixo. NÃO gere texto corrido ou teoria.`}
 
 🚫 PROIBIDO ABSOLUTAMENTE:
 - NÃO inicie com saudações como "Olá", "Olá futuro servidor", "Caro estudante", etc.
@@ -19674,12 +19674,11 @@ Para TEORIA: gere o MÁXIMO possível, idealmente entre 50.000 e 70.000 caracter
         
         systemPrompt = `Você é um professor especialista em concursos públicos brasileiros.
 
-🔴🔴🔴 REGRA MÁXIMA E INVIOLÁVEL 🔴🔴🔴
-VOCÊ DEVE GERAR O CONTEÚDO MAIS COMPLETO E EXTENSO POSSÍVEL.
-GERE NO MÍNIMO 50.000 CARACTERES DE CONTEÚDO. IDEAL: 60.000-70.000 CARACTERES.
-SE FALTAR ASSUNTO NO TÓPICO, PODE EXTRAPOLAR PARA SUBTÓPICOS RELACIONADOS.
-NUNCA DEIXE NENHUM ASPECTO DO TÓPICO SEM COBRIR.
-NÃO RESUMA NADA. NÃO ENCURTE NADA. EXPANDA TUDO AO MÁXIMO.
+🔴 REGRA PRINCIPAL 🔴
+VOCÊ DEVE GERAR CONTEÚDO COMPLETO E DETALHADO.
+GERE ENTRE 10.000 E 20.000 CARACTERES DE CONTEÚDO.
+CUBRA TODOS OS ASPECTOS IMPORTANTES DO TÓPICO.
+NÃO RESUMA DEMAIS. SEJA DETALHADO E DIDÁTICO.
 ==================================================
 
 FORMATO: ${formatoTeoria}
@@ -19698,10 +19697,10 @@ ESTRUTURA OBRIGATÓRIA (EXPANDA CADA SEÇÃO AO MÁXIMO):
 9. **Resumo Final Completo** - Todos os pontos-chave em bullets detalhados
 
 REGRAS OBRIGATÓRIAS:
-- 🔴 GERE O MÁXIMO DE CONTEÚDO POSSÍVEL - NÃO HÁ LIMITE!
-- 🔴 CUBRA 100% DO TÓPICO - NÃO DEIXE NADA DE FORA
-- 🔴 Se o tópico for pequeno, EXPANDA para subtópicos relacionados
-- 🔴 NUNCA resuma ou encurte - SEMPRE expanda e detalhe
+- Gere conteúdo completo cobrindo os aspectos mais importantes
+- Cubra o tópico de forma abrangente mas objetiva
+- Se o tópico for pequeno, inclua subtópicos relacionados
+- Seja detalhado mas não repetitivo
 - Use linguagem clara e didática
 - Inclua MUITOS exemplos práticos e casos reais
 - Destaque palavras-chave em **negrito**
@@ -19981,24 +19980,26 @@ REGRAS OBRIGATÓRIAS:
         systemPrompt = `Crie um conteúdo educativo sobre "${topico_nome}" de "${disciplina_nome}" para concursos públicos.`
     }
     
-    // Usar apenas 1 modelo para evitar rate limit
-    const modelos = ['gemini-2.5-flash']
+    // ✅ v108: Modelos com fallback robusto - priorizando modelos com quota disponível
+    // gemini-2.5-flash-lite e gemini-flash-lite-latest têm quotas separadas e mais generosas
+    // gemini-2.5-flash e gemini-2.0-flash ficam como fallback caso os lite voltem a ter quota
+    const modelos = ['gemini-2.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-2.0-flash']
     
     // ✅ SEMPRE usar temperatura BAIXA (0.2) para conteúdo mais objetivo e consistente
     const temperaturaFixa = 0.2
     
-    // ✅ v71: Calcular maxOutputTokens baseado no tipo e extensão
+    // ✅ v108: Calcular maxOutputTokens baseado no tipo - valores otimizados para Cloudflare Workers (30s timeout)
     let maxTokens = 8192 // padrão alto
     if (tipoConteudo === 'flashcards') {
-      maxTokens = Math.max(qtdFlashcards * 300, 6000)
+      maxTokens = Math.max(qtdFlashcards * 300, 4000)
     } else if (tipoConteudo === 'exercicios') {
-      maxTokens = Math.max(qtdExercicios * 600, 8000)
+      maxTokens = Math.max(qtdExercicios * 600, 6000)
     } else if (tipoConteudo === 'resumo') {
-      // v71: Resumo esquematizado completo - sem limite de tamanho
       maxTokens = 16000
     } else {
-      // Para teoria: MÁXIMO possível - Gemini 2.5 Flash suporta até 65536 tokens
-      maxTokens = 65536
+      // Para teoria: Limitar a 12000 para caber no timeout do Cloudflare Workers (~30s)
+      // 16384 tokens = ~27s (local), no Cloudflare pode ultrapassar 30s
+      maxTokens = 12000
     }
     
     console.log(`🎯 Configuração: temperatura=${temperaturaFixa}, maxTokens=${maxTokens}, extensão=${iaConfig.extensao} (${limiteCaracteres} chars)`)
@@ -20040,12 +20041,11 @@ REGRAS OBRIGATÓRIAS:
           break
         }
         
-        // Se erro 429 (rate limit), aguardar e tentar próximo modelo
+        // Se erro 429 (rate limit), tentar próximo modelo IMEDIATAMENTE (sem delay)
         if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED') {
           console.log(`⏳ Rate limit no modelo ${modelo}, tentando próximo...`)
           lastError = data.error
-          await new Promise(resolve => setTimeout(resolve, 2000)) // Aguarda 2s antes do próximo
-          continue
+          continue // v108: sem delay - economiza tempo no timeout do Worker
         }
         
         // Outro erro, guardar e tentar próximo
