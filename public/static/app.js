@@ -25550,7 +25550,13 @@ function renderCalendarioSemanal() {
                     
                     <div class="flex items-start gap-1 mb-1.5">
                       <p class="text-xs font-medium text-gray-800 line-clamp-2 flex-1 ${meta.concluida ? 'line-through opacity-60' : ''}">${meta.disciplina_nome}</p>
-                      ${!meta.concluida ? '<button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(' + meta.id + ', ' + meta.plano_id + ', \\'' + disciplinaNomeEscaped + '\\', \\'' + topicoNomeEscaped + '\\', ' + meta.dia_semana + ')" class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 transition" title="Trocar disciplina/tópico"><i class="fas fa-pencil-alt text-[9px] text-gray-400 hover:text-[#122D6A]"></i></button>' : ''}
+                      ${!meta.concluida ? `
+                          <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${disciplinaNomeEscaped}', '${topicoNomeEscaped}', ${meta.dia_semana})" 
+                                  class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 transition" 
+                                  title="Trocar disciplina/tópico">
+                            <i class="fas fa-pencil-alt text-[9px] text-gray-400 hover:text-[#122D6A]"></i>
+                          </button>
+                        ` : ''}
                     </div>
                     
                     <div class="flex flex-col gap-2 mt-auto">
