@@ -22722,7 +22722,7 @@ app.post('/api/admin/messages', async (c) => {
   
   // Verificar se admin
   const admin = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(admin_id).first();
-  if (!admin || admin.email !== 'tercio10@gmail.com') {
+  if (!admin || admin.email !== ADMIN_EMAIL) {
     return c.json({ error: 'Acesso negado' }, 403);
   }
   
@@ -22768,6 +22768,55 @@ app.post('/api/messages/reply', async (c) => {
   return c.json({ success: true, id: result.meta.last_row_id });
 });
 
+// Listar todas conversas do admin (lista de usuários com mensagens)
+// IMPORTANTE: Esta rota DEVE vir ANTES de /api/admin/messages/:user_id
+// para que "conversations" não seja capturado como :user_id
+app.get('/api/admin/messages/conversations', async (c) => {
+  const { env } = c;
+  const adminId = c.req.query('admin_id');
+  
+  if (adminId) {
+    const admin = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(adminId).first();
+    if (!admin || admin.email !== ADMIN_EMAIL) {
+      return c.json({ error: 'Acesso negado' }, 403);
+    }
+  }
+  
+  try {
+    // Criar tabela se não existir
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      sender_type TEXT NOT NULL DEFAULT 'admin',
+      message TEXT NOT NULL,
+      read_at DATETIME DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`).run();
+    
+    const conversations = await env.DB.prepare(`
+      SELECT 
+        am.user_id,
+        u.name as user_name,
+        u.email as user_email,
+        MAX(am.created_at) as last_message_at,
+        (SELECT message FROM admin_messages am2 WHERE am2.user_id = am.user_id ORDER BY am2.created_at DESC LIMIT 1) as last_message,
+        (SELECT sender_type FROM admin_messages am3 WHERE am3.user_id = am.user_id ORDER BY am3.created_at DESC LIMIT 1) as last_sender,
+        SUM(CASE WHEN am.sender_type = 'user' AND am.read_at IS NULL THEN 1 ELSE 0 END) as unread_from_user,
+        COUNT(*) as total_messages
+      FROM admin_messages am
+      LEFT JOIN users u ON u.id = am.user_id
+      GROUP BY am.user_id
+      ORDER BY last_message_at DESC
+    `).all();
+    
+    return c.json({ conversations: conversations.results || [] });
+  } catch (e: any) {
+    console.error('Erro conversations:', e?.message || e);
+    return c.json({ conversations: [] });
+  }
+});
+
 // Buscar mensagens de um usuário (para admin ver)
 app.get('/api/admin/messages/:user_id', async (c) => {
   const { env } = c;
@@ -22777,7 +22826,7 @@ app.get('/api/admin/messages/:user_id', async (c) => {
   // Verificar admin
   if (adminId) {
     const admin = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(adminId).first();
-    if (!admin || admin.email !== 'tercio10@gmail.com') {
+    if (!admin || admin.email !== ADMIN_EMAIL) {
       return c.json({ error: 'Acesso negado' }, 403);
     }
   }
@@ -22824,53 +22873,6 @@ app.post('/api/messages/mark-read', async (c) => {
   return c.json({ success: true });
 });
 
-// Listar todas conversas do admin (lista de usuários com mensagens)
-app.get('/api/admin/messages/conversations', async (c) => {
-  const { env } = c;
-  const adminId = c.req.query('admin_id');
-  
-  if (adminId) {
-    const admin = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(adminId).first();
-    if (!admin || admin.email !== 'tercio10@gmail.com') {
-      return c.json({ error: 'Acesso negado' }, 403);
-    }
-  }
-  
-  try {
-    // Criar tabela se não existir
-    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      admin_id INTEGER NOT NULL,
-      user_id INTEGER NOT NULL,
-      sender_type TEXT NOT NULL DEFAULT 'admin',
-      message TEXT NOT NULL,
-      read_at DATETIME DEFAULT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`).run();
-    
-    const conversations = await env.DB.prepare(`
-      SELECT 
-        am.user_id,
-        u.name as user_name,
-        u.email as user_email,
-        MAX(am.created_at) as last_message_at,
-        (SELECT message FROM admin_messages am2 WHERE am2.user_id = am.user_id ORDER BY am2.created_at DESC LIMIT 1) as last_message,
-        (SELECT sender_type FROM admin_messages am3 WHERE am3.user_id = am.user_id ORDER BY am3.created_at DESC LIMIT 1) as last_sender,
-        SUM(CASE WHEN am.sender_type = 'user' AND am.read_at IS NULL THEN 1 ELSE 0 END) as unread_from_user,
-        COUNT(*) as total_messages
-      FROM admin_messages am
-      LEFT JOIN users u ON u.id = am.user_id
-      GROUP BY am.user_id
-      ORDER BY last_message_at DESC
-    `).all();
-    
-    return c.json({ conversations: conversations.results || [] });
-  } catch (e: any) {
-    console.error('Erro conversations:', e?.message || e);
-    return c.json({ conversations: [] });
-  }
-});
-
 // Endpoint dedicado para listar usuários ativos para o chat admin
 app.get('/api/admin/chat-users', async (c) => {
   const { env } = c;
@@ -22889,10 +22891,10 @@ app.get('/api/admin/chat-users', async (c) => {
         (SELECT COUNT(*) FROM site_visits sv WHERE sv.user_id = u.id) as total_acessos,
         (SELECT COUNT(*) FROM planos_estudo pe WHERE pe.user_id = u.id) as total_planos
       FROM users u
-      WHERE u.email != 'tercio10@gmail.com'
+      WHERE u.email != ?
     `;
     
-    const params: any[] = [];
+    const params: any[] = [ADMIN_EMAIL];
     
     if (search) {
       query += ` AND (u.name LIKE ? OR u.email LIKE ?)`;
@@ -22902,9 +22904,7 @@ app.get('/api/admin/chat-users', async (c) => {
     // Ordenar: quem acessou mais recentemente primeiro
     query += ` ORDER BY ultimo_acesso DESC NULLS LAST, u.created_at DESC LIMIT 200`;
     
-    const result = search 
-      ? await env.DB.prepare(query).bind(...params).all()
-      : await env.DB.prepare(query).all();
+    const result = await env.DB.prepare(query).bind(...params).all();
     
     const users = (result.results || []).map((u: any) => ({
       id: u.id,

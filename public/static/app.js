@@ -17503,7 +17503,7 @@ window.abrirChatAdmin = async function() {
   try {
     var results = await Promise.allSettled([
       axios.get('/api/admin/messages/conversations', { params: { admin_id: currentUser.id } }),
-      axios.get('/api/admin/chat-users')
+      axios.get('/api/admin/chat-users', { headers: { 'X-User-ID': currentUser.id } })
     ]);
     var conversations = results[0].status === 'fulfilled' ? (results[0].value.data.conversations || []) : [];
     var allUsers = results[1].status === 'fulfilled' ? (results[1].value.data.users || []) : [];
