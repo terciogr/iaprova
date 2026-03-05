@@ -1231,8 +1231,9 @@ function createUnifiedFAB() {
       trigger.id = 'sidebar-trigger';
       trigger.onclick = function(e) { e.stopPropagation(); toggleFabMenu(); };
       trigger.title = 'Menu de navegação';
-      trigger.className = 'w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/20 transition group mr-1';
-      trigger.innerHTML = '<i class="fas fa-bars text-white text-base group-hover:scale-110 transition-transform" id="fab-icon"></i>';
+      trigger.className = 'rounded-lg flex items-center justify-center hover:bg-white/20 transition group';
+      trigger.style.cssText = 'min-width:44px;min-height:44px;width:44px;height:44px;margin-right:4px;-webkit-tap-highlight-color:rgba(255,255,255,0.2);touch-action:manipulation;';
+      trigger.innerHTML = '<i class="fas fa-bars text-white group-hover:scale-110 transition-transform" style="font-size:18px;" id="fab-icon"></i>';
       headerFlex.insertBefore(trigger, headerFlex.firstChild);
     }
   }
@@ -1266,6 +1267,34 @@ function createUnifiedFAB() {
       @media (max-width: 640px) {
         #sidebar-menu {
           width: 280px !important;
+        }
+      }
+      /* Safe area para evitar sobreposição com barra de status do sistema */
+      header.sticky {
+        padding-top: env(safe-area-inset-top, 0px) !important;
+      }
+      /* Botão hamburger maior e mais acessível no mobile */
+      #sidebar-trigger {
+        min-width: 44px !important;
+        min-height: 44px !important;
+        width: 44px !important;
+        height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin-right: 4px !important;
+        -webkit-tap-highlight-color: rgba(255,255,255,0.2);
+        touch-action: manipulation;
+        position: relative;
+        z-index: 51;
+      }
+      #sidebar-trigger i {
+        font-size: 18px !important;
+      }
+      /* Garantir que o header tenha meta viewport safe area */
+      @supports(padding: env(safe-area-inset-top)) {
+        header.sticky {
+          padding-top: env(safe-area-inset-top, 0px) !important;
         }
       }
     `;
@@ -8747,19 +8776,6 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               
               <div class="w-px h-6 bg-white/30 hidden md:block"></div>
               
-              <!-- Botão Command Center -->
-              <button 
-                onclick="toggleCommandPanel()" 
-                id="btn-expand-panel"
-                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-white hover:bg-white/20 transition-all text-xs font-medium group"
-              >
-                <div class="w-5 h-5 rounded bg-white/20 flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <i class="fas fa-brain text-white text-[9px]"></i>
-                </div>
-                <span class="hidden sm:inline">Menu</span>
-                <i class="fas fa-chevron-down text-[10px] transition-transform duration-300" id="panel-chevron"></i>
-              </button>
-              
               <!-- Tema Toggle -->
               <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
                 class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group"
@@ -8807,8 +8823,8 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
           </div>
         </div>
         
-        <!-- COMMAND CENTER - Painel Expansível Premium -->
-        <div id="command-panel" class="hidden border-t ${currentTheme === 'light' ? 'border-gray-200 bg-white shadow-lg' : 'border-white/20 bg-gray-900'}" style="overflow: hidden;">
+        <!-- COMMAND CENTER REMOVIDO v100 -->
+        <div id="command-panel" class="hidden" style="display:none !important;">
           <div class="max-w-7xl mx-auto px-3 sm:px-4 py-3">
             <!-- Layout Responsivo do Painel -->
             <div class="space-y-3">
@@ -9068,7 +9084,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
     // Carregar semana ativa para calendário semanal
     carregarSemanaAtiva();
     // Restaurar estado do painel retrátil
-    restoreCommandPanelState();
+    // restoreCommandPanelState(); // Removido v100 - command panel eliminado
     
     // ✅ Verificar e iniciar tutorial para novos usuários
     checkAndStartTutorial();

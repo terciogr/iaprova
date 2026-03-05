@@ -682,7 +682,7 @@ async function sendPasswordResetEmail(email: string, token: string, name: string
           <html lang="pt-BR">
           <head>
             <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
             <title>Redefinir Senha - IAprova</title>
           </head>
           <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #E8EDF5;">
@@ -894,7 +894,7 @@ async function sendVerificationEmail(email: string, token: string, name: string,
           <html lang="pt-BR">
           <head>
             <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
             <title>Bem-vindo ao IAprova</title>
           </head>
           <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #E8EDF5;">
@@ -1147,7 +1147,7 @@ async function sendWelcomeEmail(email: string, name: string, env?: any): Promise
           <html lang="pt-BR">
           <head>
             <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
             <title>Bem-vindo ao IAprova</title>
           </head>
           <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #E8EDF5;">
@@ -1423,7 +1423,7 @@ async function sendPaymentConfirmationEmail(
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Pagamento Confirmado - IAprova</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #E8EDF5;">
@@ -2976,7 +2976,7 @@ app.get('/obrigado-premium', async (c) => {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Obrigado! | IAprova Premium</title>
     <meta name="robots" content="noindex, nofollow">
     
@@ -10667,7 +10667,7 @@ function gerarHTML(conteudo: any): string {
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>${conteudo.disciplina_nome} - ${conteudo.tipo}</title>
   <style>
     body {
@@ -20790,7 +20790,7 @@ app.get('/home', (c) => {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>IAprova - Preparação Inteligente para Concursos Públicos</title>
     <meta name="description" content="Sistema inteligente de preparação para concursos públicos com IA. Planos de estudo personalizados, geração de conteúdo e muito mais!">
     <meta name="keywords" content="concursos públicos, estudo, preparação, IA, inteligência artificial, plano de estudos, flashcards, questões">
@@ -21896,7 +21896,7 @@ function gerarEmailReengajamento(nome: string, feedbackUrl: string, premiumUrl: 
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Sentimos sua falta - IAprova</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #E8EDF5;">
@@ -22936,7 +22936,7 @@ app.get('*', (c) => {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>IAprova - Preparação Inteligente para Concursos</title>
     <meta name="description" content="Sistema inteligente de preparação para concursos públicos com IA">
     
