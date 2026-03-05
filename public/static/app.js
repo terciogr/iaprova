@@ -11220,7 +11220,7 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
         <div class="text-center">
           <p class="text-xs ${themes[currentTheme].textSecondary} italic">
             <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
-            Isso pode levar de 10 a 60 segundos dependendo do tamanho
+            Isso pode levar de 10 a 60 segundos. Não feche esta tela!
           </p>
         </div>
       </div>
@@ -11269,6 +11269,28 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       }
       
       etapaAtual++;
+    } else {
+      // ✅ v88: Quando já percorreu todas as etapas (está em 95%), mostrar mensagem amigável rotativa
+      const mensagensFinalizando = [
+        'Quase pronto! Finalizando o salvamento...',
+        'Preparando seu conteúdo com carinho...',
+        'Organizando tudo para você...',
+        'Só mais um instante, estamos quase lá!',
+        'Gerando o PDF e últimas configurações...',
+        'Finalizando formatação do conteúdo...',
+        'Salvando e organizando o material...'
+      ];
+      const dicaEl = document.querySelector('#loading-conteudo .text-xs.italic');
+      if (dicaEl) {
+        const msgIdx = Math.floor(Math.random() * mensagensFinalizando.length);
+        dicaEl.innerHTML = '<i class="fas fa-hourglass-half text-blue-400 mr-1 animate-spin"></i>' + mensagensFinalizando[msgIdx];
+      }
+      // Também atualizar o texto da etapa para feedback contínuo
+      const textoEtapa = document.getElementById('loading-etapa-texto');
+      if (textoEtapa) {
+        const msgFinais = ['Salvando conteúdo no servidor...', 'Finalizando geração de PDF...', 'Preparando material completo...'];
+        textoEtapa.textContent = msgFinais[Math.floor(Math.random() * msgFinais.length)];
+      }
     }
   }, tipo === 'teoria' ? 8000 : 3000); // Teoria demora mais
   
@@ -18448,6 +18470,10 @@ window.verListaUsuarios = async function() {
               <option value="verified">Verificados</option>
               <option value="unverified">Não verificados</option>
             </select>
+            <button onclick="exportarUsuariosCSV()" class="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 transition flex items-center gap-1.5 flex-shrink-0" title="Exportar CSV">
+              <i class="fas fa-download text-xs"></i>
+              <span class="hidden sm:inline">Exportar</span>
+            </button>
           </div>
         </div>
         <div class="overflow-y-auto flex-1">
@@ -18489,7 +18515,39 @@ window.verListaUsuarios = async function() {
   }
 };
 
-// Filtro de usuários admin
+// ✅ v88: Exportar lista de usuários para CSV
+window.exportarUsuariosCSV = function() {
+  const users = window._adminUsers || [];
+  if (users.length === 0) {
+    showToast('Nenhum usuário para exportar', 'warning');
+    return;
+  }
+  
+  const headers = ['ID', 'Nome', 'Email', 'Verificado', 'Plano', 'Data Cadastro', 'Trial Expira', 'Total Acessos'];
+  const rows = users.map(u => {
+    const isPremium = u.is_premium_real || u.is_premium;
+    return [
+      u.id,
+      '"' + (u.name || '').replace(/"/g, '""') + '"',
+      '"' + u.email + '"',
+      u.email_verified ? 'Sim' : 'Não',
+      isPremium ? 'Premium' : 'Free',
+      u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '-',
+      u.trial_expires_at ? new Date(u.trial_expires_at).toLocaleDateString('pt-BR') : '-',
+      u.total_acessos || 0
+    ].join(',');
+  });
+  
+  const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'usuarios_iaprova_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ Arquivo CSV exportado com sucesso!', 'success');
+};
 window.filterAdminUsers = function() {
   const search = (document.getElementById('search-users')?.value || '').toLowerCase();
   const status = document.getElementById('filter-users-status')?.value || 'all';
@@ -18817,6 +18875,10 @@ window.verHistoricoEmails = async function() {
               <option value="sent">Enviados</option>
               <option value="failed">Falha</option>
             </select>
+            <button onclick="exportarEmailsCSV()" class="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 transition flex items-center gap-1.5 flex-shrink-0" title="Exportar CSV">
+              <i class="fas fa-download text-xs"></i>
+              <span class="hidden sm:inline">Exportar</span>
+            </button>
           </div>
         </div>
         <div class="overflow-y-auto flex-1">
@@ -18850,6 +18912,34 @@ window.verHistoricoEmails = async function() {
   } catch (error) {
     showToast('❌ Erro ao carregar histórico de emails', 'error');
   }
+};
+
+// ✅ v88: Exportar lista de emails para CSV
+window.exportarEmailsCSV = function() {
+  const emails = window._adminEmails || [];
+  if (emails.length === 0) {
+    showToast('Nenhum email para exportar', 'warning');
+    return;
+  }
+  
+  const headers = ['Destinatário', 'Tipo', 'Status', 'Data'];
+  const typeLabels = { verification: 'Verificação', welcome: 'Boas-vindas', password_reset: 'Reset Senha', reengajamento: 'Reengajamento', payment_confirmation: 'Pagamento' };
+  const rows = emails.map(e => [
+    '"' + (e.email_to || '').replace(/"/g, '""') + '"',
+    typeLabels[e.email_type] || e.email_type,
+    e.status === 'sent' ? 'Enviado' : 'Falha',
+    e.created_at ? new Date(e.created_at).toLocaleString('pt-BR') : '-'
+  ].join(','));
+  
+  const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'emails_iaprova_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ Arquivo CSV exportado com sucesso!', 'success');
 };
 
 // Filtro de emails admin
@@ -25376,6 +25466,9 @@ function renderCalendarioSemanal() {
             <button onclick="abrirSemanasAnteriores()" class="p-1.5 sm:p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition" title="Semanas anteriores">
               <i class="fas fa-history text-gray-600 text-xs sm:text-sm"></i>
             </button>
+            <button onclick="baixarCalendarioExcel()" class="p-1.5 sm:p-2 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition" title="Baixar cronograma em Excel">
+              <i class="fas fa-file-excel text-emerald-600 text-xs sm:text-sm"></i>
+            </button>
             <button onclick="gerarMetasSemana()" class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#122D6A] text-white rounded-lg text-[10px] sm:text-xs font-medium hover:bg-[#0D1F4D] transition">
               <i class="fas fa-magic"></i>
               <span class="hidden xs:inline">Gerar</span>
@@ -25570,6 +25663,86 @@ window.toggleTodosDias = function(expandir) {
     }
   }
 }
+
+// ✅ v88: Baixar calendário semanal como Excel (CSV com BOM para Excel)
+window.baixarCalendarioExcel = function() {
+  if (!semanaAtual || !semanaAtual.metas || semanaAtual.metas.length === 0) {
+    showToast('Nenhuma meta semanal para exportar', 'warning');
+    return;
+  }
+  
+  const { semana, metas } = semanaAtual;
+  const diasNomes = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+  
+  // Agrupar metas por disciplina
+  const disciplinas = {};
+  metas.forEach(meta => {
+    const disc = meta.disciplina_nome || 'Sem disciplina';
+    if (!disciplinas[disc]) disciplinas[disc] = {};
+    
+    // Extrair tópico
+    let topico = meta.topico_nome || '';
+    if (!topico && meta.topicos_sugeridos) {
+      const topicos = Array.isArray(meta.topicos_sugeridos) ? meta.topicos_sugeridos : [];
+      if (topicos.length > 0) topico = topicos[0].nome || '';
+    }
+    
+    const dia = meta.dia_semana; // 1-7
+    if (!disciplinas[disc][dia]) disciplinas[disc][dia] = [];
+    
+    const tipo = meta.tipo === 'teoria' ? 'T' : meta.tipo === 'exercicios' ? 'E' : 'R';
+    const status = meta.concluida ? ' [OK]' : '';
+    disciplinas[disc][dia].push((topico || disc) + ' (' + tipo + ')' + status);
+  });
+  
+  const disciplinasOrdenadas = Object.keys(disciplinas).sort();
+  
+  // Encontrar o número máximo de linhas por disciplina (pode ter mais de um tópico por dia)
+  const linhas = [];
+  
+  disciplinasOrdenadas.forEach(disc => {
+    // Quantas linhas precisa para essa disciplina (max de tópicos em qualquer dia)
+    let maxTopicos = 0;
+    for (let d = 1; d <= 7; d++) {
+      const tpcs = (disciplinas[disc][d] || []).length;
+      if (tpcs > maxTopicos) maxTopicos = tpcs;
+    }
+    
+    for (let t = 0; t < Math.max(1, maxTopicos); t++) {
+      const row = [t === 0 ? disc : ''];
+      for (let d = 1; d <= 7; d++) {
+        const tpcs = disciplinas[disc][d] || [];
+        row.push(tpcs[t] || '');
+      }
+      linhas.push(row);
+    }
+  });
+  
+  // Montar CSV
+  const header = ['Disciplina'].concat(diasNomes);
+  const csvRows = [header.map(h => '"' + h + '"').join(';')];
+  
+  linhas.forEach(row => {
+    csvRows.push(row.map(cell => '"' + (cell || '').replace(/"/g, '""') + '"').join(';'));
+  });
+  
+  // Info da semana no final
+  const dataIni = semana.data_inicio ? new Date(semana.data_inicio).toLocaleDateString('pt-BR') : '';
+  const dataFim = semana.data_fim ? new Date(semana.data_fim).toLocaleDateString('pt-BR') : '';
+  csvRows.push('');
+  csvRows.push('"Semana ' + (semana.numero_semana || '') + ' - ' + dataIni + ' a ' + dataFim + '"');
+  csvRows.push('"T = Teoria; E = Exercícios; R = Revisão; [OK] = Concluído"');
+  
+  const csv = '\uFEFF' + csvRows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cronograma_semana_' + (semana.numero_semana || '') + '_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ Cronograma exportado para Excel!', 'success');
+};
 
 function renderGraficosProgresso() {
   if (!semanaAtual || !semanaAtual.semana || !semanaAtual.metas) return
