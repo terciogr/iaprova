@@ -9521,7 +9521,7 @@ async function marcarMetaConcluida(metaId, disciplinaNome, topicoNome, topicoId,
       ${temTopicoInfo ? `
       <div class="mb-4 bg-emerald-50 rounded-xl p-3 border border-emerald-200">
         <label class="flex items-start gap-3 cursor-pointer select-none">
-          <input type="checkbox" id="concluir-topico-checkbox" checked
+          <input type="checkbox" id="concluir-topico-checkbox"
             class="mt-0.5 w-5 h-5 accent-emerald-500 rounded cursor-pointer flex-shrink-0">
           <div>
             <span class="text-sm font-semibold text-emerald-800">Marcar tópico como concluído</span>
@@ -9621,9 +9621,6 @@ async function confirmarConclusaoMeta(metaId) {
     let msgExtra = '';
     if (deveConcluirTopico && dados.topicoNome) {
       msgExtra = '\n📌 Tópico marcado como concluído em Disciplinas!';
-      if (metasAvancadas > 0) {
-        msgExtra += `\n🔄 ${metasAvancadas} meta(s) futura(s) avançou para o próximo tópico.`;
-      }
     }
     showModal('✅ Meta concluída com sucesso!' + msgExtra);
   } catch (error) {
@@ -18398,7 +18395,7 @@ window.verListaUsuarios = async function() {
           if (diasRestantes > 0) { trialLabel = diasRestantes + 'd'; trialClass = diasRestantes > 3 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'; }
           else { trialLabel = Math.abs(diasRestantes) + 'd exp'; trialClass = 'bg-red-100 text-red-600'; }
         } else if (u.created_at) {
-          const diasRestantes = 7 - Math.floor((Date.now() - new Date(u.created_at).getTime()) / (1000*60*60*24));
+          const diasRestantes = 14 - Math.floor((Date.now() - new Date(u.created_at).getTime()) / (1000*60*60*24));
           if (diasRestantes > 0) { trialLabel = diasRestantes + 'd'; trialClass = diasRestantes > 3 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'; }
           else { trialLabel = Math.abs(diasRestantes) + 'd exp'; trialClass = 'bg-red-100 text-red-600'; }
         } else { trialLabel = '-'; trialClass = 'bg-gray-100 text-gray-500'; }

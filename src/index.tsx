@@ -13712,6 +13712,106 @@ app.post('/api/metas/concluir', async (c) => {
     }
   }
 
+  // ✅ v87: FUNÇÃO AUXILIAR: Avançar metas futuras da mesma disciplina/tópico na semana
+  async function avancarMetasFuturas(DB: any, meta_id: number, user_id: number, disciplina_id: number, topico_nome: string, semana_id: number) {
+    let avancou = 0
+    if (!disciplina_id || !topico_nome || !semana_id) return avancou
+    
+    try {
+      // Buscar TODAS metas não-concluídas da mesma disciplina na mesma semana (exceto a atual)
+      const { results: metasFuturas } = await DB.prepare(`
+        SELECT id, topicos_sugeridos, dia_semana, data
+        FROM metas_semana
+        WHERE semana_id = ? AND disciplina_id = ? AND concluida = 0 AND id != ?
+        ORDER BY dia_semana ASC, data ASC
+      `).bind(semana_id, disciplina_id, meta_id).all()
+
+      if (!metasFuturas || metasFuturas.length === 0) {
+        console.log(`ℹ️ v87: Nenhuma meta futura encontrada para disciplina ${disciplina_id} na semana ${semana_id}`)
+        return avancou
+      }
+
+      // Buscar todos os tópicos disponíveis para esta disciplina
+      // Tentar primeiro em edital_topicos (usado na geração de metas)
+      let todosTopicos: any[] = []
+      
+      const editalDisc = await DB.prepare(`
+        SELECT ed.id as edital_disciplina_id
+        FROM edital_disciplinas ed
+        JOIN editais e ON ed.edital_id = e.id
+        WHERE e.user_id = ? AND ed.disciplina_id = ?
+        ORDER BY e.created_at DESC
+        LIMIT 1
+      `).bind(user_id, disciplina_id).first() as any
+
+      if (editalDisc) {
+        const { results: topicosEdital } = await DB.prepare(`
+          SELECT id, nome, ordem FROM edital_topicos 
+          WHERE edital_disciplina_id = ? 
+          ORDER BY ordem ASC
+        `).bind(editalDisc.edital_disciplina_id).all()
+        todosTopicos = topicosEdital || []
+      }
+
+      // Fallback: buscar em topicos_edital se edital_topicos está vazio
+      if (todosTopicos.length === 0) {
+        // Buscar plano_id da semana
+        const semana = await DB.prepare(`SELECT plano_id FROM semanas_estudo WHERE id = ?`).bind(semana_id).first() as any
+        if (semana?.plano_id) {
+          const { results: topicosPlano } = await DB.prepare(`
+            SELECT id, nome, ordem FROM topicos_edital 
+            WHERE disciplina_id = ? AND plano_id = ?
+            ORDER BY ordem ASC
+          `).bind(disciplina_id, semana.plano_id).all()
+          todosTopicos = topicosPlano || []
+        }
+      }
+
+      if (todosTopicos.length === 0) {
+        console.log(`⚠️ v87: Nenhum tópico encontrado para disciplina ${disciplina_id}`)
+        return avancou
+      }
+
+      // Encontrar índice do tópico concluído
+      const indiceAtual = todosTopicos.findIndex((t: any) => 
+        t.nome?.toLowerCase().trim() === topico_nome?.toLowerCase().trim()
+      )
+
+      console.log(`🔍 v87: Tópico "${topico_nome}" encontrado no índice ${indiceAtual} de ${todosTopicos.length} tópicos`)
+
+      // Para cada meta futura, se tiver o MESMO tópico, avançar para o próximo
+      for (const metaFutura of metasFuturas as any[]) {
+        try {
+          const topicosF = JSON.parse(metaFutura.topicos_sugeridos || '[]')
+          if (topicosF.length > 0 && topicosF[0].nome?.toLowerCase().trim() === topico_nome?.toLowerCase().trim()) {
+            // Esta meta futura tem o mesmo tópico — avançar para o próximo
+            const proximoIndice = (indiceAtual >= 0 && indiceAtual + 1 < todosTopicos.length) 
+              ? indiceAtual + 1 
+              : 0
+            const proximoTopico = todosTopicos[proximoIndice] as any
+            
+            const novosTopicos = [{ id: proximoTopico.id, nome: proximoTopico.nome }]
+            await DB.prepare(`
+              UPDATE metas_semana 
+              SET topicos_sugeridos = ?
+              WHERE id = ?
+            `).bind(JSON.stringify(novosTopicos), metaFutura.id).run()
+            
+            avancou++
+            console.log(`🔄 v87: Meta ${metaFutura.id} (dia ${metaFutura.dia_semana}) avançada: "${topico_nome}" → "${proximoTopico.nome}"`)
+          }
+        } catch (e) {
+          // Ignorar erros de parse individuais
+        }
+      }
+      
+      console.log(`✅ v87: ${avancou} meta(s) avançada(s) para a disciplina ${disciplina_id}`)
+    } catch (e) {
+      console.error('⚠️ v87: Erro ao avançar metas futuras:', e)
+    }
+    return avancou
+  }
+
   // Tentar atualizar em metas_semana primeiro (fonte principal)
   const resultSemana = await DB.prepare(`
     UPDATE metas_semana 
@@ -13722,9 +13822,9 @@ app.post('/api/metas/concluir', async (c) => {
   if (resultSemana.meta.changes > 0) {
     console.log('✅ Meta semanal concluída')
     
-    // ✅ CORRIGIDO: Buscar dados da meta INCLUINDO plano_id
+    // ✅ v87: Buscar dados da meta INCLUINDO semana_id e disciplina_id para avanço
     const metaSemana = await DB.prepare(`
-      SELECT ms.user_id, ms.data, ms.topicos_sugeridos, se.plano_id
+      SELECT ms.user_id, ms.data, ms.topicos_sugeridos, ms.semana_id, ms.disciplina_id, se.plano_id
       FROM metas_semana ms
       JOIN semanas_estudo se ON ms.semana_id = se.id
       WHERE ms.id = ?
@@ -13740,6 +13840,17 @@ app.post('/api/metas/concluir', async (c) => {
           for (const topico of topicos) {
             if (topico.id) {
               await atualizarProgressoTopico(DB, metaSemana.user_id, topico.id, metaSemana.plano_id)
+            }
+          }
+          
+          // ✅ v87: SEMPRE avançar metas futuras da mesma disciplina que tenham o mesmo tópico
+          if (topicos.length > 0 && topicos[0].nome && metaSemana.disciplina_id && metaSemana.semana_id) {
+            const avancadas = await avancarMetasFuturas(
+              DB, meta_id, metaSemana.user_id, metaSemana.disciplina_id, 
+              topicos[0].nome, metaSemana.semana_id
+            )
+            if (avancadas > 0) {
+              console.log(`🔄 v87: ${avancadas} meta(s) da semana avançada(s) automaticamente`)
             }
           }
         } catch (e) {
@@ -13870,90 +13981,13 @@ app.post('/api/metas/concluir-topico', async (c) => {
       }
     }
 
-    // 3️⃣ Avançar metas futuras que tenham o mesmo tópico para o próximo tópico da disciplina
-    let avancou = 0
-    if (meta_id && disciplina_id) {
-      try {
-        // Buscar a meta atual para saber semana e dados
-        const metaAtual = await DB.prepare(`
-          SELECT ms.id, ms.semana_id, ms.disciplina_id, ms.topicos_sugeridos, ms.dia_semana, ms.data
-          FROM metas_semana ms
-          WHERE ms.id = ?
-        `).bind(meta_id).first() as any
-
-        if (metaAtual && metaAtual.semana_id) {
-          // Buscar metas FUTURAS da mesma disciplina na mesma semana que tenham o mesmo tópico
-          const { results: metasFuturas } = await DB.prepare(`
-            SELECT id, topicos_sugeridos, dia_semana, data
-            FROM metas_semana
-            WHERE semana_id = ? AND disciplina_id = ? AND concluida = 0 AND id != ?
-            ORDER BY dia_semana ASC, data ASC
-          `).bind(metaAtual.semana_id, disciplina_id, meta_id).all()
-
-          if (metasFuturas && metasFuturas.length > 0) {
-            // Buscar tópicos do edital para saber qual é o próximo
-            // Primeiro descobrir edital_disciplina_id
-            const editalDisc = await DB.prepare(`
-              SELECT ed.id as edital_disciplina_id
-              FROM edital_disciplinas ed
-              JOIN editais e ON ed.edital_id = e.id
-              WHERE e.user_id = ? AND ed.disciplina_id = ?
-              ORDER BY e.created_at DESC
-              LIMIT 1
-            `).bind(user_id, disciplina_id).first() as any
-
-            if (editalDisc) {
-              const { results: todosTopicosEdital } = await DB.prepare(`
-                SELECT id, nome, ordem FROM edital_topicos 
-                WHERE edital_disciplina_id = ? 
-                ORDER BY ordem ASC
-              `).bind(editalDisc.edital_disciplina_id).all()
-
-              if (todosTopicosEdital && todosTopicosEdital.length > 0) {
-                // Encontrar índice do tópico atual
-                const indiceAtual = todosTopicosEdital.findIndex((t: any) => 
-                  t.nome?.toLowerCase().trim() === topico_nome?.toLowerCase().trim()
-                )
-
-                for (const metaFutura of metasFuturas as any[]) {
-                  try {
-                    const topicosF = JSON.parse(metaFutura.topicos_sugeridos || '[]')
-                    if (topicosF.length > 0 && topicosF[0].nome?.toLowerCase().trim() === topico_nome?.toLowerCase().trim()) {
-                      // Esta meta futura tem o mesmo tópico! Avançar para o próximo
-                      const proximoIndice = (indiceAtual >= 0 && indiceAtual + 1 < todosTopicosEdital.length) 
-                        ? indiceAtual + 1 
-                        : 0
-                      const proximoTopico = todosTopicosEdital[proximoIndice] as any
-                      
-                      const novosTopicos = [{ id: proximoTopico.id, nome: proximoTopico.nome }]
-                      await DB.prepare(`
-                        UPDATE metas_semana 
-                        SET topicos_sugeridos = ?
-                        WHERE id = ?
-                      `).bind(JSON.stringify(novosTopicos), metaFutura.id).run()
-                      
-                      avancou++
-                      console.log(`🔄 v86: Meta ${metaFutura.id} (dia ${metaFutura.dia_semana}) avançada: "${topico_nome}" → "${proximoTopico.nome}"`)
-                    }
-                  } catch (e) {
-                    // Ignorar erros de parse individuais
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.error('⚠️ v86: Erro ao avançar metas futuras:', e)
-        // Não bloquear — o tópico já foi concluído
-      }
-    }
+    // 3️⃣ v87: O avanço de metas futuras agora é feito automaticamente no /api/metas/concluir
+    // Este endpoint apenas marca o tópico como concluído em Disciplinas (nivel_dominio = 10)
 
     return c.json({ 
       success: true, 
       topico_edital_id: topicoEdital.id, 
-      topico_nome: topicoEdital.nome,
-      metas_avancadas: avancou
+      topico_nome: topicoEdital.nome
     })
   } catch (error: any) {
     console.error('❌ v86: Erro ao concluir tópico:', error)
