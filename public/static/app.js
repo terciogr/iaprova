@@ -9027,7 +9027,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
         <!-- Container para modais -->
         <div id="modal-container" class="hidden"></div>
 
-        <!-- ✅ v89: Gestão de Planos - Minimalista conforme mockup -->
+        <!-- ✅ v95: Gestão de Planos - Redesign conforme mockup -->
         <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} p-5">
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2.5">
@@ -9036,18 +9036,11 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               </div>
               <h2 class="text-base font-bold ${themes[currentTheme].text}">Meus Planos</h2>
             </div>
-            <div class="flex items-center gap-2">
-              <button onclick="iniciarEntrevista()" 
-                class="px-3 py-1.5 ${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-lg hover:border-[#122D6A] transition flex items-center gap-1.5 text-xs font-medium ${themes[currentTheme].text}">
-                <i class="fas fa-pen text-xs"></i>
-                Editar
-              </button>
-              <button onclick="iniciarEntrevista()" 
-                class="px-3 py-1.5 ${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-lg hover:border-[#122D6A] transition flex items-center gap-1.5 text-xs font-medium ${themes[currentTheme].text}">
-                <i class="fas fa-trash text-xs"></i>
-                Excluir
-              </button>
-            </div>
+            <button onclick="iniciarEntrevista()" 
+              class="px-3 py-1.5 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex items-center gap-1.5 text-xs font-semibold">
+              <i class="fas fa-plus text-xs"></i>
+              Novo
+            </button>
           </div>
           <div id="planos-list" class="space-y-3">
             <p class="${themes[currentTheme].textSecondary} text-center py-4 text-sm">Carregando planos...</p>
@@ -23230,91 +23223,80 @@ async function carregarPlanos() {
     const planosList = document.getElementById('planos-list');
     if (!planosList) return;
     
+    const t = themes[currentTheme];
+    const isLight = currentTheme === 'light';
+    
     if (planos.length === 0) {
       planosList.innerHTML = `
         <div class="text-center py-8">
-          <i class="fas fa-inbox text-6xl ${themes[currentTheme].textSecondary} mb-4"></i>
-          <p class="${themes[currentTheme].textSecondary}">Nenhum plano encontrado</p>
-          <p class="${themes[currentTheme].textSecondary} text-sm mt-2">Clique em "Novo Plano" para começar</p>
+          <div class="w-16 h-16 mx-auto rounded-full ${isLight ? 'bg-gray-100' : 'bg-gray-800'} flex items-center justify-center mb-3">
+            <i class="fas fa-folder-open text-2xl ${t.textMuted}"></i>
+          </div>
+          <p class="${t.textSecondary} font-medium">Nenhum plano encontrado</p>
+          <p class="${t.textMuted} text-sm mt-1">Crie seu primeiro plano de estudos</p>
+          <button onclick="iniciarEntrevista()" class="mt-4 px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition text-sm font-semibold">
+            <i class="fas fa-plus mr-1.5"></i>Criar Plano
+          </button>
         </div>
       `;
       return;
     }
     
-    planosList.innerHTML = planos.map(plano => `
-      <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-lg p-4 transition hover:shadow-md">
-        <div class="flex flex-col sm:flex-row items-start justify-between gap-3">
-          <div class="flex-1 min-w-0 w-full">
-            <div class="flex items-center gap-2 mb-2 flex-wrap">
-              ${plano.ativo 
-                ? '<span class="bg-emerald-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide">Ativo</span>' 
-                : '<span class="bg-gray-400 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide">Inativo</span>'}
-              <h3 class="font-bold ${themes[currentTheme].text} text-base sm:text-lg" id="plano-nome-${plano.id}">
-                ${plano.nome || 'Sem nome'}
-              </h3>
-              <button onclick="editarNomePlano(${plano.id}, '${(plano.nome || '').replace(/'/g, "\\'")}')" 
-                class="${themes[currentTheme].textSecondary} hover:text-[#2A4A9F] text-sm">
-                <i class="fas fa-edit"></i>
-              </button>
-            </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm ${themes[currentTheme].textSecondary}">
-              <div>
-                <i class="fas fa-book mr-1"></i>
-                <span>${plano.total_disciplinas} disciplinas</span>
+    planosList.innerHTML = planos.map(plano => {
+      const progresso = plano.progresso_edital || 0;
+      const isAtivo = plano.ativo;
+      const dataCriacao = new Date(plano.created_at).toLocaleDateString('pt-BR');
+      const nomePlano = plano.nome || 'Sem nome';
+      const nomeEscapado = nomePlano.replace(/'/g, "\\'");
+      
+      // Cor da barra de progresso
+      const barColor = progresso >= 70 ? 'bg-emerald-500' : progresso >= 30 ? 'bg-[#122D6A]' : (isLight ? 'bg-emerald-400' : 'bg-emerald-500');
+      const barTrack = isLight ? 'bg-gray-200' : 'bg-gray-700';
+      
+      // Badge ATIVO/INATIVO
+      const badge = isAtivo
+        ? '<span class="text-[10px] bg-emerald-700 text-white px-2.5 py-0.5 rounded font-bold uppercase tracking-wider">ATIVO</span>'
+        : '<span class="text-[10px] ' + (isLight ? 'bg-[#5A6E8A] text-white' : 'bg-gray-600 text-gray-200') + ' px-2.5 py-0.5 rounded font-bold uppercase tracking-wider">INATIVO</span>';
+      
+      // Botões de ação - usar data attributes para evitar problemas com aspas
+      const btnEditar = isAtivo 
+        ? `<span onclick="editarNomePlano(${plano.id}, document.getElementById('plano-nome-display-${plano.id}').textContent.trim())" class="text-[#122D6A] font-semibold text-sm cursor-pointer hover:underline">Editar</span>`
+        : `<span onclick="window.ativarPlano(${plano.id})" class="text-[#122D6A] font-semibold text-sm cursor-pointer hover:underline">Ativar</span>`;
+      const btnExcluir = `<span onclick="window.excluirPlano(${plano.id}, document.getElementById('plano-nome-display-${plano.id}').textContent.trim())" class="text-red-500 font-semibold text-sm cursor-pointer hover:underline">Excluir</span>`;
+      
+      return `
+        <div class="${t.card} border ${t.border} rounded-xl p-4 transition hover:shadow-md">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1.5">
+                ${badge}
+                <h3 class="font-bold ${t.text} text-base truncate" id="plano-nome-display-${plano.id}">${nomePlano}</h3>
               </div>
-              <div>
-                <i class="fas fa-list-check mr-1"></i>
+              <div class="flex items-center flex-wrap gap-x-1.5 text-xs ${t.textSecondary} mb-2.5">
+                <span><i class="fas fa-book mr-0.5"></i>${plano.total_disciplinas} disciplinas</span>
+                <span class="${t.textMuted}">·</span>
                 <span>${plano.total_topicos || 0} tópicos</span>
+                <span class="${t.textMuted}">·</span>
+                <span>${plano.topicos_estudados || 0} concluído${(plano.topicos_estudados || 0) !== 1 ? 's' : ''}</span>
+                <span class="${t.textMuted}">·</span>
+                <span>${dataCriacao}</span>
               </div>
-              <div>
-                <i class="fas fa-check-circle mr-1 text-[#2A4A9F]"></i>
-                <span>${plano.topicos_estudados || 0} concluídos</span>
-              </div>
-              <div>
-                <i class="fas fa-calendar mr-1"></i>
-                <span>${new Date(plano.created_at).toLocaleDateString('pt-BR')}</span>
+              <div class="flex items-center gap-2">
+                <div class="flex-1 h-2 ${barTrack} rounded-full overflow-hidden">
+                  <div class="h-full rounded-full ${barColor} transition-all duration-500" style="width: ${progresso}%"></div>
+                </div>
+                <span class="text-xs font-semibold ${t.textSecondary} w-8 text-right">${progresso}%</span>
               </div>
             </div>
-            
-            <!-- Barra de Progresso do Edital -->
-            <div class="mt-3">
-              <div class="flex items-center justify-between text-xs mb-1">
-                <span class="${themes[currentTheme].textSecondary}">
-                  <i class="fas fa-chart-line mr-1"></i>Progresso do Edital
-                </span>
-                <span class="font-semibold ${plano.progresso_edital >= 70 ? 'text-green-600' : plano.progresso_edital >= 30 ? 'text-[#2A4A9F]' : 'text-gray-500'}">
-                  ${plano.progresso_edital || 0}%
-                </span>
-              </div>
-              <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-500 ${plano.progresso_edital >= 70 ? 'bg-green-500' : plano.progresso_edital >= 30 ? 'bg-[#2A4A9F]' : 'bg-gray-400'}" 
-                     style="width: ${plano.progresso_edital || 0}%"></div>
-              </div>
-              <p class="text-xs ${themes[currentTheme].textSecondary} mt-1 italic">
-                <i class="fas fa-info-circle mr-1"></i>
-                Avança ao marcar tópicos como concluídos em "Disciplinas"
-              </p>
+            <div class="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
+              ${btnEditar}
+              <span class="${t.textMuted}">|</span>
+              ${btnExcluir}
             </div>
-            
-            <p class="${themes[currentTheme].textSecondary} text-sm mt-2">
-              ${plano.concurso_nome || 'Concurso não especificado'}
-            </p>
-          </div>
-          <div class="flex flex-row gap-2 w-full sm:w-auto sm:flex-col sm:ml-4 flex-shrink-0">
-            ${!plano.ativo ? `
-              <button onclick="window.ativarPlano(${plano.id})" 
-                class="bg-[#0D1F4D] text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm hover:bg-[#0A1839] transition whitespace-nowrap">
-                <i class="fas fa-check mr-1"></i><span class="hidden sm:inline">Ativar</span><span class="sm:hidden">Ativar</span>
-              </button>
-            ` : ''}
-            <button onclick="window.excluirPlano(${plano.id}, '${(plano.nome || 'este plano').replace(/'/g, "\\'")}')" 
-              class="bg-red-500 text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm hover:bg-red-600 transition whitespace-nowrap">
-              <i class="fas fa-trash mr-1"></i><span class="hidden sm:inline">Excluir</span><span class="sm:hidden">Excluir</span>
-            </button>
           </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
     
   } catch (error) {
     console.error('Erro ao carregar planos:', error);
@@ -23322,7 +23304,7 @@ async function carregarPlanos() {
     if (planosList) {
       planosList.innerHTML = `
         <div class="text-center py-4">
-          <p class="text-[#2A4A9F]">Erro ao carregar planos</p>
+          <p class="${themes[currentTheme].textSecondary}">Erro ao carregar planos</p>
         </div>
       `;
     }
