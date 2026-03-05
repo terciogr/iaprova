@@ -22374,28 +22374,21 @@ function marcarBotaoConteudoDisponivel(metaId, tipo, conteudoId) {
   const btn = document.getElementById(`icon-${tipo}-${metaId}`);
   if (!btn) return;
   
-  // Remover marcação anterior
-  const badgeExistente = btn.querySelector('.conteudo-badge');
-  if (badgeExistente) badgeExistente.remove();
-  
-  // Texto do botão com check
+  // Texto do botão com check badge
   const tipoLabels = { teoria: 'Teoria', exercicios: 'Questões', resumo: 'Resumo', flashcards: 'Flash', resumo_personalizado: 'Upload' };
   const label = tipoLabels[tipo] || tipo;
-  btn.innerHTML = `<i class="fas fa-check-circle mr-0.5"></i>${label}`;
+  btn.textContent = '✓ ' + label;
   
-  // Estilizar com cores visiveis
-  btn.style.position = 'relative';
-  btn.classList.remove('bg-gray-100', 'bg-emerald-50', 'bg-emerald-900/30', 'ring-1', 'ring-emerald-200', 'ring-emerald-700');
-  
+  // Estilizar como disponível - verde forte
   if (currentTheme === 'light') {
-    btn.style.cssText += 'background:#ecfdf5;color:#047857;font-weight:600;border-radius:6px;padding:2px 6px;border:1.5px solid #6ee7b7;';
+    btn.style.cssText = 'background:#ecfdf5;color:#047857;font-weight:700;border-color:#6ee7b7;border-radius:8px;padding:6px 4px;text-align:center;font-size:inherit;';
   } else {
-    btn.style.cssText += 'background:rgba(6,78,59,0.4);color:#6ee7b7;font-weight:600;border-radius:6px;padding:2px 6px;border:1.5px solid #34d399;';
+    btn.style.cssText = 'background:rgba(6,78,59,0.4);color:#6ee7b7;font-weight:700;border-color:#34d399;border-radius:8px;padding:6px 4px;text-align:center;font-size:inherit;';
   }
   
   btn.setAttribute('data-conteudo-id', conteudoId || '');
   btn.setAttribute('data-tem-conteudo', 'true');
-  console.log(`✅ v93: Botão ${tipo} marcado como disponível para meta ${metaId}`);
+  console.log(`✅ v102: Botão ${tipo} marcado como disponível para meta ${metaId}`);
 }
 window.marcarBotaoConteudoDisponivel = marcarBotaoConteudoDisponivel;
 
@@ -22417,16 +22410,17 @@ async function atualizarIconesConteudoMeta(metaId) {
       if (temConteudo) {
         marcarBotaoConteudoDisponivel(metaId, tipo, data.tipos_gerados?.[tipo]);
       } else {
-        // Resetar para estado normal
+        // Resetar para estado normal (sem conteúdo)
         const btn = document.getElementById(`icon-${tipo}-${metaId}`);
         if (btn) {
           btn.removeAttribute('data-tem-conteudo');
           btn.removeAttribute('data-conteudo-id');
-          btn.classList.remove('bg-emerald-50', 'bg-emerald-900/30', 'ring-1', 'ring-emerald-200', 'ring-emerald-700');
-          btn.style.cssText = '';
-          // Restaurar label original
+          // Restaurar label original sem check
           const tipoLabels = { teoria: 'Teoria', exercicios: 'Questões', resumo: 'Resumo', flashcards: 'Flash', resumo_personalizado: 'Upload' };
           btn.textContent = tipoLabels[tipo] || tipo;
+          // Restaurar estilo original
+          const _dk = (typeof currentTheme !== 'undefined' && currentTheme === 'dark');
+          btn.style.cssText = 'border-color:' + (_dk ? '#374151' : '#E5E7EB') + ';background:' + (_dk ? '#1F2937' : '#F9FAFB') + ';border-radius:8px;padding:6px 4px;text-align:center;font-size:inherit;';
         }
       }
     });
@@ -25931,18 +25925,20 @@ function renderCalendarioSemanal() {
                       <p class="text-xs sm:text-sm font-bold ${themes[currentTheme].text} truncate">${meta.disciplina_nome}</p>
                       <span class="text-[10px] sm:text-xs ${themes[currentTheme].textSecondary} flex-shrink-0">${meta.tempo_minutos || 60}min</span>
                     </div>
-                    <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${dn}', '${tn}', ${meta.dia_semana})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 transition flex-shrink-0 ml-1" title="Editar">
-                      <i class="fas fa-pencil-alt text-[10px] text-gray-400"></i>
-                    </button>
+                    <div class="flex items-center gap-1 flex-shrink-0 ml-1">
+                      <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${dn}', '${tn}', ${meta.dia_semana})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 transition" title="Editar">
+                        <i class="fas fa-pencil-alt text-[10px] text-gray-400"></i>
+                      </button>
+                    </div>
                   </div>
-                  <button onclick="event.stopPropagation(); abrirConteudo(${meta.id})" class="w-full py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-[#1B2A4A] rounded-lg hover:bg-[#122D6A] transition mb-2 sm:mb-3">Estudar</button>
-                  <div class="flex items-center gap-1.5 sm:gap-2.5 text-[10px] sm:text-xs ${themes[currentTheme].textSecondary} flex-wrap" id="conteudos-meta-${meta.id}">
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'teoria')" class="hover:text-[#122D6A] transition px-1 py-0.5" data-tipo="teoria" id="icon-teoria-${meta.id}">Teoria</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'exercicios')" class="hover:text-[#122D6A] transition px-1 py-0.5" data-tipo="exercicios" id="icon-exercicios-${meta.id}">Questões</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'resumo')" class="hover:text-[#122D6A] transition px-1 py-0.5" data-tipo="resumo" id="icon-resumo-${meta.id}">Resumo</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'flashcards')" class="hover:text-[#122D6A] transition px-1 py-0.5" data-tipo="flashcards" id="icon-flashcards-${meta.id}">Flash</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} abrirModalResumoPersonalizado(${meta.id})" class="hover:text-[#122D6A] transition px-1 py-0.5" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">Upload</button>
-                    <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="text-emerald-500 hover:text-emerald-700 transition font-semibold px-1 py-0.5"><i class="fas fa-check mr-0.5"></i>Concluir</button>
+                  ${topicoNome ? '<p class="text-[10px] sm:text-xs ' + themes[currentTheme].textSecondary + ' mb-2 truncate" title="' + tn + '">' + topicoNome + '</p>' : ''}
+                  <div class="grid grid-cols-3 gap-1.5 mb-2" id="conteudos-meta-${meta.id}">
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'teoria')" class="py-1.5 px-1 text-[10px] sm:text-xs font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="teoria" id="icon-teoria-${meta.id}">Teoria</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'exercicios')" class="py-1.5 px-1 text-[10px] sm:text-xs font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="exercicios" id="icon-exercicios-${meta.id}">Questões</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'resumo')" class="py-1.5 px-1 text-[10px] sm:text-xs font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo" id="icon-resumo-${meta.id}">Resumo</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'flashcards')" class="py-1.5 px-1 text-[10px] sm:text-xs font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="flashcards" id="icon-flashcards-${meta.id}">Flash</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} abrirModalResumoPersonalizado(${meta.id})" class="py-1.5 px-1 text-[10px] sm:text-xs font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">Upload</button>
+                    <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="py-1.5 px-1 text-[10px] sm:text-xs font-semibold rounded-lg border transition-all text-center text-emerald-600" style="border-color:#6ee7b7;background:#ecfdf5;">Concluir</button>
                   </div>
                 </div>`
               }).join('')}
