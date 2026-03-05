@@ -1056,369 +1056,200 @@ window.showInstallInstructions = async function() {
 };
 
 function createUnifiedFAB() {
-  // Remover botões antigos se existirem
+  // Remover elementos antigos se existirem
   document.getElementById('emergency-back-btn')?.remove();
   document.getElementById('chatButton')?.remove();
   document.getElementById('ia-config-button-container')?.remove();
   document.getElementById('unified-fab-container')?.remove();
+  document.getElementById('fab-overlay')?.remove();
+  document.getElementById('sidebar-menu')?.remove();
+  document.getElementById('sidebar-overlay')?.remove();
+  document.getElementById('sidebar-trigger')?.remove();
   
-  // Criar overlay separado (fora do container do FAB)
+  // Criar overlay do sidebar
   const overlay = document.createElement('div');
-  overlay.id = 'fab-overlay';
-  overlay.className = 'hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-[9997]';
-  overlay.onclick = toggleFabMenu;
+  overlay.id = 'sidebar-overlay';
+  overlay.className = 'fixed inset-0 bg-black/30 z-[9997] opacity-0 pointer-events-none transition-opacity duration-300';
+  overlay.onclick = function() { toggleFabMenu(); };
   document.body.appendChild(overlay);
   
-  // Criar container principal do FAB
-  const fabContainer = document.createElement('div');
-  fabContainer.id = 'unified-fab-container';
-  fabContainer.className = 'fixed bottom-6 right-6 z-[9998]';
+  // Criar sidebar
+  const sidebar = document.createElement('div');
+  sidebar.id = 'sidebar-menu';
+  sidebar.className = 'fixed top-0 left-0 h-full w-72 z-[9998] transform -translate-x-full transition-transform duration-300 ease-in-out';
+  sidebar.style.cssText = 'background: #ffffff; box-shadow: 4px 0 24px rgba(0,0,0,0.12);';
   
-  // HTML do sistema FAB unificado (sem o overlay)
-  // FAB simplificado - opções movidas para página de Configurações
-  fabContainer.innerHTML = `
-    <!-- Container dos sub-botões -->
-    <div id="fab-menu" class="absolute bottom-16 right-0 flex flex-col items-end gap-3 opacity-0 pointer-events-none transition-all duration-300 z-[9999]">
-      
-      <!-- ✅ CORREÇÃO v13: Botão de Feedback/Avaliação -->
-      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
-        <span class="bg-gray-800 text-white px-3 py-1 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Enviar Feedback
-        </span>
-        <button 
-          onclick="abrirModalFeedback(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Enviar Feedback">
-          <i class="fas fa-comment-dots text-lg"></i>
+  const isDark = currentTheme !== 'light';
+  const bgColor = isDark ? '#1f2937' : '#ffffff';
+  const textColor = isDark ? '#f3f4f6' : '#1f2937';
+  const textSecondary = isDark ? '#9ca3af' : '#6b7280';
+  const hoverBg = isDark ? '#374151' : '#f0f4ff';
+  const borderColor = isDark ? '#374151' : '#e5e7eb';
+  const headerBg = isDark ? '#111827' : '#122D6A';
+  
+  sidebar.style.background = bgColor;
+  
+  sidebar.innerHTML = `
+    <!-- Header do Sidebar -->
+    <div style="background: ${headerBg}; padding: 24px 20px 20px; color: white;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 36px; height: 36px; background: rgba(255,255,255,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-brain" style="font-size: 16px; color: white;"></i>
+          </div>
+          <span style="font-size: 18px; font-weight: 700; letter-spacing: -0.3px;">IAprova</span>
+        </div>
+        <button onclick="toggleFabMenu()" style="width: 32px; height: 32px; background: rgba(255,255,255,0.1); border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+          <i class="fas fa-times" style="font-size: 14px;"></i>
         </button>
       </div>
-      
-      <!-- Botão Painel Admin (apenas para admin) -->
-      <div id="fab-admin-panel" class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item" style="display: none;">
-        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Painel Admin
-        </span>
-        <button 
-          onclick="abrirPainelAdmin(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Painel Administrador">
-          <i class="fas fa-shield-alt text-lg"></i>
-        </button>
-      </div>
-      
-      <!-- Botão Configurações (acesso rápido) -->
-      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
-        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Configurações
-        </span>
-        <button 
-          onclick="abrirConfiguracoes(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Configurações">
-          <i class="fas fa-cog text-lg"></i>
-        </button>
-      </div>
-      
-      <!-- Botão Chat Lilu (acesso rápido) -->
-      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
-        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Assistente Lilu
-        </span>
-        <button 
-          onclick="toggleChat(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Conversar com Lilu">
-          <i class="fas fa-headset text-lg"></i>
-        </button>
-      </div>
-      
-      <!-- Botão Disciplinas -->
-      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
-        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Disciplinas
-        </span>
-        <button 
-          onclick="renderPortfolioDisciplinas(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Gerenciar Disciplinas">
-          <i class="fas fa-book text-lg"></i>
-        </button>
-      </div>
-      
-      <!-- Botão Simulados -->
-      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
-        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Simulados
-        </span>
-        <button 
-          onclick="window.renderDashboardSimulados(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Simulados">
-          <i class="fas fa-clipboard-list text-lg"></i>
-        </button>
-      </div>
-      
-      <!-- Botão Calendário -->
-      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
-        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Calendário
-        </span>
-        <button 
-          onclick="renderCalendario(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Calendário de Estudos">
-          <i class="fas fa-calendar-alt text-lg"></i>
-        </button>
-      </div>
-      
-      <!-- Botão Concursos Públicos -->
-      <div class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
-        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Concursos
-        </span>
-        <button 
-          onclick="abrirModalConcursos(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Concursos Públicos">
-          <i class="fas fa-landmark text-lg"></i>
-        </button>
-      </div>
-      
-      <!-- Botão Instalar App -->
-      <div id="fab-install-app" class="flex items-center gap-3 transform translate-x-4 transition-all duration-300 fab-item">
-        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg opacity-0">
-          Instalar App
-        </span>
-        <button 
-          onclick="showInstallInstructions(); toggleFabMenu(); event.stopPropagation();"
-          class="w-12 h-12 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center relative"
-          title="Instalar App">
-          <i class="fas fa-download text-lg"></i>
-        </button>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 32px; height: 32px; background: rgba(255,255,255,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+          ${currentUser?.picture ? '<img src="' + currentUser.picture + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' : '<i class="fas fa-user" style="font-size:12px;color:white;"></i>'}
+        </div>
+        <div>
+          <p style="font-size: 13px; font-weight: 600; margin: 0; line-height: 1.3;">${currentUser?.nome || currentUser?.name || 'Usuário'}</p>
+          <p style="font-size: 11px; opacity: 0.7; margin: 0; line-height: 1.3;">${currentUser?.email || ''}</p>
+        </div>
       </div>
     </div>
     
-    <!-- Botão Principal (FAB) -->
-    <button 
-      id="fab-main"
-      onclick="toggleFabMenu()"
-      class="w-14 h-14 bg-gradient-to-br from-[#122D6A] via-[#1e3a8a] to-[#2A4A9F] text-white rounded-full shadow-xl hover:shadow-2xl transform transition-all duration-300 flex items-center justify-center relative overflow-hidden group"
-      title="Menu de Ações">
-      <!-- Efeito de brilho animado -->
-      <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-30 transition-opacity duration-500 transform -skew-x-12 group-hover:animate-shimmer"></div>
+    <!-- Menu Items -->
+    <div style="padding: 12px 10px; overflow-y: auto; height: calc(100% - 140px);">
+      <!-- Navegação Principal -->
+      <p style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: ${textSecondary}; padding: 8px 12px 6px; margin: 0;">Navegação</p>
       
-      <!-- Ícone principal com transição suave -->
-      <div class="relative z-10 flex items-center justify-center">
-        <i class="fas fa-brain text-xl transition-all duration-300" id="fab-icon"></i>
+      <button onclick="renderDashboard(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-home" style="font-size: 13px; color: #122D6A;"></i>
+        </div>
+        Dashboard
+      </button>
+      
+      <button onclick="renderPortfolioDisciplinas(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-book" style="font-size: 13px; color: #122D6A;"></i>
+        </div>
+        Disciplinas
+      </button>
+      
+      <button onclick="window.renderDashboardSimulados(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-clipboard-list" style="font-size: 13px; color: #122D6A;"></i>
+        </div>
+        Simulados
+      </button>
+      
+      <button onclick="renderCalendario(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-calendar-alt" style="font-size: 13px; color: #122D6A;"></i>
+        </div>
+        Calendário
+      </button>
+      
+      <button onclick="window.renderDashboardDesempenho(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-chart-line" style="font-size: 13px; color: #122D6A;"></i>
+        </div>
+        Desempenho
+      </button>
+      
+      <button onclick="abrirModalConcursos(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-landmark" style="font-size: 13px; color: #122D6A;"></i>
+        </div>
+        Concursos
+      </button>
+      
+      <!-- Separador -->
+      <div style="height: 1px; background: ${borderColor}; margin: 10px 12px;"></div>
+      
+      <!-- Ferramentas -->
+      <p style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: ${textSecondary}; padding: 8px 12px 6px; margin: 0;">Ferramentas</p>
+      
+      <button onclick="toggleChat(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-headset" style="font-size: 13px; color: #122D6A;"></i>
+        </div>
+        Assistente Lilu
+      </button>
+      
+      <button onclick="abrirModalFeedback(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-comment-dots" style="font-size: 13px; color: #122D6A;"></i>
+        </div>
+        Enviar Feedback
+      </button>
+      
+      <div id="fab-install-app">
+        <button onclick="showInstallInstructions(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+          <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i class="fas fa-download" style="font-size: 13px; color: #122D6A;"></i>
+          </div>
+          Instalar App
+        </button>
       </div>
       
-      <!-- Indicador de notificação -->
-      <span class="absolute flex h-3 w-3 -top-1 -right-1">
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-gradient-to-r from-[#2A4A9F] to-[#1A3A7F] opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-3 w-3 bg-gradient-to-r from-[#2A4A9F] to-[#122D6A] shadow-lg"></span>
-      </span>
+      <!-- Separador -->
+      <div style="height: 1px; background: ${borderColor}; margin: 10px 12px;"></div>
       
-      <!-- Anel de foco -->
-      <div class="absolute inset-0 rounded-full border-2 border-white opacity-0 scale-110 group-hover:opacity-40 group-hover:scale-100 transition-all duration-300"></div>
-    </button>
+      <!-- Configurações e Admin -->
+      <p style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: ${textSecondary}; padding: 8px 12px 6px; margin: 0;">Sistema</p>
+      
+      <button onclick="abrirConfiguracoes(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+        <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i class="fas fa-cog" style="font-size: 13px; color: #122D6A;"></i>
+        </div>
+        Configurações
+      </button>
+      
+      <div id="fab-admin-panel" style="display: none;">
+        <button onclick="abrirPainelAdmin(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+          <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i class="fas fa-shield-alt" style="font-size: 13px; color: #122D6A;"></i>
+          </div>
+          Painel Admin
+        </button>
+      </div>
+    </div>
   `;
   
-  document.body.appendChild(fabContainer);
+  document.body.appendChild(sidebar);
   
-  // Adicionar estilos CSS para animações
+  // Criar botão trigger (hamburger) fixo no bottom-left
+  const trigger = document.createElement('button');
+  trigger.id = 'sidebar-trigger';
+  trigger.onclick = function() { toggleFabMenu(); };
+  trigger.title = 'Menu';
+  trigger.style.cssText = 'position:fixed; bottom:24px; left:24px; z-index:9996; width:48px; height:48px; border-radius:14px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; background:#122D6A; color:white; box-shadow:0 4px 16px rgba(18,45,106,0.3); transition:all 0.2s;';
+  trigger.innerHTML = '<i class="fas fa-bars" style="font-size:18px;" id="fab-icon"></i>';
+  trigger.onmouseover = function() { this.style.transform = 'scale(1.08)'; this.style.boxShadow = '0 6px 20px rgba(18,45,106,0.4)'; };
+  trigger.onmouseout = function() { this.style.transform = 'scale(1)'; this.style.boxShadow = '0 4px 16px rgba(18,45,106,0.3)'; };
+  document.body.appendChild(trigger);
+  
+  // Adicionar estilos CSS
   if (!document.getElementById('fab-styles')) {
     const styles = document.createElement('style');
     styles.id = 'fab-styles';
     styles.innerHTML = `
-      /* Animações do FAB */
-      #fab-menu.open {
-        opacity: 1;
-        pointer-events: auto;
+      #sidebar-menu.open {
+        transform: translateX(0) !important;
       }
-      
-      #fab-menu.open .fab-item {
-        transform: translateX(0);
+      #sidebar-overlay.open {
+        opacity: 1 !important;
+        pointer-events: auto !important;
       }
-      
-      #fab-menu.open .fab-item span {
-        opacity: 1;
-        transition-delay: 0.2s;
-      }
-      
-      #fab-menu.open .fab-item:nth-child(1) {
-        transition-delay: 0.05s;
-      }
-      
-      #fab-menu.open .fab-item:nth-child(2) {
-        transition-delay: 0.1s;
-      }
-      
-      #fab-menu.open .fab-item:nth-child(3) {
-        transition-delay: 0.15s;
-      }
-      
-      #fab-menu.open .fab-item:nth-child(4) {
-        transition-delay: 0.2s;
-      }
-      
-      #fab-menu.open .fab-item:nth-child(5) {
-        transition-delay: 0.25s;
-      }
-      
-      #fab-menu.open .fab-item:nth-child(6) {
-        transition-delay: 0.3s;
-      }
-      
-      #fab-menu.open .fab-item:nth-child(7) {
-        transition-delay: 0.35s;
-      }
-      
-      #fab-menu.open .fab-item:nth-child(8) {
-        transition-delay: 0.4s;
-      }
-      
-      #fab-menu.open .fab-item:nth-child(9) {
-        transition-delay: 0.45s;
-      }
-      
-      #fab-main.open #fab-icon {
-        transform: rotate(135deg);
-      }
-      
-      /* Efeito de hover nos labels */
-      .fab-item:hover span {
-        transform: scale(1.05);
-        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-      }
-      
-      /* Botões sem glassmorphism para evitar conflitos */
-      .fab-item button {
-        position: relative;
-        z-index: 10;
-      }
-      
-      /* Garantir que os itens do menu fiquem acima do overlay */
-      #fab-menu {
-        z-index: 9999 !important;
-      }
-      
-      #fab-menu .fab-item {
-        z-index: 9999 !important;
-      }
-      
-      /* Animação suave de respiração no botão principal */
-      @keyframes breathe {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.03); }
-      }
-      
-      #fab-main {
-        animation: breathe 4s ease-in-out infinite;
-      }
-      
-      #fab-main:hover {
-        animation: none;
-        transform: scale(1.1);
-      }
-      
-      /* Sombras coloridas nos botões */
-      .fab-item button {
-        position: relative;
-      }
-      
-      .fab-item button::before {
-        content: '';
-        position: absolute;
-        inset: -2px;
-        border-radius: 50%;
-        padding: 2px;
-        background: linear-gradient(45deg, #667eea, #764ba2, #f093fb);
-        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        -webkit-mask-composite: xor;
-        mask-composite: exclude;
-        opacity: 0;
-        transition: opacity 0.3s;
-      }
-      
-      .fab-item button:hover::before {
-        opacity: 1;
-      }
-      
-      /* Responsivo para mobile */
       @media (max-width: 640px) {
-        #unified-fab-container {
-          bottom: 1.25rem;
-          right: 1.25rem;
+        #sidebar-trigger {
+          bottom: 16px !important;
+          left: 16px !important;
+          width: 44px !important;
+          height: 44px !important;
+          border-radius: 12px !important;
         }
-        
-        #fab-main {
-          width: 3rem;
-          height: 3rem;
+        #sidebar-menu {
+          width: 280px !important;
         }
-        
-        #fab-main i {
-          font-size: 1rem;
-        }
-        
-        .fab-item button {
-          width: 2.5rem;
-          height: 2.5rem;
-        }
-        
-        .fab-item i, .fab-item span.text-xl {
-          font-size: 0.875rem;
-        }
-        
-        .fab-item > span {
-          font-size: 0.75rem;
-          padding: 0.25rem 0.5rem;
-        }
-      }
-      
-      /* Animação de pulso personalizada */
-      @keyframes pulse-attention {
-        0%, 100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: .5;
-        }
-      }
-      
-      .animate-pulse-slow {
-        animation: pulse-attention 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-      }
-      
-      /* Animação shimmer para efeito de brilho */
-      @keyframes shimmer {
-        0% {
-          transform: translateX(-100%) skewX(-12deg);
-        }
-        100% {
-          transform: translateX(200%) skewX(-12deg);
-        }
-      }
-      
-      .group:hover .group-hover\\:animate-shimmer {
-        animation: shimmer 1.5s ease-out;
-      }
-      
-      /* Gradiente animado de fundo */
-      @keyframes gradient-shift {
-        0% {
-          background-position: 0% 50%;
-        }
-        50% {
-          background-position: 100% 50%;
-        }
-        100% {
-          background-position: 0% 50%;
-        }
-      }
-      
-      .animated-gradient {
-        background-size: 200% 200%;
-        animation: gradient-shift 3s ease infinite;
       }
     `;
     document.head.appendChild(styles);
@@ -1428,7 +1259,7 @@ function createUnifiedFAB() {
   setTimeout(() => {
     const adminPanelBtn = document.getElementById('fab-admin-panel');
     if (adminPanelBtn && currentUser?.email === 'terciogomesrabelo@gmail.com') {
-      adminPanelBtn.style.display = 'flex';
+      adminPanelBtn.style.display = 'block';
     }
     
     // Ocultar botão de instalação se já está instalado como PWA
@@ -1440,23 +1271,25 @@ function createUnifiedFAB() {
   }, 100);
 }
 
-// Função para alternar o menu FAB
+// Função para alternar o menu lateral (sidebar)
 window.toggleFabMenu = function() {
   fabMenuOpen = !fabMenuOpen;
-  const menu = document.getElementById('fab-menu');
-  const mainBtn = document.getElementById('fab-main');
-  const overlay = document.getElementById('fab-overlay');
+  const sidebar = document.getElementById('sidebar-menu');
+  const overlay = document.getElementById('sidebar-overlay');
+  const trigger = document.getElementById('sidebar-trigger');
   
   if (fabMenuOpen) {
-    menu.classList.add('open');
-    mainBtn.classList.add('open');
-    overlay.classList.remove('hidden');
-    // Remover indicador de pulso quando abrir
-    mainBtn.querySelector('.absolute.flex')?.classList.add('hidden');
+    sidebar?.classList.add('open');
+    overlay?.classList.add('open');
+    if (trigger) {
+      trigger.innerHTML = '<i class="fas fa-times" style="font-size:18px;" id="fab-icon"></i>';
+    }
   } else {
-    menu.classList.remove('open');
-    mainBtn.classList.remove('open');
-    overlay.classList.add('hidden');
+    sidebar?.classList.remove('open');
+    overlay?.classList.remove('open');
+    if (trigger) {
+      trigger.innerHTML = '<i class="fas fa-bars" style="font-size:18px;" id="fab-icon"></i>';
+    }
   }
 }
 
@@ -3696,7 +3529,10 @@ window.voltarAoLogin = async function() {
     });
     
     if (confirmed) {
-      // Remover FAB antes de sair
+      // Remover sidebar/menu antes de sair
+      document.getElementById('sidebar-menu')?.remove();
+      document.getElementById('sidebar-overlay')?.remove();
+      document.getElementById('sidebar-trigger')?.remove();
       document.getElementById('unified-fab-container')?.remove();
       document.getElementById('fab-overlay')?.remove();
       
@@ -9136,37 +8972,37 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               </div>
             </div>
             
-            <!-- KPIs inline -->
-            <div class="flex items-center gap-6 md:gap-8 overflow-x-auto">
-              <div onclick="renderPortfolioDisciplinas()" class="cursor-pointer flex flex-col items-start min-w-fit">
+            <!-- KPIs inline - Grid 2x2 no mobile, inline no desktop -->
+            <div class="grid grid-cols-2 gap-3 md:flex md:items-center md:gap-8">
+              <div onclick="renderPortfolioDisciplinas()" class="cursor-pointer flex flex-col items-start">
                 <span class="text-[10px] uppercase tracking-wider ${themes[currentTheme].textSecondary}">Progresso Geral</span>
                 <div class="flex items-center gap-2">
-                  <span class="text-xl font-bold ${themes[currentTheme].text}">${progressoGeral?.progresso_percentual || 0}%</span>
-                  <div class="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${progressoGeral?.progresso_percentual || 0}%"></div></div>
+                  <span class="text-lg md:text-xl font-bold ${themes[currentTheme].text}">${progressoGeral?.progresso_percentual || 0}%</span>
+                  <div class="w-10 md:w-12 h-1.5 bg-gray-200 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${progressoGeral?.progresso_percentual || 0}%"></div></div>
                 </div>
               </div>
-              <div class="w-px h-8 bg-gray-200 dark:bg-gray-700 hidden md:block"></div>
-              <div class="flex flex-col items-start min-w-fit">
+              <div class="w-px h-8 bg-gray-200 hidden md:block"></div>
+              <div class="flex flex-col items-start">
                 <span class="text-[10px] uppercase tracking-wider ${themes[currentTheme].textSecondary}">Tempo Estudado</span>
                 <div class="flex items-center gap-2">
-                  <span class="text-xl font-bold ${themes[currentTheme].text}">${stats.horas_totais}h</span>
-                  <div class="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${Math.min(stats.dias_estudados * 10, 100)}%"></div></div>
+                  <span class="text-lg md:text-xl font-bold ${themes[currentTheme].text}">${stats.horas_totais}h</span>
+                  <div class="w-10 md:w-12 h-1.5 bg-gray-200 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${Math.min(stats.dias_estudados * 10, 100)}%"></div></div>
                 </div>
               </div>
-              <div class="w-px h-8 bg-gray-200 dark:bg-gray-700 hidden md:block"></div>
-              <div onclick="renderPortfolioDisciplinas()" class="cursor-pointer flex flex-col items-start min-w-fit">
+              <div class="w-px h-8 bg-gray-200 hidden md:block"></div>
+              <div onclick="renderPortfolioDisciplinas()" class="cursor-pointer flex flex-col items-start">
                 <span class="text-[10px] uppercase tracking-wider ${themes[currentTheme].textSecondary}">Disciplinas</span>
                 <div class="flex items-center gap-2">
-                  <span class="text-xl font-bold ${themes[currentTheme].text}">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0}</span>
-                  <div class="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: 100%"></div></div>
+                  <span class="text-lg md:text-xl font-bold ${themes[currentTheme].text}">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0}</span>
+                  <div class="w-10 md:w-12 h-1.5 bg-gray-200 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: 100%"></div></div>
                 </div>
               </div>
-              <div class="w-px h-8 bg-gray-200 dark:bg-gray-700 hidden md:block"></div>
-              <div onclick="window.renderDashboardSimulados()" class="cursor-pointer flex flex-col items-start min-w-fit">
+              <div class="w-px h-8 bg-gray-200 hidden md:block"></div>
+              <div onclick="window.renderDashboardSimulados()" class="cursor-pointer flex flex-col items-start">
                 <span class="text-[10px] uppercase tracking-wider ${themes[currentTheme].textSecondary}">Simulados</span>
                 <div class="flex items-center gap-2">
-                  <span class="text-xl font-bold ${themes[currentTheme].text}">${scoreData.score}/10</span>
-                  <div class="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${scoreData.score * 10}%"></div></div>
+                  <span class="text-lg md:text-xl font-bold ${themes[currentTheme].text}">${scoreData.score}/10</span>
+                  <div class="w-10 md:w-12 h-1.5 bg-gray-200 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${scoreData.score * 10}%"></div></div>
                 </div>
               </div>
             </div>
@@ -25473,7 +25309,7 @@ function renderCalendarioSemanal() {
                       <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'resumo')" class="hover:text-[#122D6A] transition" data-tipo="resumo" id="icon-resumo-${meta.id}">Resumo</button>
                       <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'flashcards')" class="hover:text-[#122D6A] transition" data-tipo="flashcards" id="icon-flashcards-${meta.id}">Flash</button>
                       <button onclick="event.stopPropagation(); ${setMeta} abrirModalResumoPersonalizado(${meta.id})" class="hover:text-[#122D6A] transition" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">Upload</button>
-                      <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="text-emerald-500 hover:text-emerald-700 transition font-medium"><i class="fas fa-check mr-0.5"></i>OK</button>
+                      <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="text-emerald-500 hover:text-emerald-700 transition font-medium"><i class="fas fa-check mr-0.5"></i>Concluir</button>
                     </div>
                   </div>`
                 }).join('')}
@@ -25925,7 +25761,7 @@ function renderCelulaMeta(meta, mobile = false) {
           onclick="event.stopPropagation(); toggleMetaSemanal(${meta.id})"
           class="w-full text-[10px] ${meta.concluida ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#122D6A] hover:bg-[#0D1F4D]'} text-white py-1 px-2 rounded flex items-center justify-center gap-1">
           <i class="fas ${meta.concluida ? 'fa-undo' : 'fa-check-circle'} text-[9px]"></i>
-          <span>${meta.concluida ? 'Reabrir' : 'OK'}</span>
+          <span>${meta.concluida ? 'Reabrir' : 'Concluir'}</span>
         </button>
       </div>
 
