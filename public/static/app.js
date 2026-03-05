@@ -8976,7 +8976,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               <div>
                 <p class="text-sm font-semibold ${themes[currentTheme].text}">Hoje: ${new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '')}</p>
                 <div class="flex items-center gap-2 mt-1.5">
-                  <div class="w-32 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full">
+                  <div class="w-32 h-1.5 bg-gray-200 rounded-full">
                     <div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${progressoDia}%"></div>
                   </div>
                   <span class="text-xs ${themes[currentTheme].textSecondary}">${progressoDia}%</span>
@@ -9978,7 +9978,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                 
                 <!-- Barra de Progresso -->
                 <div class="mt-3">
-                  <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div class="${corProgresso} h-full rounded-full transition-all duration-500" 
                          style="width: ${disc.percentualConclusao}%"></div>
                   </div>
@@ -14670,54 +14670,63 @@ window.toggleProgressoView = function(view) {
   
   if (!container || !btnSemana || !btnMes) return;
   
-  // Atualizar botões - tons claros e azuis vibrantes
+  const _d = (typeof currentTheme !== 'undefined' && currentTheme === 'dark');
+  const inactiveBg = _d ? '#1F2937' : 'white';
+  
+  // Atualizar botões
   if (view === 'semana') {
     btnSemana.className = 'px-3 py-1 text-xs font-medium rounded-md bg-[#4A90D9] text-white shadow-sm transition';
-    btnMes.className = `px-3 py-1 text-xs font-medium rounded-md text-[#4A90D9] bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-gray-700 transition`;
+    btnSemana.style.cssText = '';
+    btnMes.className = 'px-3 py-1 text-xs font-medium rounded-md transition';
+    btnMes.style.cssText = 'color:#4A90D9;background:' + inactiveBg + ';';
   } else {
     btnMes.className = 'px-3 py-1 text-xs font-medium rounded-md bg-[#4A90D9] text-white shadow-sm transition';
-    btnSemana.className = `px-3 py-1 text-xs font-medium rounded-md text-[#4A90D9] bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-gray-700 transition`;
+    btnMes.style.cssText = '';
+    btnSemana.className = 'px-3 py-1 text-xs font-medium rounded-md transition';
+    btnSemana.style.cssText = 'color:#4A90D9;background:' + inactiveBg + ';';
   }
   
-  // Renderizar conteúdo - cores claras e azuis vibrantes
+  const barBg = _d ? 'rgba(42,74,159,0.25)' : '#DBEAFE';
+  const futuraBg = _d ? 'rgba(42,74,159,0.15)' : 'rgba(191,219,254,0.5)';
+  
+  // Renderizar conteúdo
   if (view === 'semana') {
-    container.innerHTML = progressoSemanalCache.semanas.map(sem => `
-      <div class="flex items-center gap-2 ${sem.isAtual ? 'bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 -mx-2 border border-blue-200 dark:border-blue-800' : ''} ${sem.isProva ? 'border-2 border-[#4A90D9] rounded-lg p-2 -mx-2 bg-blue-50/50 dark:bg-blue-900/10' : ''}">
-        <span class="text-xs font-medium ${sem.isAtual ? 'text-[#4A90D9] dark:text-blue-400' : themes[currentTheme].textSecondary} w-12 flex-shrink-0">
-          ${sem.label}${sem.isAtual ? ' ●' : ''}${sem.isProva ? ' 🏁' : ''}
-        </span>
-        <div class="flex-1 h-5 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden">
-          ${sem.isFutura ? `
-            <div class="h-full rounded-full bg-blue-200/50 dark:bg-blue-800/30 bg-stripes" style="width: 100%"></div>
-          ` : `
-            <div class="h-full rounded-full bg-gradient-to-r from-[#4A90D9] to-[#6BB6FF] transition-all duration-500 flex items-center justify-end pr-2"
-                 style="width: ${Math.max(sem.percentual, 3)}%">
-              ${sem.percentual > 15 ? `<span class="text-[9px] text-white font-medium">${sem.percentual}%</span>` : ''}
-            </div>
-          `}
-        </div>
-        <span class="text-xs font-semibold ${sem.isFutura ? 'text-gray-400' : 'text-[#4A90D9]'} w-10 text-right flex-shrink-0">
-          ${sem.isFutura ? '-' : sem.percentual + '%'}
-        </span>
-      </div>
-    `).join('');
+    container.innerHTML = progressoSemanalCache.semanas.map(function(sem) {
+      var atualBg = sem.isAtual ? (_d ? 'background:rgba(42,74,159,0.15);border:1px solid rgba(42,74,159,0.3);border-radius:8px;padding:8px;margin:0 -8px;' : 'background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:8px;margin:0 -8px;') : '';
+      var provaBg = sem.isProva && !sem.isAtual ? (_d ? 'border:2px solid #4A90D9;border-radius:8px;padding:8px;margin:0 -8px;background:rgba(42,74,159,0.08);' : 'border:2px solid #4A90D9;border-radius:8px;padding:8px;margin:0 -8px;background:rgba(239,246,255,0.5);') : '';
+      var labelColor = sem.isAtual ? '#4A90D9' : (_d ? '#9CA3AF' : '#6B7280');
+      return '<div class="flex items-center gap-2" style="' + atualBg + provaBg + '">' +
+        '<span class="text-xs font-medium w-12 flex-shrink-0" style="color:' + labelColor + ';">' +
+          sem.label + (sem.isAtual ? ' ●' : '') + (sem.isProva ? ' 🏁' : '') +
+        '</span>' +
+        '<div class="flex-1 h-5 rounded-full overflow-hidden" style="background:' + barBg + ';">' +
+          (sem.isFutura ?
+            '<div class="h-full rounded-full" style="width:100%;background:' + futuraBg + ';"></div>' :
+            '<div class="h-full rounded-full flex items-center justify-end pr-2" style="width:' + Math.max(sem.percentual, 3) + '%;background:linear-gradient(to right,#4A90D9,#6BB6FF);transition:all 0.5s;">' +
+              (sem.percentual > 15 ? '<span class="text-white font-medium" style="font-size:9px;">' + sem.percentual + '%</span>' : '') +
+            '</div>') +
+        '</div>' +
+        '<span class="text-xs font-semibold w-10 text-right flex-shrink-0" style="color:' + (sem.isFutura ? '#9CA3AF' : '#4A90D9') + ';">' +
+          (sem.isFutura ? '-' : sem.percentual + '%') +
+        '</span>' +
+      '</div>';
+    }).join('');
   } else {
-    container.innerHTML = progressoSemanalCache.meses.map(mes => `
-      <div class="flex items-center gap-2">
-        <span class="text-xs font-medium ${themes[currentTheme].textSecondary} w-16 flex-shrink-0 capitalize">
-          ${mes.label}
-        </span>
-        <div class="flex-1 h-5 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden">
-          <div class="h-full rounded-full bg-gradient-to-r from-[#4A90D9] to-[#6BB6FF] transition-all duration-500 flex items-center justify-end pr-2"
-               style="width: ${Math.max(mes.percentual, 3)}%">
-            ${mes.percentual > 15 ? `<span class="text-[9px] text-white font-medium">${mes.percentual}%</span>` : ''}
-          </div>
-        </div>
-        <span class="text-xs font-semibold text-[#4A90D9] w-10 text-right flex-shrink-0">
-          ${mes.percentual}%
-        </span>
-      </div>
-    `).join('');
+    container.innerHTML = progressoSemanalCache.meses.map(function(mes) {
+      return '<div class="flex items-center gap-2">' +
+        '<span class="text-xs font-medium w-16 flex-shrink-0 capitalize" style="color:' + (_d ? '#9CA3AF' : '#6B7280') + ';">' +
+          mes.label +
+        '</span>' +
+        '<div class="flex-1 h-5 rounded-full overflow-hidden" style="background:' + barBg + ';">' +
+          '<div class="h-full rounded-full flex items-center justify-end pr-2" style="width:' + Math.max(mes.percentual, 3) + '%;background:linear-gradient(to right,#4A90D9,#6BB6FF);transition:all 0.5s;">' +
+            (mes.percentual > 15 ? '<span class="text-white font-medium" style="font-size:9px;">' + mes.percentual + '%</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<span class="text-xs font-semibold w-10 text-right flex-shrink-0" style="color:#4A90D9;">' +
+          mes.percentual + '%' +
+        '</span>' +
+      '</div>';
+    }).join('');
   }
 };
 
@@ -14893,12 +14902,12 @@ window.renderDashboardDesempenho = async function() {
               </div>
               
               <div class="grid grid-cols-2 gap-4 mb-4">
-                <div class="text-center p-3 rounded-xl bg-[#E8EDF5] dark:bg-[#0A1839]/50">
-                  <p class="text-3xl font-bold text-[#122D6A] dark:text-blue-400">${mediaSimulados}%</p>
+                <div class="text-center p-3 rounded-xl" style="background: ${currentTheme === 'dark' ? 'rgba(10,24,57,0.5)' : '#E8EDF5'};">
+                  <p class="text-3xl font-bold" style="color: ${currentTheme === 'dark' ? '#93B8E8' : '#122D6A'};">${mediaSimulados}%</p>
                   <p class="text-xs ${themes[currentTheme].textSecondary}">Média Geral</p>
                 </div>
-                <div class="text-center p-3 rounded-xl ${mediaUltimos >= metaPercentual ? 'bg-[#E8EDF5] dark:bg-[#0A1839]/50' : 'bg-[#E8EDF5] dark:bg-[#0A1839]/50'}">
-                  <p class="text-3xl font-bold ${mediaUltimos >= metaPercentual ? 'text-[#2A4A9F] dark:text-blue-400' : 'text-[#3A5AB0] dark:text-blue-300'}">${mediaUltimos}%</p>
+                <div class="text-center p-3 rounded-xl" style="background: ${currentTheme === 'dark' ? 'rgba(10,24,57,0.5)' : '#E8EDF5'};">
+                  <p class="text-3xl font-bold" style="color: ${currentTheme === 'dark' ? '#93B8E8' : (mediaUltimos >= metaPercentual ? '#2A4A9F' : '#3A5AB0')};">${mediaUltimos}%</p>
                   <p class="text-xs ${themes[currentTheme].textSecondary}">Últimos 5</p>
                 </div>
               </div>
@@ -14929,21 +14938,21 @@ window.renderDashboardDesempenho = async function() {
                   <i class="fas fa-chart-line text-[#4A90D9]"></i>
                   Cumprimento de Metas
                 </h2>
-                <!-- Botões de alternância - tons claros e azuis -->
-                <div class="flex gap-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-1 border border-blue-100 dark:border-blue-800">
+                <!-- Botões de alternância -->
+                <div class="flex gap-1 rounded-lg p-1" style="background: ${currentTheme === 'dark' ? 'rgba(42,74,159,0.2)' : '#EFF6FF'}; border: 1px solid ${currentTheme === 'dark' ? 'rgba(42,74,159,0.3)' : '#DBEAFE'};">
                   <button id="btn-view-semana" onclick="window.toggleProgressoView('semana')" 
                           class="px-3 py-1 text-xs font-medium rounded-md bg-[#4A90D9] text-white shadow-sm transition">
                     Semana
                   </button>
                   <button id="btn-view-mes" onclick="window.toggleProgressoView('mes')" 
-                          class="px-3 py-1 text-xs font-medium rounded-md text-[#4A90D9] bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-gray-700 transition">
+                          class="px-3 py-1 text-xs font-medium rounded-md transition" style="color: #4A90D9; background: ${currentTheme === 'dark' ? '#1F2937' : 'white'};">
                     Mês
                   </button>
                 </div>
               </div>
               
               ${progressoSemanal.temDataProva ? `
-                <div class="mb-4 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20 border border-blue-200 dark:border-blue-800 flex items-center justify-between">
+                <div class="mb-4 p-3 rounded-xl flex items-center justify-between" style="background: ${currentTheme === 'dark' ? 'rgba(42,74,159,0.15)' : 'linear-gradient(to right, #EFF6FF, #F0F9FF)'}; border: 1px solid ${currentTheme === 'dark' ? 'rgba(42,74,159,0.3)' : '#BFDBFE'};">
                   <div class="flex items-center gap-2">
                     <i class="fas fa-flag-checkered text-[#4A90D9]"></i>
                     <span class="text-sm ${themes[currentTheme].text}">Prova em <strong>${new Date(progressoSemanal.dataProva).toLocaleDateString('pt-BR')}</strong></span>
@@ -14951,34 +14960,40 @@ window.renderDashboardDesempenho = async function() {
                   <span class="text-xs px-2 py-1 bg-[#4A90D9] text-white rounded-full shadow-sm">${progressoSemanal.semanasRestantes} semanas restantes</span>
                 </div>
               ` : `
-                <div class="mb-4 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center gap-2">
-                  <i class="fas fa-infinity text-gray-400"></i>
+                <div class="mb-4 p-3 rounded-xl flex items-center gap-2" style="background: ${currentTheme === 'dark' ? 'rgba(42,74,159,0.15)' : '#EFF6FF'}; border: 1px solid ${currentTheme === 'dark' ? 'rgba(42,74,159,0.25)' : '#DBEAFE'};">
+                  <i class="fas fa-infinity" style="color: ${currentTheme === 'dark' ? '#6B7280' : '#9CA3AF'};"></i>
                   <span class="text-sm ${themes[currentTheme].textSecondary}">Sem data definida - acompanhamento contínuo</span>
                 </div>
               `}
               
-              <!-- Container para o gráfico - cores claras e azuis vibrantes -->
+              <!-- Container para o gráfico -->
               <div id="progresso-container" class="space-y-2 max-h-64 overflow-y-auto pr-2">
-                ${progressoSemanal.semanas.map(sem => `
-                  <div class="flex items-center gap-2 ${sem.isAtual ? 'bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 -mx-2 border border-blue-200 dark:border-blue-800' : ''} ${sem.isProva ? 'border-2 border-[#4A90D9] rounded-lg p-2 -mx-2 bg-blue-50/50 dark:bg-blue-900/10' : ''}">
-                    <span class="text-xs font-medium ${sem.isAtual ? 'text-[#4A90D9] dark:text-blue-400' : themes[currentTheme].textSecondary} w-12 flex-shrink-0">
+                ${progressoSemanal.semanas.map(sem => {
+                  const _d = currentTheme === 'dark';
+                  const atualBg = sem.isAtual ? (_d ? 'background:rgba(42,74,159,0.15);border:1px solid rgba(42,74,159,0.3);border-radius:8px;padding:8px;margin:0 -8px;' : 'background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:8px;margin:0 -8px;') : '';
+                  const provaBg = sem.isProva && !sem.isAtual ? (_d ? 'border:2px solid #4A90D9;border-radius:8px;padding:8px;margin:0 -8px;background:rgba(42,74,159,0.08);' : 'border:2px solid #4A90D9;border-radius:8px;padding:8px;margin:0 -8px;background:rgba(239,246,255,0.5);') : '';
+                  const labelColor = sem.isAtual ? '#4A90D9' : '';
+                  const barBg = _d ? 'rgba(42,74,159,0.25)' : '#DBEAFE';
+                  const futuraBg = _d ? 'rgba(42,74,159,0.15)' : 'rgba(191,219,254,0.5)';
+                  return `
+                  <div class="flex items-center gap-2" style="${atualBg}${provaBg}">
+                    <span class="text-xs font-medium w-12 flex-shrink-0" style="color: ${labelColor || (_d ? '#9CA3AF' : '#6B7280')};">
                       ${sem.label}${sem.isAtual ? ' ●' : ''}${sem.isProva ? ' 🏁' : ''}
                     </span>
-                    <div class="flex-1 h-5 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden">
+                    <div class="flex-1 h-5 rounded-full overflow-hidden" style="background: ${barBg};">
                       ${sem.isFutura ? `
-                        <div class="h-full rounded-full bg-blue-200/50 dark:bg-blue-800/30 bg-stripes" style="width: 100%"></div>
+                        <div class="h-full rounded-full" style="width: 100%; background: ${futuraBg};"></div>
                       ` : `
-                        <div class="h-full rounded-full bg-gradient-to-r from-[#4A90D9] to-[#6BB6FF] transition-all duration-500 flex items-center justify-end pr-2"
-                             style="width: ${Math.max(sem.percentual, 3)}%">
-                          ${sem.percentual > 15 ? `<span class="text-[9px] text-white font-medium">${sem.percentual}%</span>` : ''}
+                        <div class="h-full rounded-full flex items-center justify-end pr-2" style="width: ${Math.max(sem.percentual, 3)}%; background: linear-gradient(to right, #4A90D9, #6BB6FF); transition: all 0.5s;">
+                          ${sem.percentual > 15 ? `<span class="text-white font-medium" style="font-size:9px;">${sem.percentual}%</span>` : ''}
                         </div>
                       `}
                     </div>
-                    <span class="text-xs font-semibold ${sem.isFutura ? 'text-gray-400' : 'text-[#4A90D9]'} w-10 text-right flex-shrink-0">
+                    <span class="text-xs font-semibold w-10 text-right flex-shrink-0" style="color: ${sem.isFutura ? '#9CA3AF' : '#4A90D9'};">
                       ${sem.isFutura ? '-' : sem.percentual + '%'}
                     </span>
-                  </div>
-                `).join('')}
+                  </div>`;
+                }).join('')}
               </div>
               
               <div class="mt-4 pt-4 border-t ${themes[currentTheme].border}">
@@ -15003,7 +15018,7 @@ window.renderDashboardDesempenho = async function() {
                   <i class="fas fa-chart-bar text-[#4A6AC0]"></i>
                   Progresso por Matéria
                 </h2>
-                <span class="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-[#2A4A9F]">
+                <span class="text-xs px-2 py-1 rounded-full text-[#2A4A9F]" style="background: ${currentTheme === 'dark' ? 'rgba(42,74,159,0.25)' : '#DBEAFE'};">
                   ${progressoGeral.disciplinas?.length || 0} disciplinas
                 </span>
               </div>
@@ -15085,7 +15100,7 @@ window.renderDashboardDesempenho = async function() {
                     </span>
                   </div>
                   <div class="flex items-center gap-2 mb-2">
-                    <div class="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div class="h-full rounded-full ${disc.progresso_percentual >= 70 ? 'bg-gradient-to-r from-green-400 to-green-500' : disc.progresso_percentual >= 30 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' : 'bg-gradient-to-r from-red-400 to-red-500'}" style="width: ${disc.progresso_percentual}%"></div>
                     </div>
                     <span class="text-sm font-bold ${disc.progresso_percentual >= 70 ? 'text-green-500' : disc.progresso_percentual >= 30 ? 'text-yellow-500' : 'text-red-500'}">${disc.progresso_percentual}%</span>
@@ -15878,7 +15893,7 @@ window.renderGraficoDisciplinas = function(simulados) {
         '<p class="font-semibold ' + themes[currentTheme].text + ' text-sm truncate flex-1 mr-2">' + d.nome + '</p>' +
         '<span class="font-bold ' + textClass + ' text-lg">' + d.percentual + '%</span>' +
       '</div>' +
-      '<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-1.5">' +
+      '<div class="w-full bg-gray-200 rounded-full h-2.5 mb-1.5">' +
         '<div class="h-2.5 rounded-full bg-gradient-to-r ' + corClass + '" style="width: ' + d.percentual + '%"></div>' +
       '</div>' +
       '<p class="text-xs ' + themes[currentTheme].textSecondary + '">' + d.acertos + '/' + d.total + ' questoes corretas</p>' +
@@ -17392,6 +17407,10 @@ window.abrirPainelAdmin = async function() {
                 <i class="fas fa-chart-pie text-[#1A3A7F] text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Analytics</p>
               </button>
+              <button onclick="abrirChatAdmin()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-[#E8EDF5] transition text-center relative">
+                <i class="fas fa-comments text-[#1A3A7F] text-xl mb-1"></i>
+                <p class="text-xs ${themes[currentTheme].text} font-medium">Chat Usuários</p>
+              </button>
             </div>
           </div>
         </div>
@@ -17428,6 +17447,329 @@ window.atualizarDashboardAdmin = function() {
   fecharPainelAdmin();
   abrirPainelAdmin();
 };
+
+// ============== CHAT ADMIN <-> USUÁRIO ==============
+
+window.abrirChatAdmin = async function() {
+  if (!isCurrentUserAdmin()) { showToast('Acesso negado', 'error'); return; }
+  
+  const modal = document.createElement('div');
+  modal.id = 'modal-chat-admin';
+  modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10002] p-4';
+  modal.innerHTML = `
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div class="bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] p-4 text-white flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-comments text-xl"></i>
+          <div>
+            <h2 class="text-lg font-bold">Chat com Usuários</h2>
+            <p class="text-blue-200 text-xs">Envie mensagens diretas</p>
+          </div>
+        </div>
+        <button onclick="document.getElementById('modal-chat-admin')?.remove()" class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div id="chat-admin-content" class="flex-1 overflow-y-auto p-4">
+        <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i><p class="mt-2 ${themes[currentTheme].textSecondary} text-sm">Carregando conversas...</p></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  try {
+    const [convRes, usersRes] = await Promise.all([
+      axios.get('/api/admin/messages/conversations', { params: { admin_id: currentUser.id } }),
+      axios.get('/api/admin/users', { headers: { 'X-User-ID': currentUser.id } })
+    ]);
+    const conversations = convRes.data.conversations || [];
+    const allUsers = usersRes.data.users || [];
+    const _d = currentTheme === 'dark';
+    
+    let html = '';
+    
+    // Botão para nova conversa
+    html += '<div class="mb-4 flex items-center gap-2">';
+    html += '<select id="chat-admin-select-user" class="flex-1 px-3 py-2 rounded-lg border text-sm" style="background:' + (_d?'#1F2937':'white') + ';color:' + (_d?'#F3F4F6':'#1E293B') + ';border-color:' + (_d?'#374151':'#D1D5DB') + ';">';
+    html += '<option value="">Selecionar usuário...</option>';
+    allUsers.forEach(function(u) {
+      html += '<option value="' + u.id + '">' + (u.nome || u.email) + ' (' + u.email + ')</option>';
+    });
+    html += '</select>';
+    html += '<button onclick="iniciarChatComUsuario()" class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition text-sm font-medium whitespace-nowrap"><i class="fas fa-plus mr-1"></i>Nova</button>';
+    html += '</div>';
+    
+    // Lista de conversas existentes
+    if (conversations.length > 0) {
+      html += '<div class="space-y-2">';
+      conversations.forEach(function(conv) {
+        var unreadBadge = conv.unread_from_user > 0 ? '<span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">' + conv.unread_from_user + '</span>' : '';
+        var lastMsg = (conv.last_message || '').substring(0, 60) + (conv.last_message && conv.last_message.length > 60 ? '...' : '');
+        var senderIcon = conv.last_sender === 'admin' ? '<i class="fas fa-arrow-right text-blue-500 text-[10px] mr-1"></i>' : '<i class="fas fa-arrow-left text-green-500 text-[10px] mr-1"></i>';
+        var timeAgo = conv.last_message_at ? new Date(conv.last_message_at).toLocaleDateString('pt-BR') + ' ' + new Date(conv.last_message_at).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : '';
+        html += '<div onclick="abrirChatComUsuarioId(' + conv.user_id + ', \'' + (conv.user_name||'').replace(/'/g,"\\'") + '\')" class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition" style="background:' + (_d?'#1F2937':'#F9FAFB') + ';border-color:' + (_d?'#374151':'#E5E7EB') + ';" onmouseover="this.style.background=\'' + (_d?'#374151':'#EFF6FF') + '\'" onmouseout="this.style.background=\'' + (_d?'#1F2937':'#F9FAFB') + '\'">';
+        html += '<div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style="background:' + (_d?'rgba(42,74,159,0.3)':'#E8EDF5') + ';"><span class="text-sm font-bold" style="color:#122D6A;">' + ((conv.user_name||'?')[0]).toUpperCase() + '</span></div>';
+        html += '<div class="flex-1 min-w-0">';
+        html += '<div class="flex items-center justify-between"><p class="text-sm font-semibold truncate" style="color:' + (_d?'#F3F4F6':'#1E293B') + ';">' + (conv.user_name || conv.user_email || 'Usuário #' + conv.user_id) + '</p>' + unreadBadge + '</div>';
+        html += '<p class="text-xs truncate" style="color:' + (_d?'#9CA3AF':'#6B7280') + ';">' + senderIcon + lastMsg + '</p>';
+        html += '<p class="text-[10px]" style="color:' + (_d?'#6B7280':'#9CA3AF') + ';">' + timeAgo + '</p>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+    } else {
+      html += '<div class="text-center py-8"><i class="fas fa-inbox text-4xl" style="color:' + (_d?'#4B5563':'#D1D5DB') + ';"></i><p class="mt-2 text-sm" style="color:' + (_d?'#9CA3AF':'#6B7280') + ';">Nenhuma conversa ainda</p></div>';
+    }
+    
+    document.getElementById('chat-admin-content').innerHTML = html;
+  } catch (err) {
+    console.error('Erro ao carregar chat admin:', err);
+    document.getElementById('chat-admin-content').innerHTML = '<div class="text-center py-8 text-red-500"><i class="fas fa-exclamation-triangle text-2xl mb-2"></i><p class="text-sm">Erro ao carregar conversas</p></div>';
+  }
+};
+
+window.iniciarChatComUsuario = function() {
+  var sel = document.getElementById('chat-admin-select-user');
+  if (!sel || !sel.value) { showToast('Selecione um usuário', 'warning'); return; }
+  var userId = parseInt(sel.value);
+  var userName = sel.options[sel.selectedIndex].text.split(' (')[0];
+  abrirChatComUsuarioId(userId, userName);
+};
+
+window.abrirChatComUsuarioId = async function(userId, userName) {
+  var _d = currentTheme === 'dark';
+  var content = document.getElementById('chat-admin-content');
+  if (!content) return;
+  
+  content.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i></div>';
+  
+  try {
+    var res = await axios.get('/api/admin/messages/' + userId, { params: { admin_id: currentUser.id } });
+    var messages = res.data.messages || [];
+    
+    var html = '';
+    html += '<div class="flex items-center gap-2 mb-4 pb-3 border-b" style="border-color:' + (_d?'#374151':'#E5E7EB') + ';">';
+    html += '<button onclick="abrirChatAdmin()" class="w-8 h-8 rounded-full flex items-center justify-center transition" style="background:' + (_d?'rgba(255,255,255,0.1)':'#F3F4F6') + ';"><i class="fas fa-arrow-left text-sm" style="color:' + (_d?'#9CA3AF':'#6B7280') + ';"></i></button>';
+    html += '<div class="w-8 h-8 rounded-full flex items-center justify-center" style="background:' + (_d?'rgba(42,74,159,0.3)':'#E8EDF5') + ';"><span class="text-xs font-bold" style="color:#122D6A;">' + ((userName||'?')[0]).toUpperCase() + '</span></div>';
+    html += '<p class="text-sm font-bold" style="color:' + (_d?'#F3F4F6':'#1E293B') + ';">' + (userName || 'Usuário #' + userId) + '</p>';
+    html += '</div>';
+    
+    // Mensagens
+    html += '<div id="chat-messages-list" class="space-y-3 mb-4 max-h-[50vh] overflow-y-auto pr-1">';
+    if (messages.length === 0) {
+      html += '<div class="text-center py-6"><p class="text-sm" style="color:' + (_d?'#6B7280':'#9CA3AF') + ';">Nenhuma mensagem ainda. Inicie a conversa!</p></div>';
+    } else {
+      messages.forEach(function(msg) {
+        var isAdmin = msg.sender_type === 'admin';
+        var time = new Date(msg.created_at).toLocaleDateString('pt-BR') + ' ' + new Date(msg.created_at).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+        if (isAdmin) {
+          html += '<div class="flex justify-end"><div class="max-w-[75%] p-3 rounded-xl rounded-br-sm" style="background:#122D6A;color:white;">';
+          html += '<p class="text-sm">' + msg.message.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') + '</p>';
+          html += '<p class="text-[10px] text-blue-200 mt-1 text-right">' + time + '</p>';
+          html += '</div></div>';
+        } else {
+          html += '<div class="flex justify-start"><div class="max-w-[75%] p-3 rounded-xl rounded-bl-sm" style="background:' + (_d?'#374151':'#F3F4F6') + ';color:' + (_d?'#F3F4F6':'#1E293B') + ';">';
+          html += '<p class="text-sm">' + msg.message.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') + '</p>';
+          html += '<p class="text-[10px] mt-1" style="color:' + (_d?'#6B7280':'#9CA3AF') + ';">' + time + '</p>';
+          html += '</div></div>';
+        }
+      });
+    }
+    html += '</div>';
+    
+    // Input de mensagem
+    html += '<div class="flex gap-2">';
+    html += '<textarea id="chat-admin-input" rows="2" placeholder="Digite sua mensagem..." class="flex-1 px-3 py-2 rounded-lg border text-sm resize-none" style="background:' + (_d?'#1F2937':'white') + ';color:' + (_d?'#F3F4F6':'#1E293B') + ';border-color:' + (_d?'#374151':'#D1D5DB') + ';"></textarea>';
+    html += '<button onclick="enviarMensagemAdmin(' + userId + ')" class="px-4 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex-shrink-0 self-end"><i class="fas fa-paper-plane"></i></button>';
+    html += '</div>';
+    
+    content.innerHTML = html;
+    
+    // Scroll to bottom
+    var msgList = document.getElementById('chat-messages-list');
+    if (msgList) msgList.scrollTop = msgList.scrollHeight;
+    
+    // Marcar como lidas mensagens do admin que foram respondidas
+    // (admin está vendo, marcar respostas do user como lidas)
+  } catch (err) {
+    console.error('Erro ao carregar mensagens:', err);
+    content.innerHTML = '<div class="text-center py-8 text-red-500"><p class="text-sm">Erro ao carregar mensagens</p></div>';
+  }
+};
+
+window.enviarMensagemAdmin = async function(userId) {
+  var input = document.getElementById('chat-admin-input');
+  if (!input || !input.value.trim()) { showToast('Digite uma mensagem', 'warning'); return; }
+  
+  var msg = input.value.trim();
+  input.value = '';
+  input.disabled = true;
+  
+  try {
+    await axios.post('/api/admin/messages', {
+      admin_id: currentUser.id,
+      user_id: userId,
+      message: msg
+    });
+    showToast('Mensagem enviada!', 'success');
+    // Recarregar conversa
+    var userName = document.querySelector('#chat-admin-content .font-bold')?.textContent || '';
+    abrirChatComUsuarioId(userId, userName);
+  } catch (err) {
+    console.error('Erro ao enviar mensagem:', err);
+    showToast('Erro ao enviar mensagem', 'error');
+    input.value = msg;
+  }
+  input.disabled = false;
+};
+
+// ============== NOTIFICAÇÃO DE MENSAGEM PARA O USUÁRIO ==============
+
+window.verificarMensagensAdmin = async function() {
+  if (!currentUser || !currentUser.id) return;
+  if (isCurrentUserAdmin()) return; // Admin não precisa de notificação
+  
+  try {
+    var res = await axios.get('/api/messages/unread/' + currentUser.id);
+    var count = res.data.count || 0;
+    
+    if (count > 0) {
+      // Mostrar badge no bell ou em algum ícone
+      var bellBadge = document.getElementById('admin-msg-badge');
+      if (!bellBadge) {
+        // Criar ícone de notificação flutuante
+        var notifBtn = document.createElement('div');
+        notifBtn.id = 'admin-msg-notification';
+        notifBtn.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:9998;';
+        notifBtn.innerHTML = '<button onclick="abrirChatUsuario()" class="relative w-12 h-12 bg-[#122D6A] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#0D1F4D] transition animate-bounce">' +
+          '<i class="fas fa-envelope text-lg"></i>' +
+          '<span id="admin-msg-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">' + count + '</span>' +
+          '</button>';
+        document.body.appendChild(notifBtn);
+        
+        // Parar bounce após 3s
+        setTimeout(function() {
+          var btn = notifBtn.querySelector('button');
+          if (btn) btn.classList.remove('animate-bounce');
+        }, 3000);
+      } else {
+        bellBadge.textContent = count;
+        bellBadge.style.display = '';
+      }
+    } else {
+      // Remover notificação se não há mensagens
+      var notif = document.getElementById('admin-msg-notification');
+      if (notif) notif.remove();
+    }
+  } catch (e) {
+    // Silenciar erro - tabela pode não existir
+  }
+};
+
+window.abrirChatUsuario = async function() {
+  if (!currentUser || !currentUser.id) return;
+  
+  var _d = currentTheme === 'dark';
+  
+  // Marcar como lidas
+  await axios.post('/api/messages/mark-read', { user_id: currentUser.id }).catch(function(){});
+  
+  // Remover badge
+  var notif = document.getElementById('admin-msg-notification');
+  if (notif) notif.remove();
+  
+  try {
+    var res = await axios.get('/api/admin/messages/' + currentUser.id);
+    var messages = res.data.messages || [];
+    
+    var modal = document.createElement('div');
+    modal.id = 'modal-chat-usuario';
+    modal.className = 'fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-[9999] p-0 sm:p-4';
+    
+    var html = '<div class="' + themes[currentTheme].card + ' w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[80vh] sm:max-h-[70vh] flex flex-col overflow-hidden">';
+    
+    // Header
+    html += '<div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] p-4 text-white flex items-center justify-between flex-shrink-0">';
+    html += '<div class="flex items-center gap-3"><div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"><i class="fas fa-headset text-xl"></i></div>';
+    html += '<div><h3 class="font-bold">Suporte IAprova</h3><p class="text-xs text-white/70">Mensagens do administrador</p></div></div>';
+    html += '<button onclick="document.getElementById(\'modal-chat-usuario\')?.remove()" class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition"><i class="fas fa-times"></i></button>';
+    html += '</div>';
+    
+    // Messages
+    html += '<div id="chat-user-messages" class="flex-1 overflow-y-auto p-4 space-y-3">';
+    if (messages.length === 0) {
+      html += '<div class="text-center py-6"><p class="text-sm" style="color:' + (_d?'#9CA3AF':'#6B7280') + ';">Nenhuma mensagem ainda</p></div>';
+    } else {
+      messages.forEach(function(msg) {
+        var isAdmin = msg.sender_type === 'admin';
+        var time = new Date(msg.created_at).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' · ' + new Date(msg.created_at).toLocaleDateString('pt-BR');
+        if (isAdmin) {
+          html += '<div class="flex justify-start"><div class="max-w-[80%] p-3 rounded-xl rounded-bl-sm" style="background:' + (_d?'rgba(42,74,159,0.3)':'#E8EDF5') + ';color:' + (_d?'#F3F4F6':'#1E293B') + ';">';
+          html += '<p class="text-xs font-semibold mb-1" style="color:#4A90D9;">Equipe IAprova</p>';
+          html += '<p class="text-sm">' + msg.message.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') + '</p>';
+          html += '<p class="text-[10px] mt-1" style="color:' + (_d?'#6B7280':'#9CA3AF') + ';">' + time + '</p>';
+          html += '</div></div>';
+        } else {
+          html += '<div class="flex justify-end"><div class="max-w-[80%] p-3 rounded-xl rounded-br-sm" style="background:#122D6A;color:white;">';
+          html += '<p class="text-sm">' + msg.message.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') + '</p>';
+          html += '<p class="text-[10px] text-blue-200 mt-1 text-right">' + time + '</p>';
+          html += '</div></div>';
+        }
+      });
+    }
+    html += '</div>';
+    
+    // Input
+    html += '<div class="p-3 border-t flex gap-2 flex-shrink-0" style="border-color:' + (_d?'#374151':'#E5E7EB') + ';">';
+    html += '<input id="chat-user-input" type="text" placeholder="Responder..." class="flex-1 px-3 py-2 rounded-full border text-sm" style="background:' + (_d?'#1F2937':'white') + ';color:' + (_d?'#F3F4F6':'#1E293B') + ';border-color:' + (_d?'#374151':'#D1D5DB') + ';" onkeydown="if(event.key===\'Enter\'){event.preventDefault();responderAdmin();}">';
+    html += '<button onclick="responderAdmin()" class="w-10 h-10 bg-[#122D6A] text-white rounded-full flex items-center justify-center hover:bg-[#0D1F4D] transition"><i class="fas fa-paper-plane text-sm"></i></button>';
+    html += '</div>';
+    
+    html += '</div>';
+    modal.innerHTML = html;
+    document.body.appendChild(modal);
+    
+    // Scroll to bottom
+    var msgList = document.getElementById('chat-user-messages');
+    if (msgList) msgList.scrollTop = msgList.scrollHeight;
+  } catch (err) {
+    console.error('Erro ao abrir chat:', err);
+    showToast('Erro ao abrir mensagens', 'error');
+  }
+};
+
+window.responderAdmin = async function() {
+  var input = document.getElementById('chat-user-input');
+  if (!input || !input.value.trim()) return;
+  
+  var msg = input.value.trim();
+  input.value = '';
+  input.disabled = true;
+  
+  try {
+    await axios.post('/api/messages/reply', {
+      user_id: currentUser.id,
+      message: msg
+    });
+    // Recarregar chat
+    document.getElementById('modal-chat-usuario')?.remove();
+    abrirChatUsuario();
+  } catch (err) {
+    console.error('Erro ao responder:', err);
+    showToast('Erro ao enviar resposta', 'error');
+    input.value = msg;
+  }
+  if (input) input.disabled = false;
+};
+
+// Verificar mensagens a cada 60 segundos
+setInterval(function() {
+  if (typeof verificarMensagensAdmin === 'function') verificarMensagensAdmin();
+}, 60000);
+
+// Verificar na carga inicial (após 5s para não atrapalhar)
+setTimeout(function() {
+  if (typeof verificarMensagensAdmin === 'function') verificarMensagensAdmin();
+}, 5000);
 
 // ============== ANALYTICS ADMIN (Conteúdos + Feedbacks) ==============
 window.abrirAnalyticsAdmin = async function() {
@@ -27100,7 +27442,7 @@ window.mostrarDetalheScore = async function() {
                     </div>
                     
                     <!-- Progresso visual -->
-                    <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden mb-2">
                       <div class="h-full bg-${color}-500 rounded-full transition-all" style="width: ${progressPercent}%"></div>
                     </div>
                     
@@ -28826,7 +29168,7 @@ window.gerarSimulado = async function() {
             <span id="sim-loading-etapa-texto">Iniciando...</span>
             <span id="sim-loading-percentual">0%</span>
           </div>
-          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+          <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
             <div id="sim-loading-barra" class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-cyan-500 transition-all duration-700 ease-out" style="width: 0%"></div>
           </div>
         </div>
@@ -29450,7 +29792,7 @@ window.confirmarIniciarSimulado = async function(tipo) {
             <span id="sim2-loading-etapa-texto">Iniciando...</span>
             <span id="sim2-loading-percentual">0%</span>
           </div>
-          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+          <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
             <div id="sim2-loading-barra" class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-cyan-500 transition-all duration-700 ease-out" style="width: 0%"></div>
           </div>
         </div>
@@ -29617,7 +29959,7 @@ function renderSimuladoQuestao() {
           </div>
           
           <!-- Barra de progresso -->
-          <div class="mt-2 md:mt-3 h-1.5 md:h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div class="mt-2 md:mt-3 h-1.5 md:h-2 bg-gray-200 rounded-full overflow-hidden">
             <div class="h-full bg-[#122D6A] transition-all duration-300" style="width: ${progresso}%"></div>
           </div>
         </div>
@@ -30031,7 +30373,7 @@ function renderResultadoSimulado(acertos, total, percentual, tempo, detalhes) {
                       <span class="${themes[currentTheme].text} text-sm">${disc}</span>
                       <span class="${themes[currentTheme].textSecondary} text-sm">${stats.acertos}/${stats.total} (${pct}%)</span>
                     </div>
-                    <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div class="h-full ${barCor} transition-all" style="width: ${pct}%"></div>
                     </div>
                   </div>

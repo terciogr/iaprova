@@ -22708,6 +22708,157 @@ app.get('/api/concursos', async (c) => {
   }
 })
 
+// ============== MENSAGENS ADMIN <-> USUÁRIO ==============
+
+// Enviar mensagem do admin para um usuário
+app.post('/api/admin/messages', async (c) => {
+  const { env } = c;
+  const body = await c.req.json();
+  const { admin_id, user_id, message } = body;
+  
+  if (!admin_id || !user_id || !message) {
+    return c.json({ error: 'admin_id, user_id e message são obrigatórios' }, 400);
+  }
+  
+  // Verificar se admin
+  const admin = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(admin_id).first();
+  if (!admin || admin.email !== 'tercio10@gmail.com') {
+    return c.json({ error: 'Acesso negado' }, 403);
+  }
+  
+  // Criar tabela se não existir
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    admin_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    sender_type TEXT NOT NULL DEFAULT 'admin',
+    message TEXT NOT NULL,
+    read_at DATETIME DEFAULT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`).run();
+  
+  const result = await env.DB.prepare(
+    'INSERT INTO admin_messages (admin_id, user_id, sender_type, message) VALUES (?, ?, ?, ?)'
+  ).bind(admin_id, user_id, 'admin', message).run();
+  
+  return c.json({ success: true, id: result.meta.last_row_id });
+});
+
+// Usuário responde ao admin
+app.post('/api/messages/reply', async (c) => {
+  const { env } = c;
+  const body = await c.req.json();
+  const { user_id, message } = body;
+  
+  if (!user_id || !message) {
+    return c.json({ error: 'user_id e message são obrigatórios' }, 400);
+  }
+  
+  // Buscar o admin_id da última conversa
+  const lastMsg = await env.DB.prepare(
+    'SELECT admin_id FROM admin_messages WHERE user_id = ? ORDER BY created_at DESC LIMIT 1'
+  ).bind(user_id).first();
+  
+  const admin_id = lastMsg?.admin_id || 1; // fallback para admin padrão
+  
+  const result = await env.DB.prepare(
+    'INSERT INTO admin_messages (admin_id, user_id, sender_type, message) VALUES (?, ?, ?, ?)'
+  ).bind(admin_id, user_id, 'user', message).run();
+  
+  return c.json({ success: true, id: result.meta.last_row_id });
+});
+
+// Buscar mensagens de um usuário (para admin ver)
+app.get('/api/admin/messages/:user_id', async (c) => {
+  const { env } = c;
+  const userId = c.req.param('user_id');
+  const adminId = c.req.query('admin_id');
+  
+  // Verificar admin
+  if (adminId) {
+    const admin = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(adminId).first();
+    if (!admin || admin.email !== 'tercio10@gmail.com') {
+      return c.json({ error: 'Acesso negado' }, 403);
+    }
+  }
+  
+  const messages = await env.DB.prepare(
+    'SELECT * FROM admin_messages WHERE user_id = ? ORDER BY created_at ASC LIMIT 200'
+  ).bind(userId).all();
+  
+  return c.json({ messages: messages.results || [] });
+});
+
+// Buscar mensagens não lidas do usuário
+app.get('/api/messages/unread/:user_id', async (c) => {
+  const { env } = c;
+  const userId = c.req.param('user_id');
+  
+  try {
+    const unread = await env.DB.prepare(
+      "SELECT COUNT(*) as count FROM admin_messages WHERE user_id = ? AND sender_type = 'admin' AND read_at IS NULL"
+    ).bind(userId).first();
+    
+    const messages = await env.DB.prepare(
+      "SELECT * FROM admin_messages WHERE user_id = ? AND sender_type = 'admin' AND read_at IS NULL ORDER BY created_at DESC LIMIT 10"
+    ).bind(userId).all();
+    
+    return c.json({ count: unread?.count || 0, messages: messages.results || [] });
+  } catch (e) {
+    return c.json({ count: 0, messages: [] });
+  }
+});
+
+// Marcar mensagens como lidas
+app.post('/api/messages/mark-read', async (c) => {
+  const { env } = c;
+  const body = await c.req.json();
+  const { user_id } = body;
+  
+  if (!user_id) return c.json({ error: 'user_id obrigatório' }, 400);
+  
+  await env.DB.prepare(
+    "UPDATE admin_messages SET read_at = datetime('now') WHERE user_id = ? AND sender_type = 'admin' AND read_at IS NULL"
+  ).bind(user_id).run();
+  
+  return c.json({ success: true });
+});
+
+// Listar todas conversas do admin (lista de usuários com mensagens)
+app.get('/api/admin/messages/conversations', async (c) => {
+  const { env } = c;
+  const adminId = c.req.query('admin_id');
+  
+  if (adminId) {
+    const admin = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(adminId).first();
+    if (!admin || admin.email !== 'tercio10@gmail.com') {
+      return c.json({ error: 'Acesso negado' }, 403);
+    }
+  }
+  
+  try {
+    const conversations = await env.DB.prepare(`
+      SELECT 
+        am.user_id,
+        u.nome as user_name,
+        u.email as user_email,
+        MAX(am.created_at) as last_message_at,
+        (SELECT message FROM admin_messages am2 WHERE am2.user_id = am.user_id ORDER BY am2.created_at DESC LIMIT 1) as last_message,
+        (SELECT sender_type FROM admin_messages am3 WHERE am3.user_id = am.user_id ORDER BY am3.created_at DESC LIMIT 1) as last_sender,
+        SUM(CASE WHEN am.sender_type = 'user' AND am.read_at IS NULL THEN 1 ELSE 0 END) as unread_from_user,
+        COUNT(*) as total_messages
+      FROM admin_messages am
+      LEFT JOIN users u ON u.id = am.user_id
+      GROUP BY am.user_id
+      ORDER BY last_message_at DESC
+    `).all();
+    
+    return c.json({ conversations: conversations.results || [] });
+  } catch (e) {
+    return c.json({ conversations: [] });
+  }
+});
+
 // ============== ROTA CATCH-ALL (SPA) ==============
 // IMPORTANTE: Esta rota deve vir por ÚLTIMO, após todas as outras rotas de API e arquivos estáticos
 // Ela captura qualquer URL não definida anteriormente e retorna o HTML do SPA
