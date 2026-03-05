@@ -1194,7 +1194,7 @@ function createUnifiedFAB() {
         <div style="width: 32px; height: 32px; background: ${isDark ? '#1e3a5f' : '#EEF2FF'}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
           <i class="fas fa-gift" style="font-size: 13px; color: #6B7280;"></i>
         </div>
-        <span>Novidades <span style="font-size:10px;color:#4A90D9;font-weight:600;margin-left:4px;">v2.0</span></span>
+        <span>Novidades <span style="font-size:10px;color:#4A90D9;font-weight:600;margin-left:4px;">v2.1</span></span>
       </button>
       
       <!-- Separador -->
@@ -16261,7 +16261,7 @@ window.abrirConfiguracoes = function() {
       
       // Version Info
       '<div class="mt-6 text-center ' + themes[currentTheme].textMuted + ' text-xs">' +
-        '<p>IAprova v2.0 • Preparação Inteligente para Concursos</p>' +
+        '<p>IAprova v2.1 • Preparação Inteligente para Concursos</p>' +
         '<p class="mt-1">© 2024-2026 Todos os direitos reservados</p>' +
       '</div>' +
     '</div>' +
@@ -17357,7 +17357,7 @@ window.abrirPainelAdmin = async function() {
               <div class="space-y-3">
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Versão</span>
-                  <span class="font-bold ${themes[currentTheme].text}">2.0.0</span>
+                  <span class="font-bold ${themes[currentTheme].text}">2.1.0</span>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Ambiente</span>
@@ -17460,86 +17460,226 @@ window.atualizarDashboardAdmin = function() {
 window.abrirChatAdmin = async function() {
   if (!isCurrentUserAdmin()) { showToast('Acesso negado', 'error'); return; }
   
-  const modal = document.createElement('div');
+  var _d = currentTheme === 'dark';
+  var bgCard = _d ? '#1F2937' : '#FFFFFF';
+  
+  document.getElementById('modal-chat-admin')?.remove();
+  
+  var modal = document.createElement('div');
   modal.id = 'modal-chat-admin';
-  modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10002] p-4';
-  modal.innerHTML = `
-    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-      <div class="bg-gradient-to-r from-[#122D6A] to-[#1A3A7F] p-4 text-white flex items-center justify-between flex-shrink-0">
-        <div class="flex items-center gap-3">
-          <i class="fas fa-comments text-xl"></i>
-          <div>
-            <h2 class="text-lg font-bold">Chat com Usuários</h2>
-            <p class="text-blue-200 text-xs">Envie mensagens diretas</p>
-          </div>
-        </div>
-        <button onclick="document.getElementById('modal-chat-admin')?.remove()" class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div id="chat-admin-content" class="flex-1 overflow-y-auto p-4">
-        <div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i><p class="mt-2 ${themes[currentTheme].textSecondary} text-sm">Carregando conversas...</p></div>
-      </div>
-    </div>
-  `;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10002;padding:8px;';
+  modal.innerHTML = '<div style="background:' + bgCard + ';max-width:640px;width:100%;max-height:92vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.25);">' +
+    '<div style="background:linear-gradient(135deg,#122D6A,#1A3A7F);padding:16px 20px;color:white;flex-shrink:0;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><i class="fas fa-comments" style="font-size:18px;"></i>' +
+    '<div><h2 style="font-size:16px;font-weight:700;margin:0;">Chat com Usuários</h2>' +
+    '<p style="font-size:11px;opacity:0.7;margin:0;">Mensagens diretas</p></div></div>' +
+    '<button onclick="document.getElementById(\'modal-chat-admin\')?.remove()" style="width:32px;height:32px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="fas fa-times"></i></button>' +
+    '</div></div>' +
+    '<div id="chat-admin-content" style="flex:1;overflow-y:auto;padding:16px;">' +
+    '<div style="text-align:center;padding:32px 0;"><i class="fas fa-spinner fa-spin" style="font-size:24px;color:#4A90D9;"></i><p style="margin-top:8px;font-size:13px;color:' + (_d?'#9CA3AF':'#6B7280') + ';">Carregando...</p></div>' +
+    '</div></div>';
   document.body.appendChild(modal);
   
+  window._chatAdminUsers = [];
+  window._chatAdminShowOnlyActive = true;
+  
   try {
-    const results = await Promise.allSettled([
+    var results = await Promise.allSettled([
       axios.get('/api/admin/messages/conversations', { params: { admin_id: currentUser.id } }),
-      axios.get('/api/admin/users', { headers: { 'X-User-ID': currentUser.id } })
+      axios.get('/api/admin/chat-users')
     ]);
-    const conversations = results[0].status === 'fulfilled' ? (results[0].value.data.conversations || []) : [];
-    const allUsers = results[1].status === 'fulfilled' ? (results[1].value.data.users || []) : [];
-    const _d = currentTheme === 'dark';
+    var conversations = results[0].status === 'fulfilled' ? (results[0].value.data.conversations || []) : [];
+    var allUsers = results[1].status === 'fulfilled' ? (results[1].value.data.users || []) : [];
+    window._chatAdminUsers = allUsers;
     
-    let html = '';
-    
-    // Botão para nova conversa
-    html += '<div class="mb-4 flex items-center gap-2">';
-    html += '<select id="chat-admin-select-user" class="flex-1 px-3 py-2 rounded-lg border text-sm" style="background:' + (_d?'#1F2937':'white') + ';color:' + (_d?'#F3F4F6':'#1E293B') + ';border-color:' + (_d?'#374151':'#D1D5DB') + ';">';
-    html += '<option value="">Selecionar usuário...</option>';
-    allUsers.forEach(function(u) {
-      html += '<option value="' + u.id + '">' + (u.nome || u.email) + ' (' + u.email + ')</option>';
-    });
-    html += '</select>';
-    html += '<button onclick="iniciarChatComUsuario()" class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition text-sm font-medium whitespace-nowrap"><i class="fas fa-plus mr-1"></i>Nova</button>';
-    html += '</div>';
-    
-    // Lista de conversas existentes
-    if (conversations.length > 0) {
-      html += '<div class="space-y-2">';
-      conversations.forEach(function(conv) {
-        var unreadBadge = conv.unread_from_user > 0 ? '<span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">' + conv.unread_from_user + '</span>' : '';
-        var lastMsg = (conv.last_message || '').substring(0, 60) + (conv.last_message && conv.last_message.length > 60 ? '...' : '');
-        var senderIcon = conv.last_sender === 'admin' ? '<i class="fas fa-arrow-right text-blue-500 text-[10px] mr-1"></i>' : '<i class="fas fa-arrow-left text-green-500 text-[10px] mr-1"></i>';
-        var timeAgo = conv.last_message_at ? new Date(conv.last_message_at).toLocaleDateString('pt-BR') + ' ' + new Date(conv.last_message_at).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : '';
-        html += '<div onclick="abrirChatComUsuarioId(' + conv.user_id + ', \'' + (conv.user_name||'').replace(/'/g,"\\'") + '\')" class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition" style="background:' + (_d?'#1F2937':'#F9FAFB') + ';border-color:' + (_d?'#374151':'#E5E7EB') + ';" onmouseover="this.style.background=\'' + (_d?'#374151':'#EFF6FF') + '\'" onmouseout="this.style.background=\'' + (_d?'#1F2937':'#F9FAFB') + '\'">';
-        html += '<div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style="background:' + (_d?'rgba(42,74,159,0.3)':'#E8EDF5') + ';"><span class="text-sm font-bold" style="color:#122D6A;">' + ((conv.user_name||'?')[0]).toUpperCase() + '</span></div>';
-        html += '<div class="flex-1 min-w-0">';
-        html += '<div class="flex items-center justify-between"><p class="text-sm font-semibold truncate" style="color:' + (_d?'#F3F4F6':'#1E293B') + ';">' + (conv.user_name || conv.user_email || 'Usuário #' + conv.user_id) + '</p>' + unreadBadge + '</div>';
-        html += '<p class="text-xs truncate" style="color:' + (_d?'#9CA3AF':'#6B7280') + ';">' + senderIcon + lastMsg + '</p>';
-        html += '<p class="text-[10px]" style="color:' + (_d?'#6B7280':'#9CA3AF') + ';">' + timeAgo + '</p>';
-        html += '</div></div>';
-      });
-      html += '</div>';
-    } else {
-      html += '<div class="text-center py-8"><i class="fas fa-inbox text-4xl" style="color:' + (_d?'#4B5563':'#D1D5DB') + ';"></i><p class="mt-2 text-sm" style="color:' + (_d?'#9CA3AF':'#6B7280') + ';">Nenhuma conversa ainda</p></div>';
-    }
-    
-    document.getElementById('chat-admin-content').innerHTML = html;
+    _renderChatAdminList(conversations);
   } catch (err) {
     console.error('Erro ao carregar chat admin:', err);
-    document.getElementById('chat-admin-content').innerHTML = '<div class="text-center py-8 text-red-500"><i class="fas fa-exclamation-triangle text-2xl mb-2"></i><p class="text-sm">Erro ao carregar conversas</p></div>';
+    document.getElementById('chat-admin-content').innerHTML = '<div style="text-align:center;padding:32px 0;color:#EF4444;"><i class="fas fa-exclamation-triangle" style="font-size:24px;margin-bottom:8px;"></i><p style="font-size:13px;">Erro ao carregar</p></div>';
   }
 };
 
+function _renderChatAdminList(conversations) {
+  var _d = currentTheme === 'dark';
+  var content = document.getElementById('chat-admin-content');
+  if (!content) return;
+  
+  var html = '';
+  
+  html += '<button onclick="_abrirSeletorUsuarios()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;margin-bottom:16px;background:' + (_d?'rgba(42,74,159,0.2)':'#EFF6FF') + ';border:1px dashed ' + (_d?'rgba(42,74,159,0.4)':'#93B8E8') + ';border-radius:10px;color:#4A90D9;font-size:13px;font-weight:600;cursor:pointer;" onmouseover="this.style.background=\'' + (_d?'rgba(42,74,159,0.3)':'#DBEAFE') + '\'" onmouseout="this.style.background=\'' + (_d?'rgba(42,74,159,0.2)':'#EFF6FF') + '\'">' +
+    '<i class="fas fa-plus-circle"></i> Nova Conversa</button>';
+  
+  if (conversations.length > 0) {
+    html += '<p style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:' + (_d?'#6B7280':'#9CA3AF') + ';margin-bottom:8px;">Conversas recentes</p>';
+    html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+    conversations.forEach(function(conv) {
+      var initial = ((conv.user_name||conv.user_email||'?')[0]).toUpperCase();
+      var name = conv.user_name || conv.user_email || 'Usuário #' + conv.user_id;
+      var lastMsg = (conv.last_message || '').substring(0, 50) + ((conv.last_message||'').length > 50 ? '...' : '');
+      var arrow = conv.last_sender === 'admin' ? '<i class="fas fa-reply" style="font-size:9px;color:#4A90D9;margin-right:3px;transform:scaleX(-1);display:inline-block;"></i>' : '';
+      var timeStr = conv.last_message_at ? new Date(conv.last_message_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' ' + new Date(conv.last_message_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+      var unread = conv.unread_from_user > 0 ? '<span style="background:#EF4444;color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;">' + conv.unread_from_user + '</span>' : '';
+      var safeName = name.replace(/'/g, "\\'");
+      
+      html += '<div onclick="abrirChatComUsuarioId(' + conv.user_id + ',\'' + safeName + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;border:1px solid ' + (_d?'#374151':'#E5E7EB') + ';background:' + (_d?'#111827':'#FAFAFA') + ';transition:background 0.15s;" onmouseover="this.style.background=\'' + (_d?'#1F2937':'#EFF6FF') + '\'" onmouseout="this.style.background=\'' + (_d?'#111827':'#FAFAFA') + '\'">';
+      html += '<div style="width:40px;height:40px;border-radius:50%;background:' + (_d?'rgba(42,74,159,0.3)':'#E8EDF5') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:14px;font-weight:700;color:#122D6A;">' + initial + '</span></div>';
+      html += '<div style="flex:1;min-width:0;">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px;"><p style="font-size:13px;font-weight:600;color:' + (_d?'#F3F4F6':'#1E293B') + ';margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</p>' + unread + '</div>';
+      html += '<p style="font-size:11px;color:' + (_d?'#6B7280':'#9CA3AF') + ';margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + arrow + lastMsg + '</p>';
+      html += '</div>';
+      html += '<span style="font-size:10px;color:' + (_d?'#4B5563':'#9CA3AF') + ';flex-shrink:0;white-space:nowrap;">' + timeStr + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="text-align:center;padding:40px 0;"><i class="fas fa-inbox" style="font-size:36px;color:' + (_d?'#374151':'#D1D5DB') + ';"></i><p style="margin-top:8px;font-size:13px;color:' + (_d?'#6B7280':'#9CA3AF') + ';">Nenhuma conversa ainda</p><p style="font-size:11px;color:' + (_d?'#4B5563':'#9CA3AF') + ';margin-top:4px;">Clique em "Nova Conversa" acima</p></div>';
+  }
+  
+  content.innerHTML = html;
+}
+
+// Seletor de usuários melhorado com busca, filtro ativo, avatares e badges
+window._abrirSeletorUsuarios = function() {
+  var _d = currentTheme === 'dark';
+  var content = document.getElementById('chat-admin-content');
+  if (!content) return;
+  
+  var users = window._chatAdminUsers || [];
+  var showOnlyActive = window._chatAdminShowOnlyActive !== false;
+  
+  var activeCount = users.filter(function(u) { return u.ativo; }).length;
+  var totalCount = users.length;
+  
+  var html = '';
+  // Header com botão voltar
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid ' + (_d?'#374151':'#E5E7EB') + ';">';
+  html += '<button onclick="abrirChatAdmin()" style="width:32px;height:32px;border-radius:50%;background:' + (_d?'rgba(255,255,255,0.08)':'#F3F4F6') + ';border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-arrow-left" style="font-size:12px;color:' + (_d?'#9CA3AF':'#6B7280') + ';"></i></button>';
+  html += '<div style="flex:1;"><p style="font-size:14px;font-weight:700;color:' + (_d?'#F3F4F6':'#1E293B') + ';margin:0;">Selecionar Usuário</p>';
+  html += '<p style="font-size:10px;color:' + (_d?'#6B7280':'#9CA3AF') + ';margin:2px 0 0;">' + activeCount + ' ativos · ' + totalCount + ' total</p></div>';
+  html += '</div>';
+  
+  // Barra de busca estilizada
+  html += '<div style="position:relative;margin-bottom:10px;">';
+  html += '<i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:12px;color:' + (_d?'#6B7280':'#9CA3AF') + ';"></i>';
+  html += '<input id="chat-user-search" type="text" placeholder="Buscar por nome ou email..." oninput="_filtrarUsuariosChat()" style="width:100%;padding:10px 12px 10px 34px;border-radius:10px;border:1px solid ' + (_d?'#374151':'#D1D5DB') + ';background:' + (_d?'#111827':'#F9FAFB') + ';color:' + (_d?'#F3F4F6':'#1E293B') + ';font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#4A90D9\';this.style.boxShadow=\'0 0 0 3px rgba(74,144,217,0.1)\'" onblur="this.style.borderColor=\'' + (_d?'#374151':'#D1D5DB') + '\';this.style.boxShadow=\'none\'">';
+  html += '</div>';
+  
+  // Toggle: Somente Ativos / Todos
+  var activeBtnBg = showOnlyActive ? '#122D6A' : (_d?'rgba(255,255,255,0.08)':'#F3F4F6');
+  var activeBtnColor = showOnlyActive ? 'white' : (_d?'#9CA3AF':'#6B7280');
+  var allBtnBg = !showOnlyActive ? '#122D6A' : (_d?'rgba(255,255,255,0.08)':'#F3F4F6');
+  var allBtnColor = !showOnlyActive ? 'white' : (_d?'#9CA3AF':'#6B7280');
+  
+  html += '<div style="display:flex;gap:6px;margin-bottom:12px;">';
+  html += '<button onclick="window._chatAdminShowOnlyActive=true;_abrirSeletorUsuarios()" style="flex:1;padding:6px 10px;border-radius:8px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:' + activeBtnBg + ';color:' + activeBtnColor + ';transition:all 0.15s;"><i class="fas fa-circle" style="font-size:6px;margin-right:4px;vertical-align:middle;color:' + (showOnlyActive?'#34D399':'inherit') + ';"></i>Ativos (' + activeCount + ')</button>';
+  html += '<button onclick="window._chatAdminShowOnlyActive=false;_abrirSeletorUsuarios()" style="flex:1;padding:6px 10px;border-radius:8px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:' + allBtnBg + ';color:' + allBtnColor + ';transition:all 0.15s;">Todos (' + totalCount + ')</button>';
+  html += '</div>';
+  
+  // Lista de usuários
+  var displayUsers = showOnlyActive ? users.filter(function(u) { return u.ativo; }) : users;
+  html += '<div id="chat-users-list" style="max-height:50vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">';
+  html += _renderUserList(displayUsers, _d);
+  html += '</div>';
+  
+  content.innerHTML = html;
+  
+  setTimeout(function() { document.getElementById('chat-user-search')?.focus(); }, 100);
+};
+
+function _renderUserList(users, _d) {
+  if (users.length === 0) {
+    return '<div style="text-align:center;padding:30px 0;"><i class="fas fa-users-slash" style="font-size:28px;color:' + (_d?'#374151':'#D1D5DB') + ';"></i><p style="margin-top:8px;font-size:13px;color:' + (_d?'#6B7280':'#9CA3AF') + ';">Nenhum usuário encontrado</p></div>';
+  }
+  var html = '';
+  // Cores de avatar baseadas na inicial
+  var avatarColors = ['#122D6A','#2A4A9F','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#EC4899'];
+  
+  users.forEach(function(u, idx) {
+    var name = u.nome || (u.email ? u.email.split('@')[0] : 'Usuário');
+    var initial = (name[0] || '?').toUpperCase();
+    var safeName = name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    var avatarColor = avatarColors[name.charCodeAt(0) % avatarColors.length];
+    
+    // Badges
+    var badges = '';
+    if (u.is_premium) {
+      badges += '<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;background:linear-gradient(135deg,#F59E0B,#D97706);color:white;padding:1px 6px;border-radius:4px;font-weight:700;"><i class="fas fa-crown" style="font-size:7px;"></i> PRO</span>';
+    }
+    if (u.ativo) {
+      badges += '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#10B981;margin-left:4px;vertical-align:middle;" title="Ativo"></span>';
+    }
+    if (u.email_verified) {
+      badges += '<i class="fas fa-check-circle" style="font-size:9px;color:#10B981;margin-left:3px;" title="Email verificado"></i>';
+    }
+    
+    // Info de atividade
+    var activityInfo = '';
+    if (u.ultimo_acesso) {
+      var dias = Math.floor((Date.now() - new Date(u.ultimo_acesso).getTime()) / 86400000);
+      if (dias === 0) activityInfo = 'Hoje';
+      else if (dias === 1) activityInfo = 'Ontem';
+      else if (dias <= 7) activityInfo = dias + 'd atrás';
+      else if (dias <= 30) activityInfo = Math.floor(dias/7) + 'sem atrás';
+      else activityInfo = Math.floor(dias/30) + 'mês atrás';
+    }
+    
+    var planInfo = '';
+    if (u.total_planos > 0) planInfo = u.total_planos + ' plano' + (u.total_planos > 1 ? 's' : '');
+    
+    var subInfo = [];
+    if (activityInfo) subInfo.push(activityInfo);
+    if (planInfo) subInfo.push(planInfo);
+    if (u.total_acessos > 0) subInfo.push(u.total_acessos + ' acessos');
+    
+    html += '<div onclick="abrirChatComUsuarioId(' + u.id + ',\'' + safeName + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;margin-bottom:4px;border:1px solid transparent;transition:all 0.15s;" onmouseover="this.style.background=\'' + (_d?'#1F2937':'#EFF6FF') + '\';this.style.borderColor=\'' + (_d?'#374151':'#DBEAFE') + '\'" onmouseout="this.style.background=\'transparent\';this.style.borderColor=\'transparent\'">';
+    // Avatar colorido
+    html += '<div style="width:40px;height:40px;border-radius:50%;background:' + avatarColor + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;">';
+    html += '<span style="font-size:15px;font-weight:700;color:white;">' + initial + '</span>';
+    if (u.ativo) {
+      html += '<span style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:#10B981;border:2px solid ' + (_d?'#1F2937':'white') + ';"></span>';
+    }
+    html += '</div>';
+    // Info
+    html += '<div style="flex:1;min-width:0;">';
+    html += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:' + (_d?'#F3F4F6':'#1E293B') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">' + name + '</span>' + badges + '</div>';
+    html += '<p style="font-size:11px;color:' + (_d?'#6B7280':'#9CA3AF') + ';margin:1px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + u.email + '</p>';
+    if (subInfo.length > 0) {
+      html += '<p style="font-size:10px;color:' + (_d?'#4B5563':'#B0B7C3') + ';margin:2px 0 0;">' + subInfo.join(' · ') + '</p>';
+    }
+    html += '</div>';
+    // Seta
+    html += '<i class="fas fa-chevron-right" style="font-size:10px;color:' + (_d?'#4B5563':'#D1D5DB') + ';flex-shrink:0;"></i>';
+    html += '</div>';
+  });
+  return html;
+}
+
+window._filtrarUsuariosChat = function() {
+  var input = document.getElementById('chat-user-search');
+  var container = document.getElementById('chat-users-list');
+  if (!input || !container) return;
+  
+  var query = input.value.toLowerCase().trim();
+  var users = window._chatAdminUsers || [];
+  var _d = currentTheme === 'dark';
+  var showOnlyActive = window._chatAdminShowOnlyActive !== false;
+  
+  var filtered = users;
+  if (showOnlyActive) {
+    filtered = filtered.filter(function(u) { return u.ativo; });
+  }
+  if (query) {
+    filtered = filtered.filter(function(u) {
+      return (u.nome || '').toLowerCase().indexOf(query) !== -1 || (u.email || '').toLowerCase().indexOf(query) !== -1;
+    });
+  }
+  
+  container.innerHTML = _renderUserList(filtered, _d);
+};
+
 window.iniciarChatComUsuario = function() {
-  var sel = document.getElementById('chat-admin-select-user');
-  if (!sel || !sel.value) { showToast('Selecione um usuário', 'warning'); return; }
-  var userId = parseInt(sel.value);
-  var userName = sel.options[sel.selectedIndex].text.split(' (')[0];
-  abrirChatComUsuarioId(userId, userName);
+  _abrirSeletorUsuarios();
 };
 
 window.abrirChatComUsuarioId = async function(userId, userName) {
@@ -17797,7 +17937,7 @@ window.abrirNovidades = function() {
     '      <div style="display:flex;align-items:center;gap:10px;">',
     '        <i class="fas fa-rocket" style="font-size:20px;"></i>',
     '        <div><h3 style="font-size:16px;font-weight:700;margin:0;">Novidades do IAprova</h3>',
-    '        <p style="font-size:11px;opacity:0.7;margin:0;">Versão 2.0 · Março 2026</p></div>',
+    '        <p style="font-size:11px;opacity:0.7;margin:0;">Versão 2.1 · Março 2026</p></div>',
     '      </div>',
     '      <button onclick="document.getElementById(\'modal-novidades\')?.remove()" style="width:32px;height:32px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;">',
     '        <i class="fas fa-times"></i>',

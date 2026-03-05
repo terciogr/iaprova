@@ -22851,7 +22851,7 @@ app.get('/api/admin/messages/conversations', async (c) => {
     const conversations = await env.DB.prepare(`
       SELECT 
         am.user_id,
-        u.nome as user_name,
+        u.name as user_name,
         u.email as user_email,
         MAX(am.created_at) as last_message_at,
         (SELECT message FROM admin_messages am2 WHERE am2.user_id = am.user_id ORDER BY am2.created_at DESC LIMIT 1) as last_message,
@@ -22868,6 +22868,61 @@ app.get('/api/admin/messages/conversations', async (c) => {
   } catch (e: any) {
     console.error('Erro conversations:', e?.message || e);
     return c.json({ conversations: [] });
+  }
+});
+
+// Endpoint dedicado para listar usuários ativos para o chat admin
+app.get('/api/admin/chat-users', async (c) => {
+  const { env } = c;
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403);
+  }
+  
+  try {
+    const search = c.req.query('search') || '';
+    // Considerar "ativo" quem acessou nos últimos 90 dias OU tem planos/metas
+    let query = `
+      SELECT 
+        u.id, u.name, u.email, u.is_premium, u.email_verified,
+        u.subscription_status, u.subscription_plan,
+        (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id) as ultimo_acesso,
+        (SELECT COUNT(*) FROM site_visits sv WHERE sv.user_id = u.id) as total_acessos,
+        (SELECT COUNT(*) FROM planos_estudo pe WHERE pe.user_id = u.id) as total_planos
+      FROM users u
+      WHERE u.email != 'tercio10@gmail.com'
+    `;
+    
+    const params: any[] = [];
+    
+    if (search) {
+      query += ` AND (u.name LIKE ? OR u.email LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    
+    // Ordenar: quem acessou mais recentemente primeiro
+    query += ` ORDER BY ultimo_acesso DESC NULLS LAST, u.created_at DESC LIMIT 200`;
+    
+    const result = search 
+      ? await env.DB.prepare(query).bind(...params).all()
+      : await env.DB.prepare(query).all();
+    
+    const users = (result.results || []).map((u: any) => ({
+      id: u.id,
+      nome: u.name || u.email?.split('@')[0] || 'Usuário',
+      email: u.email,
+      is_premium: u.is_premium || (u.subscription_status === 'active' ? 1 : 0),
+      email_verified: u.email_verified,
+      subscription_plan: u.subscription_plan,
+      ultimo_acesso: u.ultimo_acesso,
+      total_acessos: u.total_acessos || 0,
+      total_planos: u.total_planos || 0,
+      ativo: !!(u.ultimo_acesso && new Date(u.ultimo_acesso) > new Date(Date.now() - 90 * 24 * 60 * 60 * 1000))
+    }));
+    
+    return c.json({ users });
+  } catch (error: any) {
+    console.error('Erro chat-users:', error?.message || error);
+    return c.json({ users: [] });
   }
 });
 
