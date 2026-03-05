@@ -16122,17 +16122,17 @@ window.abrirConfiguracoes = function() {
     '<div class="max-w-6xl mx-auto px-4 py-6">' +
       // User Profile Card
       '<div class="' + themes[currentTheme].card + ' rounded-2xl shadow-lg p-6 mb-6 border ' + themes[currentTheme].border + '">' +
-        '<div class="flex items-center gap-4">' +
-          '<div class="w-16 h-16 rounded-full bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center text-white text-2xl font-bold">' +
+        '<div class="flex items-center gap-3 sm:gap-4">' +
+          '<div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center text-white text-xl sm:text-2xl font-bold flex-shrink-0">' +
             userInitial +
           '</div>' +
-          '<div class="flex-1">' +
-            '<h2 class="text-xl font-bold ' + themes[currentTheme].text + '">' + userName + '</h2>' +
-            '<p class="' + themes[currentTheme].textSecondary + '">' + userEmail + '</p>' +
+          '<div class="flex-1 min-w-0">' +
+            '<h2 class="text-lg sm:text-xl font-bold ' + themes[currentTheme].text + ' truncate">' + userName + '</h2>' +
+            '<p class="' + themes[currentTheme].textSecondary + ' text-sm truncate">' + userEmail + '</p>' +
           '</div>' +
-          '<button onclick="abrirModalEditarPerfil()" class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex items-center gap-2">' +
+          '<button onclick="abrirModalEditarPerfil()" class="w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition flex items-center justify-center gap-2 flex-shrink-0">' +
             '<i class="fas fa-pen"></i>' +
-            '<span class="hidden sm:inline">Editar Perfil</span>' +
+            '<span class="hidden sm:inline">Editar</span>' +
           '</button>' +
         '</div>' +
       '</div>' +
@@ -16651,8 +16651,8 @@ window.abrirModalFeedback = function() {
       </div>
       
       <!-- Email de contato -->
-      <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 mb-4">
-        <p class="text-blue-800 dark:text-blue-300 text-sm text-center">
+      <div class="${currentTheme === 'light' ? 'bg-blue-50 border-blue-200' : 'bg-[#122D6A]/20 border-[#2A4A9F]'} border rounded-xl p-3 mb-4">
+        <p class="${currentTheme === 'light' ? 'text-blue-800' : 'text-blue-300'} text-sm text-center">
           <i class="fas fa-envelope mr-2"></i>
           Você também pode nos contatar por e-mail:
           <a href="mailto:contato@iaprova.app" class="font-bold underline hover:text-blue-600">contato@iaprova.app</a>
@@ -16663,16 +16663,16 @@ window.abrirModalFeedback = function() {
       <div class="mb-4">
         <label class="block ${themes[currentTheme].text} font-medium mb-2">Tipo de Feedback</label>
         <div class="grid grid-cols-2 gap-2">
-          <button onclick="selecionarTipoFeedback('suggestion')" id="fb-type-suggestion" class="p-3 rounded-xl border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 flex items-center justify-center gap-2">
+          <button onclick="selecionarTipoFeedback('suggestion')" id="fb-type-suggestion" class="p-3 rounded-xl border-2 border-[#122D6A] bg-[#E8EDF5] text-[#122D6A] font-semibold flex items-center justify-center gap-2">
             <i class="fas fa-lightbulb"></i> Sugestão
           </button>
-          <button onclick="selecionarTipoFeedback('bug')" id="fb-type-bug" class="p-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-red-500 flex items-center justify-center gap-2 ${themes[currentTheme].text}">
+          <button onclick="selecionarTipoFeedback('bug')" id="fb-type-bug" class="p-3 rounded-xl border-2 ${currentTheme === 'light' ? 'border-gray-300 text-gray-700 bg-white hover:border-red-500 hover:bg-red-50' : 'border-gray-600 text-gray-200 bg-gray-800 hover:border-red-500 hover:bg-red-900/30'} font-medium flex items-center justify-center gap-2 transition">
             <i class="fas fa-bug"></i> Problema
           </button>
-          <button onclick="selecionarTipoFeedback('compliment')" id="fb-type-compliment" class="p-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-emerald-500 flex items-center justify-center gap-2 ${themes[currentTheme].text}">
+          <button onclick="selecionarTipoFeedback('compliment')" id="fb-type-compliment" class="p-3 rounded-xl border-2 ${currentTheme === 'light' ? 'border-gray-300 text-gray-700 bg-white hover:border-emerald-500 hover:bg-emerald-50' : 'border-gray-600 text-gray-200 bg-gray-800 hover:border-emerald-500 hover:bg-emerald-900/30'} font-medium flex items-center justify-center gap-2 transition">
             <i class="fas fa-heart"></i> Elogio
           </button>
-          <button onclick="selecionarTipoFeedback('other')" id="fb-type-other" class="p-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-gray-500 flex items-center justify-center gap-2 ${themes[currentTheme].text}">
+          <button onclick="selecionarTipoFeedback('other')" id="fb-type-other" class="p-3 rounded-xl border-2 ${currentTheme === 'light' ? 'border-gray-300 text-gray-700 bg-white hover:border-gray-500 hover:bg-gray-100' : 'border-gray-600 text-gray-200 bg-gray-800 hover:border-gray-500 hover:bg-gray-700'} font-medium flex items-center justify-center gap-2 transition">
             <i class="fas fa-ellipsis-h"></i> Outro
           </button>
         </div>
@@ -16703,7 +16703,7 @@ window.abrirModalFeedback = function() {
       <!-- Botões -->
       <div class="flex gap-3">
         <button onclick="document.getElementById('modal-feedback')?.remove()" 
-          class="flex-1 px-4 py-3 rounded-xl ${themes[currentTheme].border} border ${themes[currentTheme].text} hover:bg-gray-100 dark:hover:bg-gray-800 transition font-medium">
+          class="flex-1 px-4 py-3 rounded-xl ${themes[currentTheme].border} border ${themes[currentTheme].text} ${currentTheme === 'light' ? 'hover:bg-gray-100' : 'hover:bg-gray-700'} transition font-medium">
           Cancelar
         </button>
         <button onclick="enviarFeedback()" 
@@ -16721,22 +16721,26 @@ window.abrirModalFeedback = function() {
 window.selecionarTipoFeedback = function(tipo) {
   document.getElementById('feedback-type').value = tipo;
   
-  // Atualizar visual dos botões
+  const isLight = currentTheme === 'light';
   const tipos = ['suggestion', 'bug', 'compliment', 'other'];
   const cores = {
-    suggestion: 'blue',
-    bug: 'red',
-    compliment: 'emerald',
-    other: 'gray'
+    suggestion: { border: '#122D6A', bg: isLight ? '#E8EDF5' : 'rgba(18,45,106,0.3)', text: isLight ? '#122D6A' : '#8FA4CC' },
+    bug: { border: '#ef4444', bg: isLight ? '#fef2f2' : 'rgba(153,27,27,0.3)', text: isLight ? '#b91c1c' : '#fca5a5' },
+    compliment: { border: '#10b981', bg: isLight ? '#ecfdf5' : 'rgba(6,78,59,0.3)', text: isLight ? '#047857' : '#6ee7b7' },
+    other: { border: '#6b7280', bg: isLight ? '#f3f4f6' : 'rgba(55,65,81,0.3)', text: isLight ? '#374151' : '#d1d5db' }
   };
+  const inactiveStyle = isLight 
+    ? 'border-color:#d1d5db;background:#fff;color:#374151;' 
+    : 'border-color:#4b5563;background:#1f2937;color:#e5e7eb;';
   
   tipos.forEach(t => {
     const btn = document.getElementById('fb-type-' + t);
+    if (!btn) return;
     if (t === tipo) {
-      const cor = cores[t];
-      btn.className = `p-3 rounded-xl border-2 border-${cor}-500 bg-${cor}-50 dark:bg-${cor}-900/20 text-${cor}-700 dark:text-${cor}-300 flex items-center justify-center gap-2`;
+      const c = cores[t];
+      btn.style.cssText = `border-color:${c.border};background:${c.bg};color:${c.text};font-weight:600;`;
     } else {
-      btn.className = `p-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-${cores[t]}-500 flex items-center justify-center gap-2 ${themes[currentTheme].text}`;
+      btn.style.cssText = inactiveStyle + 'font-weight:500;';
     }
   });
 };
@@ -24249,22 +24253,25 @@ window.abrirModalConcursos = async function() {
 
 async function carregarConcursosTodos() {
   try {
-    const response = await axios.get('/api/concursos', { timeout: 25000 });
+    const response = await axios.get('/api/concursos', { timeout: 30000 });
     const data = response.data;
     
     if (data.success && data.estados) {
-      concursosCache = {};
+      // v93: Não resetar cache - mesclar dados novos
       let comDados = 0;
       data.estados.forEach(estado => {
         if (estado.uf) {
           const uf = estado.uf.toLowerCase();
           const abertos = estado.concursos_abertos || [];
           const previstos = estado.concursos_previstos || [];
-          concursosCache[uf] = {
-            ...estado,
-            concursos_abertos: abertos,
-            concursos_previstos: previstos
-          };
+          // Só atualizar se tem dados ou não existia antes
+          if (abertos.length > 0 || previstos.length > 0 || !concursosCache[uf]) {
+            concursosCache[uf] = {
+              ...estado,
+              concursos_abertos: abertos,
+              concursos_previstos: previstos
+            };
+          }
           if (abertos.length > 0 || previstos.length > 0) comDados++;
         }
       });
@@ -24274,7 +24281,7 @@ async function carregarConcursosTodos() {
     renderizarConcursosContent();
   } catch (error) {
     console.error('Erro ao carregar concursos:', error);
-    // Mesmo com erro, renderizar com o que temos
+    // Mesmo com erro, renderizar com o que temos no cache
     renderizarConcursosContent();
   }
 }
@@ -24430,26 +24437,65 @@ window.atualizarDadosConcursos = async function() {
   if (icon) icon.classList.add('fa-spin');
   if (btn) btn.disabled = true;
   
+  // v93: Preservar cache anterior para fallback
+  const cacheAnterior = JSON.parse(JSON.stringify(concursosCache));
+  
   try {
-    // Forçar re-busca ignorando cache
-    const response = await axios.get('/api/concursos?force=1', { timeout: 25000 });
+    const response = await axios.get('/api/concursos?force=1', { timeout: 30000 });
     const data = response.data;
     if (data.success && data.estados) {
-      concursosCache = {};
+      const novosCache = {};
+      let comDadosNovos = 0;
       data.estados.forEach(estado => {
         if (estado.uf) {
           const uf = estado.uf.toLowerCase();
-          concursosCache[uf] = {
+          const abertos = estado.concursos_abertos || [];
+          const previstos = estado.concursos_previstos || [];
+          novosCache[uf] = {
             ...estado,
-            concursos_abertos: estado.concursos_abertos || [],
-            concursos_previstos: estado.concursos_previstos || []
+            concursos_abertos: abertos,
+            concursos_previstos: previstos
           };
+          if (abertos.length > 0 || previstos.length > 0) comDadosNovos++;
         }
       });
+      
+      // v93: Só substituir cache se novos dados são melhores ou iguais
+      const comDadosAnteriores = Object.values(cacheAnterior).filter((v) => 
+        (v.concursos_abertos?.length > 0 || v.concursos_previstos?.length > 0)
+      ).length;
+      
+      if (comDadosNovos >= comDadosAnteriores || comDadosNovos >= 5) {
+        // Mesclar: novos dados + dados anteriores que não vieram
+        concursosCache = {};
+        // Primeiro, adicionar dados anteriores como base
+        Object.keys(cacheAnterior).forEach(uf => {
+          concursosCache[uf] = cacheAnterior[uf];
+        });
+        // Depois, sobrescrever com novos dados (que podem ser mais atuais)
+        Object.keys(novosCache).forEach(uf => {
+          const novo = novosCache[uf];
+          const antigo = cacheAnterior[uf];
+          // Só sobrescrever se novo tem dados OU antigo não tinha
+          if ((novo.concursos_abertos?.length > 0 || novo.concursos_previstos?.length > 0) || !antigo) {
+            concursosCache[uf] = novo;
+          }
+        });
+        showToast('Dados atualizados com sucesso!', 'success');
+      } else {
+        // Novos dados piores - manter cache anterior
+        console.warn('v93: Novos dados (' + comDadosNovos + ' UFs) piores que anteriores (' + comDadosAnteriores + ' UFs), mantendo cache');
+        concursosCache = cacheAnterior;
+        showToast('Dados mantidos (atualização parcial)', 'info');
+      }
     }
     renderizarConcursosContent();
   } catch(e) {
     console.error('Erro ao atualizar concursos:', e);
+    // Restaurar cache anterior em caso de erro
+    concursosCache = cacheAnterior;
+    showToast('Erro ao atualizar. Dados anteriores mantidos.', 'warning');
+    renderizarConcursosContent();
   }
   if (icon) icon.classList.remove('fa-spin');
   if (btn) btn.disabled = false;
@@ -24926,7 +24972,7 @@ async function abrirSemanasAnteriores() {
     
     modalContainer.innerHTML = `
       <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onclick="fecharModalSemanas()">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden" onclick="event.stopPropagation()">
+        <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden border ${themes[currentTheme].border}" onclick="event.stopPropagation()">
           <!-- Header -->
           <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] p-4 text-white">
             <div class="flex items-center justify-between">
@@ -24949,43 +24995,46 @@ async function abrirSemanasAnteriores() {
           <div class="p-4 max-h-[60vh] overflow-y-auto">
             ${semanas.length === 0 ? `
               <div class="text-center py-8">
-                <i class="fas fa-calendar-times text-4xl text-gray-300 mb-3"></i>
-                <p class="text-gray-500">Nenhuma semana encontrada</p>
-                <p class="text-xs text-gray-400 mt-1">Gere metas para criar seu histórico</p>
+                <i class="fas fa-calendar-times text-4xl ${themes[currentTheme].textMuted} mb-3"></i>
+                <p class="${themes[currentTheme].textSecondary}">Nenhuma semana encontrada</p>
+                <p class="text-xs ${themes[currentTheme].textMuted} mt-1">Gere metas para criar seu histórico</p>
               </div>
             ` : semanas.map((sem, idx) => {
               const dataInicio = new Date(sem.data_inicio).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
               const dataFim = new Date(sem.data_fim).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
               const percentual = sem.metas_totais > 0 ? Math.round((sem.metas_concluidas / sem.metas_totais) * 100) : 0;
               const isAtiva = sem.status === 'ativa';
+              const cardBg = isAtiva 
+                ? (currentTheme === 'light' ? 'bg-[#E8EDF5] border-2 border-[#122D6A]' : 'bg-[#122D6A]/20 border-2 border-[#2A4A9F]')
+                : (currentTheme === 'light' ? 'bg-gray-50 hover:bg-gray-100 border border-gray-200' : 'bg-gray-800 hover:bg-gray-700 border border-gray-700');
               
               return `
-                <div class="flex items-center gap-3 p-3 rounded-xl ${isAtiva ? 'bg-[#E8EDF5] border-2 border-[#122D6A]' : 'bg-gray-50 hover:bg-gray-100'} mb-2 transition cursor-pointer group" 
+                <div class="flex items-center gap-3 p-3 rounded-xl ${cardBg} mb-2 transition cursor-pointer group" 
                      onclick="carregarSemanaAnterior(${sem.id})">
-                  <div class="w-12 h-12 rounded-xl ${isAtiva ? 'bg-[#122D6A]' : 'bg-gray-200'} flex items-center justify-center flex-shrink-0">
-                    <span class="${isAtiva ? 'text-white' : 'text-gray-600'} font-bold">${sem.numero_semana}</span>
+                  <div class="w-12 h-12 rounded-xl ${isAtiva ? 'bg-[#122D6A]' : (currentTheme === 'light' ? 'bg-gray-200' : 'bg-gray-700')} flex items-center justify-center flex-shrink-0">
+                    <span class="${isAtiva ? 'text-white' : themes[currentTheme].text} font-bold">${sem.numero_semana}</span>
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
-                      <p class="text-sm font-semibold text-gray-800">${dataInicio} - ${dataFim}</p>
-                      ${isAtiva ? '<span class="text-[10px] bg-[#122D6A] text-white px-2 py-0.5 rounded-full">ATUAL</span>' : ''}
+                      <p class="text-sm font-semibold ${themes[currentTheme].text}">${dataInicio} - ${dataFim}</p>
+                      ${isAtiva ? '<span class="text-[10px] bg-[#122D6A] text-white px-2 py-0.5 rounded-full font-bold">ATUAL</span>' : ''}
                     </div>
                     <div class="flex items-center gap-2 mt-1">
-                      <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div class="flex-1 h-1.5 ${currentTheme === 'light' ? 'bg-gray-200' : 'bg-gray-700'} rounded-full overflow-hidden">
                         <div class="h-full ${percentual === 100 ? 'bg-emerald-500' : percentual >= 50 ? 'bg-[#122D6A]' : percentual > 0 ? 'bg-amber-400' : 'bg-gray-300'} rounded-full" style="width: ${percentual}%"></div>
                       </div>
-                      <span class="text-xs text-gray-500">${sem.metas_concluidas}/${sem.metas_totais}</span>
+                      <span class="text-xs ${themes[currentTheme].textSecondary}">${sem.metas_concluidas}/${sem.metas_totais}</span>
                     </div>
                   </div>
-                  <i class="fas fa-chevron-right text-gray-400 group-hover:text-[#122D6A] transition"></i>
+                  <i class="fas fa-chevron-right ${themes[currentTheme].textMuted} group-hover:text-[#122D6A] transition"></i>
                 </div>
               `;
             }).join('')}
           </div>
           
           <!-- Footer com aviso -->
-          <div class="p-4 bg-amber-50 border-t border-amber-200">
-            <p class="text-xs text-amber-700 flex items-start gap-2">
+          <div class="p-4 ${currentTheme === 'light' ? 'bg-amber-50 border-t border-amber-200' : 'bg-amber-900/20 border-t border-amber-800'}">
+            <p class="text-xs ${currentTheme === 'light' ? 'text-amber-700' : 'text-amber-300'} flex items-start gap-2">
               <i class="fas fa-info-circle mt-0.5"></i>
               <span>Clique em uma semana para visualizar e editar suas metas. A semana atual está destacada em azul.</span>
             </p>
