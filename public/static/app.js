@@ -10868,22 +10868,27 @@ window.confirmarGeracaoConteudo = function(topicoId, topicoNome, disciplinaNome,
   executarGeracaoConteudo(topicoId, topicoNome, disciplinaNome, tipoConteudoSelecionado, quantidade, metaId);
 }
 
-// ✅ Função para confirmar geração rápida (chamada do modal de quantidade)
-window.confirmarGeracaoRapida = function(tipo, metaId, topicoId, topicoNome, disciplinaNome) {
+// ✅ v106: Função para confirmar geração rápida (chamada do modal de quantidade) - ASYNC
+window.confirmarGeracaoRapida = async function(tipo, metaId, topicoId, topicoNome, disciplinaNome) {
   const slider = document.getElementById('quantidade-rapida-slider');
   const quantidade = slider ? parseInt(slider.value) : (tipo === 'exercicios' ? 10 : 15);
   
-  console.log('🚀 Geração rápida confirmada:', { tipo, quantidade, metaId, topicoNome });
+  console.log('🚀 v106: Geração rápida confirmada:', { tipo, quantidade, metaId, topicoNome });
   
   // Fechar modal de quantidade
   document.getElementById('modal-quantidade-rapida')?.remove();
   
-  // Executar geração
-  window.executarGeracaoConteudo(topicoId || null, topicoNome, disciplinaNome, tipo, quantidade, metaId);
+  // Executar geração com await + try/catch
+  try {
+    await window.executarGeracaoConteudo(topicoId || null, topicoNome, disciplinaNome, tipo, quantidade, metaId);
+  } catch (error) {
+    console.error('❌ v106: Erro em confirmarGeracaoRapida:', error);
+    showToast('Erro ao gerar conteúdo. Tente novamente.', 'error');
+  }
 }
 
-// v71: Função para executar geração a partir de dados salvos no window (evita problemas com onclick inline)
-window.executarGeracaoPendente = function() {
+// v106: Função para executar geração a partir de dados salvos no window - ASYNC com tratamento de erros
+window.executarGeracaoPendente = async function() {
   const dados = window._geracaoPendente;
   if (!dados) {
     showToast('Erro: dados de geração não encontrados', 'error');
@@ -10893,35 +10898,56 @@ window.executarGeracaoPendente = function() {
   const slider = document.getElementById('quantidade-rapida-slider');
   const quantidade = slider ? parseInt(slider.value) : (dados.tipo === 'exercicios' ? 10 : 15);
   
-  console.log('🚀 v71: Geração pendente executada:', { ...dados, quantidade });
+  console.log('🚀 v106: Geração pendente executada:', { ...dados, quantidade });
   
   // Fechar modal de quantidade
   document.getElementById('modal-quantidade-rapida')?.remove();
   
-  // Executar geração com dados salvos
-  window.executarGeracaoConteudo(
-    dados.topicoId,
-    dados.topicoNome,
-    dados.disciplinaNome,
-    dados.tipo,
-    quantidade,
-    dados.metaId
-  );
+  // v106: Limpar dados pendentes ANTES de chamar (evita reuso acidental)
+  window._geracaoPendente = null;
+  
+  // v106: Executar com await e try/catch para não perder erros
+  try {
+    await window.executarGeracaoConteudo(
+      dados.topicoId,
+      dados.topicoNome,
+      dados.disciplinaNome,
+      dados.tipo,
+      quantidade,
+      dados.metaId
+    );
+  } catch (error) {
+    console.error('❌ v106: Erro em executarGeracaoPendente:', error);
+    showToast('Erro ao gerar conteúdo. Tente novamente.', 'error');
+  }
 }
 
 // Função para executar a geração de conteúdo
+// ✅ v106: Proteção contra reentrada (duplo clique / execução simultânea)
+window._geracaoEmAndamento = false;
+
 window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplinaNome, tipo, quantidade = null, metaId = null) {
+  // ✅ v106: Proteção contra reentrada
+  if (window._geracaoEmAndamento) {
+    console.warn('⚠️ v106: Geração já em andamento, ignorando chamada duplicada');
+    showToast('Geração em andamento, aguarde...', 'info');
+    return;
+  }
+  
   // ✅ VALIDAÇÃO: Exigir tópico para gerar conteúdo
   if (!topicoId && !topicoNome) {
     showToast('É necessário selecionar um tópico para gerar conteúdo', 'error');
     return;
   }
   
-  // v71: Truncar topico_nome muito longo (pode causar problemas na API)
+  // v106: Truncar topico_nome muito longo (pode causar problemas na API)
   if (topicoNome && topicoNome.length > 200) {
-    console.log('⚠️ v71: topicoNome muito longo (' + topicoNome.length + ' chars), truncando...');
+    console.log('⚠️ v106: topicoNome muito longo (' + topicoNome.length + ' chars), truncando...');
     topicoNome = topicoNome.substring(0, 200);
   }
+  
+  // v106: Marcar geração como em andamento
+  window._geracaoEmAndamento = true;
   
   // Remover modal de seleção
   const modal = document.getElementById('modal-gerar-conteudo');
@@ -11113,9 +11139,10 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       window._loadingProgressInterval = null;
     }
     document.getElementById('loading-conteudo')?.remove();
+    window._geracaoEmAndamento = false; // v106: Liberar lock
     
     if (response.data.success) {
-      console.log(`✅ v93: Conteúdo ${tipo} gerado com sucesso!`, { material_id: response.data.material_id, meta_id: metaId });
+      console.log(`✅ v106: Conteúdo ${tipo} gerado com sucesso!`, { material_id: response.data.material_id, meta_id: metaId });
       
       // Atualizar cache e ícones imediatamente
       if (metaId && response.data.material_id) {
@@ -11162,14 +11189,15 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       window._loadingProgressInterval = null;
     }
     document.getElementById('loading-conteudo')?.remove();
-    console.error('❌ v93: Erro ao gerar conteúdo:', error);
+    window._geracaoEmAndamento = false; // v106: Liberar lock
+    console.error('❌ v106: Erro ao gerar conteúdo:', error);
     
     const errorMsg = error.response?.data?.error || error.message || '';
     const isTimeout = error.code === 'ECONNABORTED' || errorMsg.includes('timeout');
     const isRateLimit = error.response?.status === 429 || errorMsg.includes('rate') || errorMsg.includes('indisponível');
     
     if (isTimeout) {
-      // v93: Se timeout, o conteúdo PODE ter sido gerado no servidor
+      // v106: Se timeout, o conteúdo PODE ter sido gerado no servidor
       // Tentar buscar da API após um delay
       showToast('A geração demorou mais que o esperado. Verificando...', 'warning');
       if (metaId) {
@@ -11193,7 +11221,7 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
     } else if (isRateLimit) {
       showToast('API ocupada. Aguarde 1-2 minutos e tente novamente.', 'warning');
     } else {
-      showToast('Erro ao gerar conteúdo: ' + errorMsg, 'error');
+      showToast('Erro ao gerar conteúdo: ' + (errorMsg || 'Erro desconhecido. Tente novamente.'), 'error');
     }
   }
 }
@@ -22267,8 +22295,8 @@ window.fecharModalEscolherConteudo = function() {
 
 // Gerar conteúdo do tipo escolhido
 window.gerarConteudoTipo = async function(tipo) {
-  // IMPORTANTE: Capturar dados ANTES de fechar o modal (que limpa conteudoPendente)
-  const meta = window.metaAtual;
+  // ✅ v106: Capturar dados ANTES de fechar o modal e buscar frescos se necessário
+  let meta = window.metaAtual;
   const pendente = window.conteudoPendente;
   
   // Fechar modal apenas visualmente (não limpa os dados ainda)
@@ -22280,14 +22308,33 @@ window.gerarConteudoTipo = async function(tipo) {
     return;
   }
   
-  // Preparar dados para geração
-  const topicoNome = meta?.topicos_sugeridos?.[0]?.nome || pendente?.topico?.nome || 'Conteúdo geral';
-  const topicoId = meta?.topicos_sugeridos?.[0]?.id || pendente?.topico?.id || 0;
-  const disciplinaNome = meta?.disciplina_nome || pendente?.disciplinaNome;
-  const disciplinaId = meta?.disciplina_id || pendente?.disciplinaId;
+  // ✅ v106: Garantir que temos dados frescos - buscar topico_nome/id robustamente
+  let topicoNome = meta?.topico_nome || meta?.topicos_sugeridos?.[0]?.nome || pendente?.topico?.nome || '';
+  let topicoId = meta?.topico_id || meta?.topicos_sugeridos?.[0]?.id || pendente?.topico?.id || null;
+  const disciplinaNome = meta?.disciplina_nome || pendente?.disciplinaNome || '';
+  const disciplinaId = meta?.disciplina_id || pendente?.disciplinaId || null;
   const metaId = meta?.id || null;
   
-  console.log(`🎯 Gerando ${tipo} para: ${disciplinaNome} - ${topicoNome} (meta: ${metaId})`);
+  // v106: Se não temos topico_nome válido, buscar da API
+  if (!topicoNome && metaId) {
+    console.log('⚠️ v106: topicoNome vazio, buscando da API...');
+    try {
+      const userId = currentUser?.id || localStorage.getItem('userId');
+      const semanaRes = await axios.get(`/api/metas/semana-ativa/${userId}`, { timeout: 15000 });
+      const metaApi = semanaRes.data?.metas?.find(m => String(m.id) === String(metaId));
+      if (metaApi) {
+        const topicos = Array.isArray(metaApi.topicos_sugeridos) ? metaApi.topicos_sugeridos : [];
+        topicoNome = metaApi.topico_nome || (topicos.length > 0 ? topicos[0].nome : 'Conteúdo geral');
+        topicoId = metaApi.topico_id || (topicos.length > 0 ? topicos[0].id : null);
+      }
+    } catch (e) {
+      console.warn('⚠️ v106: Erro ao buscar meta para gerarConteudoTipo:', e.message);
+    }
+  }
+  
+  if (!topicoNome) topicoNome = 'Conteúdo geral';
+  
+  console.log(`🎯 v106: Gerando ${tipo} para: ${disciplinaNome} - ${topicoNome} (meta: ${metaId})`);
   
   // ✅ CORREÇÃO: Se for resumo personalizado, abrir modal de upload ao invés de gerar diretamente
   if (tipo === 'resumo_personalizado') {
@@ -22344,7 +22391,7 @@ window.gerarConteudoTipo = async function(tipo) {
           </div>
           
           <div class="flex gap-2">
-            <button onclick="document.getElementById('modal-quantidade-rapida').remove()"
+            <button onclick="document.getElementById('modal-quantidade-rapida').remove(); window._geracaoPendente = null;"
                     class="flex-1 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition font-medium">
               Cancelar
             </button>
@@ -22363,8 +22410,13 @@ window.gerarConteudoTipo = async function(tipo) {
   // Limpar dados pendentes agora (modal já foi fechado)
   window.conteudoPendente = null;
   
-  // Chamar função de geração com meta_id (para teoria e resumo)
-  await window.executarGeracaoConteudo(topicoId, topicoNome, disciplinaNome, tipo, null, metaId);
+  // Chamar função de geração com meta_id (para teoria e resumo) - com try/catch robusto
+  try {
+    await window.executarGeracaoConteudo(topicoId, topicoNome, disciplinaNome, tipo, null, metaId);
+  } catch (e) {
+    console.error('❌ v106: Erro em gerarConteudoTipo:', e);
+    showToast('Erro ao gerar conteúdo. Tente novamente.', 'error');
+  }
   
   // Após gerar, atualizar ícones da meta (aguarda um pouco para garantir que salvou no banco)
   if (metaId) {
@@ -22814,73 +22866,132 @@ async function processarResumoPersonalizado(metaId) {
   }
 }
 
-// Ver conteúdo gerado - v70: NOVA ABORDAGEM - busca por meta_id E por disciplina/topico
+// Ver conteúdo gerado - v106: ROBUSTEZ REFORÇADA - busca dados da meta por múltiplas fontes + proteção contra falhas silenciosas
 window.verConteudoGerado = async function(metaId, tipo) {
-  console.log(`👁️ v71: Verificando ${tipo} da meta ${metaId}`);
+  console.log(`👁️ v106: Verificando ${tipo} da meta ${metaId}`);
   
-  const meta = window.metaAtual || { topico_nome: 'Tópico', disciplina_nome: 'Disciplina' };
-  console.log(`👁️ v71: Meta atual:`, meta);
+  // ✅ v106: Proteção contra reentrada (usuário clicou duas vezes)
+  if (window._geracaoEmAndamento) {
+    console.warn('⚠️ v106: Geração já em andamento, ignorando clique');
+    showToast('Geração em andamento, aguarde...', 'info');
+    return;
+  }
+  
+  // ✅ v106: Buscar dados FRESCOS da meta - NÃO depender apenas de window.metaAtual
+  let meta = window.metaAtual;
+  
+  // 1. Validar se window.metaAtual corresponde à meta clicada
+  if (!meta || String(meta.id) !== String(metaId)) {
+    console.log(`⚠️ v106: metaAtual (id=${meta?.id}) não corresponde à meta clicada (id=${metaId}). Buscando dados frescos...`);
+    meta = null;
+  }
+  
+  // 2. Buscar de semanaAtual (cache local mais confiável)
+  if (!meta && typeof semanaAtual !== 'undefined' && semanaAtual?.metas) {
+    const metaSemanal = semanaAtual.metas.find(m => String(m.id) === String(metaId));
+    if (metaSemanal) {
+      // Normalizar dados da meta semanal
+      const topicos = Array.isArray(metaSemanal.topicos_sugeridos) ? metaSemanal.topicos_sugeridos : [];
+      meta = {
+        id: metaSemanal.id,
+        topico_nome: metaSemanal.topico_nome || (topicos.length > 0 ? topicos[0].nome : ''),
+        topico_id: metaSemanal.topico_id || (topicos.length > 0 ? topicos[0].id : null),
+        disciplina_nome: metaSemanal.disciplina_nome || '',
+        disciplina_id: metaSemanal.disciplina_id || null,
+        plano_id: metaSemanal.plano_id || null
+      };
+      console.log(`✅ v106: Meta encontrada em semanaAtual:`, meta);
+    }
+  }
+  
+  // 3. Buscar da API se não encontrou localmente
+  if (!meta) {
+    console.log(`🔍 v106: Buscando meta ${metaId} da API...`);
+    try {
+      const userId = currentUser?.id || localStorage.getItem('userId');
+      const semanaRes = await axios.get(`/api/metas/semana-ativa/${userId}`, { timeout: 15000 });
+      const metaApi = semanaRes.data?.metas?.find(m => String(m.id) === String(metaId));
+      if (metaApi) {
+        const topicos = Array.isArray(metaApi.topicos_sugeridos) ? metaApi.topicos_sugeridos : [];
+        meta = {
+          id: metaApi.id,
+          topico_nome: metaApi.topico_nome || (topicos.length > 0 ? topicos[0].nome : ''),
+          topico_id: metaApi.topico_id || (topicos.length > 0 ? topicos[0].id : null),
+          disciplina_nome: metaApi.disciplina_nome || '',
+          disciplina_id: metaApi.disciplina_id || null,
+          plano_id: metaApi.plano_id || null
+        };
+        console.log(`✅ v106: Meta encontrada via API:`, meta);
+      }
+    } catch (e) {
+      console.warn(`⚠️ v106: Erro ao buscar meta da API:`, e.message);
+    }
+  }
+  
+  // 4. Fallback final
+  if (!meta) {
+    console.error(`❌ v106: Meta ${metaId} não encontrada em nenhuma fonte`);
+    showToast('Meta não encontrada. Recarregue a página e tente novamente.', 'error');
+    return;
+  }
+  
+  // ✅ v106: Atualizar window.metaAtual com dados frescos
+  window.metaAtual = meta;
   
   try {
-    // ESTRATÉGIA v71: Buscar conteúdo de MÚLTIPLAS fontes com validação de tipo
+    // ESTRATÉGIA: Buscar conteúdo existente
     let material = null;
     
     // 1. Tentar buscar pelo meta_id na API
     try {
       const response = await axios.get(`/api/conteudos/meta/${metaId}`, {
-        headers: { 'X-User-ID': currentUser?.id || localStorage.getItem('userId') }
+        headers: { 'X-User-ID': currentUser?.id || localStorage.getItem('userId') },
+        timeout: 15000
       });
       const data = response.data;
-      console.log(`👁️ v71: Dados da meta API:`, data);
       
       window.conteudosMetaCache[metaId] = data;
       
       const conteudoId = data.tipos_gerados?.[tipo];
       if (conteudoId) {
-        console.log(`📚 v71: Conteúdo encontrado por meta_id: ID=${conteudoId}, source=${data.tipos_sources?.[tipo]?.source}`);
         try {
-          const materialRes = await axios.get(`/api/materiais/ver/${conteudoId}`);
+          const materialRes = await axios.get(`/api/materiais/ver/${conteudoId}`, { timeout: 15000 });
           const mat = materialRes.data;
-          // v71: VALIDAR que o tipo do material retornado corresponde ao tipo solicitado
           if (mat && mat.tipo === tipo) {
             material = mat;
-          } else if (mat) {
-            console.warn(`⚠️ v71: Material ID=${conteudoId} tem tipo='${mat.tipo}' mas pedimos '${tipo}' - descartando`);
           }
         } catch (e) {
-          console.warn(`⚠️ v71: Material ID=${conteudoId} não encontrado:`, e.message);
+          console.warn(`⚠️ v106: Material ID=${conteudoId} não encontrado:`, e.message);
         }
       }
     } catch (e) {
-      console.warn(`⚠️ v71: Erro ao buscar conteudos/meta:`, e.message);
+      console.warn(`⚠️ v106: Erro ao buscar conteudos/meta:`, e.message);
     }
     
-    // 2. FALLBACK v71: Se não encontrou por meta_id, buscar por disciplina/topico
+    // 2. FALLBACK: buscar por disciplina/topico
     if (!material && (meta.topico_id || meta.disciplina_id)) {
-      console.log(`🔍 v71: Buscando por disciplina_id=${meta.disciplina_id}, topico_id=${meta.topico_id}, tipo=${tipo}`);
       try {
+        const userId = currentUser?.id || localStorage.getItem('userId') || 1;
         const busca = await axios.get(`/api/materiais/buscar`, {
           params: {
-            user_id: currentUser?.id || 1,
+            user_id: userId,
             disciplina_id: meta.disciplina_id || null,
             topico_id: meta.topico_id || null,
             tipo: tipo
-          }
+          },
+          timeout: 15000
         });
         if (busca.data?.material) {
           material = busca.data.material;
-          console.log(`📚 v71: Material encontrado por disciplina/topico: ID=${material.id}, tipo=${material.tipo}, titulo=${material.titulo}`);
         }
       } catch (e) {
-        console.warn(`⚠️ v71: Busca por disciplina/topico falhou:`, e.message);
+        console.warn(`⚠️ v106: Busca por disciplina/topico falhou:`, e.message);
       }
     }
     
     // 3. Se encontrou material, exibir
     if (material && material.conteudo) {
-      // v71: Usar material.tipo real do banco, não o tipo solicitado (proteção extra)
       const tipoReal = material.tipo || tipo;
-      console.log(`✅ v71: Exibindo material existente: ID=${material.id}, tipoReal=${tipoReal}, tipoSolicitado=${tipo}`);
       
       const dadosMaterial = {
         conteudo: material.conteudo,
@@ -22899,7 +23010,6 @@ window.verConteudoGerado = async function(metaId, tipo) {
       } else if (tipoReal === 'flashcards') {
         exibirFlashcardsVisuais(dadosMaterial);
       } else if (tipoReal === 'resumo' && material.tags && material.tags.includes('subtipo:esquematizado')) {
-        // ✅ v70: Resumo esquematizado
         dadosMaterial.subtipo_resumo = 'esquematizado';
         exibirResumoEsquematizado(dadosMaterial);
       } else {
@@ -22908,18 +23018,22 @@ window.verConteudoGerado = async function(metaId, tipo) {
       return;
     }
     
-    // 4. Não encontrou - abrir modal para gerar
-    console.log(`🆕 v71: Conteúdo ${tipo} não existe, abrindo modal para gerar...`);
+    // 4. Não encontrou - GERAR conteúdo novo
+    console.log(`🆕 v106: Conteúdo ${tipo} não existe para meta ${metaId}, gerando...`);
+    console.log(`📋 v106: Dados para geração: topico_id=${meta.topico_id}, topico_nome="${meta.topico_nome}", disciplina="${meta.disciplina_nome}"`);
     
     if (tipo === 'resumo') {
-      // ✅ v71: Gerar resumo esquematizado diretamente (sem perguntar subtipo)
       subtipoResumoSelecionado = 'esquematizado';
-      executarGeracaoConteudo(meta.topico_id || null, meta.topico_nome || 'Tópico', meta.disciplina_nome || 'Disciplina', 'resumo', null, metaId);
+      try {
+        await window.executarGeracaoConteudo(meta.topico_id || null, meta.topico_nome || 'Tópico', meta.disciplina_nome || 'Disciplina', 'resumo', null, metaId);
+      } catch (e) {
+        console.error('❌ v106: Erro ao gerar resumo:', e);
+        showToast('Erro ao gerar resumo. Tente novamente.', 'error');
+      }
       return;
     }
     
     if (tipo === 'exercicios' || tipo === 'flashcards') {
-      // v71: Guardar dados no window para não depender de strings inline no onclick
       window._geracaoPendente = {
         tipo: tipo,
         metaId: metaId,
@@ -22927,7 +23041,6 @@ window.verConteudoGerado = async function(metaId, tipo) {
         topicoNome: (meta.topico_nome || '').substring(0, 200),
         disciplinaNome: meta.disciplina_nome || ''
       };
-      console.log('📋 v71: Dados de geração pendente:', window._geracaoPendente);
       
       const modalHtml = `
         <div id="modal-quantidade-rapida" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -22958,7 +23071,7 @@ window.verConteudoGerado = async function(metaId, tipo) {
             </div>
             
             <div class="flex gap-2">
-              <button onclick="document.getElementById('modal-quantidade-rapida').remove()"
+              <button onclick="document.getElementById('modal-quantidade-rapida').remove(); window._geracaoPendente = null;"
                       class="flex-1 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition font-medium">
                 Cancelar
               </button>
@@ -22970,22 +23083,29 @@ window.verConteudoGerado = async function(metaId, tipo) {
           </div>
         </div>
       `;
+      // ✅ v106: Remover modal anterior se existir (evitar empilhamento)
+      document.getElementById('modal-quantidade-rapida')?.remove();
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       return;
     }
     
-    // Para teoria e resumo, gerar diretamente
-    await window.executarGeracaoConteudo(
-      meta.topico_id || null, 
-      meta.topico_nome, 
-      meta.disciplina_nome, 
-      tipo, 
-      null, 
-      metaId
-    );
+    // Para teoria - gerar diretamente com try/catch
+    try {
+      await window.executarGeracaoConteudo(
+        meta.topico_id || null, 
+        meta.topico_nome || 'Tópico', 
+        meta.disciplina_nome || 'Disciplina', 
+        tipo, 
+        null, 
+        metaId
+      );
+    } catch (e) {
+      console.error('❌ v106: Erro ao gerar teoria:', e);
+      showToast('Erro ao gerar conteúdo. Tente novamente.', 'error');
+    }
   } catch (error) {
-    console.error('Erro ao abrir conteúdo:', error);
-    showToast('Erro ao carregar conteúdo', 'error');
+    console.error('❌ v106: Erro ao abrir conteúdo:', error);
+    showToast('Erro ao carregar conteúdo. Tente novamente.', 'error');
   }
 }
 
