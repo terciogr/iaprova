@@ -8991,55 +8991,36 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
       </header>
 
       <div class="max-w-7xl mx-auto px-4 py-4">
-        <!-- ✅ v89: Stats Row Minimalista conforme mockup -->
-        <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} p-4 mb-4">
-          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <!-- Hoje + Progresso do Dia -->
-            <div class="flex items-center gap-4">
-              <div>
-                <p class="text-sm font-semibold ${themes[currentTheme].text}">Hoje: ${new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '')}</p>
-                <div class="flex items-center gap-2 mt-1.5">
-                  <div class="w-32 h-1.5 bg-gray-200 rounded-full">
-                    <div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${progressoDia}%"></div>
-                  </div>
-                  <span class="text-xs ${themes[currentTheme].textSecondary}">${progressoDia}%</span>
-                </div>
+        <!-- ✅ v108: Stats Row Responsivo - idêntico iOS/Android -->
+        <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} p-3 sm:p-4 mb-4">
+          <!-- Hoje + Progresso do Dia -->
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-xs sm:text-sm font-semibold ${themes[currentTheme].text}">Hoje: ${new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '')}</p>
+            <div class="flex items-center gap-2">
+              <div class="w-20 sm:w-32 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full">
+                <div class="h-1.5 bg-[#122D6A] rounded-full transition-all" style="width: ${progressoDia}%"></div>
               </div>
+              <span class="text-xs font-medium ${themes[currentTheme].textSecondary}">${progressoDia}%</span>
             </div>
-            
-            <!-- KPIs inline - Grid 2x2 no mobile, inline no desktop -->
-            <div class="grid grid-cols-2 gap-3 md:flex md:items-center md:gap-8">
-              <div onclick="renderPortfolioDisciplinas()" class="cursor-pointer flex flex-col items-start">
-                <span class="text-[10px] uppercase tracking-wider ${themes[currentTheme].textSecondary}">Progresso Geral</span>
-                <div class="flex items-center gap-2">
-                  <span class="text-lg md:text-xl font-bold ${themes[currentTheme].text}">${progressoGeral?.progresso_percentual || 0}%</span>
-                  <div class="w-10 md:w-12 h-1.5 bg-gray-200 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${progressoGeral?.progresso_percentual || 0}%"></div></div>
-                </div>
-              </div>
-              <div class="w-px h-8 bg-gray-200 hidden md:block"></div>
-              <div class="flex flex-col items-start">
-                <span class="text-[10px] uppercase tracking-wider ${themes[currentTheme].textSecondary}">Tempo Estudado</span>
-                <div class="flex items-center gap-2">
-                  <span class="text-lg md:text-xl font-bold ${themes[currentTheme].text}">${stats.horas_totais}h</span>
-                  <div class="w-10 md:w-12 h-1.5 bg-gray-200 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${Math.min(stats.dias_estudados * 10, 100)}%"></div></div>
-                </div>
-              </div>
-              <div class="w-px h-8 bg-gray-200 hidden md:block"></div>
-              <div onclick="renderPortfolioDisciplinas()" class="cursor-pointer flex flex-col items-start">
-                <span class="text-[10px] uppercase tracking-wider ${themes[currentTheme].textSecondary}">Disciplinas</span>
-                <div class="flex items-center gap-2">
-                  <span class="text-lg md:text-xl font-bold ${themes[currentTheme].text}">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0}</span>
-                  <div class="w-10 md:w-12 h-1.5 bg-gray-200 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: 100%"></div></div>
-                </div>
-              </div>
-              <div class="w-px h-8 bg-gray-200 hidden md:block"></div>
-              <div onclick="window.renderDashboardSimulados()" class="cursor-pointer flex flex-col items-start">
-                <span class="text-[10px] uppercase tracking-wider ${themes[currentTheme].textSecondary}">Simulados</span>
-                <div class="flex items-center gap-2">
-                  <span class="text-lg md:text-xl font-bold ${themes[currentTheme].text}">${scoreData.score}/10</span>
-                  <div class="w-10 md:w-12 h-1.5 bg-gray-200 rounded-full"><div class="h-1.5 bg-[#122D6A] rounded-full" style="width: ${scoreData.score * 10}%"></div></div>
-                </div>
-              </div>
+          </div>
+          
+          <!-- KPIs Grid - 4 colunas fixas, idêntico em todos os devices -->
+          <div class="grid grid-cols-4 gap-2 sm:gap-3">
+            <div onclick="renderPortfolioDisciplinas()" class="cursor-pointer flex flex-col items-center text-center p-2 sm:p-3 rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
+              <span class="text-base sm:text-xl font-bold ${themes[currentTheme].text} leading-tight">${progressoGeral?.progresso_percentual || 0}%</span>
+              <span class="text-[9px] sm:text-[10px] ${themes[currentTheme].textSecondary} mt-0.5 leading-tight">Progresso</span>
+            </div>
+            <div class="flex flex-col items-center text-center p-2 sm:p-3 rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="text-base sm:text-xl font-bold ${themes[currentTheme].text} leading-tight">${stats.horas_totais}h</span>
+              <span class="text-[9px] sm:text-[10px] ${themes[currentTheme].textSecondary} mt-0.5 leading-tight">Estudado</span>
+            </div>
+            <div onclick="renderPortfolioDisciplinas()" class="cursor-pointer flex flex-col items-center text-center p-2 sm:p-3 rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
+              <span class="text-base sm:text-xl font-bold ${themes[currentTheme].text} leading-tight">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0}</span>
+              <span class="text-[9px] sm:text-[10px] ${themes[currentTheme].textSecondary} mt-0.5 leading-tight">Disciplinas</span>
+            </div>
+            <div onclick="window.renderDashboardSimulados()" class="cursor-pointer flex flex-col items-center text-center p-2 sm:p-3 rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
+              <span class="text-base sm:text-xl font-bold ${themes[currentTheme].text} leading-tight">${scoreData.score}/10</span>
+              <span class="text-[9px] sm:text-[10px] ${themes[currentTheme].textSecondary} mt-0.5 leading-tight">Simulados</span>
             </div>
           </div>
         </div>
@@ -26005,8 +25986,7 @@ function renderCalendarioSemanal() {
         <div class="flex items-center justify-between mb-2">
           <div class="flex items-center gap-1.5 min-w-0 flex-1">
             <span class="text-sm font-bold uppercase ${themes[currentTheme].text} whitespace-nowrap">Semana ${semana.numero_semana}</span>
-            <span class="text-xs ${themes[currentTheme].textSecondary} truncate hidden sm:inline">— ${dataInicioFormatada} → ${dataFimFormatada}</span>
-            <span class="text-xs ${themes[currentTheme].textSecondary} truncate sm:hidden">${dataInicioFormatada} - ${dataFimFormatada}</span>
+            <span class="text-[10px] sm:text-xs ${themes[currentTheme].textSecondary} whitespace-nowrap ml-1">(${dataInicioFormatada} - ${dataFimFormatada})</span>
           </div>
           <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
             <button onclick="abrirSemanasAnteriores()" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition" style="background: transparent;" onmouseover="this.style.background='${_isDk ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'}'" onmouseout="this.style.background='transparent'" title="Semanas anteriores">
@@ -26110,26 +26090,27 @@ function renderCalendarioSemanal() {
                 const dn = (meta.disciplina_nome || '').replace(/'/g, "\\'");
                 const setMeta = "window.metaAtual={id:" + meta.id + ",topico_nome:'" + tn + "',disciplina_nome:'" + dn + "',topico_id:" + (topicoId || 'null') + ",disciplina_id:" + (meta.disciplina_id || 'null') + "};";
                 return `
-                <div class="flex flex-col p-3 sm:p-4 rounded-xl ${themes[currentTheme].card} border ${themes[currentTheme].border}">
-                  <div class="flex items-center justify-between mb-2">
-                    <div class="flex-1 min-w-0 flex items-center gap-2">
+                <div class="flex flex-col p-3 sm:p-4 rounded-xl ${themes[currentTheme].card} border ${themes[currentTheme].border}" style="border-left: 3px solid #122D6A;">
+                  <!-- Header: Disciplina + Tempo + Edit -->
+                  <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-1.5 min-w-0 flex-1">
                       <p class="text-xs sm:text-sm font-bold ${themes[currentTheme].text} truncate">${meta.disciplina_nome}</p>
-                      <span class="text-[10px] sm:text-xs ${themes[currentTheme].textSecondary} flex-shrink-0">${meta.tempo_minutos || 60}min</span>
+                      <span class="text-[10px] ${themes[currentTheme].textSecondary} flex-shrink-0 px-1.5 py-0.5 rounded-full" style="background:${currentTheme==='dark'?'#1F2937':'#F3F4F6'};">${meta.tempo_minutos || 60}min</span>
                     </div>
-                    <div class="flex items-center gap-1 flex-shrink-0 ml-1">
-                      <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${dn}', '${tn}', ${meta.dia_semana})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 transition" title="Editar">
-                        <i class="fas fa-pencil-alt text-[10px] text-gray-400"></i>
-                      </button>
-                    </div>
+                    <button onclick="event.stopPropagation(); abrirModalTrocarDisciplina(${meta.id}, ${meta.plano_id}, '${dn}', '${tn}', ${meta.dia_semana})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition flex-shrink-0 ml-1" title="Editar">
+                      <i class="fas fa-pencil-alt text-[10px] text-gray-400"></i>
+                    </button>
                   </div>
-                  ${topicoNome ? '<p class="text-[10px] sm:text-xs ' + themes[currentTheme].textSecondary + ' mb-2 truncate" title="' + tn + '">' + topicoNome + '</p>' : ''}
-                  <div class="grid grid-cols-3 gap-1.5 mb-2" id="conteudos-meta-${meta.id}">
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'teoria')" class="py-1.5 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:11px;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="teoria" id="icon-teoria-${meta.id}">Teoria</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'exercicios')" class="py-1.5 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:11px;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="exercicios" id="icon-exercicios-${meta.id}">Questões</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'resumo')" class="py-1.5 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:11px;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo" id="icon-resumo-${meta.id}">Resumo</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'flashcards')" class="py-1.5 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:11px;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="flashcards" id="icon-flashcards-${meta.id}">Flash</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} abrirModalResumoPersonalizado(${meta.id})" class="py-1.5 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:11px;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">Upload</button>
-                    <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="py-1.5 px-1 font-semibold rounded-lg border transition-all text-center text-emerald-600" style="font-size:11px;border-color:#6ee7b7;background:#ecfdf5;">Concluir</button>
+                  <!-- Tópico -->
+                  ${topicoNome ? '<p class="text-[10px] sm:text-xs ' + themes[currentTheme].textSecondary + ' mb-2 line-clamp-2" title="' + tn + '">' + topicoNome + '</p>' : ''}
+                  <!-- Botões de Conteúdo - grid 3x2 fixo -->
+                  <div class="grid grid-cols-3 gap-1.5" id="conteudos-meta-${meta.id}" style="font-size:0;">
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'teoria')" class="py-2 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:10px;line-height:1.2;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="teoria" id="icon-teoria-${meta.id}">Teoria</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'exercicios')" class="py-2 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:10px;line-height:1.2;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="exercicios" id="icon-exercicios-${meta.id}">Questões</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'resumo')" class="py-2 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:10px;line-height:1.2;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo" id="icon-resumo-${meta.id}">Resumo</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'flashcards')" class="py-2 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:10px;line-height:1.2;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="flashcards" id="icon-flashcards-${meta.id}">Flash</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} abrirModalResumoPersonalizado(${meta.id})" class="py-2 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:10px;line-height:1.2;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">Upload</button>
+                    <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="py-2 px-1 font-semibold rounded-lg border transition-all text-center text-emerald-600" style="font-size:10px;line-height:1.2;border-color:#6ee7b7;background:#ecfdf5;">Concluir</button>
                   </div>
                 </div>`
               }).join('')}

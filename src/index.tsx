@@ -20907,9 +20907,39 @@ app.get('/home', (c) => {
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             overscroll-behavior: none;
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
         }
         
         #app { min-height: 100vh; min-height: 100dvh; }
+        
+        /* v108: iOS button reset - garante aparência idêntica ao Android */
+        button, input, select, textarea {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border-radius: 0;
+        }
+        button { border-radius: 0.5rem; }
+        input[type="range"] { -webkit-appearance: auto; appearance: auto; }
+        
+        /* v108: Garantir que grids de botões não quebrem em telas pequenas */
+        .grid { min-width: 0; }
+        .grid > * { min-width: 0; overflow: hidden; }
+        
+        /* v108: iOS safe area */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            .safe-area-top { padding-top: env(safe-area-inset-top); }
+            .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        }
+        
+        /* v108: Line clamp for topic names */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
         
         /* Loading spinner */
         .spinner {
