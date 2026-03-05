@@ -20603,17 +20603,21 @@ app.get('/api/materiais/buscar', async (c) => {
       `).bind(parseInt(user_id as string), parseInt(topico_id as string), tipo).first()
     }
 
-    // 2. Fallback: buscar por disciplina_id + tipo
-    if (!material && disciplina_id && disciplina_id !== 'null' && disciplina_id !== 'undefined') {
+    // ✅ v107: REMOVIDO fallback por disciplina_id sozinho
+    // Antes buscava por disciplina_id + tipo quando topico_id falhava, 
+    // mas isso retornava material de OUTRO tópico da mesma disciplina.
+    // Agora só busca por topico_id + tipo + disciplina_id (todos juntos)
+    if (!material && disciplina_id && disciplina_id !== 'null' && disciplina_id !== 'undefined' 
+        && topico_id && topico_id !== 'null' && topico_id !== 'undefined') {
       material = await DB.prepare(`
         SELECT ms.*, d.nome as disciplina_nome, te.nome as topico_nome
         FROM materiais_salvos ms
         LEFT JOIN disciplinas d ON ms.disciplina_id = d.id
         LEFT JOIN topicos_edital te ON ms.topico_id = te.id
-        WHERE ms.user_id = ? AND ms.disciplina_id = ? AND ms.tipo = ?
+        WHERE ms.user_id = ? AND ms.disciplina_id = ? AND ms.topico_id = ? AND ms.tipo = ?
         ORDER BY ms.created_at DESC
         LIMIT 1
-      `).bind(parseInt(user_id as string), parseInt(disciplina_id as string), tipo).first()
+      `).bind(parseInt(user_id as string), parseInt(disciplina_id as string), parseInt(topico_id as string), tipo).first()
     }
 
     if (material) {

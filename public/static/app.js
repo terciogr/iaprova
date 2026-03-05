@@ -10868,12 +10868,12 @@ window.confirmarGeracaoConteudo = function(topicoId, topicoNome, disciplinaNome,
   executarGeracaoConteudo(topicoId, topicoNome, disciplinaNome, tipoConteudoSelecionado, quantidade, metaId);
 }
 
-// ✅ v106: Função para confirmar geração rápida (chamada do modal de quantidade) - ASYNC
+// ✅ v107: Função para confirmar geração rápida (chamada do modal de quantidade) - ASYNC
 window.confirmarGeracaoRapida = async function(tipo, metaId, topicoId, topicoNome, disciplinaNome) {
   const slider = document.getElementById('quantidade-rapida-slider');
   const quantidade = slider ? parseInt(slider.value) : (tipo === 'exercicios' ? 10 : 15);
   
-  console.log('🚀 v106: Geração rápida confirmada:', { tipo, quantidade, metaId, topicoNome });
+  console.log('🚀 v107: Geração rápida confirmada:', { tipo, quantidade, metaId, topicoNome });
   
   // Fechar modal de quantidade
   document.getElementById('modal-quantidade-rapida')?.remove();
@@ -10882,12 +10882,12 @@ window.confirmarGeracaoRapida = async function(tipo, metaId, topicoId, topicoNom
   try {
     await window.executarGeracaoConteudo(topicoId || null, topicoNome, disciplinaNome, tipo, quantidade, metaId);
   } catch (error) {
-    console.error('❌ v106: Erro em confirmarGeracaoRapida:', error);
+    console.error('❌ v107: Erro em confirmarGeracaoRapida:', error);
     showToast('Erro ao gerar conteúdo. Tente novamente.', 'error');
   }
 }
 
-// v106: Função para executar geração a partir de dados salvos no window - ASYNC com tratamento de erros
+// v107: Função para executar geração a partir de dados salvos no window - ASYNC com tratamento de erros
 window.executarGeracaoPendente = async function() {
   const dados = window._geracaoPendente;
   if (!dados) {
@@ -10898,15 +10898,15 @@ window.executarGeracaoPendente = async function() {
   const slider = document.getElementById('quantidade-rapida-slider');
   const quantidade = slider ? parseInt(slider.value) : (dados.tipo === 'exercicios' ? 10 : 15);
   
-  console.log('🚀 v106: Geração pendente executada:', { ...dados, quantidade });
+  console.log('🚀 v107: Geração pendente executada:', { ...dados, quantidade });
   
   // Fechar modal de quantidade
   document.getElementById('modal-quantidade-rapida')?.remove();
   
-  // v106: Limpar dados pendentes ANTES de chamar (evita reuso acidental)
+  // v107: Limpar dados pendentes ANTES de chamar (evita reuso acidental)
   window._geracaoPendente = null;
   
-  // v106: Executar com await e try/catch para não perder erros
+  // v107: Executar com await e try/catch para não perder erros
   try {
     await window.executarGeracaoConteudo(
       dados.topicoId,
@@ -10917,21 +10917,28 @@ window.executarGeracaoPendente = async function() {
       dados.metaId
     );
   } catch (error) {
-    console.error('❌ v106: Erro em executarGeracaoPendente:', error);
+    console.error('❌ v107: Erro em executarGeracaoPendente:', error);
     showToast('Erro ao gerar conteúdo. Tente novamente.', 'error');
   }
 }
 
 // Função para executar a geração de conteúdo
-// ✅ v106: Proteção contra reentrada (duplo clique / execução simultânea)
+// ✅ v107: Proteção contra reentrada com timestamp + safety reset
 window._geracaoEmAndamento = false;
+window._geracaoTimestamp = 0;
 
 window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplinaNome, tipo, quantidade = null, metaId = null) {
-  // ✅ v106: Proteção contra reentrada
+  // ✅ v107: Proteção contra reentrada com safety reset (3 min)
   if (window._geracaoEmAndamento) {
-    console.warn('⚠️ v106: Geração já em andamento, ignorando chamada duplicada');
-    showToast('Geração em andamento, aguarde...', 'info');
-    return;
+    const elapsed = Date.now() - (window._geracaoTimestamp || 0);
+    if (elapsed > 180000) {
+      console.warn('⚠️ v107: Lock de geração travado há mais de 3min, resetando...');
+      window._geracaoEmAndamento = false;
+    } else {
+      console.warn('⚠️ v107: Geração já em andamento, ignorando chamada duplicada');
+      showToast('Geração em andamento, aguarde...', 'info');
+      return;
+    }
   }
   
   // ✅ VALIDAÇÃO: Exigir tópico para gerar conteúdo
@@ -10940,14 +10947,15 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
     return;
   }
   
-  // v106: Truncar topico_nome muito longo (pode causar problemas na API)
+  // v107: Truncar topico_nome muito longo (pode causar problemas na API)
   if (topicoNome && topicoNome.length > 200) {
-    console.log('⚠️ v106: topicoNome muito longo (' + topicoNome.length + ' chars), truncando...');
+    console.log('⚠️ v107: topicoNome muito longo (' + topicoNome.length + ' chars), truncando...');
     topicoNome = topicoNome.substring(0, 200);
   }
   
-  // v106: Marcar geração como em andamento
+  // v107: Marcar geração como em andamento com timestamp
   window._geracaoEmAndamento = true;
+  window._geracaoTimestamp = Date.now();
   
   // Remover modal de seleção
   const modal = document.getElementById('modal-gerar-conteudo');
@@ -11139,10 +11147,10 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       window._loadingProgressInterval = null;
     }
     document.getElementById('loading-conteudo')?.remove();
-    window._geracaoEmAndamento = false; // v106: Liberar lock
+    window._geracaoEmAndamento = false; // v107: Liberar lock
     
     if (response.data.success) {
-      console.log(`✅ v106: Conteúdo ${tipo} gerado com sucesso!`, { material_id: response.data.material_id, meta_id: metaId });
+      console.log(`✅ v107: Conteúdo ${tipo} gerado com sucesso!`, { material_id: response.data.material_id, meta_id: metaId });
       
       // Atualizar cache e ícones imediatamente
       if (metaId && response.data.material_id) {
@@ -11181,7 +11189,25 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       
       subtipoResumoSelecionado = null;
     } else {
-      showToast('Erro ao gerar conteúdo: ' + (response.data.error || 'Erro no servidor. Tente novamente.'), 'error');
+      // ✅ v107: Mostrar modal de erro ao invés de toast
+      const erroMsg = response.data.error || 'O servidor não conseguiu gerar o conteúdo.';
+      const erroModalHtml = `
+        <div id="modal-erro-geracao" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onclick="if(event.target===this)this.remove()">
+          <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div class="w-16 h-16 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-4">
+              <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-bold ${themes[currentTheme].text} mb-2">Erro na Geração</h3>
+            <p class="text-sm ${themes[currentTheme].textSecondary} mb-4">${erroMsg}</p>
+            <button onclick="document.getElementById('modal-erro-geracao').remove()"
+                    class="w-full py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition font-semibold">
+              Tentar Novamente
+            </button>
+          </div>
+        </div>
+      `;
+      document.getElementById('modal-erro-geracao')?.remove();
+      document.body.insertAdjacentHTML('beforeend', erroModalHtml);
     }
   } catch (error) {
     if (window._loadingProgressInterval) {
@@ -11189,39 +11215,65 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       window._loadingProgressInterval = null;
     }
     document.getElementById('loading-conteudo')?.remove();
-    window._geracaoEmAndamento = false; // v106: Liberar lock
-    console.error('❌ v106: Erro ao gerar conteúdo:', error);
+    window._geracaoEmAndamento = false; // v107: Liberar lock
+    console.error('❌ v107: Erro ao gerar conteúdo:', error);
     
     const errorMsg = error.response?.data?.error || error.message || '';
-    const isTimeout = error.code === 'ECONNABORTED' || errorMsg.includes('timeout');
-    const isRateLimit = error.response?.status === 429 || errorMsg.includes('rate') || errorMsg.includes('indisponível');
+    const errorDetails = error.response?.data?.details || '';
+    const httpStatus = error.response?.status || 0;
+    const isTimeout = error.code === 'ECONNABORTED' || errorMsg.includes('timeout') || httpStatus === 524;
+    const isRateLimit = httpStatus === 429 || errorMsg.includes('rate') || errorMsg.includes('indisponível') || errorMsg.includes('ocupada');
     
-    if (isTimeout) {
-      // v106: Se timeout, o conteúdo PODE ter sido gerado no servidor
-      // Tentar buscar da API após um delay
-      showToast('A geração demorou mais que o esperado. Verificando...', 'warning');
-      if (metaId) {
-        setTimeout(async () => {
-          try {
-            await atualizarIconesConteudoMeta(metaId);
-            const cache = window.conteudosMetaCache[metaId];
-            if (cache && cache[`tem_${tipo}`]) {
-              showToast('Conteúdo encontrado! Clique no botão para visualizar.', 'success');
-              marcarBotaoConteudoDisponivel(metaId, tipo, cache.tipos_gerados?.[tipo]);
-            } else {
-              showToast('Tempo esgotado. Tente novamente em 1-2 minutos.', 'error');
-            }
-          } catch (e) {
-            showToast('Tempo esgotado. Tente novamente em 1-2 minutos.', 'error');
-          }
-        }, 3000);
-      } else {
-        showToast('Tempo esgotado. Tente novamente.', 'error');
-      }
-    } else if (isRateLimit) {
-      showToast('API ocupada. Aguarde 1-2 minutos e tente novamente.', 'warning');
+    // ✅ v107: Mostrar MODAL de erro visível (não apenas toast que desaparece)
+    let erroTitulo = 'Erro ao Gerar Conteúdo';
+    let erroTexto = '';
+    let erroBotao = 'Tentar Novamente';
+    
+    if (isRateLimit) {
+      erroTitulo = 'API Temporariamente Ocupada';
+      erroTexto = 'O servidor de IA está com muitas requisições simultâneas. Isso é normal e temporário.';
+      erroBotao = 'Entendido';
+    } else if (isTimeout) {
+      erroTitulo = 'Tempo de Geração Esgotado';
+      erroTexto = 'A geração demorou mais que o esperado. O conteúdo pode ter sido salvo parcialmente.';
+      erroBotao = 'OK';
     } else {
-      showToast('Erro ao gerar conteúdo: ' + (errorMsg || 'Erro desconhecido. Tente novamente.'), 'error');
+      erroTexto = errorMsg || 'Ocorreu um erro inesperado. Tente novamente em alguns instantes.';
+    }
+    
+    const erroModalHtml = `
+      <div id="modal-erro-geracao" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onclick="if(event.target===this)this.remove()">
+        <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+          <div class="w-16 h-16 mx-auto rounded-full ${isRateLimit ? 'bg-yellow-100' : 'bg-red-100'} flex items-center justify-center mb-4">
+            <i class="fas ${isRateLimit ? 'fa-clock text-yellow-600' : 'fa-exclamation-triangle text-red-600'} text-2xl"></i>
+          </div>
+          <h3 class="text-lg font-bold ${themes[currentTheme].text} mb-2">${erroTitulo}</h3>
+          <p class="text-sm ${themes[currentTheme].textSecondary} mb-1">${erroTexto}</p>
+          ${isRateLimit ? '<p class="text-xs text-yellow-600 font-medium mb-4">⏱️ Aguarde 1-2 minutos e tente novamente.</p>' : 
+            isTimeout ? '<p class="text-xs text-blue-600 font-medium mb-4">💡 Clique no botão novamente para verificar se o conteúdo foi gerado.</p>' : 
+            '<p class="text-xs ' + themes[currentTheme].textSecondary + ' mb-4">Se o erro persistir, recarregue a página.</p>'}
+          <button onclick="document.getElementById('modal-erro-geracao').remove()"
+                  class="w-full py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition font-semibold">
+            ${erroBotao}
+          </button>
+        </div>
+      </div>
+    `;
+    document.getElementById('modal-erro-geracao')?.remove();
+    document.body.insertAdjacentHTML('beforeend', erroModalHtml);
+    
+    // v107: Para timeout, verificar cache após delay
+    if (isTimeout && metaId) {
+      setTimeout(async () => {
+        try {
+          await atualizarIconesConteudoMeta(metaId);
+          const cache = window.conteudosMetaCache[metaId];
+          if (cache && cache[`tem_${tipo}`]) {
+            showToast('Conteúdo encontrado! Clique no botão para visualizar.', 'success');
+            marcarBotaoConteudoDisponivel(metaId, tipo, cache.tipos_gerados?.[tipo]);
+          }
+        } catch (e) { /* ignore */ }
+      }, 3000);
     }
   }
 }
@@ -22295,7 +22347,7 @@ window.fecharModalEscolherConteudo = function() {
 
 // Gerar conteúdo do tipo escolhido
 window.gerarConteudoTipo = async function(tipo) {
-  // ✅ v106: Capturar dados ANTES de fechar o modal e buscar frescos se necessário
+  // ✅ v107: Capturar dados ANTES de fechar o modal e buscar frescos se necessário
   let meta = window.metaAtual;
   const pendente = window.conteudoPendente;
   
@@ -22308,16 +22360,16 @@ window.gerarConteudoTipo = async function(tipo) {
     return;
   }
   
-  // ✅ v106: Garantir que temos dados frescos - buscar topico_nome/id robustamente
+  // ✅ v107: Garantir que temos dados frescos - buscar topico_nome/id robustamente
   let topicoNome = meta?.topico_nome || meta?.topicos_sugeridos?.[0]?.nome || pendente?.topico?.nome || '';
   let topicoId = meta?.topico_id || meta?.topicos_sugeridos?.[0]?.id || pendente?.topico?.id || null;
   const disciplinaNome = meta?.disciplina_nome || pendente?.disciplinaNome || '';
   const disciplinaId = meta?.disciplina_id || pendente?.disciplinaId || null;
   const metaId = meta?.id || null;
   
-  // v106: Se não temos topico_nome válido, buscar da API
+  // v107: Se não temos topico_nome válido, buscar da API
   if (!topicoNome && metaId) {
-    console.log('⚠️ v106: topicoNome vazio, buscando da API...');
+    console.log('⚠️ v107: topicoNome vazio, buscando da API...');
     try {
       const userId = currentUser?.id || localStorage.getItem('userId');
       const semanaRes = await axios.get(`/api/metas/semana-ativa/${userId}`, { timeout: 15000 });
@@ -22328,13 +22380,13 @@ window.gerarConteudoTipo = async function(tipo) {
         topicoId = metaApi.topico_id || (topicos.length > 0 ? topicos[0].id : null);
       }
     } catch (e) {
-      console.warn('⚠️ v106: Erro ao buscar meta para gerarConteudoTipo:', e.message);
+      console.warn('⚠️ v107: Erro ao buscar meta para gerarConteudoTipo:', e.message);
     }
   }
   
   if (!topicoNome) topicoNome = 'Conteúdo geral';
   
-  console.log(`🎯 v106: Gerando ${tipo} para: ${disciplinaNome} - ${topicoNome} (meta: ${metaId})`);
+  console.log(`🎯 v107: Gerando ${tipo} para: ${disciplinaNome} - ${topicoNome} (meta: ${metaId})`);
   
   // ✅ CORREÇÃO: Se for resumo personalizado, abrir modal de upload ao invés de gerar diretamente
   if (tipo === 'resumo_personalizado') {
@@ -22414,7 +22466,7 @@ window.gerarConteudoTipo = async function(tipo) {
   try {
     await window.executarGeracaoConteudo(topicoId, topicoNome, disciplinaNome, tipo, null, metaId);
   } catch (e) {
-    console.error('❌ v106: Erro em gerarConteudoTipo:', e);
+    console.error('❌ v107: Erro em gerarConteudoTipo:', e);
     showToast('Erro ao gerar conteúdo. Tente novamente.', 'error');
   }
   
@@ -22866,23 +22918,29 @@ async function processarResumoPersonalizado(metaId) {
   }
 }
 
-// Ver conteúdo gerado - v106: ROBUSTEZ REFORÇADA - busca dados da meta por múltiplas fontes + proteção contra falhas silenciosas
+// Ver conteúdo gerado - v107: CORREÇÃO COMPLETA - busca por meta_id+topico_id, sem fallback por disciplina
 window.verConteudoGerado = async function(metaId, tipo) {
-  console.log(`👁️ v106: Verificando ${tipo} da meta ${metaId}`);
+  console.log(`👁️ v107: Verificando ${tipo} da meta ${metaId}`);
   
-  // ✅ v106: Proteção contra reentrada (usuário clicou duas vezes)
+  // ✅ v107: Proteção contra reentrada - com safety reset (máx 3 min)
   if (window._geracaoEmAndamento) {
-    console.warn('⚠️ v106: Geração já em andamento, ignorando clique');
-    showToast('Geração em andamento, aguarde...', 'info');
-    return;
+    const elapsed = Date.now() - (window._geracaoTimestamp || 0);
+    if (elapsed > 180000) {
+      console.warn('⚠️ v107: Lock de geração travado há mais de 3min, resetando...');
+      window._geracaoEmAndamento = false;
+    } else {
+      console.warn('⚠️ v107: Geração já em andamento, ignorando clique');
+      showToast('Geração em andamento, aguarde...', 'info');
+      return;
+    }
   }
   
-  // ✅ v106: Buscar dados FRESCOS da meta - NÃO depender apenas de window.metaAtual
+  // ✅ v107: Buscar dados FRESCOS da meta - NÃO depender apenas de window.metaAtual
   let meta = window.metaAtual;
   
   // 1. Validar se window.metaAtual corresponde à meta clicada
   if (!meta || String(meta.id) !== String(metaId)) {
-    console.log(`⚠️ v106: metaAtual (id=${meta?.id}) não corresponde à meta clicada (id=${metaId}). Buscando dados frescos...`);
+    console.log(`⚠️ v107: metaAtual (id=${meta?.id}) não corresponde à meta clicada (id=${metaId}). Buscando dados frescos...`);
     meta = null;
   }
   
@@ -22900,13 +22958,13 @@ window.verConteudoGerado = async function(metaId, tipo) {
         disciplina_id: metaSemanal.disciplina_id || null,
         plano_id: metaSemanal.plano_id || null
       };
-      console.log(`✅ v106: Meta encontrada em semanaAtual:`, meta);
+      console.log(`✅ v107: Meta encontrada em semanaAtual:`, meta);
     }
   }
   
   // 3. Buscar da API se não encontrou localmente
   if (!meta) {
-    console.log(`🔍 v106: Buscando meta ${metaId} da API...`);
+    console.log(`🔍 v107: Buscando meta ${metaId} da API...`);
     try {
       const userId = currentUser?.id || localStorage.getItem('userId');
       const semanaRes = await axios.get(`/api/metas/semana-ativa/${userId}`, { timeout: 15000 });
@@ -22921,25 +22979,25 @@ window.verConteudoGerado = async function(metaId, tipo) {
           disciplina_id: metaApi.disciplina_id || null,
           plano_id: metaApi.plano_id || null
         };
-        console.log(`✅ v106: Meta encontrada via API:`, meta);
+        console.log(`✅ v107: Meta encontrada via API:`, meta);
       }
     } catch (e) {
-      console.warn(`⚠️ v106: Erro ao buscar meta da API:`, e.message);
+      console.warn(`⚠️ v107: Erro ao buscar meta da API:`, e.message);
     }
   }
   
   // 4. Fallback final
   if (!meta) {
-    console.error(`❌ v106: Meta ${metaId} não encontrada em nenhuma fonte`);
+    console.error(`❌ v107: Meta ${metaId} não encontrada em nenhuma fonte`);
     showToast('Meta não encontrada. Recarregue a página e tente novamente.', 'error');
     return;
   }
   
-  // ✅ v106: Atualizar window.metaAtual com dados frescos
+  // ✅ v107: Atualizar window.metaAtual com dados frescos
   window.metaAtual = meta;
   
   try {
-    // ESTRATÉGIA: Buscar conteúdo existente
+    // ✅ v107: ESTRATÉGIA REVISADA - buscar conteúdo existente ESTRITAMENTE por meta_id e topico_id
     let material = null;
     
     // 1. Tentar buscar pelo meta_id na API
@@ -22957,35 +23015,42 @@ window.verConteudoGerado = async function(metaId, tipo) {
         try {
           const materialRes = await axios.get(`/api/materiais/ver/${conteudoId}`, { timeout: 15000 });
           const mat = materialRes.data;
+          // ✅ v107: Validar tipo E topico_id (evitar exibir material de outro tópico da mesma disciplina)
           if (mat && mat.tipo === tipo) {
-            material = mat;
+            // Se temos topico_id na meta, verificar se o material é do mesmo tópico
+            if (meta.topico_id && mat.topico_id && String(mat.topico_id) !== String(meta.topico_id)) {
+              console.warn(`⚠️ v107: Material ${conteudoId} é do tópico ${mat.topico_id}, mas meta pede tópico ${meta.topico_id}. Ignorando.`);
+            } else {
+              material = mat;
+            }
           }
         } catch (e) {
-          console.warn(`⚠️ v106: Material ID=${conteudoId} não encontrado:`, e.message);
+          console.warn(`⚠️ v107: Material ID=${conteudoId} não encontrado:`, e.message);
         }
       }
     } catch (e) {
-      console.warn(`⚠️ v106: Erro ao buscar conteudos/meta:`, e.message);
+      console.warn(`⚠️ v107: Erro ao buscar conteudos/meta:`, e.message);
     }
     
-    // 2. FALLBACK: buscar por disciplina/topico
-    if (!material && (meta.topico_id || meta.disciplina_id)) {
+    // 2. FALLBACK: buscar SOMENTE por topico_id (NÃO por disciplina_id sozinho)
+    // ✅ v107: REMOVIDO fallback por disciplina_id pois retornava material de outro tópico
+    if (!material && meta.topico_id) {
       try {
         const userId = currentUser?.id || localStorage.getItem('userId') || 1;
         const busca = await axios.get(`/api/materiais/buscar`, {
           params: {
             user_id: userId,
-            disciplina_id: meta.disciplina_id || null,
-            topico_id: meta.topico_id || null,
+            topico_id: meta.topico_id,
             tipo: tipo
           },
           timeout: 15000
         });
         if (busca.data?.material) {
           material = busca.data.material;
+          console.log(`✅ v107: Material encontrado por topico_id=${meta.topico_id}:`, material.id);
         }
       } catch (e) {
-        console.warn(`⚠️ v106: Busca por disciplina/topico falhou:`, e.message);
+        console.warn(`⚠️ v107: Busca por topico_id falhou:`, e.message);
       }
     }
     
@@ -23005,6 +23070,8 @@ window.verConteudoGerado = async function(metaId, tipo) {
         gerado_em: material.created_at
       };
       
+      console.log(`✅ v107: Exibindo ${tipoReal} para tópico "${dadosMaterial.topico_nome}" (topico_id=${dadosMaterial.topico_id})`);
+      
       if (tipoReal === 'exercicios') {
         exibirExerciciosInterativos(dadosMaterial);
       } else if (tipoReal === 'flashcards') {
@@ -23019,15 +23086,15 @@ window.verConteudoGerado = async function(metaId, tipo) {
     }
     
     // 4. Não encontrou - GERAR conteúdo novo
-    console.log(`🆕 v106: Conteúdo ${tipo} não existe para meta ${metaId}, gerando...`);
-    console.log(`📋 v106: Dados para geração: topico_id=${meta.topico_id}, topico_nome="${meta.topico_nome}", disciplina="${meta.disciplina_nome}"`);
+    console.log(`🆕 v107: Conteúdo ${tipo} não existe para meta ${metaId}, gerando...`);
+    console.log(`📋 v107: Dados para geração: topico_id=${meta.topico_id}, topico_nome="${meta.topico_nome}", disciplina="${meta.disciplina_nome}"`);
     
     if (tipo === 'resumo') {
       subtipoResumoSelecionado = 'esquematizado';
       try {
         await window.executarGeracaoConteudo(meta.topico_id || null, meta.topico_nome || 'Tópico', meta.disciplina_nome || 'Disciplina', 'resumo', null, metaId);
       } catch (e) {
-        console.error('❌ v106: Erro ao gerar resumo:', e);
+        console.error('❌ v107: Erro ao gerar resumo:', e);
         showToast('Erro ao gerar resumo. Tente novamente.', 'error');
       }
       return;
@@ -23083,7 +23150,7 @@ window.verConteudoGerado = async function(metaId, tipo) {
           </div>
         </div>
       `;
-      // ✅ v106: Remover modal anterior se existir (evitar empilhamento)
+      // ✅ v107: Remover modal anterior se existir (evitar empilhamento)
       document.getElementById('modal-quantidade-rapida')?.remove();
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       return;
@@ -23100,11 +23167,11 @@ window.verConteudoGerado = async function(metaId, tipo) {
         metaId
       );
     } catch (e) {
-      console.error('❌ v106: Erro ao gerar teoria:', e);
+      console.error('❌ v107: Erro ao gerar teoria:', e);
       showToast('Erro ao gerar conteúdo. Tente novamente.', 'error');
     }
   } catch (error) {
-    console.error('❌ v106: Erro ao abrir conteúdo:', error);
+    console.error('❌ v107: Erro ao abrir conteúdo:', error);
     showToast('Erro ao carregar conteúdo. Tente novamente.', 'error');
   }
 }
