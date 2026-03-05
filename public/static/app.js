@@ -1216,16 +1216,33 @@ function createUnifiedFAB() {
   
   document.body.appendChild(sidebar);
   
-  // Criar botão trigger (hamburger) fixo no bottom-left
-  const trigger = document.createElement('button');
-  trigger.id = 'sidebar-trigger';
-  trigger.onclick = function() { toggleFabMenu(); };
-  trigger.title = 'Menu';
-  trigger.style.cssText = 'position:fixed; bottom:24px; left:24px; z-index:9996; width:48px; height:48px; border-radius:14px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; background:#122D6A; color:white; box-shadow:0 4px 16px rgba(18,45,106,0.3); transition:all 0.2s;';
-  trigger.innerHTML = '<i class="fas fa-bars" style="font-size:18px;" id="fab-icon"></i>';
-  trigger.onmouseover = function() { this.style.transform = 'scale(1.08)'; this.style.boxShadow = '0 6px 20px rgba(18,45,106,0.4)'; };
-  trigger.onmouseout = function() { this.style.transform = 'scale(1)'; this.style.boxShadow = '0 4px 16px rgba(18,45,106,0.3)'; };
-  document.body.appendChild(trigger);
+  // Injetar botão hamburger no header automaticamente (observa mudanças de DOM)
+  function injectMenuButton() {
+    const headerFlex = document.querySelector('header.sticky .flex.items-center.justify-between');
+    if (headerFlex && !headerFlex.querySelector('#sidebar-trigger')) {
+      const trigger = document.createElement('button');
+      trigger.id = 'sidebar-trigger';
+      trigger.onclick = function(e) { e.stopPropagation(); toggleFabMenu(); };
+      trigger.title = 'Menu de navegação';
+      trigger.className = 'w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/20 transition group mr-1';
+      trigger.innerHTML = '<i class="fas fa-bars text-white text-base group-hover:scale-110 transition-transform" id="fab-icon"></i>';
+      headerFlex.insertBefore(trigger, headerFlex.firstChild);
+    }
+  }
+  
+  // Injetar imediatamente e observar mudanças
+  setTimeout(injectMenuButton, 50);
+  
+  // Observer para re-injetar quando o DOM muda (navegação entre telas)
+  if (!window._sidebarObserver) {
+    window._sidebarObserver = new MutationObserver(() => {
+      const userId = localStorage.getItem('userId');
+      if (userId && !document.querySelector('#sidebar-trigger')) {
+        injectMenuButton();
+      }
+    });
+    window._sidebarObserver.observe(document.body, { childList: true, subtree: true });
+  }
   
   // Adicionar estilos CSS
   if (!document.getElementById('fab-styles')) {
@@ -1240,13 +1257,6 @@ function createUnifiedFAB() {
         pointer-events: auto !important;
       }
       @media (max-width: 640px) {
-        #sidebar-trigger {
-          bottom: 16px !important;
-          left: 16px !important;
-          width: 44px !important;
-          height: 44px !important;
-          border-radius: 12px !important;
-        }
         #sidebar-menu {
           width: 280px !important;
         }
@@ -1276,19 +1286,21 @@ window.toggleFabMenu = function() {
   fabMenuOpen = !fabMenuOpen;
   const sidebar = document.getElementById('sidebar-menu');
   const overlay = document.getElementById('sidebar-overlay');
-  const trigger = document.getElementById('sidebar-trigger');
+  const triggerIcon = document.querySelector('#sidebar-trigger #fab-icon');
   
   if (fabMenuOpen) {
     sidebar?.classList.add('open');
     overlay?.classList.add('open');
-    if (trigger) {
-      trigger.innerHTML = '<i class="fas fa-times" style="font-size:18px;" id="fab-icon"></i>';
+    if (triggerIcon) {
+      triggerIcon.className = 'fas fa-times text-white text-base group-hover:scale-110 transition-transform';
+      triggerIcon.id = 'fab-icon';
     }
   } else {
     sidebar?.classList.remove('open');
     overlay?.classList.remove('open');
-    if (trigger) {
-      trigger.innerHTML = '<i class="fas fa-bars" style="font-size:18px;" id="fab-icon"></i>';
+    if (triggerIcon) {
+      triggerIcon.className = 'fas fa-bars text-white text-base group-hover:scale-110 transition-transform';
+      triggerIcon.id = 'fab-icon';
     }
   }
 }
@@ -30180,7 +30192,7 @@ const tutorialSteps = [
       <p class="mb-3 text-gray-700">Olá! Eu sou a <b class="text-[#122D6A]">Lilu</b>, sua assistente de estudos! 🤖</p>
       <p class="mb-3">Vou te guiar por todas as funcionalidades do sistema para você <b>maximizar sua aprovação</b> em concursos.</p>
       <div class="bg-blue-50 rounded-lg p-3 text-sm">
-        <p class="text-blue-700"><i class="fas fa-lightbulb mr-1"></i> <b>Dica:</b> Este tour pode ser acessado novamente pelo menu a qualquer momento.</p>
+        <p class="text-blue-700"><i class="fas fa-lightbulb mr-1"></i> <b>Dica:</b> Este tour pode ser reiniciado a qualquer momento pelo menu lateral ou ajuda (<i class="fas fa-question-circle"></i>).</p>
       </div>
     `,
     target: null,
@@ -30189,39 +30201,45 @@ const tutorialSteps = [
     showPrev: false
   },
   {
-    id: 'lilu-assistant',
-    title: '🤖 Conheça a Lilu - Sua Assistente',
+    id: 'sidebar-menu',
+    title: '☰ Menu Lateral de Navegação',
     content: `
-      <p class="mb-3">A <b class="text-purple-600">Lilu</b> é sua assistente virtual inteligente que conhece <b>TUDO</b> sobre o sistema!</p>
-      <div class="bg-purple-50 rounded-lg p-3 mb-3">
-        <p class="text-purple-700 font-semibold mb-2">Ela pode te ajudar com:</p>
-        <ul class="text-sm text-purple-600 space-y-1">
-          <li>✨ Explicar qualquer funcionalidade do sistema</li>
-          <li>📊 Mostrar seu progresso e estatísticas</li>
-          <li>💡 Dar dicas personalizadas de estudo</li>
-          <li>🔧 Resolver dúvidas e problemas</li>
-          <li>📚 Orientar sobre como usar cada recurso</li>
+      <p class="mb-3">O botão <b>☰</b> no canto superior esquerdo do cabeçalho abre o <b>menu lateral</b> com acesso rápido a tudo:</p>
+      <div class="bg-blue-50 rounded-lg p-3 mb-3">
+        <p class="text-blue-700 font-semibold mb-2">Seções do menu:</p>
+        <ul class="text-sm text-blue-600 space-y-1">
+          <li>🏠 <b>Dashboard</b> — Tela principal</li>
+          <li>📚 <b>Disciplinas</b> — Matérias e tópicos</li>
+          <li>✍️ <b>Simulados</b> — Testes e questões</li>
+          <li>📅 <b>Calendário</b> — Visão mensal</li>
+          <li>📊 <b>Desempenho</b> — Gráficos e estatísticas</li>
+          <li>🏛️ <b>Concursos</b> — Busca de editais</li>
         </ul>
       </div>
-      <p class="text-sm text-gray-600"><i class="fas fa-comment-dots mr-1"></i> Acesse pelo <b>botão flutuante roxo</b> ou pelo menu!</p>
+      <p class="text-sm text-gray-600">Também acessa <b>Assistente Lilu</b>, <b>Feedback</b>, <b>Configurações</b> e <b>Instalar App</b>.</p>
     `,
-    target: null,
-    position: 'center'
-  },
-  {
-    id: 'countdown',
-    title: '📅 Contagem Regressiva',
-    content: `
-      <p class="mb-2">Mostra quantos dias faltam para sua prova.</p>
-      <p class="text-sm text-gray-600 mb-2">💡 <b>Clique</b> para editar a data da prova a qualquer momento.</p>
-      <div class="bg-amber-50 rounded-lg p-2 text-xs text-amber-700">
-        <i class="fas fa-info-circle mr-1"></i> Manter a data atualizada ajuda o sistema a calcular suas metas!
-      </div>
-    `,
-    target: '[onclick*="abrirModalEditarDataProva"]',
+    target: '#sidebar-trigger',
     position: 'bottom',
     highlight: true,
     arrow: 'top'
+  },
+  {
+    id: 'kpis-row',
+    title: '📊 Seus Indicadores',
+    content: `
+      <p class="mb-2">No topo do dashboard, você encontra seus <b>KPIs principais</b> de um relance:</p>
+      <ul class="text-sm text-gray-600 space-y-1 mb-3">
+        <li>📈 <b>Progresso Geral</b> — Percentual do edital concluído</li>
+        <li>⏱️ <b>Tempo Estudado</b> — Horas totais dedicadas</li>
+        <li>📚 <b>Disciplinas</b> — Total de matérias no plano</li>
+        <li>✍️ <b>Simulados</b> — Sua nota média</li>
+      </ul>
+      <div class="bg-green-50 rounded-lg p-2 text-xs text-green-700">
+        <i class="fas fa-hand-pointer mr-1"></i> Clique nos KPIs para ir direto a Disciplinas ou Simulados!
+      </div>
+    `,
+    target: null,
+    position: 'center'
   },
   {
     id: 'progress-important',
@@ -30230,43 +30248,61 @@ const tutorialSteps = [
       <div class="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-4 mb-3">
         <p class="font-bold text-[#122D6A] mb-2 text-center">🎯 O progresso do edital avança assim:</p>
         <ol class="text-sm space-y-2 list-decimal list-inside">
-          <li><b>Clique em "Disciplinas"</b> no menu ou card</li>
+          <li>Abra <b>"Disciplinas"</b> no menu lateral (☰)</li>
           <li><b>Escolha uma disciplina</b> para ver os tópicos</li>
           <li><b>Marque tópicos como "✅ Concluído"</b> após estudar</li>
         </ol>
       </div>
       <div class="bg-amber-50 rounded-lg p-2 text-xs text-amber-700">
-        <i class="fas fa-exclamation-triangle mr-1"></i> <b>Atenção:</b> Concluir metas semanais é para organização - o progresso REAL vem dos tópicos marcados!
+        <i class="fas fa-exclamation-triangle mr-1"></i> <b>Atenção:</b> Concluir metas semanais é para organização — o progresso REAL vem dos tópicos marcados em Disciplinas!
       </div>
     `,
     target: null,
     position: 'center'
   },
   {
-    id: 'disciplines',
-    title: '📚 Suas Disciplinas',
+    id: 'weekly-goals',
+    title: '🎯 Metas Semanais',
     content: `
-      <p class="mb-2">Aqui você encontra todas as matérias do seu edital.</p>
+      <p class="mb-2">O sistema gera <b>metas automáticas</b> distribuídas na semana.</p>
       <ul class="text-sm text-gray-600 space-y-1 mb-3">
-        <li>📊 Veja o <b>progresso</b> de cada matéria</li>
-        <li>⭐ Ajuste o <b>nível de domínio</b> (0-10)</li>
-        <li>✅ <b class="text-green-600">Marque tópicos como concluídos</b></li>
-        <li>🤖 <b>Gere conteúdo</b> (teoria, exercícios, resumo)</li>
+        <li>⏰ Respeita seu <b>tempo disponível</b></li>
+        <li>📅 Considera seus <b>dias de estudo</b></li>
+        <li>🔄 Alterna entre <b>teoria, exercícios e revisão</b></li>
       </ul>
-      <div class="bg-green-50 rounded-lg p-2 text-xs text-green-700">
-        <i class="fas fa-check-circle mr-1"></i> <b>É aqui que seu progresso real é contabilizado!</b>
+      <p class="mb-2 text-sm">Selecione o <b>dia da semana</b> nas abas para ver as metas de cada dia.</p>
+      <div class="bg-blue-50 rounded-lg p-2 text-xs text-blue-700">
+        <i class="fas fa-info-circle mr-1"></i> Use o botão <b>Gerar</b> (<i class="fas fa-pencil-alt"></i>) para criar as metas da semana.
       </div>
     `,
-    target: '[onclick="renderPortfolioDisciplinas()"]',
-    position: 'bottom',
+    target: '#calendario-semanal',
+    position: 'top',
     highlight: true,
-    arrow: 'top'
+    arrow: 'bottom'
+  },
+  {
+    id: 'daily-study-cards',
+    title: '📋 Cards de Estudo',
+    content: `
+      <p class="mb-2">Cada meta do dia aparece como um <b>card</b> com ações:</p>
+      <ul class="text-sm text-gray-600 space-y-1 mb-3">
+        <li>🟢 <b>Concluídos</b> — Ficam à esquerda com ✅ verde</li>
+        <li>📖 <b>Ativos</b> — Botão <b>"Estudar"</b> abre o conteúdo da IA</li>
+        <li>✅ <b>"Concluir"</b> — Marca a meta como feita</li>
+        <li>📝 <b>Teoria · Questões · Resumo · Flash · Upload</b> — Atalhos de conteúdo</li>
+      </ul>
+      <div class="bg-green-50 rounded-lg p-2 text-xs text-green-700">
+        <i class="fas fa-pencil-alt mr-1"></i> Use o ícone de lápis (✏️) para trocar a disciplina/tópico de uma meta.
+      </div>
+    `,
+    target: null,
+    position: 'center'
   },
   {
     id: 'content-generation',
     title: '🤖 Geração de Conteúdo com IA',
     content: `
-      <p class="mb-3">O sistema usa <b>Inteligência Artificial</b> para criar conteúdo personalizado!</p>
+      <p class="mb-3">Clique em <b>"Estudar"</b> nos cards ou nos atalhos abaixo deles:</p>
       <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
         <div class="bg-blue-50 rounded-lg p-2 text-center">
           <span class="text-2xl">📖</span>
@@ -30275,8 +30311,8 @@ const tutorialSteps = [
         </div>
         <div class="bg-green-50 rounded-lg p-2 text-center">
           <span class="text-2xl">✏️</span>
-          <p class="font-semibold text-green-700">Exercícios</p>
-          <p class="text-green-600">Questões comentadas</p>
+          <p class="font-semibold text-green-700">Questões</p>
+          <p class="text-green-600">Exercícios comentados</p>
         </div>
         <div class="bg-yellow-50 rounded-lg p-2 text-center">
           <span class="text-2xl">📝</span>
@@ -30286,10 +30322,10 @@ const tutorialSteps = [
         <div class="bg-purple-50 rounded-lg p-2 text-center">
           <span class="text-2xl">🃏</span>
           <p class="font-semibold text-purple-700">Flashcards</p>
-          <p class="text-purple-600">Memorização</p>
+          <p class="text-purple-600">Memorização ativa</p>
         </div>
       </div>
-      <p class="text-xs text-gray-500"><i class="fas fa-save mr-1"></i> Todo conteúdo é salvo automaticamente em "Materiais"!</p>
+      <p class="text-xs text-gray-500"><i class="fas fa-save mr-1"></i> Todo conteúdo gerado fica salvo automaticamente!</p>
     `,
     target: null,
     position: 'center'
@@ -30306,124 +30342,80 @@ const tutorialSteps = [
         <li>💬 Cada questão tem <b>gabarito comentado</b></li>
       </ul>
       <div class="bg-cyan-50 rounded-lg p-2 text-xs text-cyan-700">
-        <i class="fas fa-chart-line mr-1"></i> O dashboard mostra sua média e evolução nos últimos simulados!
+        <i class="fas fa-chart-line mr-1"></i> Acesse via menu lateral (☰) > Simulados ou pelo KPI no topo.
       </div>
-    `,
-    target: '[onclick*="renderDashboardSimulados"]',
-    position: 'bottom',
-    highlight: true,
-    arrow: 'top'
-  },
-  {
-    id: 'weekly-goals',
-    title: '🎯 Metas Semanais',
-    content: `
-      <p class="mb-2">O sistema gera <b>metas automáticas</b> distribuídas na semana.</p>
-      <ul class="text-sm text-gray-600 space-y-1 mb-3">
-        <li>⏰ Respeita seu <b>tempo disponível</b></li>
-        <li>📅 Considera seus <b>dias de estudo</b></li>
-        <li>🔄 Alterna entre <b>teoria, exercícios e revisão</b></li>
-      </ul>
-      <div class="bg-blue-50 rounded-lg p-2 text-xs text-blue-700">
-        <i class="fas fa-info-circle mr-1"></i> As metas são para <b>organização</b> - o progresso do edital vem dos tópicos em Disciplinas!
-      </div>
-    `,
-    target: '.semana-resumo-card',
-    position: 'top',
-    highlight: true,
-    arrow: 'bottom'
-  },
-  {
-    id: 'daily-goals',
-    title: '📋 Metas do Dia',
-    content: `
-      <p class="mb-2">Cada dia tem metas de <b>teoria</b>, <b>exercícios</b> e <b>revisão</b>.</p>
-      <ul class="text-sm text-gray-600 space-y-1 mb-3">
-        <li>📖 Clique para <b>estudar o conteúdo</b></li>
-        <li>✅ Marque como <b>concluída</b> ao finalizar</li>
-        <li>🤖 A IA gera o <b>material de estudo</b></li>
-        <li>🔄 Pode <b>regenerar</b> se quiser outro conteúdo</li>
-      </ul>
-    `,
-    target: '.meta-card',
-    position: 'top',
-    highlight: true,
-    arrow: 'bottom',
-    fallbackTarget: '.calendario-semanal'
-  },
-  {
-    id: 'desempenho',
-    title: '📊 Dashboard de Desempenho',
-    content: `
-      <p class="mb-2">Acompanhe sua evolução com <b>gráficos detalhados</b>!</p>
-      <ul class="text-sm text-gray-600 space-y-1 mb-3">
-        <li>📈 <b>Progresso por Matéria:</b> Gráfico de barras</li>
-        <li>🎯 <b>Nível de Domínio:</b> Gráfico radar</li>
-        <li>📊 <b>Estatísticas:</b> Dias estudados, horas, média</li>
-        <li>🏆 <b>Simulados:</b> Evolução e meta de acertos</li>
-      </ul>
-      <p class="text-xs text-gray-500">Clique em "Desempenho" para acessar!</p>
     `,
     target: null,
     position: 'center'
   },
   {
-    id: 'fab-button',
-    title: '🔘 Menu de Ações Rápidas',
+    id: 'disciplines',
+    title: '📚 Disciplinas e Progresso',
     content: `
-      <p class="mb-3">O <b>botão flutuante</b> dá acesso rápido às funcionalidades:</p>
-      <ul class="text-sm space-y-2">
-        <li>🤖 <b class="text-purple-600">Assistente Lilu:</b> Tire qualquer dúvida</li>
-        <li>📚 <b class="text-[#122D6A]">Disciplinas:</b> Gerencie tópicos</li>
-        <li>✍️ <b class="text-cyan-600">Simulados:</b> Faça testes</li>
-        <li>📅 <b class="text-teal-600">Calendário:</b> Histórico de estudos</li>
+      <p class="mb-2">Gerencie todas as matérias do seu edital:</p>
+      <ul class="text-sm text-gray-600 space-y-1 mb-3">
+        <li>📊 Veja o <b>progresso</b> de cada matéria</li>
+        <li>⭐ Ajuste o <b>nível de domínio</b> (0-10)</li>
+        <li>✅ <b class="text-green-600">Marque tópicos como concluídos</b></li>
+        <li>🤖 <b>Gere conteúdo</b> (teoria, exercícios, resumo)</li>
       </ul>
+      <div class="bg-green-50 rounded-lg p-2 text-xs text-green-700">
+        <i class="fas fa-check-circle mr-1"></i> <b>É aqui que seu progresso real é contabilizado!</b>
+      </div>
     `,
-    target: '#fab-main',
-    position: 'left',
-    highlight: true,
-    arrow: 'right'
+    target: null,
+    position: 'center'
   },
   {
-    id: 'ia-personalization',
-    title: '🎨 Personalização da IA',
+    id: 'lilu-assistant',
+    title: '🤖 Assistente Lilu',
     content: `
-      <p class="mb-3">Configure como a IA gera seu conteúdo:</p>
-      <div class="grid grid-cols-2 gap-2 text-xs mb-3">
-        <div class="bg-gray-50 rounded p-2">
-          <span class="font-semibold">📝 Tom</span>
-          <p class="text-gray-600">Formal, didático, direto</p>
-        </div>
-        <div class="bg-gray-50 rounded p-2">
-          <span class="font-semibold">📊 Intensidade</span>
-          <p class="text-gray-600">Superficial a aprofundada</p>
-        </div>
-        <div class="bg-gray-50 rounded p-2">
-          <span class="font-semibold">🔍 Profundidade</span>
-          <p class="text-gray-600">Conceitual, aplicada, analítica</p>
-        </div>
-        <div class="bg-gray-50 rounded p-2">
-          <span class="font-semibold">📏 Extensão</span>
-          <p class="text-gray-600">5K a 20K caracteres</p>
-        </div>
+      <p class="mb-3">A <b class="text-purple-600">Lilu</b> é sua assistente virtual inteligente que conhece <b>TUDO</b> sobre o sistema!</p>
+      <div class="bg-purple-50 rounded-lg p-3 mb-3">
+        <p class="text-purple-700 font-semibold mb-2">Ela pode te ajudar com:</p>
+        <ul class="text-sm text-purple-600 space-y-1">
+          <li>✨ Explicar qualquer funcionalidade</li>
+          <li>📊 Mostrar seu progresso e estatísticas</li>
+          <li>💡 Dar dicas personalizadas de estudo</li>
+          <li>🔧 Resolver dúvidas e problemas</li>
+        </ul>
       </div>
-      <p class="text-xs text-purple-600"><i class="fas fa-magic mr-1"></i> Acesse pelo botão roxo no menu flutuante!</p>
+      <p class="text-sm text-gray-600"><i class="fas fa-bars mr-1"></i> Acesse pelo <b>menu lateral (☰) > Assistente Lilu</b>.</p>
     `,
     target: null,
     position: 'center'
   },
   {
     id: 'multiple-plans',
-    title: '📋 Múltiplos Planos',
+    title: '📋 Meus Planos',
     content: `
-      <p class="mb-3">Você pode ter <b>vários planos de estudo</b> - um para cada concurso!</p>
+      <p class="mb-3">Gerencie <b>vários planos de estudo</b> — um para cada concurso!</p>
       <ul class="text-sm text-gray-600 space-y-1 mb-3">
         <li>✅ Apenas <b>um plano ativo</b> por vez</li>
         <li>💾 Ao trocar, o <b>progresso é preservado</b></li>
         <li>🔄 Pode <b>reativar</b> planos anteriores</li>
+        <li>✏️ Use <b>Editar</b> para ajustar ou <b>Excluir</b> para remover</li>
       </ul>
       <div class="bg-green-50 rounded-lg p-2 text-xs text-green-700">
         <i class="fas fa-shield-alt mr-1"></i> Seus dados nunca são perdidos ao alternar planos!
+      </div>
+    `,
+    target: null,
+    position: 'center'
+  },
+  {
+    id: 'header-tools',
+    title: '🛠️ Ferramentas do Cabeçalho',
+    content: `
+      <p class="mb-3">O cabeçalho azul tem atalhos importantes:</p>
+      <ul class="text-sm space-y-2">
+        <li><i class="fas fa-bars text-[#122D6A] mr-2"></i> <b>Menu lateral</b> — Acesso a todas as seções</li>
+        <li><i class="fas fa-moon text-[#122D6A] mr-2"></i> <b>Tema</b> — Alterna entre claro e escuro</li>
+        <li><i class="fas fa-question-circle text-[#122D6A] mr-2"></i> <b>Ajuda</b> — Central de ajuda e este tour</li>
+        <li><i class="fas fa-cog text-[#122D6A] mr-2"></i> <b>Configurações</b> — Personalização da IA e preferências</li>
+      </ul>
+      <div class="bg-blue-50 rounded-lg p-2 text-xs text-blue-700 mt-3">
+        <i class="fas fa-desktop mr-1"></i> No desktop, ícones extras de Desempenho, Simulados, Disciplinas e Calendário aparecem no cabeçalho.
       </div>
     `,
     target: null,
@@ -30445,7 +30437,7 @@ const tutorialSteps = [
           <span class="text-xl">✅</span>
           <div>
             <p class="font-semibold text-green-700">Marque Tópicos</p>
-            <p class="text-xs text-green-600">Acompanhe seu progresso real</p>
+            <p class="text-xs text-green-600">Acompanhe seu progresso real em Disciplinas</p>
           </div>
         </div>
         <div class="flex items-start gap-2 bg-purple-50 rounded-lg p-2">
