@@ -10592,7 +10592,7 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
                   <i class="fas fa-book text-[#122D6A]"></i>
                 </div>
                 <div>
-                  <p class="font-semibold text-gray-800">Teoria</p>
+                  <p class="font-semibold" style="color:${textMain};">Teoria</p>
                   <p class="text-xs text-gray-500">Conteúdo completo</p>
                 </div>
               </div>
@@ -10606,7 +10606,7 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
                   <i class="fas fa-tasks text-[#2A4A9F]"></i>
                 </div>
                 <div>
-                  <p class="font-semibold text-gray-800">Exercícios</p>
+                  <p class="font-semibold" style="color:${textMain};">Exercícios</p>
                   <p class="text-xs text-gray-500">Questões de concurso</p>
                 </div>
               </div>
@@ -10620,7 +10620,7 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
                   <i class="fas fa-project-diagram text-[#2A4A9F]"></i>
                 </div>
                 <div>
-                  <p class="font-semibold text-gray-800">Resumo Esquematizado</p>
+                  <p class="font-semibold" style="color:${textMain};">Resumo Esquematizado</p>
                   <p class="text-xs text-gray-500">Visual com cards, tabelas e hierarquias</p>
                 </div>
               </div>
@@ -10634,7 +10634,7 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
                   <i class="fas fa-clone text-[#4A6AC0]"></i>
                 </div>
                 <div>
-                  <p class="font-semibold text-gray-800">Flashcards</p>
+                  <p class="font-semibold" style="color:${textMain};">Flashcards</p>
                   <p class="text-xs text-gray-500">Cards de revisão</p>
                 </div>
               </div>
@@ -10649,7 +10649,7 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
                   <i class="fas fa-file-upload text-[#122D6A]"></i>
                 </div>
                 <div class="flex-1">
-                  <p class="font-semibold text-gray-800">Resumo Personalizado</p>
+                  <p class="font-semibold" style="color:${textMain};">Resumo Personalizado</p>
                   <p class="text-xs text-gray-500">Upload de PDF ou documento para gerar resumo com IA</p>
                 </div>
               </div>
@@ -22052,7 +22052,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
                 <i class="fas fa-book text-[#122D6A] group-hover:text-white transition-colors"></i>
               </div>
               <div>
-                <p class="font-semibold text-gray-800">Teoria</p>
+                <p class="font-semibold" style="color:${textMain};">Teoria</p>
                 <p class="text-xs text-gray-500">Conteúdo MÁXIMO</p>
               </div>
             </div>
@@ -22065,7 +22065,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
                 <i class="fas fa-tasks text-emerald-600 group-hover:text-white transition-colors"></i>
               </div>
               <div>
-                <p class="font-semibold text-gray-800">Exercícios</p>
+                <p class="font-semibold" style="color:${textMain};">Exercícios</p>
                 <p class="text-xs text-gray-500">Questões de concurso</p>
               </div>
             </div>
@@ -22078,7 +22078,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
                 <i class="fas fa-file-alt text-[#2A4A9F] group-hover:text-white transition-colors"></i>
               </div>
               <div>
-                <p class="font-semibold text-gray-800">Resumo</p>
+                <p class="font-semibold" style="color:${textMain};">Resumo</p>
                 <p class="text-xs text-gray-500">Esquematizado com IA</p>
               </div>
             </div>
@@ -22091,7 +22091,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
                 <i class="fas fa-clone text-[#3A5AB0] group-hover:text-white transition-colors"></i>
               </div>
               <div>
-                <p class="font-semibold text-gray-800">Flashcards</p>
+                <p class="font-semibold" style="color:${textMain};">Flashcards</p>
                 <p class="text-xs text-gray-500">Cards de revisão</p>
               </div>
             </div>
@@ -22105,7 +22105,7 @@ async function abrirDisciplinaComTopico(disciplinaId, disciplinaNome, topico = n
                 <i class="fas fa-file-upload text-[#3A5AB0] group-hover:text-white transition-colors"></i>
               </div>
               <div>
-                <p class="font-semibold text-gray-800">Resumo Personalizado</p>
+                <p class="font-semibold" style="color:${textMain};">Resumo Personalizado</p>
                 <p class="text-xs text-gray-500">Upload de PDF para gerar resumo com IA</p>
               </div>
             </div>
@@ -31505,49 +31505,49 @@ window.createHelpButton = function() {
   helpContainer.id = 'help-menu-container';
   helpContainer.innerHTML = `
     <!-- Menu de Opções de Ajuda - Posicionado abaixo do botão no header -->
-    <div id="help-menu" class="hidden fixed top-14 right-4 z-[9999] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-3 min-w-[260px] border border-gray-200 dark:border-gray-700" style="animation: slideDown 0.2s ease-out;">
-      <div class="mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-sm font-bold text-[#122D6A] dark:text-blue-400 flex items-center gap-2">
+    <div id="help-menu" class="hidden fixed top-14 right-4 z-[9999] rounded-2xl shadow-2xl p-3 min-w-[260px]" style="background:${currentTheme==='dark'?'#1F2937':'#FFFFFF'};border:1px solid ${currentTheme==='dark'?'#374151':'#E5E7EB'};animation: slideDown 0.2s ease-out;">
+      <div class="mb-2 pb-2" style="border-bottom:1px solid ${currentTheme==='dark'?'#374151':'#E5E7EB'};">
+        <h3 class="text-sm font-bold flex items-center gap-2" style="color:${currentTheme==='dark'?'#60A5FA':'#122D6A'};">
           <i class="fas fa-life-ring"></i> Central de Ajuda
         </h3>
       </div>
       <div class="space-y-1">
         <button 
           onclick="startTutorial(true); toggleHelpMenu()"
-          class="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#122D6A]/10 dark:hover:bg-gray-700 rounded-xl transition-all group"
+          class="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group" style="background:transparent;" onmouseover="this.style.background='${currentTheme==='dark'?'#374151':'rgba(18,45,106,0.08)'}'" onmouseout="this.style.background='transparent'"
         >
           <div class="w-10 h-10 bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
             <i class="fas fa-graduation-cap text-white text-sm"></i>
           </div>
           <div class="text-left">
-            <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">Tour Guiado</p>
-            <p class="text-xs text-gray-500">Aprenda a usar o sistema</p>
+            <p class="font-semibold text-sm" style="color:${currentTheme==='dark'?'#E5E7EB':'#1F2937'};">Tour Guiado</p>
+            <p class="text-xs" style="color:${currentTheme==='dark'?'#9CA3AF':'#6B7280'};">Aprenda a usar o sistema</p>
           </div>
         </button>
         
         <button 
           onclick="openFAQ(); toggleHelpMenu()"
-          class="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#122D6A]/10 dark:hover:bg-gray-700 rounded-xl transition-all group"
+          class="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group" style="background:transparent;" onmouseover="this.style.background='${currentTheme==='dark'?'#374151':'rgba(18,45,106,0.08)'}'" onmouseout="this.style.background='transparent'"
         >
           <div class="w-10 h-10 bg-gradient-to-br from-[#2A4A9F] to-[#3A5AB0] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
             <i class="fas fa-question-circle text-white text-sm"></i>
           </div>
           <div class="text-left">
-            <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">Perguntas Frequentes</p>
-            <p class="text-xs text-gray-500">Dúvidas comuns</p>
+            <p class="font-semibold text-sm" style="color:${currentTheme==='dark'?'#E5E7EB':'#1F2937'};">Perguntas Frequentes</p>
+            <p class="text-xs" style="color:${currentTheme==='dark'?'#9CA3AF':'#6B7280'};">Dúvidas comuns</p>
           </div>
         </button>
         
         <button 
           onclick="window.abrirModalAjuda && window.abrirModalAjuda(); toggleHelpMenu()"
-          class="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#122D6A]/10 dark:hover:bg-gray-700 rounded-xl transition-all group"
+          class="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group" style="background:transparent;" onmouseover="this.style.background='${currentTheme==='dark'?'#374151':'rgba(18,45,106,0.08)'}'" onmouseout="this.style.background='transparent'"
         >
           <div class="w-10 h-10 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
             <i class="fas fa-book-open text-white text-sm"></i>
           </div>
           <div class="text-left">
-            <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">Documentação</p>
-            <p class="text-xs text-gray-500">Como usar cada recurso</p>
+            <p class="font-semibold text-sm" style="color:${currentTheme==='dark'?'#E5E7EB':'#1F2937'};">Documentação</p>
+            <p class="text-xs" style="color:${currentTheme==='dark'?'#9CA3AF':'#6B7280'};">Como usar cada recurso</p>
           </div>
         </button>
       </div>
@@ -31620,12 +31620,19 @@ window.toggleFAQItem = function(button) {
 }
 
 window.openFAQ = function() {
-  // Criar modal de FAQ
+  var _d = currentTheme === 'dark';
+  var bgCard = _d ? '#1F2937' : '#FFFFFF';
+  var textMain = _d ? '#F3F4F6' : '#1F2937';
+  var textSec = _d ? '#9CA3AF' : '#6B7280';
+  var borderC = _d ? '#374151' : '#E5E7EB';
+  var itemBg = _d ? 'rgba(42,74,159,0.15)' : 'rgba(232,237,245,0.3)';
+  var itemBorder = _d ? 'rgba(42,74,159,0.3)' : 'rgba(18,45,106,0.1)';
+  
   const modalFAQ = document.createElement('div');
   modalFAQ.id = 'modal-faq';
   modalFAQ.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4';
   modalFAQ.innerHTML = `
-    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div style="background:${bgCard};border-radius:16px;box-shadow:0 25px 50px rgba(0,0,0,0.25);max-width:896px;width:100%;max-height:90vh;overflow:hidden;">
       <!-- Header -->
       <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] p-6 text-white">
         <div class="flex items-center justify-between">
@@ -31646,22 +31653,22 @@ window.openFAQ = function() {
       </div>
       
       <!-- Conteúdo do FAQ -->
-      <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+      <div class="p-6 overflow-y-auto" style="max-height:calc(90vh - 120px);">
         <div class="space-y-4">
           
           <!-- Categoria: Começando -->
           <div class="mb-6">
-            <h3 class="text-lg font-bold text-[#122D6A] mb-3 flex items-center gap-2">
+            <h3 class="text-lg font-bold mb-3 flex items-center gap-2" style="color:${_d?'#60A5FA':'#122D6A'};">
               <i class="fas fa-rocket"></i> Começando
             </h3>
             
             <div class="space-y-3">
-              <div class="bg-[#E8EDF5]/30 rounded-xl p-4 border border-[#122D6A]/10">
+              <div style="background:${itemBg};border:1px solid ${itemBorder};border-radius:12px;padding:16px;">
                 <button onclick="toggleFAQItem(this)" class="w-full text-left flex items-start gap-3">
-                  <i class="fas fa-chevron-right text-[#122D6A] mt-1 transition-transform"></i>
+                  <i class="fas fa-chevron-right mt-1 transition-transform" style="color:${_d?'#60A5FA':'#122D6A'};"></i>
                   <div class="flex-1">
-                    <p class="font-semibold text-gray-800">Como faço meu primeiro plano de estudos?</p>
-                    <div class="hidden mt-2 text-sm text-gray-600 space-y-2">
+                    <p class="font-semibold" style="color:${textMain};">Como faço meu primeiro plano de estudos?</p>
+                    <div class="hidden mt-2 text-sm space-y-2" style="color:${textSec};">
                       <p>1. Clique em "Novo Plano" no dashboard</p>
                       <p>2. Complete a entrevista em 4 passos:</p>
                       <p class="ml-4">• Escolha a área e cargo desejado</p>
@@ -31674,12 +31681,12 @@ window.openFAQ = function() {
                 </button>
               </div>
               
-              <div class="bg-[#E8EDF5]/30 rounded-xl p-4 border border-[#122D6A]/10">
+              <div style="background:${itemBg};border:1px solid ${itemBorder};border-radius:12px;padding:16px;">
                 <button onclick="toggleFAQItem(this)" class="w-full text-left flex items-start gap-3">
-                  <i class="fas fa-chevron-right text-[#122D6A] mt-1 transition-transform"></i>
+                  <i class="fas fa-chevron-right mt-1 transition-transform" style="color:${_d?'#60A5FA':'#122D6A'};"></i>
                   <div class="flex-1">
-                    <p class="font-semibold text-gray-800">O que significam os ícones ao lado das metas?</p>
-                    <div class="hidden mt-2 text-sm text-gray-600 space-y-2">
+                    <p class="font-semibold" style="color:${textMain};">O que significam os ícones ao lado das metas?</p>
+                    <div class="hidden mt-2 text-sm space-y-2" style="color:${textSec};">
                       <p>📖 <strong>Livro:</strong> Teoria do conteúdo</p>
                       <p>✏️ <strong>Tarefas:</strong> Exercícios práticos</p>
                       <p>📝 <strong>Arquivo:</strong> Resumo esquematizado</p>
@@ -31695,17 +31702,17 @@ window.openFAQ = function() {
           
           <!-- Categoria: Metas e Estudos -->
           <div class="mb-6">
-            <h3 class="text-lg font-bold text-[#122D6A] mb-3 flex items-center gap-2">
+            <h3 class="text-lg font-bold mb-3 flex items-center gap-2" style="color:${_d?'#60A5FA':'#122D6A'};">
               <i class="fas fa-calendar-check"></i> Metas e Estudos
             </h3>
             
             <div class="space-y-3">
-              <div class="bg-[#E8EDF5]/30 rounded-xl p-4 border border-[#122D6A]/10">
+              <div style="background:${itemBg};border:1px solid ${itemBorder};border-radius:12px;padding:16px;">
                 <button onclick="toggleFAQItem(this)" class="w-full text-left flex items-start gap-3">
-                  <i class="fas fa-chevron-right text-[#122D6A] mt-1 transition-transform"></i>
+                  <i class="fas fa-chevron-right mt-1 transition-transform" style="color:${_d?'#60A5FA':'#122D6A'};"></i>
                   <div class="flex-1">
-                    <p class="font-semibold text-gray-800">Como gero conteúdo de estudo?</p>
-                    <div class="hidden mt-2 text-sm text-gray-600 space-y-2">
+                    <p class="font-semibold" style="color:${textMain};">Como gero conteúdo de estudo?</p>
+                    <div class="hidden mt-2 text-sm space-y-2" style="color:${textSec};">
                       <p>1. Clique no botão <strong>"Estudar"</strong> em qualquer meta</p>
                       <p>2. Escolha o tipo de conteúdo desejado:</p>
                       <p class="ml-4">• Teoria completa</p>
@@ -31719,12 +31726,12 @@ window.openFAQ = function() {
                 </button>
               </div>
               
-              <div class="bg-[#E8EDF5]/30 rounded-xl p-4 border border-[#122D6A]/10">
+              <div style="background:${itemBg};border:1px solid ${itemBorder};border-radius:12px;padding:16px;">
                 <button onclick="toggleFAQItem(this)" class="w-full text-left flex items-start gap-3">
-                  <i class="fas fa-chevron-right text-[#122D6A] mt-1 transition-transform"></i>
+                  <i class="fas fa-chevron-right mt-1 transition-transform" style="color:${_d?'#60A5FA':'#122D6A'};"></i>
                   <div class="flex-1">
-                    <p class="font-semibold text-gray-800">Como funciona a geração de metas semanais?</p>
-                    <div class="hidden mt-2 text-sm text-gray-600 space-y-2">
+                    <p class="font-semibold" style="color:${textMain};">Como funciona a geração de metas semanais?</p>
+                    <div class="hidden mt-2 text-sm space-y-2" style="color:${textSec};">
                       <p>• O sistema distribui os tópicos ao longo da semana</p>
                       <p>• Considera apenas os dias que você pode estudar</p>
                       <p>• Respeita seu tempo disponível por dia</p>
@@ -31735,12 +31742,12 @@ window.openFAQ = function() {
                 </button>
               </div>
               
-              <div class="bg-[#E8EDF5]/30 rounded-xl p-4 border border-[#122D6A]/10">
+              <div style="background:${itemBg};border:1px solid ${itemBorder};border-radius:12px;padding:16px;">
                 <button onclick="toggleFAQItem(this)" class="w-full text-left flex items-start gap-3">
-                  <i class="fas fa-chevron-right text-[#122D6A] mt-1 transition-transform"></i>
+                  <i class="fas fa-chevron-right mt-1 transition-transform" style="color:${_d?'#60A5FA':'#122D6A'};"></i>
                   <div class="flex-1">
-                    <p class="font-semibold text-gray-800">Posso editar minhas metas?</p>
-                    <div class="hidden mt-2 text-sm text-gray-600 space-y-2">
+                    <p class="font-semibold" style="color:${textMain};">Posso editar minhas metas?</p>
+                    <div class="hidden mt-2 text-sm space-y-2" style="color:${textSec};">
                       <p>Sim! Você pode:</p>
                       <p>• Marcar metas como concluídas com o botão ✓</p>
                       <p>• Ver semanas anteriores clicando em "Anteriores"</p>
@@ -31755,17 +31762,17 @@ window.openFAQ = function() {
           
           <!-- Categoria: Simulados -->
           <div class="mb-6">
-            <h3 class="text-lg font-bold text-[#122D6A] mb-3 flex items-center gap-2">
+            <h3 class="text-lg font-bold mb-3 flex items-center gap-2" style="color:${_d?'#60A5FA':'#122D6A'};">
               <i class="fas fa-tasks"></i> Simulados
             </h3>
             
             <div class="space-y-3">
-              <div class="bg-[#E8EDF5]/30 rounded-xl p-4 border border-[#122D6A]/10">
+              <div style="background:${itemBg};border:1px solid ${itemBorder};border-radius:12px;padding:16px;">
                 <button onclick="toggleFAQItem(this)" class="w-full text-left flex items-start gap-3">
-                  <i class="fas fa-chevron-right text-[#122D6A] mt-1 transition-transform"></i>
+                  <i class="fas fa-chevron-right mt-1 transition-transform" style="color:${_d?'#60A5FA':'#122D6A'};"></i>
                   <div class="flex-1">
-                    <p class="font-semibold text-gray-800">Como funcionam os simulados?</p>
-                    <div class="hidden mt-2 text-sm text-gray-600 space-y-2">
+                    <p class="font-semibold" style="color:${textMain};">Como funcionam os simulados?</p>
+                    <div class="hidden mt-2 text-sm space-y-2" style="color:${textSec};">
                       <p>• <strong>Rápido:</strong> 10 questões em 15 minutos</p>
                       <p>• <strong>Padrão:</strong> 30 questões em 45 minutos</p>
                       <p>• <strong>Completo:</strong> 50 questões em 90 minutos</p>
@@ -31783,33 +31790,33 @@ window.openFAQ = function() {
           
           <!-- Categoria: Análise de Viabilidade -->
           <div class="mb-6">
-            <h3 class="text-lg font-bold text-[#122D6A] mb-3 flex items-center gap-2">
+            <h3 class="text-lg font-bold mb-3 flex items-center gap-2" style="color:${_d?'#60A5FA':'#122D6A'};">
               <i class="fas fa-chart-line"></i> Análise e Progresso
             </h3>
             
             <div class="space-y-3">
-              <div class="bg-[#E8EDF5]/30 rounded-xl p-4 border border-[#122D6A]/10">
+              <div style="background:${itemBg};border:1px solid ${itemBorder};border-radius:12px;padding:16px;">
                 <button onclick="toggleFAQItem(this)" class="w-full text-left flex items-start gap-3">
-                  <i class="fas fa-chevron-right text-[#122D6A] mt-1 transition-transform"></i>
+                  <i class="fas fa-chevron-right mt-1 transition-transform" style="color:${_d?'#60A5FA':'#122D6A'};"></i>
                   <div class="flex-1">
-                    <p class="font-semibold text-gray-800">O que significa a análise de viabilidade?</p>
-                    <div class="hidden mt-2 text-sm text-gray-600 space-y-2">
+                    <p class="font-semibold" style="color:${textMain};">O que significa a análise de viabilidade?</p>
+                    <div class="hidden mt-2 text-sm space-y-2" style="color:${textSec};">
                       <p>A viabilidade indica se você tem tempo suficiente para estudar todo o conteúdo:</p>
                       <p>• <strong class="text-[#122D6A]">✓ Tempo confortável:</strong> Sobra tempo para revisões</p>
                       <p>• <strong class="text-[#122D6A]">✓ Tempo adequado:</strong> Tempo justo para cobrir tudo</p>
-                      <p>• <strong class="text-gray-600">⚠️ Tempo apertado:</strong> Precisa otimizar estudos</p>
-                      <p>• <strong class="text-gray-800">⚠️ Tempo crítico:</strong> Foque nos tópicos principais</p>
+                      <p>• <strong style="color:${textSec};">⚠️ Tempo apertado:</strong> Precisa otimizar estudos</p>
+                      <p>• <strong style="color:${textMain};">⚠️ Tempo crítico:</strong> Foque nos tópicos principais</p>
                     </div>
                   </div>
                 </button>
               </div>
               
-              <div class="bg-[#E8EDF5]/30 rounded-xl p-4 border border-[#122D6A]/10">
+              <div style="background:${itemBg};border:1px solid ${itemBorder};border-radius:12px;padding:16px;">
                 <button onclick="toggleFAQItem(this)" class="w-full text-left flex items-start gap-3">
-                  <i class="fas fa-chevron-right text-[#122D6A] mt-1 transition-transform"></i>
+                  <i class="fas fa-chevron-right mt-1 transition-transform" style="color:${_d?'#60A5FA':'#122D6A'};"></i>
                   <div class="flex-1">
-                    <p class="font-semibold text-gray-800">Como acompanho meu progresso?</p>
-                    <div class="hidden mt-2 text-sm text-gray-600 space-y-2">
+                    <p class="font-semibold" style="color:${textMain};">Como acompanho meu progresso?</p>
+                    <div class="hidden mt-2 text-sm space-y-2" style="color:${textSec};">
                       <p>• <strong>Card de Progresso:</strong> Mostra % de tópicos estudados</p>
                       <p>• <strong>Calendário Semanal:</strong> Visualize metas diárias</p>
                       <p>• <strong>Estatísticas:</strong> Horas estudadas, dias ativos</p>
@@ -31823,17 +31830,17 @@ window.openFAQ = function() {
           
           <!-- Categoria: Dicas -->
           <div class="mb-6">
-            <h3 class="text-lg font-bold text-[#122D6A] mb-3 flex items-center gap-2">
+            <h3 class="text-lg font-bold mb-3 flex items-center gap-2" style="color:${_d?'#60A5FA':'#122D6A'};">
               <i class="fas fa-lightbulb"></i> Dicas de Uso
             </h3>
             
             <div class="space-y-3">
-              <div class="bg-[#E8EDF5]/30 rounded-xl p-4 border border-[#122D6A]/10">
+              <div style="background:${itemBg};border:1px solid ${itemBorder};border-radius:12px;padding:16px;">
                 <button onclick="toggleFAQItem(this)" class="w-full text-left flex items-start gap-3">
-                  <i class="fas fa-chevron-right text-[#122D6A] mt-1 transition-transform"></i>
+                  <i class="fas fa-chevron-right mt-1 transition-transform" style="color:${_d?'#60A5FA':'#122D6A'};"></i>
                   <div class="flex-1">
-                    <p class="font-semibold text-gray-800">Melhores práticas para estudar</p>
-                    <div class="hidden mt-2 text-sm text-gray-600 space-y-2">
+                    <p class="font-semibold" style="color:${textMain};">Melhores práticas para estudar</p>
+                    <div class="hidden mt-2 text-sm space-y-2" style="color:${textSec};">
                       <p>✅ <strong>Seja realista:</strong> Informe seu tempo real disponível</p>
                       <p>✅ <strong>Siga a ordem:</strong> Estude os tópicos na sequência sugerida</p>
                       <p>✅ <strong>Use todos os recursos:</strong> Teoria, exercícios, resumos e flashcards</p>
@@ -31892,59 +31899,62 @@ function addHelpToHeader() {
       }
     }
   };
-  helpBtn.className = 'group p-2.5 hover:bg-[#E8EDF5] dark:hover:bg-gray-700 rounded-lg transition-all flex items-center justify-center';
+  var _hd = currentTheme === 'dark';
+  helpBtn.className = 'group p-2.5 rounded-lg transition-all flex items-center justify-center';
+  helpBtn.style.cssText = _hd ? '' : '';
   helpBtn.innerHTML = `
-    <i class="fas fa-question-circle text-[#122D6A] dark:text-blue-400 text-xl group-hover:scale-110 transition-transform"></i>
+    <i class="fas fa-question-circle text-xl group-hover:scale-110 transition-transform" style="color:${_hd?'#60A5FA':'#122D6A'};"></i>
   `;
   helpBtn.title = 'Ajuda e FAQ';
   
   // Criar menu dropdown de ajuda
   const helpMenu = document.createElement('div');
   helpMenu.id = 'header-help-menu';
-  helpMenu.className = 'hidden absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-[9999] overflow-hidden';
+  helpMenu.className = 'hidden absolute right-0 top-full mt-2 w-72 rounded-xl shadow-2xl z-[9999] overflow-hidden';
+  helpMenu.style.cssText = 'background:' + (_hd?'#1F2937':'#FFFFFF') + ';border:1px solid ' + (_hd?'#374151':'#E5E7EB') + ';';
   helpMenu.innerHTML = `
     <div class="p-3">
-      <div class="mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-sm font-bold text-[#122D6A] dark:text-blue-400 flex items-center gap-2">
+      <div class="mb-2 pb-2" style="border-bottom:1px solid ${_hd?'#374151':'#E5E7EB'};">
+        <h3 class="text-sm font-bold flex items-center gap-2" style="color:${_hd?'#60A5FA':'#122D6A'};">
           <i class="fas fa-life-ring"></i> Central de Ajuda
         </h3>
       </div>
       <button 
         onclick="startTutorial(true); document.getElementById('header-help-menu').classList.add('hidden');"
-        class="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#122D6A]/10 dark:hover:bg-gray-700 rounded-lg transition-all group"
+        class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all group"
       >
         <div class="w-10 h-10 bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
           <i class="fas fa-graduation-cap text-white text-sm"></i>
         </div>
         <div class="text-left">
-          <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">Tour Guiado</p>
-          <p class="text-xs text-gray-500">Aprenda a usar o sistema</p>
+          <p class="font-semibold text-sm" style="color:${_hd?'#E5E7EB':'#1F2937'};">Tour Guiado</p>
+          <p class="text-xs" style="color:${_hd?'#9CA3AF':'#6B7280'};">Aprenda a usar o sistema</p>
         </div>
       </button>
       
       <button 
         onclick="openFAQ(); document.getElementById('header-help-menu').classList.add('hidden');"
-        class="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#122D6A]/10 dark:hover:bg-gray-700 rounded-lg transition-all group"
+        class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all group"
       >
         <div class="w-10 h-10 bg-gradient-to-br from-[#2A4A9F] to-[#3A5AB0] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
           <i class="fas fa-question-circle text-white text-sm"></i>
         </div>
         <div class="text-left">
-          <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">Perguntas Frequentes</p>
-          <p class="text-xs text-gray-500">Dúvidas comuns</p>
+          <p class="font-semibold text-sm" style="color:${_hd?'#E5E7EB':'#1F2937'};">Perguntas Frequentes</p>
+          <p class="text-xs" style="color:${_hd?'#9CA3AF':'#6B7280'};">Dúvidas comuns</p>
         </div>
       </button>
       
       <button 
         onclick="window.abrirModalAjuda && window.abrirModalAjuda(); document.getElementById('header-help-menu').classList.add('hidden');"
-        class="w-full flex items-center gap-3 px-3 py-3 hover:bg-[#122D6A]/10 dark:hover:bg-gray-700 rounded-lg transition-all group"
+        class="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all group"
       >
         <div class="w-10 h-10 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
           <i class="fas fa-book-open text-white text-sm"></i>
         </div>
         <div class="text-left">
-          <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">Documentação</p>
-          <p class="text-xs text-gray-500">Como usar cada recurso</p>
+          <p class="font-semibold text-sm" style="color:${_hd?'#E5E7EB':'#1F2937'};">Documentação</p>
+          <p class="text-xs" style="color:${_hd?'#9CA3AF':'#6B7280'};">Como usar cada recurso</p>
         </div>
       </button>
     </div>
@@ -32641,30 +32651,36 @@ function mostrarTooltipOpcao(event, tooltip) {
 
 // Modal de Ajuda
 window.abrirModalAjuda = function() {
+  var _d = currentTheme === 'dark';
+  var bgCard = _d ? '#1F2937' : '#FFFFFF';
+  var textMain = _d ? '#F3F4F6' : '#1F2937';
+  var textSec = _d ? '#9CA3AF' : '#6B7280';
+  var borderC = _d ? '#374151' : '#E5E7EB';
+  
   const modal = document.createElement('div');
   modal.id = 'modal-ajuda';
-  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+  modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
   modal.innerHTML = `
-    <div class="bg-white dark:bg-gray-800 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-      <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+    <div style="background:${bgCard};border-radius:12px;max-width:672px;width:100%;max-height:80vh;overflow-y:auto;">
+      <div style="padding:24px;border-bottom:1px solid ${borderC};">
         <div class="flex justify-between items-center">
-          <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
-            <i class="fas fa-question-circle text-blue-500 mr-2"></i>
+          <h2 class="text-2xl font-bold" style="color:${textMain};">
+            <i class="fas fa-question-circle mr-2" style="color:#4A90D9;"></i>
             Central de Ajuda
           </h2>
           <button onclick="document.getElementById('modal-ajuda').remove()" 
-            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+            style="color:${textSec};cursor:pointer;padding:4px;" onmouseover="this.style.color='${textMain}'" onmouseout="this.style.color='${textSec}'">
             <i class="fas fa-times text-xl"></i>
           </button>
         </div>
       </div>
       
-      <div class="p-6 space-y-4">
-        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-          <h3 class="font-bold text-lg mb-2 text-blue-800 dark:text-blue-300">
+      <div style="padding:24px;" class="space-y-4">
+        <div style="background:${_d?'rgba(42,74,159,0.15)':'#EFF6FF'};border-radius:10px;padding:16px;">
+          <h3 class="font-bold text-lg mb-2" style="color:${_d?'#60A5FA':'#1E40AF'};">
             <i class="fas fa-info-circle mr-2"></i>Como usar o IAprova?
           </h3>
-          <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+          <ul class="space-y-2 text-sm" style="color:${textSec};">
             <li>• Faça o upload do edital do seu concurso</li>
             <li>• Preencha a entrevista inicial com seus dados</li>
             <li>• Receba um plano de estudos personalizado</li>
@@ -32672,11 +32688,11 @@ window.abrirModalAjuda = function() {
           </ul>
         </div>
         
-        <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-          <h3 class="font-bold text-lg mb-2 text-green-800 dark:text-green-300">
+        <div style="background:${_d?'rgba(16,185,129,0.12)':'#ECFDF5'};border-radius:10px;padding:16px;">
+          <h3 class="font-bold text-lg mb-2" style="color:${_d?'#34D399':'#065F46'};">
             <i class="fas fa-graduation-cap mr-2"></i>Recursos Disponíveis
           </h3>
-          <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+          <ul class="space-y-2 text-sm" style="color:${textSec};">
             <li>• <strong>Teoria:</strong> Conteúdo completo do tópico</li>
             <li>• <strong>Exercícios:</strong> Questões no estilo da banca</li>
             <li>• <strong>Resumo:</strong> Síntese do conteúdo</li>
@@ -32685,11 +32701,11 @@ window.abrirModalAjuda = function() {
           </ul>
         </div>
         
-        <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
-          <h3 class="font-bold text-lg mb-2 text-yellow-800 dark:text-yellow-300">
+        <div style="background:${_d?'rgba(245,158,11,0.12)':'#FFFBEB'};border-radius:10px;padding:16px;">
+          <h3 class="font-bold text-lg mb-2" style="color:${_d?'#FBBF24':'#92400E'};">
             <i class="fas fa-lightbulb mr-2"></i>Dicas Importantes
           </h3>
-          <ul class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+          <ul class="space-y-2 text-sm" style="color:${textSec};">
             <li>• Configure a IA no menu para personalizar o conteúdo</li>
             <li>• Use o tema escuro para estudar à noite</li>
             <li>• Acompanhe seu progresso no dashboard</li>
@@ -32698,7 +32714,7 @@ window.abrirModalAjuda = function() {
         </div>
         
         <div class="text-center pt-4">
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-sm" style="color:${textSec};">
             Precisa de mais ajuda? Entre em contato pelo suporte.
           </p>
         </div>
@@ -32774,11 +32790,19 @@ window.showHelpTopic = function(topic) {
 }
 
 window.showFullHelp = function() {
+  var _d = currentTheme === 'dark';
+  var sectionBg1 = _d ? 'rgba(42,74,159,0.15)' : '#EFF6FF';
+  var sectionBg2 = _d ? 'rgba(16,185,129,0.12)' : '#ECFDF5';
+  var sectionBg3 = _d ? 'rgba(245,158,11,0.12)' : '#FFFBEB';
+  var headColor1 = _d ? '#60A5FA' : '#1E40AF';
+  var headColor2 = _d ? '#34D399' : '#065F46';
+  var headColor3 = _d ? '#FBBF24' : '#92400E';
+  var textSec = _d ? '#9CA3AF' : '#6B7280';
   const content = `
     <div class="space-y-4">
-      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded">
-        <h3 class="font-bold mb-2">🚀 Início Rápido</h3>
-        <ol class="space-y-1 text-sm">
+      <div style="background:${sectionBg1};padding:16px;border-radius:8px;">
+        <h3 class="font-bold mb-2" style="color:${headColor1};">🚀 Início Rápido</h3>
+        <ol class="space-y-1 text-sm" style="color:${textSec};">
           <li>1. Cadastre-se com seu email</li>
           <li>2. Faça upload do edital (PDF ou TXT)</li>
           <li>3. Complete a entrevista inicial</li>
@@ -32787,9 +32811,9 @@ window.showFullHelp = function() {
         </ol>
       </div>
       
-      <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded">
-        <h3 class="font-bold mb-2">💡 Dicas Importantes</h3>
-        <ul class="space-y-1 text-sm">
+      <div style="background:${sectionBg2};padding:16px;border-radius:8px;">
+        <h3 class="font-bold mb-2" style="color:${headColor2};">💡 Dicas Importantes</h3>
+        <ul class="space-y-1 text-sm" style="color:${textSec};">
           <li>• Configure a IA no menu (3 pontinhos)</li>
           <li>• Use tema escuro para estudar à noite</li>
           <li>• Revise com flashcards diariamente</li>
@@ -32797,9 +32821,9 @@ window.showFullHelp = function() {
         </ul>
       </div>
       
-      <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded">
-        <h3 class="font-bold mb-2">⚠️ Problemas Comuns</h3>
-        <ul class="space-y-1 text-sm">
+      <div style="background:${sectionBg3};padding:16px;border-radius:8px;">
+        <h3 class="font-bold mb-2" style="color:${headColor3};">⚠️ Problemas Comuns</h3>
+        <ul class="space-y-1 text-sm" style="color:${textSec};">
           <li>• PDF não funciona? Converta para TXT</li>
           <li>• IA lenta? Aguarde 30-60 segundos</li>
           <li>• Email não chega? Verifique spam</li>
@@ -32815,23 +32839,29 @@ window.showHelpModal = function(title, content) {
   // Fechar menu dropdown
   document.getElementById('help-menu')?.classList.add('hidden');
   
+  var _d = currentTheme === 'dark';
+  var bgCard = _d ? '#1F2937' : '#FFFFFF';
+  var textMain = _d ? '#F3F4F6' : '#1F2937';
+  var textSec = _d ? '#9CA3AF' : '#6B7280';
+  var borderC = _d ? '#374151' : '#E5E7EB';
+  
   // Criar modal
   const modal = document.createElement('div');
   modal.id = 'help-modal';
   modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4';
   modal.innerHTML = `
-    <div class="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[80vh] overflow-y-auto">
-      <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-        <h2 class="text-xl font-bold text-gray-800 dark:text-white">
-          <i class="fas fa-question-circle text-blue-500 mr-2"></i>
+    <div style="background:${bgCard};border-radius:12px;max-width:32rem;width:100%;max-height:80vh;overflow-y:auto;">
+      <div style="padding:24px;border-bottom:1px solid ${borderC};" class="flex justify-between items-center">
+        <h2 class="text-xl font-bold" style="color:${textMain};">
+          <i class="fas fa-question-circle mr-2" style="color:#4A90D9;"></i>
           ${title}
         </h2>
         <button onclick="document.getElementById('help-modal').remove()" 
-          class="text-gray-500 hover:text-gray-700 dark:text-gray-400">
+          style="color:${textSec};cursor:pointer;padding:4px;" onmouseover="this.style.color='${textMain}'" onmouseout="this.style.color='${textSec}'">
           <i class="fas fa-times text-xl"></i>
         </button>
       </div>
-      <div class="p-6">
+      <div style="padding:24px;color:${textMain};">
         ${content}
       </div>
     </div>
