@@ -11038,13 +11038,22 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       
       etapaAtual++;
     } else {
-      // ✅ v88: Quando já percorreu todas as etapas (está em 95%), mostrar mensagem amigável rotativa
+      // ✅ v104: Avanço gradual de 95% até 99% para não parecer travado
+      const barra = document.getElementById('loading-barra-progresso');
+      const percentual = document.getElementById('loading-percentual');
+      if (barra && percentual) {
+        const pctAtual = parseInt(barra.style.width) || 95;
+        if (pctAtual < 99) {
+          const novoPct = pctAtual + 1;
+          barra.style.width = novoPct + '%';
+          percentual.textContent = novoPct + '%';
+        }
+      }
       const mensagensFinalizando = [
         'Quase pronto! Finalizando o salvamento...',
         'Preparando seu conteúdo com carinho...',
         'Organizando tudo para você...',
         'Só mais um instante, estamos quase lá!',
-        'Gerando o PDF e últimas configurações...',
         'Finalizando formatação do conteúdo...',
         'Salvando e organizando o material...'
       ];
@@ -11053,10 +11062,9 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
         const msgIdx = Math.floor(Math.random() * mensagensFinalizando.length);
         dicaEl.innerHTML = '<i class="fas fa-hourglass-half text-blue-400 mr-1 animate-spin"></i>' + mensagensFinalizando[msgIdx];
       }
-      // Também atualizar o texto da etapa para feedback contínuo
       const textoEtapa = document.getElementById('loading-etapa-texto');
       if (textoEtapa) {
-        const msgFinais = ['Salvando conteúdo no servidor...', 'Finalizando geração de PDF...', 'Preparando material completo...'];
+        const msgFinais = ['Salvando conteúdo no servidor...', 'Finalizando geração...', 'Preparando material completo...'];
         textoEtapa.textContent = msgFinais[Math.floor(Math.random() * msgFinais.length)];
       }
     }
@@ -22374,21 +22382,19 @@ function marcarBotaoConteudoDisponivel(metaId, tipo, conteudoId) {
   const btn = document.getElementById(`icon-${tipo}-${metaId}`);
   if (!btn) return;
   
-  // Texto do botão com check badge
   const tipoLabels = { teoria: 'Teoria', exercicios: 'Questões', resumo: 'Resumo', flashcards: 'Flash', resumo_personalizado: 'Upload' };
   const label = tipoLabels[tipo] || tipo;
-  btn.textContent = '✓ ' + label;
+  const _dk = (typeof currentTheme !== 'undefined' && currentTheme === 'dark');
   
-  // Estilizar como disponível - verde forte
-  if (currentTheme === 'light') {
-    btn.style.cssText = 'background:#ecfdf5;color:#047857;font-weight:700;border-color:#6ee7b7;border-radius:8px;padding:6px 4px;text-align:center;font-size:inherit;';
-  } else {
-    btn.style.cssText = 'background:rgba(6,78,59,0.4);color:#6ee7b7;font-weight:700;border-color:#34d399;border-radius:8px;padding:6px 4px;text-align:center;font-size:inherit;';
-  }
+  // Check moderno SVG inline (pequeno, ao lado do texto)
+  const checkSvg = '<svg style="display:inline;vertical-align:middle;margin-right:2px;" width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#10B981"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  btn.innerHTML = checkSvg + label;
+  
+  // Estilo discreto: mesmo fundo do botão normal, apenas cor do texto levemente verde
+  btn.style.cssText = 'font-size:11px;border-color:' + (_dk ? '#374151' : '#E5E7EB') + ';background:' + (_dk ? '#1F2937' : '#F9FAFB') + ';border-radius:8px;padding:6px 4px;text-align:center;color:' + (_dk ? '#6ee7b7' : '#047857') + ';font-weight:600;';
   
   btn.setAttribute('data-conteudo-id', conteudoId || '');
   btn.setAttribute('data-tem-conteudo', 'true');
-  console.log(`✅ v102: Botão ${tipo} marcado como disponível para meta ${metaId}`);
 }
 window.marcarBotaoConteudoDisponivel = marcarBotaoConteudoDisponivel;
 
@@ -22415,12 +22421,10 @@ async function atualizarIconesConteudoMeta(metaId) {
         if (btn) {
           btn.removeAttribute('data-tem-conteudo');
           btn.removeAttribute('data-conteudo-id');
-          // Restaurar label original sem check
           const tipoLabels = { teoria: 'Teoria', exercicios: 'Questões', resumo: 'Resumo', flashcards: 'Flash', resumo_personalizado: 'Upload' };
           btn.textContent = tipoLabels[tipo] || tipo;
-          // Restaurar estilo original
           const _dk = (typeof currentTheme !== 'undefined' && currentTheme === 'dark');
-          btn.style.cssText = 'border-color:' + (_dk ? '#374151' : '#E5E7EB') + ';background:' + (_dk ? '#1F2937' : '#F9FAFB') + ';border-radius:8px;padding:6px 4px;text-align:center;font-size:inherit;';
+          btn.style.cssText = 'font-size:11px;border-color:' + (_dk ? '#374151' : '#E5E7EB') + ';background:' + (_dk ? '#1F2937' : '#F9FAFB') + ';border-radius:8px;padding:6px 4px;text-align:center;';
         }
       }
     });
@@ -25933,12 +25937,12 @@ function renderCalendarioSemanal() {
                   </div>
                   ${topicoNome ? '<p class="text-[10px] sm:text-xs ' + themes[currentTheme].textSecondary + ' mb-2 truncate" title="' + tn + '">' + topicoNome + '</p>' : ''}
                   <div class="grid grid-cols-3 gap-1.5 mb-2" id="conteudos-meta-${meta.id}">
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'teoria')" class="py-1.5 px-1 text-[10px] sm:text-xs font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="teoria" id="icon-teoria-${meta.id}">Teoria</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'exercicios')" class="py-1.5 px-1 text-[10px] sm:text-xs font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="exercicios" id="icon-exercicios-${meta.id}">Questões</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'resumo')" class="py-1.5 px-1 text-[10px] sm:text-xs font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo" id="icon-resumo-${meta.id}">Resumo</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'flashcards')" class="py-1.5 px-1 text-[10px] sm:text-xs font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="flashcards" id="icon-flashcards-${meta.id}">Flash</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} abrirModalResumoPersonalizado(${meta.id})" class="py-1.5 px-1 text-[10px] sm:text-xs font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">Upload</button>
-                    <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="py-1.5 px-1 text-[10px] sm:text-xs font-semibold rounded-lg border transition-all text-center text-emerald-600" style="border-color:#6ee7b7;background:#ecfdf5;">Concluir</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'teoria')" class="py-1.5 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:11px;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="teoria" id="icon-teoria-${meta.id}">Teoria</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'exercicios')" class="py-1.5 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:11px;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="exercicios" id="icon-exercicios-${meta.id}">Questões</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'resumo')" class="py-1.5 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:11px;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo" id="icon-resumo-${meta.id}">Resumo</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'flashcards')" class="py-1.5 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:11px;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="flashcards" id="icon-flashcards-${meta.id}">Flash</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} abrirModalResumoPersonalizado(${meta.id})" class="py-1.5 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:11px;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">Upload</button>
+                    <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="py-1.5 px-1 font-semibold rounded-lg border transition-all text-center text-emerald-600" style="font-size:11px;border-color:#6ee7b7;background:#ecfdf5;">Concluir</button>
                   </div>
                 </div>`
               }).join('')}
