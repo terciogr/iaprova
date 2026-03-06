@@ -367,31 +367,40 @@ a, button, [onclick] {
 .concursos-summary-cards {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
-  gap: 8px !important;
+  gap: 6px !important;
 }
 
 .concursos-summary-cards > div {
-  padding: 10px 6px !important;
-  border-radius: 12px !important;
+  padding: 8px 4px !important;
+  border-radius: 10px !important;
+  text-align: center !important;
 }
 
 .concursos-summary-cards .concursos-number {
-  font-size: 22px !important;
+  font-size: 20px !important;
   font-weight: 700 !important;
   line-height: 1.2 !important;
 }
 
 .concursos-summary-cards .concursos-label {
-  font-size: 10px !important;
-  margin-top: 2px !important;
+  font-size: 9px !important;
+  margin-top: 1px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
 }
 
 @media (min-width: 640px) {
+  .concursos-summary-cards {
+    gap: 12px !important;
+  }
+  .concursos-summary-cards > div {
+    padding: 14px 8px !important;
+  }
   .concursos-summary-cards .concursos-number {
     font-size: 28px !important;
   }
   .concursos-summary-cards .concursos-label {
-    font-size: 12px !important;
+    font-size: 11px !important;
   }
 }
 
@@ -436,155 +445,124 @@ a, button, [onclick] {
   }
 }
 
-/* ===== Disciplinas/Simulados screen - KPI grid fixes ===== */
-/* Force 2x2 grid on mobile for stats cards with icon+text layout */
-.stats-grid-responsive {
+/* ===== Universal compact KPI grid (same as homepage kpi-grid-4) ===== */
+/* Used for Disciplinas, Simulados, Desempenho, Calendário screens */
+.stats-grid-compact {
   display: grid !important;
   grid-template-columns: repeat(2, 1fr) !important;
-  gap: 8px !important;
+  gap: 6px !important;
 }
 
-.stats-grid-responsive > div {
+.stats-grid-compact > div {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding: 10px 6px !important;
+  min-height: 60px !important;
+  border-radius: 12px !important;
   min-width: 0 !important;
-  overflow: hidden !important;
 }
 
-.stats-grid-responsive .stats-icon-box {
-  width: 36px !important;
-  height: 36px !important;
-  flex-shrink: 0 !important;
-}
-
-.stats-grid-responsive .stats-icon-box i {
-  font-size: 14px !important;
-}
-
-.stats-grid-responsive .stats-value {
+.stats-grid-compact .sc-value {
   font-size: 18px !important;
   font-weight: 700 !important;
   line-height: 1.2 !important;
+  white-space: nowrap !important;
 }
 
-.stats-grid-responsive .stats-label {
+.stats-grid-compact .sc-label {
   font-size: 10px !important;
+  line-height: 1.2 !important;
+  margin-top: 2px !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
+  opacity: 0.7;
+}
+
+@media (min-width: 480px) {
+  .stats-grid-compact {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+  }
 }
 
 @media (min-width: 640px) {
-  .stats-grid-responsive {
+  .stats-grid-compact {
     gap: 12px !important;
   }
-  .stats-grid-responsive .stats-icon-box {
-    width: 44px !important;
-    height: 44px !important;
+  .stats-grid-compact > div {
+    padding: 14px 8px !important;
+    min-height: 72px !important;
   }
-  .stats-grid-responsive .stats-icon-box i {
-    font-size: 18px !important;
-  }
-  .stats-grid-responsive .stats-value {
+  .stats-grid-compact .sc-value {
     font-size: 22px !important;
   }
-  .stats-grid-responsive .stats-label {
+  .stats-grid-compact .sc-label {
     font-size: 11px !important;
   }
 }
 
 @media (min-width: 768px) {
-  .stats-grid-responsive {
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 16px !important;
+  .stats-grid-compact > div {
+    padding: 16px 12px !important;
+    min-height: 80px !important;
   }
-  .stats-grid-responsive .stats-icon-box {
-    width: 48px !important;
-    height: 48px !important;
+  .stats-grid-compact .sc-value {
+    font-size: 26px !important;
   }
-  .stats-grid-responsive .stats-icon-box i {
-    font-size: 20px !important;
-  }
-  .stats-grid-responsive .stats-value {
-    font-size: 24px !important;
-  }
-  .stats-grid-responsive .stats-label {
+  .stats-grid-compact .sc-label {
     font-size: 12px !important;
   }
 }
 
-/* ===== Simulados - status card mobile fix ===== */
+/* ===== Simulados - status card ===== */
 .status-card-meta {
-  padding: 16px !important;
+  padding: 12px !important;
+  border-radius: 12px !important;
 }
 
 .status-card-meta .status-icon {
-  width: 44px !important;
-  height: 44px !important;
+  width: 36px !important;
+  height: 36px !important;
   flex-shrink: 0 !important;
 }
 
 .status-card-meta .status-icon i {
-  font-size: 18px !important;
+  font-size: 14px !important;
 }
 
 .status-card-meta h3 {
-  font-size: 16px !important;
+  font-size: 14px !important;
   line-height: 1.3 !important;
 }
 
 @media (min-width: 640px) {
   .status-card-meta {
-    padding: 24px !important;
+    padding: 20px !important;
   }
   .status-card-meta .status-icon {
-    width: 56px !important;
-    height: 56px !important;
+    width: 48px !important;
+    height: 48px !important;
   }
   .status-card-meta .status-icon i {
-    font-size: 22px !important;
-  }
-  .status-card-meta h3 {
     font-size: 20px !important;
   }
+  .status-card-meta h3 {
+    font-size: 18px !important;
+  }
 }
 
-/* ===== Simulados - reduce top spacing ===== */
-.simulados-content-area {
+/* ===== Reduce top spacing for inner pages ===== */
+.page-content-compact {
   padding-top: 12px !important;
-  padding-bottom: env(safe-area-inset-bottom, 16px) !important;
+  padding-bottom: env(safe-area-inset-bottom, 12px) !important;
 }
 
 @media (min-width: 640px) {
-  .simulados-content-area {
+  .page-content-compact {
     padding-top: 24px !important;
   }
-}
-
-/* ===== Disciplinas - search bar mobile fix ===== */
-.disciplinas-search {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 8px !important;
-}
-
-.disciplinas-search .search-input-wrapper {
-  position: relative !important;
-  flex: 1 !important;
-}
-
-.disciplinas-search .search-input-wrapper i {
-  position: absolute !important;
-  left: 12px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-}
-
-@media (min-width: 640px) {
-  .disciplinas-search {
-    flex-direction: row !important;
-  }
-}
-
-/* ===== Safe area bottom padding for all full-screen pages ===== */
-.page-content-safe {
-  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
 }

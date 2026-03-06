@@ -9845,88 +9845,54 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
         </div>
       </header>
       
-      <div class="max-w-7xl mx-auto p-4 md:p-6">
+      <div class="max-w-7xl mx-auto p-3 md:p-6">
         <!-- Titulo da Pagina -->
-        <div class="mb-6">
-          <h1 class="text-2xl md:text-3xl font-bold ${themes[currentTheme].text} mb-1">
-            <i class="fas fa-book-open mr-3 text-[#4A90D9]"></i>
-            Minhas Disciplinas
+        <div class="flex items-center justify-between mb-3">
+          <h1 class="text-lg md:text-2xl font-bold ${themes[currentTheme].text}">
+            <i class="fas fa-book-open mr-1.5 text-[#4A90D9]"></i>
+            Disciplinas
           </h1>
-          <p class="${themes[currentTheme].textSecondary} text-sm">
-            Gerencie seus tópicos e acompanhe o progresso
-          </p>
         </div>
 
-        <!-- Campo de Pesquisa Genérica -->
-        <div class="${themes[currentTheme].card} p-4 rounded-lg shadow border ${themes[currentTheme].border} mb-6">
-          <div class="flex flex-col md:flex-row gap-3">
+        <!-- Campo de Pesquisa -->
+        <div class="${themes[currentTheme].card} p-3 rounded-lg shadow border ${themes[currentTheme].border} mb-3">
+          <div class="flex gap-2">
             <div class="flex-1 relative">
-              <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
               <input type="text" 
                 id="pesquisaGeral"
-                placeholder="Pesquisar em disciplinas e tópicos..." 
-                class="w-full pl-10 pr-4 py-2.5 border ${themes[currentTheme].border} rounded-lg focus:ring-2 focus:ring-[#122D6A] focus:border-[#122D6A] ${themes[currentTheme].bg} ${themes[currentTheme].text}"
+                placeholder="Pesquisar disciplinas e tópicos..." 
+                class="w-full pl-9 pr-3 py-2 text-sm border ${themes[currentTheme].border} rounded-lg focus:ring-2 focus:ring-[#122D6A] focus:border-[#122D6A] ${themes[currentTheme].bg} ${themes[currentTheme].text}"
                 onkeyup="filtrarDisciplinasTopicos(this.value)">
             </div>
             <button onclick="limparPesquisa()" 
-              class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition flex items-center gap-2 text-sm">
-              <i class="fas fa-times"></i> Limpar
+              class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition text-sm flex-shrink-0">
+              <i class="fas fa-times"></i>
             </button>
           </div>
-          <p id="resultadoPesquisa" class="${themes[currentTheme].textSecondary} text-xs mt-2 hidden">
+          <p id="resultadoPesquisa" class="${themes[currentTheme].textSecondary} text-xs mt-1.5 hidden">
             <i class="fas fa-filter mr-1"></i>
-            <span id="countResultados">0</span> resultado(s) encontrado(s)
+            <span id="countResultados">0</span> resultado(s)
           </p>
         </div>
 
-        <!-- Estatísticas Gerais com novo design azul -->
-        <div class="stats-grid-responsive mb-6">
-          <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-            <div class="flex items-center gap-2">
-              <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-book text-white"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="stats-value ${themes[currentTheme].text}">${disciplinas.length}</p>
-                <p class="stats-label ${themes[currentTheme].textSecondary}">Disciplinas</p>
-              </div>
-            </div>
+        <!-- Estatísticas Gerais - compacto -->
+        <div class="stats-grid-compact mb-4">
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+            <span class="sc-value ${themes[currentTheme].text}">${disciplinas.length}</span>
+            <span class="sc-label ${themes[currentTheme].textSecondary}">Disciplinas</span>
           </div>
-          
-          <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-            <div class="flex items-center gap-2">
-              <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#3A5AB0] to-[#4A90D9] flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-list-ul text-white"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="stats-value ${themes[currentTheme].text}">${totalTopicosGeral}</p>
-                <p class="stats-label ${themes[currentTheme].textSecondary}">Tópicos</p>
-              </div>
-            </div>
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+            <span class="sc-value ${themes[currentTheme].text}">${totalTopicosGeral}</span>
+            <span class="sc-label ${themes[currentTheme].textSecondary}">Tópicos</span>
           </div>
-          
-          <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-            <div class="flex items-center gap-2">
-              <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#4A90D9] to-[#6BB6FF] flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-check-circle text-white"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="stats-value text-[#4A90D9]">${totalRevisadosGeral}</p>
-                <p class="stats-label ${themes[currentTheme].textSecondary}">Revisados</p>
-              </div>
-            </div>
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+            <span class="sc-value text-[#4A90D9]">${totalRevisadosGeral}</span>
+            <span class="sc-label ${themes[currentTheme].textSecondary}">Revisados</span>
           </div>
-          
-          <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-            <div class="flex items-center gap-2">
-              <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#6BB6FF] to-[#4A90D9] flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-chart-pie text-white"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="stats-value text-[#4A90D9]">${percentualGeralConclusao}%</p>
-                <p class="stats-label ${themes[currentTheme].textSecondary}">Progresso</p>
-              </div>
-            </div>
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+            <span class="sc-value text-[#4A90D9]">${percentualGeralConclusao}%</span>
+            <span class="sc-label ${themes[currentTheme].textSecondary}">Progresso</span>
           </div>
         </div>
 
@@ -14918,71 +14884,37 @@ window.renderDashboardDesempenho = async function() {
           </div>
         </header>
       
-        <div class="max-w-7xl mx-auto simulados-content-area px-4">
+        <div class="max-w-7xl mx-auto page-content-compact px-4">
           <!-- Titulo da Pagina -->
-          <div class="mb-4">
-            <h1 class="text-xl md:text-3xl font-bold ${themes[currentTheme].text} mb-1">
-              <i class="fas fa-chart-pie mr-2 text-[#4A90D9]"></i>
-              Dashboard de Desempenho
+          <div class="flex items-center justify-between mb-3">
+            <h1 class="text-lg md:text-2xl font-bold ${themes[currentTheme].text}">
+              <i class="fas fa-chart-pie mr-1.5 text-[#4A90D9]"></i>
+              Desempenho
             </h1>
-            <p class="${themes[currentTheme].textSecondary} text-xs md:text-sm">
-              Visão completa do seu progresso nos estudos
-            </p>
           </div>
           
-          <!-- KPIs Principais -->
-          <div class="stats-grid-responsive mb-4">
-            <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-              <div class="flex items-center gap-2">
-                <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center">
-                  <i class="fas fa-calendar-check text-white"></i>
-                </div>
-                <div class="min-w-0">
-                  <p class="stats-label ${themes[currentTheme].textSecondary}">Dias Estudados</p>
-                  <p class="stats-value ${themes[currentTheme].text}">${stats.dias_estudados || 0}</p>
-                </div>
-              </div>
+          <!-- KPIs Compactos -->
+          <div class="stats-grid-compact mb-3">
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+              <span class="sc-value ${themes[currentTheme].text}">${stats.dias_estudados || 0}</span>
+              <span class="sc-label ${themes[currentTheme].textSecondary}">Dias Estudados</span>
             </div>
-            
-            <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-              <div class="flex items-center gap-2">
-                <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#4A90D9] to-[#6BB6FF] flex items-center justify-center">
-                  <i class="fas fa-fire text-white"></i>
-                </div>
-                <div class="min-w-0">
-                  <p class="stats-label ${themes[currentTheme].textSecondary}">Sequência</p>
-                  <p class="stats-value text-[#4A90D9]">${stats.streak_atual || 0} dias</p>
-                </div>
-              </div>
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+              <span class="sc-value text-[#4A90D9]">${stats.streak_atual || 0} <small style="font-size:0.6em">dias</small></span>
+              <span class="sc-label ${themes[currentTheme].textSecondary}">Sequência</span>
             </div>
-            
-            <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-              <div class="flex items-center gap-2">
-                <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#3A5AB0] to-[#4A90D9] flex items-center justify-center">
-                  <i class="fas fa-clock text-white"></i>
-                </div>
-                <div class="min-w-0">
-                  <p class="stats-label ${themes[currentTheme].textSecondary}">Horas Totais</p>
-                  <p class="stats-value ${themes[currentTheme].text}">${stats.horas_totais || 0}h</p>
-                </div>
-              </div>
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+              <span class="sc-value ${themes[currentTheme].text}">${stats.horas_totais || 0}h</span>
+              <span class="sc-label ${themes[currentTheme].textSecondary}">Horas Totais</span>
             </div>
-            
-            <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-              <div class="flex items-center gap-2">
-                <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#6BB6FF] to-[#4A90D9] flex items-center justify-center">
-                  <i class="fas fa-percentage text-white"></i>
-                </div>
-                <div class="min-w-0">
-                  <p class="stats-label ${themes[currentTheme].textSecondary}">Progresso Geral</p>
-                  <p class="stats-value text-[#4A90D9]">${progressoGeral.progresso_percentual || 0}%</p>
-                </div>
-              </div>
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+              <span class="sc-value text-[#4A90D9]">${progressoGeral.progresso_percentual || 0}%</span>
+              <span class="sc-label ${themes[currentTheme].textSecondary}">Progresso</span>
             </div>
           </div>
           
           <!-- Grid de Seções -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
             
             <!-- Seção A: Desempenho em Simulados -->
             <div class="${themes[currentTheme].card} rounded-2xl border ${themes[currentTheme].border} p-4 md:p-6 hover:shadow-lg transition">
@@ -15563,124 +15495,79 @@ window.renderDashboardSimulados = async function() {
           </div>
         </header>
       
-        <div class="max-w-7xl mx-auto simulados-content-area px-4">
+        <div class="max-w-7xl mx-auto page-content-compact px-4">
           <!-- Titulo da Pagina + Botão Novo Simulado -->
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-            <div>
-              <h1 class="text-xl md:text-3xl font-bold ${themes[currentTheme].text} mb-1">
-                <i class="fas fa-chart-line mr-2 text-[#4A90D9]"></i>
-                Dashboard de Simulados
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <div class="min-w-0">
+              <h1 class="text-lg md:text-2xl font-bold ${themes[currentTheme].text} truncate">
+                <i class="fas fa-chart-line mr-1.5 text-[#4A90D9]"></i>
+                Simulados
               </h1>
-              <p class="${themes[currentTheme].textSecondary} text-xs md:text-sm">
-                Acompanhe sua evolução e performance nos simulados
-              </p>
             </div>
-            <!-- Botão Novo Simulado -->
-            <button onclick="abrirModalSimulado()" class="px-4 py-2.5 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition shadow-lg flex items-center gap-2 self-start sm:self-auto text-sm">
-              <i class="fas fa-plus"></i>
-              <span>Novo Simulado</span>
+            <button onclick="abrirModalSimulado()" class="px-3 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition shadow flex items-center gap-1.5 text-sm flex-shrink-0">
+              <i class="fas fa-plus text-xs"></i>
+              <span>Novo</span>
             </button>
           </div>
           
-          <!-- Estatísticas Rápidas -->
-          <div class="stats-grid-responsive mb-4">
-            <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-              <div class="flex items-center gap-2">
-                <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center">
-                  <i class="fas fa-clipboard-list text-white"></i>
-                </div>
-                <div class="min-w-0">
-                  <p class="stats-label ${themes[currentTheme].textSecondary}">Total Realizados</p>
-                  <p class="stats-value ${themes[currentTheme].text}">${simulados.length}</p>
-                </div>
-              </div>
+          <!-- Estatísticas Compactas -->
+          <div class="stats-grid-compact mb-3">
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+              <span class="sc-value ${themes[currentTheme].text}">${simulados.length}</span>
+              <span class="sc-label ${themes[currentTheme].textSecondary}">Realizados</span>
             </div>
-            
-            <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-              <div class="flex items-center gap-2">
-                <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#3A5AB0] to-[#4A90D9] flex items-center justify-center">
-                  <i class="fas fa-chart-bar text-white"></i>
-                </div>
-                <div class="min-w-0">
-                  <p class="stats-label ${themes[currentTheme].textSecondary}">Média Geral</p>
-                  <p class="stats-value ${themes[currentTheme].text}">
-                    ${simulados.length > 0 ? Math.round(simulados.reduce((acc, s) => acc + s.percentual_acerto, 0) / simulados.length) : 0}%
-                  </p>
-                </div>
-              </div>
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+              <span class="sc-value ${themes[currentTheme].text}">
+                ${simulados.length > 0 ? Math.round(simulados.reduce((acc, s) => acc + s.percentual_acerto, 0) / simulados.length) : 0}%
+              </span>
+              <span class="sc-label ${themes[currentTheme].textSecondary}">Média Geral</span>
             </div>
-            
-            <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-              <div class="flex items-center gap-2">
-                <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#4A90D9] to-[#6BB6FF] flex items-center justify-center">
-                  <i class="fas fa-trophy text-white"></i>
-                </div>
-                <div class="min-w-0">
-                  <p class="stats-label ${themes[currentTheme].textSecondary}">Melhor Resultado</p>
-                  <p class="stats-value text-[#4A90D9]">
-                    ${simulados.length > 0 ? Math.max(...simulados.map(s => s.percentual_acerto)) : 0}%
-                  </p>
-                </div>
-              </div>
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+              <span class="sc-value text-[#4A90D9]">
+                ${simulados.length > 0 ? Math.max(...simulados.map(s => s.percentual_acerto)) : 0}%
+              </span>
+              <span class="sc-label ${themes[currentTheme].textSecondary}">Melhor</span>
             </div>
-            
-            <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-              <div class="flex items-center gap-2">
-                <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#6BB6FF] to-[#4A90D9] flex items-center justify-center">
-                  <i class="fas fa-bullseye text-white"></i>
-                </div>
-                <div class="min-w-0">
-                  <p class="stats-label ${themes[currentTheme].textSecondary}">Nota de Corte</p>
-                  <p class="stats-value text-[#4A90D9]">${metaPercentual}%</p>
-                </div>
-              </div>
+            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+              <span class="sc-value text-[#4A90D9]">${metaPercentual}%</span>
+              <span class="sc-label ${themes[currentTheme].textSecondary}">Nota de Corte</span>
             </div>
           </div>
           
-          <!-- Indicador de Status das Vagas -->
-          <div class="status-card-meta ${themes[currentTheme].card} rounded-xl border-2 ${dentroMeta ? 'border-green-500 bg-green-50/50' : 'border-red-500 bg-red-50/50'} mb-4">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div class="flex items-center gap-3">
-                <div class="status-icon rounded-full ${dentroMeta ? 'bg-green-500' : 'bg-red-500'} flex items-center justify-center flex-shrink-0">
-                  <i class="fas ${dentroMeta ? 'fa-check' : 'fa-exclamation'} text-white"></i>
-                </div>
-                <div class="min-w-0">
-                  <h3 class="font-bold ${dentroMeta ? 'text-green-700' : 'text-red-700'}">
-                    ${dentroMeta ? 'DENTRO DA META!' : 'ABAIXO DA META'}
-                  </h3>
-                  <p class="${themes[currentTheme].textSecondary} text-xs md:text-sm">
-                    ${simulados.length === 0 ? 'Faça simulados para acompanhar seu progresso' :
-                      dentroMeta ? 
-                        `Sua média (${mediaUltimos}%) está acima da nota de corte (${metaPercentual}%)` :
-                        `Você precisa de mais ${metaPercentual - mediaUltimos}% para atingir a nota de corte`
-                    }
-                  </p>
-                  ${tendencia !== 0 ? `
-                    <p class="text-xs mt-0.5 ${tendencia > 0 ? 'text-green-600' : 'text-red-600'}">
-                      <i class="fas fa-arrow-${tendencia > 0 ? 'up' : 'down'} mr-1"></i>
-                      Tendência: ${tendencia > 0 ? '+' : ''}${tendencia}% nos últimos simulados
-                    </p>
-                  ` : ''}
-                </div>
+          <!-- Indicador de Status -->
+          <div class="status-card-meta ${themes[currentTheme].card} border-l-4 ${dentroMeta ? 'border-green-500 bg-green-50/50' : 'border-red-500 bg-red-50/50'} mb-3">
+            <div class="flex items-center gap-3">
+              <div class="status-icon rounded-full ${dentroMeta ? 'bg-green-500' : 'bg-red-500'} flex items-center justify-center flex-shrink-0">
+                <i class="fas ${dentroMeta ? 'fa-check' : 'fa-exclamation'} text-white"></i>
               </div>
-              <button onclick="configurarMetaSimulado()" class="px-3 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition text-xs sm:text-sm flex-shrink-0">
-                <i class="fas fa-cog mr-1"></i>Configurar Meta
+              <div class="flex-1 min-w-0">
+                <h3 class="font-bold ${dentroMeta ? 'text-green-700' : 'text-red-700'}">
+                  ${dentroMeta ? 'DENTRO DA META' : 'ABAIXO DA META'}
+                </h3>
+                <p class="${themes[currentTheme].textSecondary} text-xs">
+                  ${simulados.length === 0 ? 'Faça simulados para acompanhar' :
+                    dentroMeta ? 
+                      `Média ${mediaUltimos}% acima do corte ${metaPercentual}%` :
+                      `Faltam ${metaPercentual - mediaUltimos}% para a nota de corte`
+                  }
+                  ${tendencia !== 0 ? ` | <span class="${tendencia > 0 ? 'text-green-600' : 'text-red-600'}"><i class="fas fa-arrow-${tendencia > 0 ? 'up' : 'down'}"></i> ${tendencia > 0 ? '+' : ''}${tendencia}%</span>` : ''}
+                </p>
+              </div>
+              <button onclick="configurarMetaSimulado()" class="px-2.5 py-1.5 bg-[#122D6A] text-white rounded-lg text-xs flex-shrink-0">
+                <i class="fas fa-cog"></i>
               </button>
             </div>
           </div>
           
           <!-- Gráfico de Evolução -->
-          <div class="${themes[currentTheme].card} p-4 md:p-6 rounded-xl border ${themes[currentTheme].border} mb-4">
-            <div class="flex items-center justify-between mb-4">
-              <div>
-                <h2 class="text-base md:text-xl font-bold ${themes[currentTheme].text}">Evolução por Semana</h2>
-                <p class="text-xs ${themes[currentTheme].textSecondary}">Performance ao longo do tempo com linha de meta</p>
-              </div>
-              <button onclick="configurarMetaSimulado()" class="px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition text-xs">
+          <div class="${themes[currentTheme].card} p-3 md:p-5 rounded-xl border ${themes[currentTheme].border} mb-3">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-sm md:text-lg font-bold ${themes[currentTheme].text}">Evolução por Semana</h2>
+              <button onclick="configurarMetaSimulado()" class="px-2.5 py-1 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition text-xs">
                 <i class="fas fa-cog mr-1"></i>Meta
               </button>
             </div>
-            <div class="relative" style="height: 280px; max-height: 40vh;">
+            <div class="relative" style="height: 220px; max-height: 35vh;">
               <canvas id="chart-simulados"></canvas>
             </div>
           </div>
@@ -21811,66 +21698,32 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
         </div>
       </header>
 
-      <div class="max-w-7xl mx-auto px-4 simulados-content-area">
+      <div class="max-w-7xl mx-auto px-4 page-content-compact">
         <!-- Titulo -->
-        <div class="mb-4">
-          <h1 class="text-xl md:text-3xl font-bold ${themes[currentTheme].text} mb-1">
-            <i class="fas fa-calendar-alt mr-2 text-[#4A90D9]"></i>
-            Calendário de Estudos
+        <div class="flex items-center justify-between mb-3">
+          <h1 class="text-lg md:text-2xl font-bold ${themes[currentTheme].text}">
+            <i class="fas fa-calendar-alt mr-1.5 text-[#4A90D9]"></i>
+            Calendário
           </h1>
-          <p class="${themes[currentTheme].textSecondary} text-xs md:text-sm">
-            Acompanhe sua consistência e evolução diária
-          </p>
         </div>
         
-        <!-- Estatísticas com novo design azul -->
-        <div class="stats-grid-responsive mb-4">
-          <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-            <div class="flex items-center gap-2">
-              <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#4A90D9] to-[#6BB6FF] flex items-center justify-center">
-                <i class="fas fa-fire text-white"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="stats-label ${themes[currentTheme].textSecondary}">Streak Atual</p>
-                <p class="stats-value text-[#4A90D9]">${stats.streak_atual}</p>
-              </div>
-            </div>
+        <!-- Estatísticas compactas -->
+        <div class="stats-grid-compact mb-3">
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+            <span class="sc-value text-[#4A90D9]">${stats.streak_atual}</span>
+            <span class="sc-label ${themes[currentTheme].textSecondary}">Streak</span>
           </div>
-
-          <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-            <div class="flex items-center gap-2">
-              <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center">
-                <i class="fas fa-calendar-check text-white"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="stats-label ${themes[currentTheme].textSecondary}">Dias Estudados</p>
-                <p class="stats-value ${themes[currentTheme].text}">${stats.dias_estudados}</p>
-              </div>
-            </div>
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+            <span class="sc-value ${themes[currentTheme].text}">${stats.dias_estudados}</span>
+            <span class="sc-label ${themes[currentTheme].textSecondary}">Dias Estudados</span>
           </div>
-
-          <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-            <div class="flex items-center gap-2">
-              <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#3A5AB0] to-[#4A90D9] flex items-center justify-center">
-                <i class="fas fa-clock text-white"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="stats-label ${themes[currentTheme].textSecondary}">Horas Totais</p>
-                <p class="stats-value ${themes[currentTheme].text}">${stats.horas_totais}h</p>
-              </div>
-            </div>
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+            <span class="sc-value ${themes[currentTheme].text}">${stats.horas_totais}h</span>
+            <span class="sc-label ${themes[currentTheme].textSecondary}">Horas Totais</span>
           </div>
-
-          <div class="${themes[currentTheme].card} p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-lg transition">
-            <div class="flex items-center gap-2">
-              <div class="stats-icon-box rounded-xl bg-gradient-to-br from-[#6BB6FF] to-[#4A90D9] flex items-center justify-center">
-                <i class="fas fa-chart-line text-white"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="stats-label ${themes[currentTheme].textSecondary}">Média de Conclusão</p>
-                <p class="stats-value ${themes[currentTheme].text}">${stats.media_conclusao}%</p>
-              </div>
-            </div>
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
+            <span class="sc-value ${themes[currentTheme].text}">${stats.media_conclusao}%</span>
+            <span class="sc-label ${themes[currentTheme].textSecondary}">Conclusão</span>
           </div>
         </div>
 
