@@ -555,23 +555,15 @@ app.get('/static/*', async (c) => {
   const contentType = mimeTypes[extension] || 'text/plain'
   
   try {
-    // Para desenvolvimento local, vamos retornar o conteúdo diretamente
-    // Este é um workaround para o problema do __STATIC_CONTENT_MANIFEST
-    if (path === 'app.js') {
-      // Retornar o conteúdo do app.js diretamente (você precisa fazer o build incluir isso)
-      const response = await fetch(new URL(`/static/${path}`, c.req.url))
-      if (!response.ok) {
-        // Se falhar, vamos tentar servir de outra forma
-        return c.text('// App.js temporariamente indisponível. Recarregue a página.', 503)
-      }
-      return c.body(await response.arrayBuffer(), 200, {
-        'Content-Type': contentType,
-        'Cache-Control': 'no-cache'
-      })
+    // Servir qualquer arquivo estático via fetch interno
+    const response = await fetch(new URL(`/static/${path}`, c.req.url))
+    if (!response.ok) {
+      return c.text('File not found', 404)
     }
-    
-    // Para outros arquivos
-    return c.text('File not found', 404)
+    return c.body(await response.arrayBuffer(), 200, {
+      'Content-Type': contentType,
+      'Cache-Control': extension === 'css' ? 'no-cache' : 'no-cache'
+    })
   } catch (error) {
     console.error('Erro ao servir arquivo estático:', error)
     return c.text('Internal Server Error', 500)
@@ -20883,6 +20875,9 @@ app.get('/home', (c) => {
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS (iOS fixes, KPI grid, responsive) -->
+    <link rel="stylesheet" href="/static/style.css">
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

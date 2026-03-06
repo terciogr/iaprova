@@ -9007,23 +9007,23 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
             </div>
           </div>
           
-          <!-- KPIs Grid - 4 colunas fixas, idêntico em todos os devices -->
-          <div class="grid grid-cols-4 gap-2 sm:gap-3">
-            <div onclick="renderPortfolioDisciplinas()" class="cursor-pointer flex flex-col items-center text-center p-2 sm:p-3 rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
-              <span class="text-base sm:text-xl font-bold ${themes[currentTheme].text} leading-tight">${progressoGeral?.progresso_percentual || 0}%</span>
-              <span class="text-[9px] sm:text-[10px] ${themes[currentTheme].textSecondary} mt-0.5 leading-tight">Progresso</span>
+          <!-- KPIs Grid - 4 colunas fixas via CSS class, idêntico iOS/Android -->
+          <div class="kpi-grid-4">
+            <div onclick="renderPortfolioDisciplinas()" class="kpi-card cursor-pointer rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
+              <span class="kpi-value ${themes[currentTheme].text}">${progressoGeral?.progresso_percentual || 0}%</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Progresso</span>
             </div>
-            <div class="flex flex-col items-center text-center p-2 sm:p-3 rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
-              <span class="text-base sm:text-xl font-bold ${themes[currentTheme].text} leading-tight">${stats.horas_totais}h</span>
-              <span class="text-[9px] sm:text-[10px] ${themes[currentTheme].textSecondary} mt-0.5 leading-tight">Estudado</span>
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value ${themes[currentTheme].text}">${stats.horas_totais}h</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Estudado</span>
             </div>
-            <div onclick="renderPortfolioDisciplinas()" class="cursor-pointer flex flex-col items-center text-center p-2 sm:p-3 rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
-              <span class="text-base sm:text-xl font-bold ${themes[currentTheme].text} leading-tight">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0}</span>
-              <span class="text-[9px] sm:text-[10px] ${themes[currentTheme].textSecondary} mt-0.5 leading-tight">Disciplinas</span>
+            <div onclick="renderPortfolioDisciplinas()" class="kpi-card cursor-pointer rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
+              <span class="kpi-value ${themes[currentTheme].text}">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0}</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Disciplinas</span>
             </div>
-            <div onclick="window.renderDashboardSimulados()" class="cursor-pointer flex flex-col items-center text-center p-2 sm:p-3 rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
-              <span class="text-base sm:text-xl font-bold ${themes[currentTheme].text} leading-tight">${scoreData.score}/10</span>
-              <span class="text-[9px] sm:text-[10px] ${themes[currentTheme].textSecondary} mt-0.5 leading-tight">Simulados</span>
+            <div onclick="window.renderDashboardSimulados()" class="kpi-card cursor-pointer rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
+              <span class="kpi-value ${themes[currentTheme].text}">${scoreData.score}/10</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Simulados</span>
             </div>
           </div>
         </div>
@@ -25987,9 +25987,9 @@ function renderCalendarioSemanal() {
       <div class="px-3 sm:px-4 pt-3 sm:pt-4 pb-2">
         <!-- Linha 1: Título + botões -->
         <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center gap-1.5 min-w-0 flex-1">
-            <span class="text-sm font-bold uppercase ${themes[currentTheme].text} whitespace-nowrap">Semana ${semana.numero_semana}</span>
-            <span class="text-[10px] sm:text-xs ${themes[currentTheme].textSecondary} whitespace-nowrap ml-1">(${dataInicioFormatada} - ${dataFimFormatada})</span>
+          <div class="week-header-label min-w-0 flex-1">
+            <span class="week-number ${themes[currentTheme].text}">Semana ${semana.numero_semana}</span>
+            <span class="week-dates ${themes[currentTheme].textSecondary}">${dataInicioFormatada} - ${dataFimFormatada}</span>
           </div>
           <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
             <button onclick="abrirSemanasAnteriores()" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition" style="background: transparent;" onmouseover="this.style.background='${_isDk ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'}'" onmouseout="this.style.background='transparent'" title="Semanas anteriores">
@@ -26078,10 +26078,8 @@ function renderCalendarioSemanal() {
             ` : ''}
             
             ${ativas.length > 0 ? `
-            <!-- Ativas - grid responsivo -->
-            <div class="grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-2 ${
-              ativas.length >= 3 ? 'lg:grid-cols-3' : ''
-            } ${ativas.length >= 4 ? 'xl:grid-cols-4' : ''}">
+            <!-- Ativas - grid responsivo via CSS class -->
+            <div class="meta-cards-grid">
               ${ativas.map(meta => {
                 let topicoNome = meta.topico_nome || '';
                 let topicoId = meta.topico_id || null;
@@ -26106,14 +26104,14 @@ function renderCalendarioSemanal() {
                   </div>
                   <!-- Tópico -->
                   ${topicoNome ? '<p class="text-[10px] sm:text-xs ' + themes[currentTheme].textSecondary + ' mb-2 line-clamp-2" title="' + tn + '">' + topicoNome + '</p>' : ''}
-                  <!-- Botões de Conteúdo - grid 3x2 fixo -->
-                  <div class="grid grid-cols-3 gap-1.5" id="conteudos-meta-${meta.id}" style="font-size:0;">
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'teoria')" class="py-2 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:10px;line-height:1.2;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="teoria" id="icon-teoria-${meta.id}">Teoria</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'exercicios')" class="py-2 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:10px;line-height:1.2;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="exercicios" id="icon-exercicios-${meta.id}">Questões</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'resumo')" class="py-2 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:10px;line-height:1.2;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo" id="icon-resumo-${meta.id}">Resumo</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'flashcards')" class="py-2 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:10px;line-height:1.2;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="flashcards" id="icon-flashcards-${meta.id}">Flash</button>
-                    <button onclick="event.stopPropagation(); ${setMeta} abrirModalResumoPersonalizado(${meta.id})" class="py-2 px-1 font-medium rounded-lg border transition-all text-center ${themes[currentTheme].textSecondary}" style="font-size:10px;line-height:1.2;border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">Upload</button>
-                    <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="py-2 px-1 font-semibold rounded-lg border transition-all text-center text-emerald-600" style="font-size:10px;line-height:1.2;border-color:#6ee7b7;background:#ecfdf5;">Concluir</button>
+                  <!-- Botoes de Conteudo - grid 3x2 fixo via CSS class -->
+                  <div class="meta-btn-grid" id="conteudos-meta-${meta.id}">
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'teoria')" class="font-medium border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="teoria" id="icon-teoria-${meta.id}">Teoria</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'exercicios')" class="font-medium border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="exercicios" id="icon-exercicios-${meta.id}">Questões</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'resumo')" class="font-medium border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo" id="icon-resumo-${meta.id}">Resumo</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'flashcards')" class="font-medium border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="flashcards" id="icon-flashcards-${meta.id}">Flash</button>
+                    <button onclick="event.stopPropagation(); ${setMeta} abrirModalResumoPersonalizado(${meta.id})" class="font-medium border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">Upload</button>
+                    <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="font-semibold border transition-all text-center text-emerald-600" style="border-color:#6ee7b7;background:#ecfdf5;">Concluir</button>
                   </div>
                 </div>`
               }).join('')}
