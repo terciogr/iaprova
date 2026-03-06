@@ -22588,6 +22588,77 @@ app.get('/api/admin/analytics', async (c) => {
       console.log('⚠️ Tabela chat_interactions pode não existir ainda:', e)
     }
     
+    // ═══ 12. CRESCIMENTO DE USUÁRIOS ═══
+    let userGrowthDaily: any[] = []
+    let userGrowthMonthly: any[] = []
+    let userGrowthYearly: any[] = []
+    let totalUsers = 0
+    try {
+      // Total de usuários
+      const totalUsersResult = await DB.prepare(`SELECT COUNT(*) as total FROM users`).first() as any
+      totalUsers = totalUsersResult?.total || 0
+      
+      // Por dia (últimos 90 dias) - novos por dia
+      const dailyResult = await DB.prepare(`
+        SELECT 
+          DATE(created_at) as dia,
+          COUNT(*) as novos
+        FROM users
+        WHERE created_at >= datetime('now', '-90 days')
+        GROUP BY DATE(created_at)
+        ORDER BY dia ASC
+      `).all()
+      const dailyRaw = dailyResult.results || []
+      
+      // Calcular acumulado no servidor (mais eficiente que subconsulta)
+      // Primeiro pegar total de users antes dos últimos 90 dias
+      const beforeResult = await DB.prepare(`
+        SELECT COUNT(*) as total FROM users WHERE created_at < datetime('now', '-90 days')
+      `).first() as any
+      let runningTotal = beforeResult?.total || 0
+      
+      userGrowthDaily = dailyRaw.map((d: any) => {
+        runningTotal += (d.novos || 0)
+        return { dia: d.dia, novos: d.novos || 0, total_acumulado: runningTotal }
+      })
+      
+      // Por mês - novos por mês
+      const monthlyResult = await DB.prepare(`
+        SELECT 
+          strftime('%Y-%m', created_at) as mes,
+          COUNT(*) as novos
+        FROM users
+        GROUP BY strftime('%Y-%m', created_at)
+        ORDER BY mes ASC
+      `).all()
+      const monthlyRaw = monthlyResult.results || []
+      let monthRunning = 0
+      userGrowthMonthly = monthlyRaw.map((d: any) => {
+        monthRunning += (d.novos || 0)
+        return { mes: d.mes, novos: d.novos || 0, total_acumulado: monthRunning }
+      })
+      
+      // Por ano - novos por ano
+      const yearlyResult = await DB.prepare(`
+        SELECT 
+          strftime('%Y', created_at) as ano,
+          COUNT(*) as novos
+        FROM users
+        GROUP BY strftime('%Y', created_at)
+        ORDER BY ano ASC
+      `).all()
+      const yearlyRaw = yearlyResult.results || []
+      let yearRunning = 0
+      userGrowthYearly = yearlyRaw.map((d: any) => {
+        yearRunning += (d.novos || 0)
+        return { ano: d.ano, novos: d.novos || 0, total_acumulado: yearRunning }
+      })
+      
+      console.log('📊 User growth data:', { totalUsers, daily: userGrowthDaily.length, monthly: userGrowthMonthly.length, yearly: userGrowthYearly.length })
+    } catch (e) {
+      console.log('⚠️ Erro ao buscar crescimento de usuários:', e)
+    }
+    
     return c.json({
       conteudos: {
         totais: conteudoTotais.results || [],
@@ -22610,6 +22681,12 @@ app.get('/api/admin/analytics', async (c) => {
         total: chatTotal,
         por_dia: chatPorDia,
         usuarios_unicos: chatUsuariosUnicos
+      },
+      user_growth: {
+        total: totalUsers,
+        daily: userGrowthDaily,
+        monthly: userGrowthMonthly,
+        yearly: userGrowthYearly
       }
     })
   } catch (error: any) {
@@ -22846,6 +22923,21 @@ app.get('/api/admin/messages/conversations', async (c) => {
   } catch (e: any) {
     console.error('Erro conversations:', e?.message || e);
     return c.json({ conversations: [] });
+  }
+});
+
+// Total de mensagens não lidas para o admin (sidebar badge)
+app.get('/api/admin/messages/unread-total', async (c) => {
+  const { env } = c;
+  try {
+    const result = await env.DB.prepare(`
+      SELECT COUNT(*) as total 
+      FROM admin_messages 
+      WHERE sender_type = 'user' AND read_at IS NULL
+    `).first() as any;
+    return c.json({ total: result?.total || 0 });
+  } catch (e: any) {
+    return c.json({ total: 0 });
   }
 });
 

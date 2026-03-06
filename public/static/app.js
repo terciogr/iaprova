@@ -1221,6 +1221,17 @@ function createUnifiedFAB() {
           Painel Admin
         </button>
       </div>
+      
+      <div id="fab-admin-chat" style="display: none;">
+        <button onclick="abrirChatAdmin(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s; position: relative;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+          <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative;">
+            <i class="fas fa-comments" style="font-size: 13px; color: ${iconColor};"></i>
+            <span id="sidebar-chat-badge" style="display:none; position:absolute; top:-6px; right:-6px; min-width:18px; height:18px; background:#EF4444; color:white; font-size:10px; font-weight:700; border-radius:999px; display:none; align-items:center; justify-content:center; padding:0 4px; line-height:18px; box-shadow:0 1px 3px rgba(0,0,0,0.3);"></span>
+          </div>
+          <span style="flex:1;text-align:left;">Chat com Alunos</span>
+          <i id="sidebar-chat-notif-icon" class="fas fa-bell" style="display:none; font-size:14px; color:#EF4444; animation: bellShake 0.5s ease-in-out infinite;"></i>
+        </button>
+      </div>
     </div>
   `;
   
@@ -1307,8 +1318,16 @@ function createUnifiedFAB() {
   // Mostrar botão de Painel Admin apenas para o administrador
   setTimeout(() => {
     const adminPanelBtn = document.getElementById('fab-admin-panel');
-    if (adminPanelBtn && currentUser?.email === 'terciogomesrabelo@gmail.com') {
-      adminPanelBtn.style.display = 'block';
+    const adminChatBtn = document.getElementById('fab-admin-chat');
+    if (currentUser?.email === 'terciogomesrabelo@gmail.com') {
+      if (adminPanelBtn) adminPanelBtn.style.display = 'block';
+      if (adminChatBtn) adminChatBtn.style.display = 'block';
+      // Verificar mensagens não lidas do admin
+      checkAdminUnreadMessages();
+      // Verificar periodicamente (a cada 30s)
+      if (!window._adminUnreadInterval) {
+        window._adminUnreadInterval = setInterval(checkAdminUnreadMessages, 30000);
+      }
     }
     
     // Ocultar botão de instalação se já está instalado como PWA
@@ -1318,6 +1337,30 @@ function createUnifiedFAB() {
       installBtn.style.display = 'none';
     }
   }, 100);
+}
+
+// Verificar mensagens não lidas para o admin (sidebar badge)
+async function checkAdminUnreadMessages() {
+  try {
+    const res = await axios.get('/api/admin/messages/unread-total');
+    const total = res.data?.total || 0;
+    const badge = document.getElementById('sidebar-chat-badge');
+    const notifIcon = document.getElementById('sidebar-chat-notif-icon');
+    
+    if (badge) {
+      if (total > 0) {
+        badge.textContent = total > 99 ? '99+' : total;
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+    if (notifIcon) {
+      notifIcon.style.display = total > 0 ? 'inline' : 'none';
+    }
+  } catch (e) {
+    // Silenciosamente ignorar erros
+  }
 }
 
 // Função para alternar o menu lateral (sidebar)
@@ -8571,7 +8614,7 @@ async function renderDashboard() {
     const mes = hoje.getMonth() + 1;
     const ano = hoje.getFullYear();
     
-    const [calendarioRes, estatisticasRes, scoreRes, viabilidadeRes, progressoRes] = await Promise.all([
+    const [calendarioRes, estatisticasRes, scoreRes, viabilidadeRes, progressoRes, simuladosHomeRes] = await Promise.all([
       axios.get(`/api/calendario/${currentUser.id}?mes=${mes}&ano=${ano}`),
       axios.get(`/api/estatisticas/${currentUser.id}`),
       axios.get(`/api/score/${currentUser.id}`).catch(() => ({ data: { score: 0 } })),
@@ -8579,7 +8622,8 @@ async function renderDashboard() {
       axios.get(`/api/planos/${plano.id}/progresso-geral`).catch((err) => {
         console.error('❌ Erro ao buscar progresso-geral:', err);
         return { data: { progresso_percentual: 0, total_topicos: 0, topicos_estudados: 0 } };
-      })
+      }),
+      axios.get(`/api/simulados/historico/${currentUser.id}`).catch(() => ({ data: { simulados: [] } }))
     ]);
 
     console.log('✅ Todos os dados carregados com sucesso');
@@ -8588,7 +8632,9 @@ async function renderDashboard() {
     console.log('📈 Análise de viabilidade:', viabilidadeRes.data);
     console.log('📊 Progresso geral RAW:', progressoRes.data);
     console.log('📊 Progresso percentual:', progressoRes.data?.progresso_percentual);
-    renderDashboardUI(plano, metas, desempenho, calendarioRes.data, estatisticasRes.data, entrevista, scoreRes.data, viabilidadeRes.data, progressoRes.data);
+    const simuladosHome = simuladosHomeRes.data?.simulados || [];
+    console.log('📊 Simulados na homepage:', simuladosHome.length);
+    renderDashboardUI(plano, metas, desempenho, calendarioRes.data, estatisticasRes.data, entrevista, scoreRes.data, viabilidadeRes.data, progressoRes.data, simuladosHome);
   } catch (error) {
     console.error('❌ Erro ao carregar dashboard:', error);
     console.log('Código de erro:', error.response?.status);
@@ -8627,7 +8673,7 @@ async function renderDashboard() {
   }
 }
 
-async function renderDashboardUI(plano, metas, desempenho, historico, stats, entrevista, scoreData = { score: 0 }, viabilidade = null, progressoGeral = null) {
+async function renderDashboardUI(plano, metas, desempenho, historico, stats, entrevista, scoreData = { score: 0 }, viabilidade = null, progressoGeral = null, simuladosHome = []) {
   const metasConcluidas = metas.filter(m => m.concluida).length;
   const progressoDia = metas.length > 0 ? Math.round((metasConcluidas / metas.length) * 100) : 0;
   
@@ -8635,6 +8681,14 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
   const mediaDiaria = stats.dias_estudados > 0 
     ? Math.round((stats.horas_totais * 60) / stats.dias_estudados) 
     : 0;
+
+  // ✅ NOVO v112: Calcular média de simulados e diferença da nota de corte
+  const metaConfigHome = JSON.parse(localStorage.getItem('metaSimulados') || '{}');
+  const notaCorteHome = metaConfigHome.notaCorte || 70;
+  const mediaSimuladosHome = simuladosHome.length > 0 
+    ? Math.round(simuladosHome.reduce((acc, s) => acc + s.percentual_acerto, 0) / simuladosHome.length) 
+    : 0;
+  const diffCorte = mediaSimuladosHome - notaCorteHome; // positivo = acima, negativo = abaixo
 
   // ✅ NOVO: Preparar informações do concurso/cargo baseado na entrevista
   let concursoInfo = {
@@ -8747,9 +8801,9 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   <span class="text-xs font-semibold text-white">${stats.horas_totais}h</span>
                 </div>
                 <div class="w-px h-4 bg-white/30"></div>
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-white/20 transition cursor-pointer" title="Score geral">
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-white/20 transition cursor-pointer" title="Média simulados" onclick="window.renderDashboardSimulados()">
                   <i class="fas fa-trophy text-yellow-300 text-[10px]"></i>
-                  <span class="text-xs font-semibold text-white">${scoreData.score}/10</span>
+                  <span class="text-xs font-semibold text-white" id="topbar-simulados">${simuladosHome.length > 0 ? mediaSimuladosHome + '%' : '--'}</span>
                 </div>
                 <div class="w-px h-4 bg-white/30"></div>
                 <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-white/20 transition cursor-pointer" title="Dias estudados">
@@ -8897,14 +8951,14 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   </div>
                 </div>
                 
-                <div onclick="mostrarDetalheScore()" class="group cursor-pointer bg-white dark:bg-gray-800 rounded-xl p-2.5 border border-gray-200 dark:border-gray-700 hover:border-[#3A5AB0] hover:shadow-md transition-all">
+                <div onclick="window.renderDashboardSimulados()" class="group cursor-pointer bg-white dark:bg-gray-800 rounded-xl p-2.5 border border-gray-200 dark:border-gray-700 hover:border-[#3A5AB0] hover:shadow-md transition-all">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#122D6A] to-[#3A5AB0] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                       <i class="fas fa-trophy text-white text-xs"></i>
                     </div>
                     <div class="min-w-0">
-                      <p class="text-base font-bold text-[#2A4A9F] dark:text-blue-400 leading-tight">${scoreData.score}</p>
-                      <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Score</p>
+                      <p class="text-base font-bold text-[#2A4A9F] dark:text-blue-400 leading-tight">${simuladosHome.length > 0 ? mediaSimuladosHome + '%' : '--'}</p>
+                      <p class="text-[9px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">Média Simulados</p>
                     </div>
                   </div>
                 </div>
@@ -9000,6 +9054,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
           <div class="flex items-center justify-between mb-3">
             <p class="text-xs sm:text-sm font-semibold ${themes[currentTheme].text}">Hoje: ${new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '')}</p>
             <div class="flex items-center gap-2">
+              <span class="text-[10px] font-medium ${themes[currentTheme].textSecondary} whitespace-nowrap">Progresso do dia</span>
               <div class="w-20 sm:w-32 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full">
                 <div class="h-1.5 bg-[#122D6A] rounded-full transition-all" style="width: ${progressoDia}%"></div>
               </div>
@@ -9022,8 +9077,9 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               <span class="kpi-label ${themes[currentTheme].textSecondary}">Disciplinas</span>
             </div>
             <div onclick="window.renderDashboardSimulados()" class="kpi-card cursor-pointer rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
-              <span class="kpi-value ${themes[currentTheme].text}">${scoreData.score}/10</span>
+              <span class="kpi-value ${themes[currentTheme].text}">${simuladosHome.length > 0 ? mediaSimuladosHome + '%' : '--'}</span>
               <span class="kpi-label ${themes[currentTheme].textSecondary}">Simulados</span>
+              ${simuladosHome.length > 0 ? '<span style="font-size:8px;margin-top:1px;display:block">' + (diffCorte >= 0 ? '<span style="color:#22c55e">▲+' + diffCorte + '%</span>' : '<span style="color:#ef4444">▼' + diffCorte + '%</span>') + ' corte</span>' : ''}
             </div>
           </div>
         </div>
@@ -9819,7 +9875,20 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
   // Calcular totais gerais
   const totalTopicosGeral = disciplinasComTopicos.reduce((sum, d) => sum + d.totalTopicos, 0);
   const totalRevisadosGeral = disciplinasComTopicos.reduce((sum, d) => sum + d.topicosRevisados, 0);
-  const percentualGeralConclusao = totalTopicosGeral > 0 ? Math.round((totalRevisadosGeral / totalTopicosGeral) * 100) : 0;
+  
+  // ✅ CORREÇÃO v112: Usar MESMA API da homepage para % geral (consistência)
+  let percentualGeralConclusao = totalTopicosGeral > 0 ? Math.round((totalRevisadosGeral / totalTopicosGeral) * 100) : 0;
+  try {
+    if (planoId) {
+      const progressoRes = await axios.get(`/api/planos/${planoId}/progresso-geral`);
+      if (progressoRes.data && typeof progressoRes.data.progresso_percentual === 'number') {
+        percentualGeralConclusao = progressoRes.data.progresso_percentual;
+        console.log(`📊 Progresso geral via API (consistente com homepage): ${percentualGeralConclusao}%`);
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️ Fallback para cálculo local do progresso:', e.message);
+  }
   
   app.innerHTML = `
     <div class="min-h-screen ${themes[currentTheme].bg}">
@@ -17999,7 +18068,7 @@ window.abrirAnalyticsAdmin = async function() {
         <div class="p-5 overflow-y-auto flex-1 space-y-6">
           
           <!-- Totais de conteúdo -->
-          <div class="grid grid-cols-2 md:grid-cols-7 gap-3">
+          <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
             ${(function() {
               const tipos = data.conteudos?.totais || [];
               const tipoMap = {};
@@ -18010,13 +18079,11 @@ window.abrirAnalyticsAdmin = async function() {
                 { label: 'Resumos', icon: 'fa-sticky-note', val: tipoMap['resumo'] || 0 },
                 { label: 'Flashcards', icon: 'fa-clone', val: data.conteudos?.flashcards_total || 0 },
                 { label: 'Simulados', icon: 'fa-file-alt', val: data.conteudos?.simulados_total || 0 },
-                { label: 'Revisoes', icon: 'fa-redo', val: data.conteudos?.revisoes_total || 0 },
                 { label: 'Chats Lilu', icon: 'fa-robot', val: data.chat_lilu?.total || 0 }
               ];
               var blueShades = [
                 ['#0A1839', '#122D6A'], ['#122D6A', '#1A3A7F'], ['#1A3A7F', '#2A4A9F'],
-                ['#2A4A9F', '#3A5AB0'], ['#3A5AB0', '#4A90D9'], ['#4A90D9', '#6BB6FF'],
-                ['#6B21A8', '#9333EA']
+                ['#2A4A9F', '#3A5AB0'], ['#3A5AB0', '#4A90D9'], ['#4A90D9', '#6BB6FF']
               ];
               return items.map(function(i, idx) {
                 var shade = blueShades[idx % blueShades.length];
@@ -18045,16 +18112,16 @@ window.abrirAnalyticsAdmin = async function() {
             <!-- Card Lilu Chat Stats -->
             <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
               <h3 class="font-bold ${themes[currentTheme].text} mb-3 flex items-center gap-2">
-                <i class="fas fa-robot text-[#9333EA]"></i>
+                <i class="fas fa-robot text-[#2A4A9F]"></i>
                 Interacoes com a Lilu
               </h3>
               <div class="grid grid-cols-2 gap-3">
-                <div class="bg-gradient-to-br from-[#6B21A8] to-[#9333EA] rounded-xl p-4 text-white text-center">
+                <div class="bg-gradient-to-br from-[#0A1839] to-[#122D6A] rounded-xl p-4 text-white text-center">
                   <i class="fas fa-comments text-2xl opacity-80 mb-1"></i>
                   <div class="text-3xl font-bold">${data.chat_lilu?.total || 0}</div>
                   <div class="text-xs opacity-80">Total de mensagens</div>
                 </div>
-                <div class="bg-gradient-to-br from-[#7C3AED] to-[#A855F7] rounded-xl p-4 text-white text-center">
+                <div class="bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] rounded-xl p-4 text-white text-center">
                   <i class="fas fa-users text-2xl opacity-80 mb-1"></i>
                   <div class="text-3xl font-bold">${data.chat_lilu?.usuarios_unicos || 0}</div>
                   <div class="text-xs opacity-80">Usuarios unicos</div>
@@ -18081,22 +18148,45 @@ window.abrirAnalyticsAdmin = async function() {
               Estatisticas de Feedbacks
             </h3>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div class="bg-[#E8EDF5] dark:bg-[#0A1839]/50 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-[#122D6A] dark:text-[#7BC4FF]">${data.feedbacks?.stats?.total || 0}</div>
-                    <div class="text-xs ${themes[currentTheme].textSecondary}">Total feedbacks</div>
+                  <div class="bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-xl p-4 text-white text-center shadow-sm">
+                    <i class="fas fa-comments text-lg opacity-70 mb-1"></i>
+                    <div class="text-2xl font-bold">${data.feedbacks?.stats?.total || 0}</div>
+                    <div class="text-xs opacity-80">Total feedbacks</div>
                   </div>
-                  <div class="bg-[#E8EDF5] dark:bg-[#0A1839]/50 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-[#1A3A7F] dark:text-[#6BB6FF]">${data.feedbacks?.stats?.media_geral || '-'}</div>
-                    <div class="text-xs ${themes[currentTheme].textSecondary}">Media rating</div>
+                  <div class="bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] rounded-xl p-4 text-white text-center shadow-sm">
+                    <i class="fas fa-star text-lg opacity-70 mb-1"></i>
+                    <div class="text-2xl font-bold">${data.feedbacks?.stats?.media_geral || '-'}</div>
+                    <div class="text-xs opacity-80">Media rating</div>
                   </div>
-                  <div class="bg-[#E8EDF5] dark:bg-[#0A1839]/50 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-[#2A4A9F] dark:text-[#4A90D9]">${data.feedbacks?.stats?.nao_lidos || 0}</div>
-                    <div class="text-xs ${themes[currentTheme].textSecondary}">Nao lidos</div>
+                  <div class="bg-gradient-to-br from-[#2A4A9F] to-[#3A5AB0] rounded-xl p-4 text-white text-center shadow-sm">
+                    <i class="fas fa-envelope text-lg opacity-70 mb-1"></i>
+                    <div class="text-2xl font-bold">${data.feedbacks?.stats?.nao_lidos || 0}</div>
+                    <div class="text-xs opacity-80">Nao lidos</div>
                   </div>
-                  <div class="bg-[#E8EDF5] dark:bg-[#0A1839]/50 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-[#3A5AB0] dark:text-[#4A90D9]">${data.feedbacks?.stats?.positivos || 0}</div>
-                    <div class="text-xs ${themes[currentTheme].textSecondary}">Positivos</div>
+                  <div class="bg-gradient-to-br from-[#3A5AB0] to-[#4A90D9] rounded-xl p-4 text-white text-center shadow-sm">
+                    <i class="fas fa-thumbs-up text-lg opacity-70 mb-1"></i>
+                    <div class="text-2xl font-bold">${data.feedbacks?.stats?.positivos || 0}</div>
+                    <div class="text-xs opacity-80">Positivos</div>
                   </div>
+            </div>
+          </div>
+          
+          <!-- Gráfico: Crescimento de Usuários -->
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
+                <i class="fas fa-users text-[#2A4A9F]"></i>
+                Crescimento de Usuarios
+                <span class="text-sm font-normal ${themes[currentTheme].textSecondary}">(${data.user_growth?.total || 0} total)</span>
+              </h3>
+              <div class="flex gap-1">
+                <button onclick="window._userGrowthView='day';renderUserGrowthChart()" id="btn-ug-day" class="px-3 py-1 text-xs font-medium rounded-lg bg-[#122D6A] text-white transition">Dia</button>
+                <button onclick="window._userGrowthView='month';renderUserGrowthChart()" id="btn-ug-month" class="px-3 py-1 text-xs font-medium rounded-lg ${themes[currentTheme].text} border ${themes[currentTheme].border} transition">Mês</button>
+                <button onclick="window._userGrowthView='year';renderUserGrowthChart()" id="btn-ug-year" class="px-3 py-1 text-xs font-medium rounded-lg ${themes[currentTheme].text} border ${themes[currentTheme].border} transition">Ano</button>
+              </div>
+            </div>
+            <div style="height: 320px; position: relative;">
+              <canvas id="chart-user-growth"></canvas>
             </div>
           </div>
           
@@ -18108,15 +18198,15 @@ window.abrirAnalyticsAdmin = async function() {
             </h3>
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
-                <thead class="bg-gray-100 dark:bg-gray-800 sticky top-0">
+                <thead class="bg-[#122D6A] text-white sticky top-0">
                   <tr>
-                    <th class="p-2 text-left ${themes[currentTheme].text}">Usuario</th>
-                    <th class="p-2 text-center ${themes[currentTheme].text}">Tipo</th>
-                    <th class="p-2 text-center ${themes[currentTheme].text}">Rating</th>
-                    <th class="p-2 text-left ${themes[currentTheme].text}">Mensagem</th>
-                    <th class="p-2 text-left ${themes[currentTheme].text}">Contexto</th>
-                    <th class="p-2 text-center ${themes[currentTheme].text}">Lido</th>
-                    <th class="p-2 text-left ${themes[currentTheme].text}">Data</th>
+                    <th class="p-2 text-left text-xs font-semibold">Usuario</th>
+                    <th class="p-2 text-center text-xs font-semibold">Tipo</th>
+                    <th class="p-2 text-center text-xs font-semibold">Rating</th>
+                    <th class="p-2 text-left text-xs font-semibold">Mensagem</th>
+                    <th class="p-2 text-left text-xs font-semibold">Contexto</th>
+                    <th class="p-2 text-center text-xs font-semibold">Lido</th>
+                    <th class="p-2 text-left text-xs font-semibold">Data</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -18151,7 +18241,7 @@ window.abrirAnalyticsAdmin = async function() {
                     }
                     var dataStr = f.created_at ? new Date(f.created_at).toLocaleDateString('pt-BR') + ' ' + new Date(f.created_at).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '-';
                     var msgTrunc = (f.message || '').length > 60 ? (f.message || '').substring(0, 60) + '...' : (f.message || '-');
-                    return '<tr class="border-b ' + themes[currentTheme].border + ' hover:bg-gray-50 dark:hover:bg-gray-800">' +
+                    return '<tr class="border-b ' + themes[currentTheme].border + ' hover:bg-blue-50 dark:hover:bg-gray-800 even:bg-gray-50 dark:even:bg-gray-900/30">' +
                       '<td class="p-2 text-xs"><div class="font-medium">' + (f.user_name || 'N/A') + '</div><div class="text-[10px] opacity-60">' + (f.user_email || '') + '</div></td>' +
                       '<td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs ' + tipoClass + '">' + tipoLabel + '</span></td>' +
                       '<td class="p-2 text-center">' + ratingStars + '</td>' +
@@ -18240,9 +18330,9 @@ window.abrirAnalyticsAdmin = async function() {
           { label: 'Teoria', data: sortedDates.map(function(d) { return teoriaMap[d] || 0; }), borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.4 },
           { label: 'Exercicios', data: sortedDates.map(function(d) { return exerciciosMap[d] || 0; }), borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.4 },
           { label: 'Resumos', data: sortedDates.map(function(d) { return resumoMap[d] || 0; }), borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.1)', fill: true, tension: 0.4 },
-          { label: 'Flashcards', data: sortedDates.map(function(d) { return flashcardsMap[d] || 0; }), borderColor: '#8B5CF6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.4 },
+          { label: 'Flashcards', data: sortedDates.map(function(d) { return flashcardsMap[d] || 0; }), borderColor: '#3A5AB0', backgroundColor: 'rgba(58,90,176,0.1)', fill: true, tension: 0.4 },
           { label: 'Simulados', data: sortedDates.map(function(d) { return simuladosMap[d] || 0; }), borderColor: '#EF4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.4 },
-          { label: 'Chats Lilu', data: sortedDates.map(function(d) { return chatMap[d] || 0; }), borderColor: '#9333EA', backgroundColor: 'rgba(147,51,234,0.1)', fill: true, tension: 0.4, borderDash: [5, 5] }
+          { label: 'Chats Lilu', data: sortedDates.map(function(d) { return chatMap[d] || 0; }), borderColor: '#4A90D9', backgroundColor: 'rgba(74,144,217,0.1)', fill: true, tension: 0.4, borderDash: [5, 5] }
         ];
         
         new Chart(ctxConteudo, {
@@ -18285,7 +18375,7 @@ window.abrirAnalyticsAdmin = async function() {
           'bug': '#EF4444',
           'praise': '#10B981',
           'complaint': '#F97316',
-          'question': '#8B5CF6',
+          'question': '#4A90D9',
           'bom': '#10B981',
           'ruim': '#EF4444'
         };
@@ -18343,6 +18433,133 @@ window.abrirAnalyticsAdmin = async function() {
         console.error('Erro chart feedbacks:', e);
       }
     }, 200);
+    
+    // 3. Gráfico de Crescimento de Usuários
+    window._userGrowthData = data.user_growth || {};
+    window._userGrowthView = 'day';
+    window._userGrowthChartInstance = null;
+    
+    window.renderUserGrowthChart = function() {
+      try {
+        var ctx = document.getElementById('chart-user-growth');
+        if (!ctx) return;
+        
+        if (window._userGrowthChartInstance) {
+          window._userGrowthChartInstance.destroy();
+        }
+        
+        var view = window._userGrowthView || 'day';
+        var gd = window._userGrowthData;
+        var labels = [], novos = [], acumulado = [];
+        
+        // Update button styles
+        ['day','month','year'].forEach(function(v) {
+          var btn = document.getElementById('btn-ug-' + v);
+          if (!btn) return;
+          if (v === view) {
+            btn.className = 'px-3 py-1 text-xs font-medium rounded-lg bg-[#122D6A] text-white transition';
+          } else {
+            btn.className = 'px-3 py-1 text-xs font-medium rounded-lg border transition';
+            btn.style.color = '';
+          }
+        });
+        
+        if (view === 'day') {
+          (gd.daily || []).forEach(function(d) {
+            labels.push(d.dia ? d.dia.substring(5) : '');
+            novos.push(d.novos || 0);
+            acumulado.push(d.total_acumulado || 0);
+          });
+        } else if (view === 'month') {
+          (gd.monthly || []).forEach(function(d) {
+            labels.push(d.mes || '');
+            novos.push(d.novos || 0);
+            acumulado.push(d.total_acumulado || 0);
+          });
+        } else {
+          (gd.yearly || []).forEach(function(d) {
+            labels.push(d.ano || '');
+            novos.push(d.novos || 0);
+            acumulado.push(d.total_acumulado || 0);
+          });
+        }
+        
+        if (labels.length === 0) {
+          labels = ['Sem dados'];
+          novos = [0];
+          acumulado = [0];
+        }
+        
+        window._userGrowthChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Total Acumulado',
+                data: acumulado,
+                borderColor: '#122D6A',
+                backgroundColor: 'rgba(18, 45, 106, 0.1)',
+                fill: true,
+                tension: 0.3,
+                borderWidth: 2,
+                pointRadius: 3,
+                pointBackgroundColor: '#122D6A',
+                yAxisID: 'y'
+              },
+              {
+                label: 'Novos Usuarios',
+                data: novos,
+                borderColor: '#4A90D9',
+                backgroundColor: 'rgba(74, 144, 217, 0.15)',
+                fill: true,
+                tension: 0.3,
+                borderWidth: 2,
+                pointRadius: 3,
+                pointBackgroundColor: '#4A90D9',
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            scales: {
+              y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: { display: true, text: 'Total', font: { size: 11 } },
+                ticks: { font: { size: 10 } },
+                grid: { color: 'rgba(0,0,0,0.05)' }
+              },
+              y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: { display: true, text: 'Novos', font: { size: 11 } },
+                ticks: { font: { size: 10 } },
+                grid: { drawOnChartArea: false }
+              },
+              x: { ticks: { font: { size: 9 }, maxRotation: 45 } }
+            },
+            plugins: {
+              legend: { position: 'top', labels: { usePointStyle: true, padding: 10, font: { size: 11 } } },
+              tooltip: { 
+                callbacks: {
+                  title: function(items) { return items[0]?.label || ''; }
+                }
+              }
+            }
+          }
+        });
+      } catch (e) {
+        console.error('Erro chart user growth:', e);
+      }
+    };
+    
+    setTimeout(function() { renderUserGrowthChart(); }, 300);
     
   } catch (error) {
     document.getElementById('analytics-loading')?.remove();
