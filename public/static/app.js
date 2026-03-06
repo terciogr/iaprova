@@ -9876,23 +9876,23 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
           </p>
         </div>
 
-        <!-- Estatísticas Gerais - compacto -->
-        <div class="stats-grid-compact mb-4">
-          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-            <span class="sc-value ${themes[currentTheme].text}">${disciplinas.length}</span>
-            <span class="sc-label ${themes[currentTheme].textSecondary}">Disciplinas</span>
+        <!-- Estatísticas Gerais - mesmo padrão da homepage -->
+        <div class="kpi-grid-4 mb-4">
+          <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+            <span class="kpi-value ${themes[currentTheme].text}">${disciplinas.length}</span>
+            <span class="kpi-label ${themes[currentTheme].textSecondary}">Disciplinas</span>
           </div>
-          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-            <span class="sc-value ${themes[currentTheme].text}">${totalTopicosGeral}</span>
-            <span class="sc-label ${themes[currentTheme].textSecondary}">Tópicos</span>
+          <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+            <span class="kpi-value ${themes[currentTheme].text}">${totalTopicosGeral}</span>
+            <span class="kpi-label ${themes[currentTheme].textSecondary}">Tópicos</span>
           </div>
-          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-            <span class="sc-value text-[#4A90D9]">${totalRevisadosGeral}</span>
-            <span class="sc-label ${themes[currentTheme].textSecondary}">Revisados</span>
+          <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+            <span class="kpi-value text-[#4A90D9]">${totalRevisadosGeral}</span>
+            <span class="kpi-label ${themes[currentTheme].textSecondary}">Revisados</span>
           </div>
-          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-            <span class="sc-value text-[#4A90D9]">${percentualGeralConclusao}%</span>
-            <span class="sc-label ${themes[currentTheme].textSecondary}">Progresso</span>
+          <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+            <span class="kpi-value text-[#4A90D9]">${percentualGeralConclusao}%</span>
+            <span class="kpi-label ${themes[currentTheme].textSecondary}">Progresso</span>
           </div>
         </div>
 
@@ -14893,23 +14893,23 @@ window.renderDashboardDesempenho = async function() {
             </h1>
           </div>
           
-          <!-- KPIs Compactos -->
-          <div class="stats-grid-compact mb-3">
-            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-              <span class="sc-value ${themes[currentTheme].text}">${stats.dias_estudados || 0}</span>
-              <span class="sc-label ${themes[currentTheme].textSecondary}">Dias Estudados</span>
+          <!-- KPIs - mesmo padrão da homepage -->
+          <div class="kpi-grid-4 mb-3">
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value ${themes[currentTheme].text}">${stats.dias_estudados || 0}</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Dias</span>
             </div>
-            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-              <span class="sc-value text-[#4A90D9]">${stats.streak_atual || 0} <small style="font-size:0.6em">dias</small></span>
-              <span class="sc-label ${themes[currentTheme].textSecondary}">Sequência</span>
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value text-[#4A90D9]">${stats.streak_atual || 0}</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Sequência</span>
             </div>
-            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-              <span class="sc-value ${themes[currentTheme].text}">${stats.horas_totais || 0}h</span>
-              <span class="sc-label ${themes[currentTheme].textSecondary}">Horas Totais</span>
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value ${themes[currentTheme].text}">${stats.horas_totais || 0}h</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Horas</span>
             </div>
-            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-              <span class="sc-value text-[#4A90D9]">${progressoGeral.progresso_percentual || 0}%</span>
-              <span class="sc-label ${themes[currentTheme].textSecondary}">Progresso</span>
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value text-[#4A90D9]">${progressoGeral.progresso_percentual || 0}%</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Progresso</span>
             </div>
           </div>
           
@@ -15510,27 +15510,27 @@ window.renderDashboardSimulados = async function() {
             </button>
           </div>
           
-          <!-- Estatísticas Compactas -->
-          <div class="stats-grid-compact mb-3">
-            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-              <span class="sc-value ${themes[currentTheme].text}">${simulados.length}</span>
-              <span class="sc-label ${themes[currentTheme].textSecondary}">Realizados</span>
+          <!-- Estatísticas - mesmo padrão da homepage -->
+          <div class="kpi-grid-4 mb-3">
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value ${themes[currentTheme].text}">${simulados.length}</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Realizados</span>
             </div>
-            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-              <span class="sc-value ${themes[currentTheme].text}">
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value ${themes[currentTheme].text}">
                 ${simulados.length > 0 ? Math.round(simulados.reduce((acc, s) => acc + s.percentual_acerto, 0) / simulados.length) : 0}%
               </span>
-              <span class="sc-label ${themes[currentTheme].textSecondary}">Média Geral</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Média</span>
             </div>
-            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-              <span class="sc-value text-[#4A90D9]">
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value text-[#4A90D9]">
                 ${simulados.length > 0 ? Math.max(...simulados.map(s => s.percentual_acerto)) : 0}%
               </span>
-              <span class="sc-label ${themes[currentTheme].textSecondary}">Melhor</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Melhor</span>
             </div>
-            <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-              <span class="sc-value text-[#4A90D9]">${metaPercentual}%</span>
-              <span class="sc-label ${themes[currentTheme].textSecondary}">Nota de Corte</span>
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value text-[#4A90D9]">${metaPercentual}%</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Corte</span>
             </div>
           </div>
           
@@ -21707,23 +21707,23 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
           </h1>
         </div>
         
-        <!-- Estatísticas compactas -->
-        <div class="stats-grid-compact mb-3">
-          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-            <span class="sc-value text-[#4A90D9]">${stats.streak_atual}</span>
-            <span class="sc-label ${themes[currentTheme].textSecondary}">Streak</span>
+        <!-- Estatísticas - mesmo padrão da homepage -->
+        <div class="kpi-grid-4 mb-3">
+          <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+            <span class="kpi-value text-[#4A90D9]">${stats.streak_atual}</span>
+            <span class="kpi-label ${themes[currentTheme].textSecondary}">Streak</span>
           </div>
-          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-            <span class="sc-value ${themes[currentTheme].text}">${stats.dias_estudados}</span>
-            <span class="sc-label ${themes[currentTheme].textSecondary}">Dias Estudados</span>
+          <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+            <span class="kpi-value ${themes[currentTheme].text}">${stats.dias_estudados}</span>
+            <span class="kpi-label ${themes[currentTheme].textSecondary}">Dias</span>
           </div>
-          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-            <span class="sc-value ${themes[currentTheme].text}">${stats.horas_totais}h</span>
-            <span class="sc-label ${themes[currentTheme].textSecondary}">Horas Totais</span>
+          <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+            <span class="kpi-value ${themes[currentTheme].text}">${stats.horas_totais}h</span>
+            <span class="kpi-label ${themes[currentTheme].textSecondary}">Horas</span>
           </div>
-          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border}">
-            <span class="sc-value ${themes[currentTheme].text}">${stats.media_conclusao}%</span>
-            <span class="sc-label ${themes[currentTheme].textSecondary}">Conclusão</span>
+          <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+            <span class="kpi-value ${themes[currentTheme].text}">${stats.media_conclusao}%</span>
+            <span class="kpi-label ${themes[currentTheme].textSecondary}">Conclusão</span>
           </div>
         </div>
 
@@ -25093,7 +25093,7 @@ function renderizarConcursosContent() {
   
   content.innerHTML = `
     <!-- Cards resumo -->
-    <div class="concursos-summary-cards">
+    <div class="concursos-summary-cards mb-4">
       <div class="bg-gradient-to-br from-[#0A1839] to-[#122D6A] text-white text-center shadow-lg">
         <div class="concursos-number">${filtradas.totalAbertos}</div>
         <div class="concursos-label text-blue-200 font-medium">Abertos</div>
@@ -30774,24 +30774,22 @@ window.verDetalhesSimulado = async function(simuladoId) {
           </div>
           
           <!-- Estatísticas -->
-          <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} p-6 mb-6">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div class="text-center">
-                <div class="text-xl md:text-3xl font-bold ${simulado.percentual_acerto >= 70 ? 'text-[#2A4A9F]' : simulado.percentual_acerto >= 50 ? 'text-[#4A90E2]' : 'text-red-600'}">${simulado.percentual_acerto}%</div>
-                <div class="${themes[currentTheme].textSecondary} text-xs md:text-sm">Aproveitamento</div>
-              </div>
-              <div class="text-center">
-                <div class="text-xl md:text-3xl font-bold ${themes[currentTheme].text}">${simulado.acertos}/${simulado.total_questoes}</div>
-                <div class="${themes[currentTheme].textSecondary} text-xs md:text-sm">Acertos</div>
-              </div>
-              <div class="text-center">
-                <div class="text-xl md:text-3xl font-bold ${themes[currentTheme].text}">${simulado.tempo_gasto || '--:--'}</div>
-                <div class="${themes[currentTheme].textSecondary} text-xs md:text-sm">Tempo</div>
-              </div>
-              <div class="text-center">
-                <div class="text-xl md:text-3xl font-bold ${themes[currentTheme].text}">${disciplinas.length}</div>
-                <div class="${themes[currentTheme].textSecondary} text-xs md:text-sm">Disciplinas</div>
-              </div>
+          <div class="kpi-grid-4 mb-6">
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value ${simulado.percentual_acerto >= 70 ? 'text-[#2A4A9F]' : simulado.percentual_acerto >= 50 ? 'text-[#4A90E2]' : 'text-red-600'}">${simulado.percentual_acerto}%</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Aproveitamento</span>
+            </div>
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value ${themes[currentTheme].text}">${simulado.acertos}/${simulado.total_questoes}</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Acertos</span>
+            </div>
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value ${themes[currentTheme].text}">${simulado.tempo_gasto || '--:--'}</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Tempo</span>
+            </div>
+            <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <span class="kpi-value ${themes[currentTheme].text}">${disciplinas.length}</span>
+              <span class="kpi-label ${themes[currentTheme].textSecondary}">Disciplinas</span>
             </div>
           </div>
           

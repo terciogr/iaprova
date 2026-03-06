@@ -150,6 +150,7 @@ a, button, [onclick] {
   text-align: center !important;
   padding: 8px 4px !important;
   min-height: 56px !important;
+  border-radius: 8px !important;
 }
 
 .kpi-card .kpi-value {
@@ -446,77 +447,7 @@ a, button, [onclick] {
 }
 
 /* ===== Universal compact KPI grid (same as homepage kpi-grid-4) ===== */
-/* Used for Disciplinas, Simulados, Desempenho, Calendário screens */
-.stats-grid-compact {
-  display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
-  gap: 6px !important;
-}
-
-.stats-grid-compact > div {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  text-align: center !important;
-  padding: 10px 6px !important;
-  min-height: 60px !important;
-  border-radius: 12px !important;
-  min-width: 0 !important;
-}
-
-.stats-grid-compact .sc-value {
-  font-size: 18px !important;
-  font-weight: 700 !important;
-  line-height: 1.2 !important;
-  white-space: nowrap !important;
-}
-
-.stats-grid-compact .sc-label {
-  font-size: 10px !important;
-  line-height: 1.2 !important;
-  margin-top: 2px !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  opacity: 0.7;
-}
-
-@media (min-width: 480px) {
-  .stats-grid-compact {
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 8px !important;
-  }
-}
-
-@media (min-width: 640px) {
-  .stats-grid-compact {
-    gap: 12px !important;
-  }
-  .stats-grid-compact > div {
-    padding: 14px 8px !important;
-    min-height: 72px !important;
-  }
-  .stats-grid-compact .sc-value {
-    font-size: 22px !important;
-  }
-  .stats-grid-compact .sc-label {
-    font-size: 11px !important;
-  }
-}
-
-@media (min-width: 768px) {
-  .stats-grid-compact > div {
-    padding: 16px 12px !important;
-    min-height: 80px !important;
-  }
-  .stats-grid-compact .sc-value {
-    font-size: 26px !important;
-  }
-  .stats-grid-compact .sc-label {
-    font-size: 12px !important;
-  }
-}
+/* All screens now use kpi-grid-4 with kpi-card for consistent look */
 
 /* ===== Simulados - status card ===== */
 .status-card-meta {
