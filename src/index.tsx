@@ -12602,7 +12602,7 @@ app.get('/api/planos/list/:user_id', async (c) => {
         const topicosEstudadosResult = await DB.prepare(`
           SELECT COUNT(*) as total FROM user_topicos_progresso utp
           INNER JOIN topicos_edital te ON utp.topico_id = te.id
-          WHERE utp.plano_id = ? AND te.plano_id = ? AND te.disciplina_id IN (${placeholders}) AND utp.nivel_dominio >= 2
+          WHERE utp.plano_id = ? AND te.plano_id = ? AND te.disciplina_id IN (${placeholders}) AND utp.nivel_dominio >= 10
         `).bind(p.id, p.id, ...disciplinaIds).first() as any
         
         // Contar metas concluídas
@@ -13048,7 +13048,7 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
          WHERE te.disciplina_id = c.disciplina_id 
            AND te.plano_id = ?
            AND utp.plano_id = ?
-           AND utp.nivel_dominio >= 2) as estudados_te,
+           AND utp.nivel_dominio >= 10) as estudados_te,
         -- Contar TODAS as metas da disciplina no plano (total)
         (SELECT COUNT(*) FROM metas_semana ms 
          INNER JOIN semanas_estudo se ON ms.semana_id = se.id
@@ -13825,15 +13825,13 @@ app.post('/api/metas/concluir', async (c) => {
     if (metaSemana) {
       await atualizarHistoricoDia(DB, metaSemana.user_id, metaSemana.data)
       
-      // ✅ CORRIGIDO: Atualizar progresso do tópico COM plano_id
+      // ✅ v109: NÃO atualizar nivel_dominio aqui — o progresso do edital
+      // só deve avançar quando o usuário marcar o checkbox "Concluir tópico"
+      // no modal, que chama /api/metas/concluir-topico separadamente.
+      // Aqui apenas avançamos metas futuras da mesma disciplina/tópico na semana.
       if (metaSemana.topicos_sugeridos && metaSemana.plano_id) {
         try {
           const topicos = JSON.parse(metaSemana.topicos_sugeridos)
-          for (const topico of topicos) {
-            if (topico.id) {
-              await atualizarProgressoTopico(DB, metaSemana.user_id, topico.id, metaSemana.plano_id)
-            }
-          }
           
           // ✅ v87: SEMPRE avançar metas futuras da mesma disciplina que tenham o mesmo tópico
           if (topicos.length > 0 && topicos[0].nome && metaSemana.disciplina_id && metaSemana.semana_id) {
@@ -13872,19 +13870,8 @@ app.post('/api/metas/concluir', async (c) => {
   if (meta) {
     await atualizarHistoricoDia(DB, meta.user_id, meta.data)
     
-    // ✅ CORRIGIDO: Atualizar progresso do tópico COM plano_id
-    if (meta.topicos_sugeridos && meta.plano_id) {
-      try {
-        const topicos = JSON.parse(meta.topicos_sugeridos)
-        for (const topico of topicos) {
-          if (topico.id) {
-            await atualizarProgressoTopico(DB, meta.user_id, topico.id, meta.plano_id)
-          }
-        }
-      } catch (e) {
-        console.error('❌ Erro ao parsear topicos_sugeridos:', e)
-      }
-    }
+    // ✅ v109: NÃO atualizar nivel_dominio aqui — o progresso do edital
+    // só deve avançar via /api/metas/concluir-topico (checkbox no modal)
   }
 
   return c.json({ success: true, tipo: 'diaria' })
@@ -20909,11 +20896,27 @@ app.get('/home', (c) => {
         #app { min-height: 100vh; min-height: 100dvh; }
         
         /* v108: iOS button reset - garante aparência idêntica ao Android */
-        button, input, select, textarea {
+        /* IMPORTANTE: Excluir checkbox e radio do reset */
+        button, input:not([type="checkbox"]):not([type="radio"]), select, textarea {
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
             border-radius: 0;
+        }
+        /* Garantir que checkboxes mantêm aparência nativa */
+        input[type="checkbox"], input[type="radio"] {
+            -webkit-appearance: checkbox;
+            -moz-appearance: checkbox;
+            appearance: checkbox;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #10B981;
+        }
+        input[type="radio"] {
+            -webkit-appearance: radio;
+            -moz-appearance: radio;
+            appearance: radio;
         }
         button { border-radius: 0.5rem; }
         input[type="range"] { -webkit-appearance: auto; appearance: auto; }

@@ -25,11 +25,34 @@ body {
 }
 
 /* iOS button reset - prevents iOS from adding its own styles */
-button, input, select, textarea {
+/* IMPORTANT: Exclude checkbox and radio from appearance reset */
+button,
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
   border-radius: 0;
+}
+
+/* Ensure checkboxes and radios keep native appearance */
+input[type="checkbox"],
+input[type="radio"] {
+  -webkit-appearance: checkbox;
+  -moz-appearance: checkbox;
+  appearance: checkbox;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: #10B981;
+}
+
+input[type="radio"] {
+  -webkit-appearance: radio;
+  -moz-appearance: radio;
+  appearance: radio;
 }
 
 /* Re-apply border-radius after reset */
