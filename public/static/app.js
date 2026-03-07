@@ -1094,7 +1094,7 @@ function createUnifiedFAB() {
   
   sidebar.innerHTML = `
     <!-- Header do Sidebar -->
-    <div style="background: ${headerBg}; padding: 24px 20px 20px; color: white;">
+    <div style="background: ${headerBg}; padding: 24px 20px 20px; padding-top: max(24px, env(safe-area-inset-top, 24px)); color: white;">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
         <div style="display: flex; align-items: center; gap: 10px;">
           <div style="width: 36px; height: 36px; background: rgba(255,255,255,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
@@ -1283,11 +1283,8 @@ function createUnifiedFAB() {
           width: 280px !important;
         }
       }
-      /* Safe area para evitar sobreposição com barra de status do sistema */
-      header.sticky {
-        padding-top: env(safe-area-inset-top, 0px) !important;
-      }
-      /* Botão hamburger maior e mais acessível no mobile */
+      /* Safe area para header - handled via style.css (.sticky.top-0) */
+      /* iOS touch improvements for sidebar trigger */
       #sidebar-trigger {
         min-width: 44px !important;
         min-height: 44px !important;
@@ -1305,12 +1302,7 @@ function createUnifiedFAB() {
       #sidebar-trigger i {
         font-size: 18px !important;
       }
-      /* Garantir que o header tenha meta viewport safe area */
-      @supports(padding: env(safe-area-inset-top)) {
-        header.sticky {
-          padding-top: env(safe-area-inset-top, 0px) !important;
-        }
-      }
+      /* touch action for header items */
     `;
     document.head.appendChild(styles);
   }
