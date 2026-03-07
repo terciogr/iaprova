@@ -23040,6 +23040,30 @@ app.get('/api/admin/messages/unread-total', async (c) => {
   }
 });
 
+// Marcar mensagens do usuário como lidas pelo admin
+app.post('/api/admin/messages/mark-read', async (c) => {
+  const { env } = c;
+  try {
+    const body = await c.req.json();
+    const { user_id } = body;
+    
+    if (!user_id) return c.json({ error: 'user_id obrigatório' }, 400);
+    
+    if (!await isAdmin(c)) {
+      return c.json({ error: 'Acesso negado' }, 403);
+    }
+    
+    await env.DB.prepare(
+      "UPDATE admin_messages SET read_at = datetime('now') WHERE user_id = ? AND sender_type = 'user' AND read_at IS NULL"
+    ).bind(user_id).run();
+    
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('Erro ao marcar como lidas:', e?.message || e);
+    return c.json({ error: 'Erro ao marcar como lidas' }, 500);
+  }
+});
+
 // Buscar mensagens de um usuário (para admin ver)
 app.get('/api/admin/messages/:user_id', async (c) => {
   const { env } = c;

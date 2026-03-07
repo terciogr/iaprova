@@ -17563,41 +17563,62 @@ function _renderChatAdminList(conversations) {
   var content = document.getElementById('chat-admin-content');
   if (!content) return;
   
+  // Filtro atual: 'all' (todas), 'unread' (não lidas), 'read' (lidas)
+  var filter = window._chatAdminFilter || 'all';
+  
   var html = '';
   
-  html += '<button onclick="_abrirSeletorUsuarios()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;margin-bottom:16px;background:' + (_d?'rgba(42,74,159,0.2)':'#EFF6FF') + ';border:1px dashed ' + (_d?'rgba(42,74,159,0.4)':'#93B8E8') + ';border-radius:10px;color:#4A90D9;font-size:13px;font-weight:600;cursor:pointer;" onmouseover="this.style.background=\'' + (_d?'rgba(42,74,159,0.3)':'#DBEAFE') + '\'" onmouseout="this.style.background=\'' + (_d?'rgba(42,74,159,0.2)':'#EFF6FF') + '\'">' +
+  html += '<button onclick="_abrirSeletorUsuarios()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;margin-bottom:12px;background:' + (_d?'rgba(42,74,159,0.2)':'#EFF6FF') + ';border:1px dashed ' + (_d?'rgba(42,74,159,0.4)':'#93B8E8') + ';border-radius:10px;color:#4A90D9;font-size:13px;font-weight:600;cursor:pointer;" onmouseover="this.style.background=\'' + (_d?'rgba(42,74,159,0.3)':'#DBEAFE') + '\'" onmouseout="this.style.background=\'' + (_d?'rgba(42,74,159,0.2)':'#EFF6FF') + '\'">' +
     '<i class="fas fa-plus-circle"></i> Nova Conversa</button>';
   
   if (conversations.length > 0) {
     var unreadConvs = conversations.filter(function(c) { return c.unread_from_user > 0; });
     var readConvs = conversations.filter(function(c) { return !c.unread_from_user || c.unread_from_user === 0; });
-    var showAll = window._chatAdminShowAll === true;
+    var unreadCount = unreadConvs.length;
     
-    if (unreadConvs.length > 0) {
-      html += '<p style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#EF4444;margin-bottom:8px;"><i class="fas fa-circle" style="font-size:6px;vertical-align:middle;margin-right:4px;"></i>' + unreadConvs.length + ' não lida' + (unreadConvs.length > 1 ? 's' : '') + '</p>';
+    // Barra de filtros
+    var btnBase = 'padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;border:none;cursor:pointer;transition:all 0.15s;';
+    var btnActive = 'background:#122D6A;color:white;';
+    var btnInactive = 'background:' + (_d?'rgba(255,255,255,0.06)':'#F3F4F6') + ';color:' + (_d?'#9CA3AF':'#6B7280') + ';';
+    
+    html += '<div style="display:flex;gap:6px;margin-bottom:12px;">';
+    html += '<button onclick="window._chatAdminFilter=\'all\';_renderChatAdminList(window._chatAdminConversations||[])" style="' + btnBase + (filter === 'all' ? btnActive : btnInactive) + '">Todas (' + conversations.length + ')</button>';
+    html += '<button onclick="window._chatAdminFilter=\'unread\';_renderChatAdminList(window._chatAdminConversations||[])" style="' + btnBase + (filter === 'unread' ? btnActive : btnInactive) + '">';
+    html += 'Não lidas';
+    if (unreadCount > 0) html += ' <span style="background:#EF4444;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;margin-left:2px;">' + unreadCount + '</span>';
+    html += '</button>';
+    html += '<button onclick="window._chatAdminFilter=\'read\';_renderChatAdminList(window._chatAdminConversations||[])" style="' + btnBase + (filter === 'read' ? btnActive : btnInactive) + '">Lidas (' + readConvs.length + ')</button>';
+    html += '</div>';
+    
+    // Aplicar filtro
+    var filteredConvs;
+    if (filter === 'unread') {
+      filteredConvs = unreadConvs;
+    } else if (filter === 'read') {
+      filteredConvs = readConvs;
+    } else {
+      filteredConvs = unreadConvs.concat(readConvs);
+    }
+    
+    if (filteredConvs.length > 0) {
+      if (filter === 'all' && unreadCount > 0) {
+        html += '<p style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#EF4444;margin-bottom:6px;"><i class="fas fa-circle" style="font-size:5px;vertical-align:middle;margin-right:4px;"></i>Não lidas</p>';
+      }
       html += '<div style="display:flex;flex-direction:column;gap:6px;">';
-      unreadConvs.forEach(function(conv) {
+      var passedUnread = false;
+      filteredConvs.forEach(function(conv) {
+        if (filter === 'all' && unreadCount > 0 && !passedUnread && (!conv.unread_from_user || conv.unread_from_user === 0)) {
+          passedUnread = true;
+          html += '</div><p style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:' + (_d?'#6B7280':'#9CA3AF') + ';margin:12px 0 6px;">Lidas</p><div style="display:flex;flex-direction:column;gap:6px;">';
+        }
         html += _renderConvItem(conv, _d);
       });
       html += '</div>';
     } else {
-      html += '<div style="text-align:center;padding:20px 0;"><i class="fas fa-check-circle" style="font-size:24px;color:#10B981;"></i><p style="margin-top:8px;font-size:13px;color:' + (_d?'#6B7280':'#9CA3AF') + ';">Nenhuma mensagem não lida</p></div>';
-    }
-    
-    if (readConvs.length > 0) {
-      html += '<div style="margin-top:12px;text-align:center;">';
-      html += '<button onclick="window._chatAdminShowAll=' + (!showAll) + ';_renderChatAdminList(window._chatAdminConversations||[])" style="font-size:11px;font-weight:600;color:#4A90D9;background:transparent;border:1px solid ' + (_d?'rgba(74,144,217,0.3)':'#DBEAFE') + ';padding:6px 16px;border-radius:8px;cursor:pointer;">';
-      html += '<i class="fas fa-' + (showAll ? 'eye-slash' : 'eye') + ' mr-1"></i>' + (showAll ? 'Ocultar lidas' : 'Ver todas (' + readConvs.length + ' lidas)') + '</button>';
-      html += '</div>';
-      
-      if (showAll) {
-        html += '<p style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:' + (_d?'#6B7280':'#9CA3AF') + ';margin:12px 0 8px;">Conversas anteriores</p>';
-        html += '<div style="display:flex;flex-direction:column;gap:6px;">';
-        readConvs.forEach(function(conv) {
-          html += _renderConvItem(conv, _d);
-        });
-        html += '</div>';
-      }
+      var emptyMsg = filter === 'unread' ? 'Nenhuma mensagem não lida' : filter === 'read' ? 'Nenhuma conversa lida' : 'Nenhuma conversa';
+      var emptyIcon = filter === 'unread' ? 'fa-check-circle' : 'fa-inbox';
+      var emptyColor = filter === 'unread' ? '#10B981' : (_d?'#374151':'#D1D5DB');
+      html += '<div style="text-align:center;padding:24px 0;"><i class="fas ' + emptyIcon + '" style="font-size:24px;color:' + emptyColor + ';"></i><p style="margin-top:8px;font-size:13px;color:' + (_d?'#6B7280':'#9CA3AF') + ';">' + emptyMsg + '</p></div>';
     }
   } else {
     html += '<div style="text-align:center;padding:40px 0;"><i class="fas fa-inbox" style="font-size:36px;color:' + (_d?'#374151':'#D1D5DB') + ';"></i><p style="margin-top:8px;font-size:13px;color:' + (_d?'#6B7280':'#9CA3AF') + ';">Nenhuma conversa ainda</p><p style="font-size:11px;color:' + (_d?'#4B5563':'#9CA3AF') + ';margin-top:4px;">Clique em "Nova Conversa" acima</p></div>';
@@ -17804,6 +17825,21 @@ window.abrirChatComUsuarioId = async function(userId, userName) {
     
     // Marcar como lidas mensagens do admin que foram respondidas
     // (admin está vendo, marcar respostas do user como lidas)
+    try {
+      await axios.post('/api/admin/messages/mark-read', { user_id: userId }, {
+        headers: { 'X-User-ID': currentUser.id }
+      });
+      // Atualizar badge da sidebar
+      checkAdminUnreadMessages();
+      // Atualizar contagem local na lista de conversas
+      if (window._chatAdminConversations) {
+        window._chatAdminConversations.forEach(function(c) {
+          if (c.user_id === userId) c.unread_from_user = 0;
+        });
+      }
+    } catch (e) {
+      console.warn('Erro ao marcar como lidas:', e);
+    }
   } catch (err) {
     console.error('Erro ao carregar mensagens:', err);
     content.innerHTML = '<div class="text-center py-8 text-red-500"><p class="text-sm">Erro ao carregar mensagens</p></div>';
