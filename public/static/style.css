@@ -80,6 +80,15 @@ textarea {
   min-height: 44px;
 }
 
+/* Header buttons minimum tap area on mobile */
+@media (max-width: 640px) {
+  header.sticky button,
+  nav.fixed button {
+    min-width: 36px;
+    min-height: 36px;
+  }
+}
+
 /* iOS tap highlight */
 a, button, [onclick] {
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);

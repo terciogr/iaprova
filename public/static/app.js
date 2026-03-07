@@ -8806,19 +8806,19 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
             </div>
             
             <!-- Ações Rápidas - Ícones brancos -->
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-0.5 sm:gap-1.5">
               <!-- Atalhos Rápidos (apenas ícones) -->
               <div class="hidden md:flex items-center gap-1">
-                <button onclick="window.renderDashboardDesempenho()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group" title="Desempenho">
+                <button onclick="window.renderDashboardDesempenho()" class="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/20 transition group" title="Desempenho">
                   <i class="fas fa-chart-pie text-white text-sm group-hover:scale-110 transition-transform"></i>
                 </button>
-                <button onclick="window.renderDashboardSimulados()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group" title="Simulados">
+                <button onclick="window.renderDashboardSimulados()" class="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/20 transition group" title="Simulados">
                   <i class="fas fa-edit text-white text-sm group-hover:scale-110 transition-transform"></i>
                 </button>
-                <button onclick="renderPortfolioDisciplinas()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group" title="Disciplinas">
+                <button onclick="renderPortfolioDisciplinas()" class="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/20 transition group" title="Disciplinas">
                   <i class="fas fa-book-open text-white text-sm group-hover:scale-110 transition-transform"></i>
                 </button>
-                <button onclick="renderCalendario()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group" title="Calendário">
+                <button onclick="renderCalendario()" class="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/20 transition group" title="Calendário">
                   <i class="fas fa-calendar-alt text-white text-sm group-hover:scale-110 transition-transform"></i>
                 </button>
               </div>
@@ -8827,7 +8827,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               
               <!-- Tema Toggle -->
               <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
-                class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group"
+                class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group"
                 title="Alternar tema">
                 <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'} text-white text-sm group-hover:scale-110 transition-transform"></i>
               </button>
@@ -8835,21 +8835,21 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               <!-- Botão de Ajuda (?) -->
               <button onclick="toggleHelpMenu()" 
                 id="header-help-button"
-                class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group"
+                class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group"
                 title="Central de Ajuda">
                 <i class="fas fa-question-circle text-white text-sm group-hover:scale-110 transition-transform"></i>
               </button>
               
               <!-- Botão de Configurações -->
               <button onclick="abrirConfiguracoes()" 
-                class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group"
+                class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition group"
                 title="Configurações">
                 <i class="fas fa-cog text-white text-sm group-hover:scale-110 group-hover:rotate-90 transition-all duration-300"></i>
               </button>
               
               <!-- Avatar -->
               <div class="relative">
-                <button onclick="toggleUserMenu()" class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 hover:scale-105 transition-all">
+                <button onclick="toggleUserMenu()" class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 hover:scale-105 transition-all">
                   ${currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
                 </button>
                 <!-- User Dropdown Moderno -->
@@ -9898,7 +9898,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                 <i class="fas fa-plus"></i> <span class="hidden md:inline">Nova Disciplina</span>
               </button>
               <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
-                class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
+                class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
                 <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
               </button>
             </div>
@@ -10677,7 +10677,7 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
               <input type="range" id="quantidade-slider" min="5" max="20" value="10" 
                      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
                      oninput="document.getElementById('quantidade-valor').textContent = this.value">
-              <span id="quantidade-valor" class="text-xl font-bold text-[#122D6A] w-8 text-center">10</span>
+              <span id="quantidade-valor" class="text-xl font-bold ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'} w-8 text-center">10</span>
             </div>
             <p class="text-xs ${themes[currentTheme].textSecondary} mt-2">
               Deslize para escolher entre 5 e 20 itens
@@ -13579,7 +13579,7 @@ async function renderDetalheDisciplina(disciplinaId, disciplinaNome, conteudos, 
                 <i class="fas fa-book mr-1"></i>${disciplinaNome}
               </span>
               <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
-                class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
+                class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
                 <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
               </button>
             </div>
@@ -14038,7 +14038,7 @@ function abrirModalNovaDisciplina() {
             >
             <div class="flex justify-between text-xs text-gray-500 mt-1">
               <span>Iniciante</span>
-              <span id="nivel-valor" class="font-bold text-[#122D6A]">5</span>
+              <span id="nivel-valor" class="font-bold ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'}">5</span>
               <span>Expert</span>
             </div>
           </div>
@@ -14510,7 +14510,7 @@ async function renderMateriais(activeTab = 'todos') {
                   <i class="fas fa-folder-open mr-1"></i>${totalMateriais} materiais
                 </span>
                 <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
-                  class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
+                  class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
                   <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
                 </button>
               </div>
@@ -14536,10 +14536,10 @@ async function renderMateriais(activeTab = 'todos') {
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm ${themes[currentTheme].textSecondary}">Total</p>
-                  <p class="text-2xl font-bold text-[#122D6A]">${totalMateriais}</p>
+                  <p class="text-2xl font-bold ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'}">${totalMateriais}</p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-[#122D6A]/10 flex items-center justify-center">
-                  <i class="fas fa-folder text-[#122D6A] text-xl"></i>
+                <div class="w-12 h-12 rounded-full ${currentTheme === 'dark' ? 'bg-[#7BC4FF]/10' : 'bg-[#122D6A]/10'} flex items-center justify-center">
+                  <i class="fas fa-folder ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'} text-xl"></i>
                 </div>
               </div>
             </div>
@@ -14548,10 +14548,10 @@ async function renderMateriais(activeTab = 'todos') {
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm ${themes[currentTheme].textSecondary}">Teoria</p>
-                  <p class="text-2xl font-bold text-[#1A3A7F]">${porTipo.teoria.length}</p>
+                  <p class="text-2xl font-bold ${currentTheme === 'dark' ? 'text-[#93B5FF]' : 'text-[#1A3A7F]'}">${porTipo.teoria.length}</p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-[#1A3A7F]/10 flex items-center justify-center">
-                  <i class="fas fa-book text-[#1A3A7F] text-xl"></i>
+                <div class="w-12 h-12 rounded-full ${currentTheme === 'dark' ? 'bg-[#93B5FF]/10' : 'bg-[#1A3A7F]/10'} flex items-center justify-center">
+                  <i class="fas fa-book ${currentTheme === 'dark' ? 'text-[#93B5FF]' : 'text-[#1A3A7F]'} text-xl"></i>
                 </div>
               </div>
             </div>
@@ -14560,10 +14560,10 @@ async function renderMateriais(activeTab = 'todos') {
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm ${themes[currentTheme].textSecondary}">Exercícios</p>
-                  <p class="text-2xl font-bold text-[#2A4A9F]">${porTipo.exercicios.length}</p>
+                  <p class="text-2xl font-bold ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#2A4A9F]'}">${porTipo.exercicios.length}</p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-[#2A4A9F]/10 flex items-center justify-center">
-                  <i class="fas fa-tasks text-[#2A4A9F] text-xl"></i>
+                <div class="w-12 h-12 rounded-full ${currentTheme === 'dark' ? 'bg-[#7BC4FF]/10' : 'bg-[#2A4A9F]/10'} flex items-center justify-center">
+                  <i class="fas fa-tasks ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#2A4A9F]'} text-xl"></i>
                 </div>
               </div>
             </div>
@@ -14572,10 +14572,10 @@ async function renderMateriais(activeTab = 'todos') {
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm ${themes[currentTheme].textSecondary}">Flashcards</p>
-                  <p class="text-2xl font-bold text-[#3A5AB0]">${porTipo.flashcards.length}</p>
+                  <p class="text-2xl font-bold ${currentTheme === 'dark' ? 'text-[#93B5FF]' : 'text-[#3A5AB0]'}">${porTipo.flashcards.length}</p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-[#3A5AB0]/10 flex items-center justify-center">
-                  <i class="fas fa-clone text-[#3A5AB0] text-xl"></i>
+                <div class="w-12 h-12 rounded-full ${currentTheme === 'dark' ? 'bg-[#93B5FF]/10' : 'bg-[#3A5AB0]/10'} flex items-center justify-center">
+                  <i class="fas fa-clone ${currentTheme === 'dark' ? 'text-[#93B5FF]' : 'text-[#3A5AB0]'} text-xl"></i>
                 </div>
               </div>
             </div>
@@ -14584,10 +14584,10 @@ async function renderMateriais(activeTab = 'todos') {
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm ${themes[currentTheme].textSecondary}">Favoritos</p>
-                  <p class="text-2xl font-bold text-[#4A6AC0]">${favoritos}</p>
+                  <p class="text-2xl font-bold ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#4A6AC0]'}">${favoritos}</p>
                 </div>
-                <div class="w-12 h-12 rounded-full bg-[#4A6AC0]/10 flex items-center justify-center">
-                  <i class="fas fa-star text-[#4A6AC0] text-xl"></i>
+                <div class="w-12 h-12 rounded-full ${currentTheme === 'dark' ? 'bg-[#7BC4FF]/10' : 'bg-[#4A6AC0]/10'} flex items-center justify-center">
+                  <i class="fas fa-star ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#4A6AC0]'} text-xl"></i>
                 </div>
               </div>
             </div>
@@ -14937,7 +14937,7 @@ window.renderDashboardDesempenho = async function() {
                   </div>
                 </div>
                 <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
-                  class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
+                  class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
                   <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
                 </button>
               </div>
@@ -15548,7 +15548,7 @@ window.renderDashboardSimulados = async function() {
                   </div>
                 </div>
                 <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
-                  class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
+                  class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
                   <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
                 </button>
               </div>
@@ -16361,7 +16361,7 @@ window.abrirConfigTema = function() {
             '<i class="fas fa-moon text-blue-300 text-xl"></i>' +
           '</div>' +
           '<span class="font-medium ' + themes[currentTheme].text + '">Escuro</span>' +
-          (currentTheme === 'dark' ? '<i class="fas fa-check-circle text-[#122D6A]"></i>' : '') +
+          (currentTheme === 'dark' ? '<i class="fas fa-check-circle text-[#7BC4FF]"></i>' : '') +
         '</button>' +
       '</div>' +
     '</div>' +
@@ -17318,8 +17318,8 @@ window.abrirPainelAdmin = async function() {
                   <span class="font-bold text-[#1A3A7F]">${stats.feedback?.positivo || 0}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-thumbs-down mr-1 text-[#122D6A]"></i>Precisa melhorar</span>
-                  <span class="font-bold text-[#122D6A]">${stats.feedback?.negativo || 0}</span>
+                  <span class="${themes[currentTheme].textSecondary}"><i class="fas fa-thumbs-down mr-1 ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'}"></i>Precisa melhorar</span>
+                  <span class="font-bold ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'}">${stats.feedback?.negativo || 0}</span>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="${themes[currentTheme].textSecondary}">Taxa de satisfação</span>
@@ -21899,7 +21899,7 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
                 <i class="fas fa-calendar-alt mr-1"></i>${mesesNomes[mes - 1]} ${ano}
               </span>
               <button onclick="changeTheme(currentTheme === 'light' ? 'dark' : 'light')" 
-                class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
+                class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center hover:bg-white/20 transition">
                 <i class="fas ${currentTheme === 'light' ? 'fa-moon' : 'fa-sun'}"></i>
               </button>
             </div>
@@ -22481,7 +22481,7 @@ window.gerarConteudoTipo = async function(tipo) {
               <input type="range" id="quantidade-rapida-slider" min="5" max="20" value="${tipo === 'exercicios' ? '10' : '15'}" 
                      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
                      oninput="document.getElementById('quantidade-rapida-valor').textContent = this.value">
-              <span id="quantidade-rapida-valor" class="text-2xl font-bold text-[#122D6A] w-10 text-center">${tipo === 'exercicios' ? '10' : '15'}</span>
+              <span id="quantidade-rapida-valor" class="text-2xl font-bold ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'} w-10 text-center">${tipo === 'exercicios' ? '10' : '15'}</span>
             </div>
             <p class="text-xs ${themes[currentTheme].textSecondary} mt-2 text-center">
               Entre 5 e 20 ${tipo === 'exercicios' ? 'questões' : 'cards'}
@@ -23176,7 +23176,7 @@ window.verConteudoGerado = async function(metaId, tipo) {
                 <input type="range" id="quantidade-rapida-slider" min="5" max="20" value="${tipo === 'exercicios' ? '10' : '15'}" 
                        class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
                        oninput="document.getElementById('quantidade-rapida-valor').textContent = this.value">
-                <span id="quantidade-rapida-valor" class="text-2xl font-bold text-[#122D6A] w-10 text-center">${tipo === 'exercicios' ? '10' : '15'}</span>
+                <span id="quantidade-rapida-valor" class="text-2xl font-bold ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'} w-10 text-center">${tipo === 'exercicios' ? '10' : '15'}</span>
               </div>
               <p class="text-xs ${themes[currentTheme].textSecondary} mt-2 text-center">
                 Entre 5 e 20 ${tipo === 'exercicios' ? 'questões' : 'cards'}
@@ -24051,40 +24051,42 @@ async function carregarPlanos() {
         ? '<span class="text-[10px] bg-emerald-700 text-white px-2.5 py-0.5 rounded font-bold uppercase tracking-wider">ATIVO</span>'
         : '<span class="text-[10px] ' + (isLight ? 'bg-[#5A6E8A] text-white' : 'bg-gray-600 text-gray-200') + ' px-2.5 py-0.5 rounded font-bold uppercase tracking-wider">INATIVO</span>';
       
-      // Botões de ação - usar data attributes para evitar problemas com aspas
+      // Botões de ação - cores com contraste em ambos os temas
+      const editColor = isLight ? 'text-[#122D6A]' : 'text-[#7BC4FF]';
       const btnEditar = isAtivo 
-        ? `<span onclick="editarNomePlano(${plano.id}, document.getElementById('plano-nome-display-${plano.id}').textContent.trim())" class="text-[#122D6A] font-semibold text-sm cursor-pointer hover:underline">Editar</span>`
-        : `<span onclick="window.ativarPlano(${plano.id})" class="text-[#122D6A] font-semibold text-sm cursor-pointer hover:underline">Ativar</span>`;
-      const btnExcluir = `<span onclick="window.excluirPlano(${plano.id}, document.getElementById('plano-nome-display-${plano.id}').textContent.trim())" class="text-red-500 font-semibold text-sm cursor-pointer hover:underline">Excluir</span>`;
+        ? `<button onclick="editarNomePlano(${plano.id}, document.getElementById('plano-nome-display-${plano.id}').textContent.trim())" class="${editColor} font-semibold text-xs cursor-pointer hover:underline px-2 py-1 rounded hover:bg-blue-50 ${isLight ? '' : 'dark:hover:bg-blue-900/30'} transition whitespace-nowrap"><i class="fas fa-pen mr-1 text-[10px]"></i>Editar</button>`
+        : `<button onclick="window.ativarPlano(${plano.id})" class="${editColor} font-semibold text-xs cursor-pointer hover:underline px-2 py-1 rounded hover:bg-blue-50 ${isLight ? '' : 'dark:hover:bg-blue-900/30'} transition whitespace-nowrap"><i class="fas fa-check mr-1 text-[10px]"></i>Ativar</button>`;
+      const btnExcluir = `<button onclick="window.excluirPlano(${plano.id}, document.getElementById('plano-nome-display-${plano.id}').textContent.trim())" class="text-red-500 ${isLight ? '' : 'dark:text-red-400'} font-semibold text-xs cursor-pointer hover:underline px-2 py-1 rounded hover:bg-red-50 ${isLight ? '' : 'dark:hover:bg-red-900/30'} transition whitespace-nowrap"><i class="fas fa-trash mr-1 text-[10px]"></i>Excluir</button>`;
       
       return `
         <div class="${t.card} border ${t.border} rounded-xl p-4 transition hover:shadow-md">
-          <div class="flex items-start justify-between gap-3">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-1.5">
-                ${badge}
-                <h3 class="font-bold ${t.text} text-base truncate" id="plano-nome-display-${plano.id}">${nomePlano}</h3>
-              </div>
-              <div class="flex items-center flex-wrap gap-x-1.5 text-xs ${t.textSecondary} mb-2.5">
-                <span><i class="fas fa-book mr-0.5"></i>${plano.total_disciplinas} disciplinas</span>
-                <span class="${t.textMuted}">·</span>
-                <span>${plano.total_topicos || 0} tópicos</span>
-                <span class="${t.textMuted}">·</span>
-                <span>${plano.topicos_estudados || 0} concluído${(plano.topicos_estudados || 0) !== 1 ? 's' : ''}</span>
-                <span class="${t.textMuted}">·</span>
-                <span>${dataCriacao}</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <div class="flex-1 h-2 ${barTrack} rounded-full overflow-hidden">
-                  <div class="h-full rounded-full ${barColor} transition-all duration-500" style="width: ${progresso}%"></div>
+          <div class="flex flex-col gap-2">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1.5">
+                  ${badge}
+                  <h3 class="font-bold ${t.text} text-sm truncate" id="plano-nome-display-${plano.id}">${nomePlano}</h3>
                 </div>
-                <span class="text-xs font-semibold ${t.textSecondary} w-8 text-right">${progresso}%</span>
+                <div class="flex items-center flex-wrap gap-x-1.5 text-xs ${t.textSecondary} mb-2">
+                  <span><i class="fas fa-book mr-0.5"></i>${plano.total_disciplinas} disc.</span>
+                  <span class="${t.textMuted}">·</span>
+                  <span>${plano.total_topicos || 0} tóp.</span>
+                  <span class="${t.textMuted}">·</span>
+                  <span>${plano.topicos_estudados || 0} feito${(plano.topicos_estudados || 0) !== 1 ? 's' : ''}</span>
+                  <span class="${t.textMuted}">·</span>
+                  <span>${dataCriacao}</span>
+                </div>
               </div>
             </div>
-            <div class="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
-              ${btnEditar}
-              <span class="${t.textMuted}">|</span>
-              ${btnExcluir}
+            <div class="flex items-center gap-2">
+              <div class="flex-1 h-2 ${barTrack} rounded-full overflow-hidden">
+                <div class="h-full rounded-full ${barColor} transition-all duration-500" style="width: ${progresso}%"></div>
+              </div>
+              <span class="text-xs font-semibold ${t.textSecondary} w-8 text-right">${progresso}%</span>
+              <div class="flex items-center gap-0.5 flex-shrink-0 ml-1">
+                ${btnEditar}
+                ${btnExcluir}
+              </div>
             </div>
           </div>
         </div>
@@ -25798,7 +25800,7 @@ async function abrirSemanasAnteriores() {
                       <span class="text-xs ${themes[currentTheme].textSecondary}">${sem.metas_concluidas}/${sem.metas_totais}</span>
                     </div>
                   </div>
-                  <i class="fas fa-chevron-right ${themes[currentTheme].textMuted} group-hover:text-[#122D6A] transition"></i>
+                  <i class="fas fa-chevron-right ${themes[currentTheme].textMuted} ${currentTheme === 'dark' ? 'group-hover:text-[#7BC4FF]' : 'group-hover:text-[#122D6A]'} transition"></i>
                 </div>
               `;
             }).join('')}
@@ -29370,7 +29372,7 @@ window.abrirModalSimulado = async function() {
                 <input type="range" id="simulado-quantidade" min="10" max="50" value="20" step="5"
                        class="flex-1 h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
                        oninput="document.getElementById('simulado-qtd-valor').textContent = this.value; simuladoConfig.quantidadeQuestoes = parseInt(this.value);">
-                <span id="simulado-qtd-valor" class="text-2xl font-bold text-[#122D6A] w-12 text-center">20</span>
+                <span id="simulado-qtd-valor" class="text-2xl font-bold ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'} w-12 text-center">20</span>
               </div>
               <div class="flex justify-between text-xs text-gray-500 mt-1">
                 <span>10 questões</span>
