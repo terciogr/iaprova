@@ -22039,7 +22039,7 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
           </div>
 
           <!-- Grade do calendário -->
-          <div class="grid grid-cols-7 gap-2 mb-4">
+          <div class="grid grid-cols-7 gap-2 mb-4" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">
             <div class="text-center font-semibold ${themes[currentTheme].textSecondary} p-2">Dom</div>
             <div class="text-center font-semibold ${themes[currentTheme].textSecondary} p-2">Seg</div>
             <div class="text-center font-semibold ${themes[currentTheme].textSecondary} p-2">Ter</div>
@@ -22049,7 +22049,7 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
             <div class="text-center font-semibold ${themes[currentTheme].textSecondary} p-2">Sáb</div>
           </div>
 
-          <div class="grid grid-cols-7 gap-2">
+          <div class="grid grid-cols-7 gap-2" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">
             ${diasHTML}
           </div>
         </div>

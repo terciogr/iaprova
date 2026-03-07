@@ -1,7 +1,7 @@
-// IAprova Service Worker v3.5 - v120 chat admin mark-read + filter improvements
-const CACHE_NAME = 'iaprova-v120';
-const STATIC_CACHE = 'iaprova-static-v120';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v120';
+// IAprova Service Worker v3.6 - v121 iOS calendar grid-cols-7 definitive fix
+const CACHE_NAME = 'iaprova-v121';
+const STATIC_CACHE = 'iaprova-static-v121';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v121';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
