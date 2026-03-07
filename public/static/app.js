@@ -1094,7 +1094,7 @@ function createUnifiedFAB() {
   
   sidebar.innerHTML = `
     <!-- Header do Sidebar -->
-    <div style="background: ${headerBg}; padding: 24px 20px 20px; padding-top: max(24px, env(safe-area-inset-top, 24px)); color: white;">
+    <div style="background: ${headerBg}; padding: 24px 20px 20px; color: white;">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
         <div style="display: flex; align-items: center; gap: 10px;">
           <div style="width: 36px; height: 36px; background: rgba(255,255,255,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center;">

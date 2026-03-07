@@ -17,12 +17,13 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* iOS safe area support - ONLY horizontal + bottom, NOT top
-     Top safe area is handled by each sticky header via padding-top */
+  /* iOS safe area: bottom + horizontal only.
+     Top safe area is handled by sticky headers + .ios-safe-top-spacer.
+     With default status bar style, iOS adds automatic top offset. */
   padding-top: 0;
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* iOS button reset - prevents iOS from adding its own styles */
@@ -360,18 +361,20 @@ a, button, [onclick] {
   font-size: 12px !important;
 }
 
-/* ===== Sticky header safe area (iOS notch/Dynamic Island) ===== */
-/* Header stays at top:0, uses padding-top to push content below safe area.
-   This prevents double-offset (body padding + top offset) which made
-   the header invisible on iPhones. Android ignores env() so no impact. */
-.sticky.top-0,
-nav.fixed.top-0 {
-  top: 0 !important;
-  padding-top: env(safe-area-inset-top, 0px) !important;
-}
+/* ===== iOS Safe Area - Clean approach ===== */
+/* Strategy: meta tag 'apple-mobile-web-app-status-bar-style' is set to 'default'.
+   With 'default', iOS automatically reserves space for the status bar above the
+   web content. This means NO manual padding-top hacks are needed for the top.
+   The sticky headers work exactly like on Android - top:0 is below the status bar.
+   
+   Bottom safe area (home indicator) is handled by body padding-bottom.
+   
+   This approach is identical on Android (env() returns 0, no impact). */
 
-/* Pages WITHOUT a sticky/fixed header need top spacing for iOS safe area.
-   Applied to the first content container when no header is present. */
+/* Fallback: For Safari browser (non-standalone), no changes needed.
+   For PWA standalone with 'default' status bar, iOS reserves space automatically. */
+
+/* Pages WITHOUT a sticky/fixed header that need explicit safe-area top spacing */
 .ios-safe-top {
   padding-top: env(safe-area-inset-top, 0px);
 }
