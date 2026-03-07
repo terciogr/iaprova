@@ -465,6 +465,23 @@ a, button, [onclick] {
 }
 
 /* ===== Concursos screen - mobile fixes ===== */
+
+/* ===== iOS Calendar grid fix ===== */
+/* On iOS Safari, CSS grid with opacity colors (bg-[#2A4A9F]/10) may not render.
+   Force GPU compositing on calendar day cells for reliable background rendering. */
+@supports (-webkit-touch-callout: none) {
+  .grid.grid-cols-7 > div {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+  /* Ensure calendar card has proper background on iOS */
+  .grid.grid-cols-7 {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+}
 .concursos-summary-cards {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;

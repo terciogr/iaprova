@@ -1,7 +1,7 @@
-// IAprova Service Worker v3.3 - v118 fix iOS contrast + force cache refresh
-const CACHE_NAME = 'iaprova-v118';
-const STATIC_CACHE = 'iaprova-static-v118';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v118';
+// IAprova Service Worker v3.4 - v119 calendar iOS fix + user growth chart + chat unread filter
+const CACHE_NAME = 'iaprova-v119';
+const STATIC_CACHE = 'iaprova-static-v119';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v119';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [

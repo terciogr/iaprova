@@ -1126,7 +1126,7 @@ function createUnifiedFAB() {
         <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
           <i class="fas fa-home" style="font-size: 13px; color: ${iconColor};"></i>
         </div>
-        Dashboard
+        Home
       </button>
       
       <button onclick="renderPortfolioDisciplinas(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
@@ -17173,7 +17173,7 @@ window.abrirPainelAdmin = async function() {
               </h3>
               <div class="space-y-3">
                 <div class="flex justify-between items-center">
-                  <span class="${themes[currentTheme].textSecondary}">Hoje</span>
+                  <span class="${themes[currentTheme].textSecondary}">Últimas 24h</span>
                   <span class="font-bold ${themes[currentTheme].text} text-lg">${stats.users.today}</span>
                 </div>
                 <div class="flex justify-between items-center">
@@ -17528,6 +17528,7 @@ window.abrirChatAdmin = async function() {
     var conversations = results[0].status === 'fulfilled' ? (results[0].value.data.conversations || []) : [];
     var allUsers = results[1].status === 'fulfilled' ? (results[1].value.data.users || []) : [];
     window._chatAdminUsers = allUsers;
+    window._chatAdminConversations = conversations;
     
     _renderChatAdminList(conversations);
   } catch (err) {
@@ -17535,6 +17536,27 @@ window.abrirChatAdmin = async function() {
     document.getElementById('chat-admin-content').innerHTML = '<div style="text-align:center;padding:32px 0;color:#EF4444;"><i class="fas fa-exclamation-triangle" style="font-size:24px;margin-bottom:8px;"></i><p style="font-size:13px;">Erro ao carregar</p></div>';
   }
 };
+
+function _renderConvItem(conv, _d) {
+  var initial = ((conv.user_name||conv.user_email||'?')[0]).toUpperCase();
+  var name = conv.user_name || conv.user_email || 'Usuário #' + conv.user_id;
+  var lastMsg = (conv.last_message || '').substring(0, 50) + ((conv.last_message||'').length > 50 ? '...' : '');
+  var arrow = conv.last_sender === 'admin' ? '<i class="fas fa-reply" style="font-size:9px;color:#4A90D9;margin-right:3px;transform:scaleX(-1);display:inline-block;"></i>' : '';
+  var timeStr = conv.last_message_at ? new Date(conv.last_message_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' ' + new Date(conv.last_message_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+  var unread = conv.unread_from_user > 0 ? '<span style="background:#EF4444;color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;">' + conv.unread_from_user + '</span>' : '';
+  var safeName = name.replace(/'/g, "\\'");
+  var borderHighlight = conv.unread_from_user > 0 ? 'border-left:3px solid #EF4444;' : '';
+  
+  var item = '<div onclick="abrirChatComUsuarioId(' + conv.user_id + ',\'' + safeName + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;border:1px solid ' + (_d?'#374151':'#E5E7EB') + ';background:' + (_d?'#111827':'#FAFAFA') + ';' + borderHighlight + 'transition:background 0.15s;" onmouseover="this.style.background=\'' + (_d?'#1F2937':'#EFF6FF') + '\'" onmouseout="this.style.background=\'' + (_d?'#111827':'#FAFAFA') + '\'">';
+  item += '<div style="width:40px;height:40px;border-radius:50%;background:' + (_d?'rgba(42,74,159,0.3)':'#E8EDF5') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:14px;font-weight:700;color:' + (_d?'#7BC4FF':'#122D6A') + ';">' + initial + '</span></div>';
+  item += '<div style="flex:1;min-width:0;">';
+  item += '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px;"><p style="font-size:13px;font-weight:600;color:' + (_d?'#F3F4F6':'#1E293B') + ';margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</p>' + unread + '</div>';
+  item += '<p style="font-size:11px;color:' + (_d?'#6B7280':'#9CA3AF') + ';margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + arrow + lastMsg + '</p>';
+  item += '</div>';
+  item += '<span style="font-size:10px;color:' + (_d?'#4B5563':'#9CA3AF') + ';flex-shrink:0;white-space:nowrap;">' + timeStr + '</span>';
+  item += '</div>';
+  return item;
+}
 
 function _renderChatAdminList(conversations) {
   var _d = currentTheme === 'dark';
@@ -17547,27 +17569,36 @@ function _renderChatAdminList(conversations) {
     '<i class="fas fa-plus-circle"></i> Nova Conversa</button>';
   
   if (conversations.length > 0) {
-    html += '<p style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:' + (_d?'#6B7280':'#9CA3AF') + ';margin-bottom:8px;">Conversas recentes</p>';
-    html += '<div style="display:flex;flex-direction:column;gap:6px;">';
-    conversations.forEach(function(conv) {
-      var initial = ((conv.user_name||conv.user_email||'?')[0]).toUpperCase();
-      var name = conv.user_name || conv.user_email || 'Usuário #' + conv.user_id;
-      var lastMsg = (conv.last_message || '').substring(0, 50) + ((conv.last_message||'').length > 50 ? '...' : '');
-      var arrow = conv.last_sender === 'admin' ? '<i class="fas fa-reply" style="font-size:9px;color:#4A90D9;margin-right:3px;transform:scaleX(-1);display:inline-block;"></i>' : '';
-      var timeStr = conv.last_message_at ? new Date(conv.last_message_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' ' + new Date(conv.last_message_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
-      var unread = conv.unread_from_user > 0 ? '<span style="background:#EF4444;color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;">' + conv.unread_from_user + '</span>' : '';
-      var safeName = name.replace(/'/g, "\\'");
+    var unreadConvs = conversations.filter(function(c) { return c.unread_from_user > 0; });
+    var readConvs = conversations.filter(function(c) { return !c.unread_from_user || c.unread_from_user === 0; });
+    var showAll = window._chatAdminShowAll === true;
+    
+    if (unreadConvs.length > 0) {
+      html += '<p style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#EF4444;margin-bottom:8px;"><i class="fas fa-circle" style="font-size:6px;vertical-align:middle;margin-right:4px;"></i>' + unreadConvs.length + ' não lida' + (unreadConvs.length > 1 ? 's' : '') + '</p>';
+      html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+      unreadConvs.forEach(function(conv) {
+        html += _renderConvItem(conv, _d);
+      });
+      html += '</div>';
+    } else {
+      html += '<div style="text-align:center;padding:20px 0;"><i class="fas fa-check-circle" style="font-size:24px;color:#10B981;"></i><p style="margin-top:8px;font-size:13px;color:' + (_d?'#6B7280':'#9CA3AF') + ';">Nenhuma mensagem não lida</p></div>';
+    }
+    
+    if (readConvs.length > 0) {
+      html += '<div style="margin-top:12px;text-align:center;">';
+      html += '<button onclick="window._chatAdminShowAll=' + (!showAll) + ';_renderChatAdminList(window._chatAdminConversations||[])" style="font-size:11px;font-weight:600;color:#4A90D9;background:transparent;border:1px solid ' + (_d?'rgba(74,144,217,0.3)':'#DBEAFE') + ';padding:6px 16px;border-radius:8px;cursor:pointer;">';
+      html += '<i class="fas fa-' + (showAll ? 'eye-slash' : 'eye') + ' mr-1"></i>' + (showAll ? 'Ocultar lidas' : 'Ver todas (' + readConvs.length + ' lidas)') + '</button>';
+      html += '</div>';
       
-      html += '<div onclick="abrirChatComUsuarioId(' + conv.user_id + ',\'' + safeName + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;border:1px solid ' + (_d?'#374151':'#E5E7EB') + ';background:' + (_d?'#111827':'#FAFAFA') + ';transition:background 0.15s;" onmouseover="this.style.background=\'' + (_d?'#1F2937':'#EFF6FF') + '\'" onmouseout="this.style.background=\'' + (_d?'#111827':'#FAFAFA') + '\'">';
-      html += '<div style="width:40px;height:40px;border-radius:50%;background:' + (_d?'rgba(42,74,159,0.3)':'#E8EDF5') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:14px;font-weight:700;color:#122D6A;">' + initial + '</span></div>';
-      html += '<div style="flex:1;min-width:0;">';
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px;"><p style="font-size:13px;font-weight:600;color:' + (_d?'#F3F4F6':'#1E293B') + ';margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</p>' + unread + '</div>';
-      html += '<p style="font-size:11px;color:' + (_d?'#6B7280':'#9CA3AF') + ';margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + arrow + lastMsg + '</p>';
-      html += '</div>';
-      html += '<span style="font-size:10px;color:' + (_d?'#4B5563':'#9CA3AF') + ';flex-shrink:0;white-space:nowrap;">' + timeStr + '</span>';
-      html += '</div>';
-    });
-    html += '</div>';
+      if (showAll) {
+        html += '<p style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:' + (_d?'#6B7280':'#9CA3AF') + ';margin:12px 0 8px;">Conversas anteriores</p>';
+        html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+        readConvs.forEach(function(conv) {
+          html += _renderConvItem(conv, _d);
+        });
+        html += '</div>';
+      }
+    }
   } else {
     html += '<div style="text-align:center;padding:40px 0;"><i class="fas fa-inbox" style="font-size:36px;color:' + (_d?'#374151':'#D1D5DB') + ';"></i><p style="margin-top:8px;font-size:13px;color:' + (_d?'#6B7280':'#9CA3AF') + ';">Nenhuma conversa ainda</p><p style="font-size:11px;color:' + (_d?'#4B5563':'#9CA3AF') + ';margin-top:4px;">Clique em "Nova Conversa" acima</p></div>';
   }
@@ -21855,17 +21886,20 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
   // Dias do mês
   for (let dia = 1; dia <= diasNoMes; dia++) {
     const hist = historicoMap[dia];
-    let corClasse = 'bg-gray-100 ${themes[currentTheme].border}';
+    let corClasse = `${currentTheme === 'dark' ? 'border-gray-600' : 'bg-gray-100 border-gray-200'}`;
+    let corInline = currentTheme === 'dark' ? 'background-color: rgba(55, 65, 81, 0.5);' : '';
     let icone = '';
     let titulo = 'Não estudou';
 
     if (hist) {
       if (hist.status === 'completo') {
-        corClasse = 'bg-[#2A4A9F]/10 border-green-400';
+        corClasse = 'border-green-400';
+        corInline = 'background-color: rgba(42, 74, 159, 0.1);';
         icone = '<i class="fas fa-check text-[#2A4A9F]"></i>';
         titulo = `${hist.percentual_conclusao}% - ${Math.round(hist.tempo_estudado_minutos / 60 * 10) / 10}h`;
       } else if (hist.status === 'parcial') {
-        corClasse = 'bg-[#4A90E2]/10 border-yellow-400';
+        corClasse = 'border-yellow-400';
+        corInline = 'background-color: rgba(74, 144, 226, 0.1);';
         icone = '<i class="fas fa-clock text-[#1A3A7F]"></i>';
         titulo = `${hist.percentual_conclusao}% - ${Math.round(hist.tempo_estudado_minutos / 60 * 10) / 10}h`;
       } else {
@@ -21877,8 +21911,8 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
 
     diasHTML += `
       <div class="p-3 border-2 rounded-lg ${corClasse} text-center cursor-pointer hover:shadow-md transition"
-           title="${titulo}">
-        <div class="text-sm font-semibold mb-1">${dia}</div>
+           style="${corInline} -webkit-transform: translateZ(0);" title="${titulo}">
+        <div class="text-sm font-semibold mb-1 ${themes[currentTheme].text}">${dia}</div>
         ${icone}
       </div>
     `;
@@ -21938,18 +21972,18 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
 
         <!-- Calendário -->
         <div class="${themes[currentTheme].card} rounded-lg shadow-lg p-6">
-          <h2 class="text-xl font-bold mb-6 text-center">${mesesNomes[mes - 1]} ${ano}</h2>
+          <h2 class="text-xl font-bold mb-6 text-center ${themes[currentTheme].text}">${mesesNomes[mes - 1]} ${ano}</h2>
 
           <!-- Legenda -->
           <div class="flex flex-wrap justify-center gap-4 mb-6 text-sm">
             <div class="flex items-center gap-2">
-              <div class="w-6 h-6 bg-[#2A4A9F]/10 border-2 border-green-400 rounded flex items-center justify-center">
+              <div class="w-6 h-6 border-2 border-green-400 rounded flex items-center justify-center" style="background-color: rgba(42, 74, 159, 0.1);">
                 <i class="fas fa-check text-[#2A4A9F] text-xs"></i>
               </div>
               <span>Completo</span>
             </div>
             <div class="flex items-center gap-2">
-              <div class="w-6 h-6 bg-[#4A90E2]/10 border-2 border-yellow-400 rounded flex items-center justify-center">
+              <div class="w-6 h-6 border-2 border-yellow-400 rounded flex items-center justify-center" style="background-color: rgba(74, 144, 226, 0.1);">
                 <i class="fas fa-clock text-[#1A3A7F] text-xs"></i>
               </div>
               <span>Parcial</span>
@@ -21961,7 +21995,7 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
               <span>Não estudou</span>
             </div>
             <div class="flex items-center gap-2">
-              <div class="w-6 h-6 bg-gray-100 border-2 ${themes[currentTheme].border} rounded flex items-center justify-center">
+              <div class="w-6 h-6 ${currentTheme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-100'} border-2 ${themes[currentTheme].border} rounded flex items-center justify-center">
                 <span class="text-gray-400 text-xs">—</span>
               </div>
               <span>Sem dados</span>
@@ -21970,13 +22004,13 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
 
           <!-- Grade do calendário -->
           <div class="grid grid-cols-7 gap-2 mb-4">
-            <div class="text-center font-semibold text-gray-600 p-2">Dom</div>
-            <div class="text-center font-semibold text-gray-600 p-2">Seg</div>
-            <div class="text-center font-semibold text-gray-600 p-2">Ter</div>
-            <div class="text-center font-semibold text-gray-600 p-2">Qua</div>
-            <div class="text-center font-semibold text-gray-600 p-2">Qui</div>
-            <div class="text-center font-semibold text-gray-600 p-2">Sex</div>
-            <div class="text-center font-semibold text-gray-600 p-2">Sáb</div>
+            <div class="text-center font-semibold ${themes[currentTheme].textSecondary} p-2">Dom</div>
+            <div class="text-center font-semibold ${themes[currentTheme].textSecondary} p-2">Seg</div>
+            <div class="text-center font-semibold ${themes[currentTheme].textSecondary} p-2">Ter</div>
+            <div class="text-center font-semibold ${themes[currentTheme].textSecondary} p-2">Qua</div>
+            <div class="text-center font-semibold ${themes[currentTheme].textSecondary} p-2">Qui</div>
+            <div class="text-center font-semibold ${themes[currentTheme].textSecondary} p-2">Sex</div>
+            <div class="text-center font-semibold ${themes[currentTheme].textSecondary} p-2">Sáb</div>
           </div>
 
           <div class="grid grid-cols-7 gap-2">
@@ -22034,19 +22068,21 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
                       const metasDoDia = dias[d] || [];
                       if (metasDoDia.length === 0) {
                         // Sem dados
-                        celulas += '<td class="text-center p-2 border-b ' + themes[currentTheme].border + '"><div class="w-8 h-8 mx-auto bg-gray-100 rounded flex items-center justify-center"><span class="text-gray-400 text-xs">—</span></div></td>';
+                        celulas += '<td class="text-center p-2 border-b ' + themes[currentTheme].border + '"><div class="w-8 h-8 mx-auto ' + (currentTheme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-100') + ' rounded flex items-center justify-center"><span class="text-gray-400 text-xs">—</span></div></td>';
                       } else {
                         const concluidas = metasDoDia.filter(m => m.concluida).length;
                         const total = metasDoDia.length;
-                        let statusClass, icone;
+                        let statusClass, icone, statusInline = '';
                         
                         if (concluidas === total) {
                           // Completo
-                          statusClass = 'bg-[#2A4A9F]/10 border-green-400';
+                          statusClass = 'border-green-400';
+                          statusInline = 'background-color: rgba(42, 74, 159, 0.1);';
                           icone = '<i class="fas fa-check text-[#2A4A9F] text-xs"></i>';
                         } else if (concluidas > 0) {
                           // Parcial
-                          statusClass = 'bg-[#4A90E2]/10 border-yellow-400';
+                          statusClass = 'border-yellow-400';
+                          statusInline = 'background-color: rgba(74, 144, 226, 0.1);';
                           icone = '<i class="fas fa-clock text-[#1A3A7F] text-xs"></i>';
                         } else {
                           // Não estudou
@@ -22054,7 +22090,7 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
                           icone = '<i class="fas fa-times text-red-500 text-xs"></i>';
                         }
                         
-                        celulas += '<td class="text-center p-2 border-b ' + themes[currentTheme].border + '"><div class="w-8 h-8 mx-auto ' + statusClass + ' border-2 rounded flex items-center justify-center" title="' + concluidas + '/' + total + ' concluídas">' + icone + '</div></td>';
+                        celulas += '<td class="text-center p-2 border-b ' + themes[currentTheme].border + '"><div class="w-8 h-8 mx-auto ' + statusClass + ' border-2 rounded flex items-center justify-center" style="' + statusInline + '" title="' + concluidas + '/' + total + ' concluídas">' + icone + '</div></td>';
                       }
                     }
                     
@@ -22068,13 +22104,13 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
           <!-- Legenda da tabela -->
           <div class="flex flex-wrap justify-center gap-4 mt-4 text-xs ${themes[currentTheme].textSecondary}">
             <div class="flex items-center gap-1">
-              <div class="w-4 h-4 bg-[#2A4A9F]/10 border border-green-400 rounded flex items-center justify-center">
+              <div class="w-4 h-4 border border-green-400 rounded flex items-center justify-center" style="background-color: rgba(42, 74, 159, 0.1);">
                 <i class="fas fa-check text-[#2A4A9F]" style="font-size: 6px;"></i>
               </div>
               <span>Completo</span>
             </div>
             <div class="flex items-center gap-1">
-              <div class="w-4 h-4 bg-[#4A90E2]/10 border border-yellow-400 rounded flex items-center justify-center">
+              <div class="w-4 h-4 border border-yellow-400 rounded flex items-center justify-center" style="background-color: rgba(74, 144, 226, 0.1);">
                 <i class="fas fa-clock text-[#1A3A7F]" style="font-size: 6px;"></i>
               </div>
               <span>Parcial</span>

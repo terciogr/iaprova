@@ -3167,22 +3167,22 @@ app.get('/api/admin/dashboard', async (c) => {
     // Usuários premium
     const premiumUsers = await DB.prepare('SELECT COUNT(*) as count FROM users WHERE is_premium = 1').first() as any
     
-    // Usuários criados hoje
+    // Usuários criados hoje (últimas 24h, timezone-safe)
     const todayUsers = await DB.prepare(`
       SELECT COUNT(*) as count FROM users 
-      WHERE DATE(created_at) = DATE('now')
+      WHERE created_at IS NOT NULL AND created_at >= datetime('now', '-1 day')
     `).first() as any
     
     // Usuários criados nos últimos 7 dias
     const weekUsers = await DB.prepare(`
       SELECT COUNT(*) as count FROM users 
-      WHERE created_at >= DATE('now', '-7 days')
+      WHERE created_at IS NOT NULL AND created_at >= datetime('now', '-7 days')
     `).first() as any
     
     // Usuários criados nos últimos 30 dias
     const monthUsers = await DB.prepare(`
       SELECT COUNT(*) as count FROM users 
-      WHERE created_at >= DATE('now', '-30 days')
+      WHERE created_at IS NOT NULL AND created_at >= datetime('now', '-30 days')
     `).first() as any
     
     // Total de planos de estudo
@@ -4702,7 +4702,104 @@ app.get('/api/admin/analytics', async (c) => {
           return { total: 0, usuarios_unicos: 0, por_dia: [] }
         }
       })(),
-      atualizado_em: new Date().toISOString()
+      atualizado_em: new Date().toISOString(),
+      user_growth: await (async () => {
+        try {
+          // Total de usuários
+          const totalU = await safeFirst(`SELECT COUNT(*) as total FROM users`)
+          
+          // Crescimento diário (últimos 30 dias)
+          // Conta novos registros por dia e calcula acumulado
+          const dailyRes = await safeQuery(`
+            WITH RECURSIVE dates(dia) AS (
+              SELECT DATE('now', '-29 days')
+              UNION ALL
+              SELECT DATE(dia, '+1 day') FROM dates WHERE dia < DATE('now')
+            ),
+            daily_counts AS (
+              SELECT DATE(created_at) as dia, COUNT(*) as novos
+              FROM users
+              WHERE created_at IS NOT NULL AND DATE(created_at) >= DATE('now', '-29 days')
+              GROUP BY DATE(created_at)
+            ),
+            base_count AS (
+              SELECT COUNT(*) as cnt FROM users 
+              WHERE created_at IS NULL OR DATE(created_at) < DATE('now', '-29 days')
+            )
+            SELECT 
+              d.dia,
+              COALESCE(dc.novos, 0) as novos,
+              (SELECT cnt FROM base_count) + 
+                (SELECT COALESCE(SUM(COALESCE(dc2.novos, 0)), 0) 
+                 FROM dates d2 LEFT JOIN daily_counts dc2 ON d2.dia = dc2.dia 
+                 WHERE d2.dia <= d.dia) as total_acumulado
+            FROM dates d
+            LEFT JOIN daily_counts dc ON d.dia = dc.dia
+            ORDER BY d.dia ASC
+          `)
+          
+          // Crescimento mensal (últimos 12 meses)
+          const monthlyRes = await safeQuery(`
+            WITH RECURSIVE months(mes) AS (
+              SELECT strftime('%Y-%m', 'now', '-11 months')
+              UNION ALL
+              SELECT strftime('%Y-%m', mes || '-01', '+1 month') FROM months 
+              WHERE mes < strftime('%Y-%m', 'now')
+            ),
+            monthly_counts AS (
+              SELECT strftime('%Y-%m', created_at) as mes, COUNT(*) as novos
+              FROM users
+              WHERE created_at IS NOT NULL AND strftime('%Y-%m', created_at) >= strftime('%Y-%m', 'now', '-11 months')
+              GROUP BY strftime('%Y-%m', created_at)
+            ),
+            base_count AS (
+              SELECT COUNT(*) as cnt FROM users 
+              WHERE created_at IS NULL OR strftime('%Y-%m', created_at) < strftime('%Y-%m', 'now', '-11 months')
+            )
+            SELECT 
+              m.mes,
+              COALESCE(mc.novos, 0) as novos,
+              (SELECT cnt FROM base_count) + 
+                (SELECT COALESCE(SUM(COALESCE(mc2.novos, 0)), 0) 
+                 FROM months m2 LEFT JOIN monthly_counts mc2 ON m2.mes = mc2.mes 
+                 WHERE m2.mes <= m.mes) as total_acumulado
+            FROM months m
+            LEFT JOIN monthly_counts mc ON m.mes = mc.mes
+            ORDER BY m.mes ASC
+          `)
+          
+          // Crescimento anual
+          const yearlyRes = await safeQuery(`
+            WITH yearly_counts AS (
+              SELECT strftime('%Y', created_at) as ano, COUNT(*) as novos
+              FROM users
+              WHERE created_at IS NOT NULL
+              GROUP BY strftime('%Y', created_at)
+              ORDER BY ano ASC
+            ),
+            null_count AS (
+              SELECT COUNT(*) as cnt FROM users WHERE created_at IS NULL
+            )
+            SELECT 
+              ano,
+              novos,
+              (SELECT cnt FROM null_count) + 
+                (SELECT SUM(yc2.novos) FROM yearly_counts yc2 WHERE yc2.ano <= yc.ano) as total_acumulado
+            FROM yearly_counts yc
+            ORDER BY ano ASC
+          `)
+          
+          return {
+            total: totalU?.total || 0,
+            daily: (dailyRes.results || []).map((r: any) => ({ dia: r.dia, novos: r.novos || 0, total_acumulado: r.total_acumulado || 0 })),
+            monthly: (monthlyRes.results || []).map((r: any) => ({ mes: r.mes, novos: r.novos || 0, total_acumulado: r.total_acumulado || 0 })),
+            yearly: (yearlyRes.results || []).map((r: any) => ({ ano: r.ano, novos: r.novos || 0, total_acumulado: r.total_acumulado || 0 }))
+          }
+        } catch (e) {
+          console.warn('⚠️ Erro ao buscar user_growth:', e)
+          return { total: 0, daily: [], monthly: [], yearly: [] }
+        }
+      })()
     })
     
   } catch (error: any) {
