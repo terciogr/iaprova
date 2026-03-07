@@ -1,12 +1,13 @@
-// IAprova Service Worker v3.2 - v84 cores uniformizadas + fix email
-const CACHE_NAME = 'iaprova-v98';
-const STATIC_CACHE = 'iaprova-static-v84';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v84';
+// IAprova Service Worker v3.3 - v118 fix iOS contrast + force cache refresh
+const CACHE_NAME = 'iaprova-v118';
+const STATIC_CACHE = 'iaprova-static-v118';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v118';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
   '/',
   '/static/app.js',
+  '/static/style.css',
   '/manifest.json',
   '/icons/favicon.svg',
   '/icons/icon-192x192.svg',
@@ -80,8 +81,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // ✅ v83: NETWORK FIRST para app.js (sempre buscar a versão mais recente)
-  if (url.pathname === '/static/app.js') {
+  // ✅ v118: NETWORK FIRST para app.js E style.css (sempre buscar a versão mais recente)
+  if (url.pathname === '/static/app.js' || url.pathname === '/static/style.css') {
     event.respondWith(
       fetch(request)
         .then((response) => {

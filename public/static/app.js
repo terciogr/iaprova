@@ -8769,7 +8769,7 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
     <div class="min-h-screen ${themes[currentTheme].bg}">
       ${trialBanner}
       <!-- HEADER AZUL CONSISTENTE -->
-      <header class="sticky top-0 z-50 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white shadow-lg">
+      <header class="sticky top-0 z-50 text-white shadow-lg" style="background-color: #122D6A; background-image: linear-gradient(to right, #122D6A, #2A4A9F); min-height: 56px; color: #ffffff;">
         <!-- Barra Principal -->
         <div class="max-w-7xl mx-auto px-3 sm:px-4">
           <div class="flex items-center justify-between h-14">
@@ -9885,7 +9885,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
   app.innerHTML = `
     <div class="min-h-screen ${themes[currentTheme].bg}">
       <!-- HEADER AZUL PADRONIZADO -->
-      <header class="sticky top-0 z-50 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white shadow-lg">
+      <header class="sticky top-0 z-50 text-white shadow-lg" style="background-color: #122D6A; background-image: linear-gradient(to right, #122D6A, #2A4A9F); min-height: 56px; color: #ffffff;">
         <div class="max-w-7xl mx-auto px-4">
           <div class="flex items-center justify-between h-14">
             <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
@@ -13567,7 +13567,7 @@ async function renderDetalheDisciplina(disciplinaId, disciplinaNome, conteudos, 
   app.innerHTML = `
     <div class="min-h-screen ${themes[currentTheme].bg}">
       <!-- HEADER AZUL PADRONIZADO -->
-      <header class="sticky top-0 z-50 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white shadow-lg">
+      <header class="sticky top-0 z-50 text-white shadow-lg" style="background-color: #122D6A; background-image: linear-gradient(to right, #122D6A, #2A4A9F); min-height: 56px; color: #ffffff;">
         <div class="max-w-7xl mx-auto px-4">
           <div class="flex items-center justify-between h-14">
             <button onclick="renderPortfolioDisciplinas()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
@@ -14498,7 +14498,7 @@ async function renderMateriais(activeTab = 'todos') {
     app.innerHTML = `
       <!-- HEADER AZUL PADRONIZADO -->
       <div class="min-h-screen ${themes[currentTheme].bg}">
-        <header class="sticky top-0 z-50 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white shadow-lg">
+        <header class="sticky top-0 z-50 text-white shadow-lg" style="background-color: #122D6A; background-image: linear-gradient(to right, #122D6A, #2A4A9F); min-height: 56px; color: #ffffff;">
           <div class="max-w-7xl mx-auto px-4">
             <div class="flex items-center justify-between h-14">
               <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
@@ -14912,7 +14912,7 @@ window.renderDashboardDesempenho = async function() {
     app.innerHTML = `
       <!-- HEADER AZUL PADRONIZADO -->
       <div class="min-h-screen ${themes[currentTheme].bg}">
-        <header class="sticky top-0 z-50 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white shadow-lg">
+        <header class="sticky top-0 z-50 text-white shadow-lg" style="background-color: #122D6A; background-image: linear-gradient(to right, #122D6A, #2A4A9F); min-height: 56px; color: #ffffff;">
           <div class="max-w-7xl mx-auto px-4">
             <div class="flex items-center justify-between h-14">
               <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
@@ -15528,7 +15528,7 @@ window.renderDashboardSimulados = async function() {
     app.innerHTML = `
       <!-- HEADER AZUL PADRONIZADO -->
       <div class="min-h-screen ${themes[currentTheme].bg}">
-        <header class="sticky top-0 z-50 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white shadow-lg">
+        <header class="sticky top-0 z-50 text-white shadow-lg" style="background-color: #122D6A; background-image: linear-gradient(to right, #122D6A, #2A4A9F); min-height: 56px; color: #ffffff;">
           <div class="max-w-7xl mx-auto px-4">
             <div class="flex items-center justify-between h-14">
               <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
@@ -21887,7 +21887,7 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
   document.getElementById('app').innerHTML = `
     <div class="min-h-screen ${themes[currentTheme].bg}">
       <!-- HEADER AZUL PADRONIZADO -->
-      <header class="sticky top-0 z-50 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white shadow-lg">
+      <header class="sticky top-0 z-50 text-white shadow-lg" style="background-color: #122D6A; background-image: linear-gradient(to right, #122D6A, #2A4A9F); min-height: 56px; color: #ffffff;">
         <div class="max-w-7xl mx-auto px-4">
           <div class="flex items-center justify-between h-14">
             <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
@@ -24051,43 +24051,42 @@ async function carregarPlanos() {
         ? '<span class="text-[10px] bg-emerald-700 text-white px-2.5 py-0.5 rounded font-bold uppercase tracking-wider">ATIVO</span>'
         : '<span class="text-[10px] ' + (isLight ? 'bg-[#5A6E8A] text-white' : 'bg-gray-600 text-gray-200') + ' px-2.5 py-0.5 rounded font-bold uppercase tracking-wider">INATIVO</span>';
       
-      // Botões de ação - cores com contraste em ambos os temas
-      const editColor = isLight ? 'text-[#122D6A]' : 'text-[#7BC4FF]';
+      // Botões de ação - cores com contraste em ambos os temas + tamanho adequado para iPhone
+      const btnEditBg = isLight ? 'background:#EEF2FF;color:#122D6A;' : 'background:#1E3A5F;color:#7BC4FF;';
+      const btnDeleteBg = isLight ? 'background:#FEF2F2;color:#DC2626;' : 'background:#3B1C1C;color:#F87171;';
       const btnEditar = isAtivo 
-        ? `<button onclick="editarNomePlano(${plano.id}, document.getElementById('plano-nome-display-${plano.id}').textContent.trim())" class="${editColor} font-semibold text-xs cursor-pointer hover:underline px-2 py-1 rounded hover:bg-blue-50 ${isLight ? '' : 'dark:hover:bg-blue-900/30'} transition whitespace-nowrap"><i class="fas fa-pen mr-1 text-[10px]"></i>Editar</button>`
-        : `<button onclick="window.ativarPlano(${plano.id})" class="${editColor} font-semibold text-xs cursor-pointer hover:underline px-2 py-1 rounded hover:bg-blue-50 ${isLight ? '' : 'dark:hover:bg-blue-900/30'} transition whitespace-nowrap"><i class="fas fa-check mr-1 text-[10px]"></i>Ativar</button>`;
-      const btnExcluir = `<button onclick="window.excluirPlano(${plano.id}, document.getElementById('plano-nome-display-${plano.id}').textContent.trim())" class="text-red-500 ${isLight ? '' : 'dark:text-red-400'} font-semibold text-xs cursor-pointer hover:underline px-2 py-1 rounded hover:bg-red-50 ${isLight ? '' : 'dark:hover:bg-red-900/30'} transition whitespace-nowrap"><i class="fas fa-trash mr-1 text-[10px]"></i>Excluir</button>`;
+        ? `<button onclick="editarNomePlano(${plano.id}, document.getElementById('plano-nome-display-${plano.id}').textContent.trim())" class="rounded-lg flex items-center justify-center" style="min-width:32px;min-height:32px;width:32px;height:32px;${btnEditBg}border:none;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0.1);touch-action:manipulation;"><i class="fas fa-pen" style="font-size:12px;"></i></button>`
+        : `<button onclick="window.ativarPlano(${plano.id})" class="rounded-lg flex items-center justify-center" style="min-width:32px;min-height:32px;width:32px;height:32px;${btnEditBg}border:none;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0.1);touch-action:manipulation;"><i class="fas fa-check" style="font-size:12px;"></i></button>`;
+      const btnExcluir = `<button onclick="window.excluirPlano(${plano.id}, document.getElementById('plano-nome-display-${plano.id}').textContent.trim())" class="rounded-lg flex items-center justify-center" style="min-width:32px;min-height:32px;width:32px;height:32px;${btnDeleteBg}border:none;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0.1);touch-action:manipulation;"><i class="fas fa-trash" style="font-size:12px;"></i></button>`;
       
       return `
-        <div class="${t.card} border ${t.border} rounded-xl p-4 transition hover:shadow-md">
-          <div class="flex flex-col gap-2">
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1.5">
-                  ${badge}
-                  <h3 class="font-bold ${t.text} text-sm truncate" id="plano-nome-display-${plano.id}">${nomePlano}</h3>
-                </div>
-                <div class="flex items-center flex-wrap gap-x-1.5 text-xs ${t.textSecondary} mb-2">
-                  <span><i class="fas fa-book mr-0.5"></i>${plano.total_disciplinas} disc.</span>
-                  <span class="${t.textMuted}">·</span>
-                  <span>${plano.total_topicos || 0} tóp.</span>
-                  <span class="${t.textMuted}">·</span>
-                  <span>${plano.topicos_estudados || 0} feito${(plano.topicos_estudados || 0) !== 1 ? 's' : ''}</span>
-                  <span class="${t.textMuted}">·</span>
-                  <span>${dataCriacao}</span>
-                </div>
+        <div class="${t.card} border ${t.border} rounded-xl p-3 sm:p-4 transition hover:shadow-md overflow-hidden">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5 mb-1">
+                ${badge}
+                <h3 class="font-bold ${t.text} text-sm truncate" id="plano-nome-display-${plano.id}">${nomePlano}</h3>
+              </div>
+              <div class="flex items-center flex-wrap gap-x-1 text-[11px] ${t.textSecondary}">
+                <span><i class="fas fa-book mr-0.5"></i>${plano.total_disciplinas}</span>
+                <span class="${t.textMuted}">·</span>
+                <span>${plano.total_topicos || 0} tóp</span>
+                <span class="${t.textMuted}">·</span>
+                <span>${plano.topicos_estudados || 0}/${plano.total_topicos || 0}</span>
+                <span class="${t.textMuted}">·</span>
+                <span>${dataCriacao}</span>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <div class="flex-1 h-2 ${barTrack} rounded-full overflow-hidden">
-                <div class="h-full rounded-full ${barColor} transition-all duration-500" style="width: ${progresso}%"></div>
-              </div>
-              <span class="text-xs font-semibold ${t.textSecondary} w-8 text-right">${progresso}%</span>
-              <div class="flex items-center gap-0.5 flex-shrink-0 ml-1">
-                ${btnEditar}
-                ${btnExcluir}
-              </div>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              ${btnEditar}
+              ${btnExcluir}
             </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="flex-1 h-1.5 ${barTrack} rounded-full overflow-hidden">
+              <div class="h-full rounded-full ${barColor} transition-all duration-500" style="width: ${progresso}%"></div>
+            </div>
+            <span class="text-[11px] font-semibold ${t.textSecondary}">${progresso}%</span>
           </div>
         </div>
       `;

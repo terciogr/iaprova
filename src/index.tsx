@@ -20864,7 +20864,7 @@ app.get('/home', (c) => {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Custom CSS (iOS fixes, KPI grid, responsive) -->
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=${Date.now()}">
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -21104,12 +21104,14 @@ app.get('/home', (c) => {
     
     <!-- Service Worker Registration Only (PWA install já está configurado acima) -->
     <script>
-        // Registrar Service Worker
+        // Registrar Service Worker com cache busting
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
                 try {
-                    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+                    const registration = await navigator.serviceWorker.register('/sw.js?v=${Date.now()}', { scope: '/' });
                     console.log('✅ Service Worker registrado:', registration.scope);
+                    // Forçar verificação de atualização imediatamente
+                    registration.update();
                 } catch (error) {
                     console.log('⚠️ Service Worker não registrado:', error);
                 }

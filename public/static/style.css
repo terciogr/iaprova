@@ -4,6 +4,82 @@
   box-sizing: border-box;
 }
 
+/* ===== iOS Safari Gradient Fallback ===== */
+/* Tailwind CDN arbitrary values like from-[#122D6A] may not work on all iOS Safari versions.
+   These inline styles and CSS fallbacks ensure gradients always render. */
+.bg-gradient-to-r.from-\[\#122D6A\].to-\[\#2A4A9F\] {
+  background: linear-gradient(to right, #122D6A, #2A4A9F) !important;
+}
+.bg-gradient-to-br.from-\[\#122D6A\].to-\[\#2A4A9F\] {
+  background: linear-gradient(to bottom right, #122D6A, #2A4A9F) !important;
+}
+.bg-gradient-to-br.from-\[\#0D1F4D\].via-\[\#122D6A\].to-\[\#1A3A7F\] {
+  background: linear-gradient(to bottom right, #0D1F4D, #122D6A, #1A3A7F) !important;
+}
+.bg-gradient-to-br.from-\[\#1A3A7F\].to-\[\#2A4A9F\] {
+  background: linear-gradient(to bottom right, #1A3A7F, #2A4A9F) !important;
+}
+
+/* ===== CRITICAL: Force blue header on ALL platforms ===== */
+/* This ensures the sticky header is ALWAYS blue with white text,
+   even if Tailwind CDN fails or iOS Safari has rendering issues. */
+header.sticky.top-0.z-50 {
+  background-color: #122D6A !important;
+  background-image: linear-gradient(to right, #122D6A, #2A4A9F) !important;
+  color: #ffffff !important;
+}
+header.sticky.top-0.z-50 * {
+  color: inherit;
+}
+header.sticky.top-0.z-50 i.fas,
+header.sticky.top-0.z-50 i.far,
+header.sticky.top-0.z-50 i.fab {
+  color: #ffffff !important;
+}
+header.sticky.top-0.z-50 .text-\[#7BC4FF\] {
+  color: #7BC4FF !important;
+}
+header.sticky.top-0.z-50 button {
+  color: #ffffff !important;
+}
+
+/* ===== CRITICAL: Dark mode auto-contrast for text-[#122D6A] ===== */
+/* Many elements use text-[#122D6A] (dark blue) which is invisible in dark mode.
+   This rule automatically converts them to light blue when dark mode is active.
+   Exceptions: elements inside the blue header (handled above) and elements with
+   explicit bg that provides sufficient contrast (bg-[#E8EDF5], bg-[#D0D9EB]). */
+html.dark .text-\[\#122D6A\] {
+  color: #7BC4FF !important;
+}
+/* Also handle text-[#1A3A7F] and text-[#2A4A9F] and text-[#0D1F4D] variants */
+html.dark .text-\[\#1A3A7F\] {
+  color: #7BC4FF !important;
+}
+html.dark .text-\[\#2A4A9F\] {
+  color: #93C5FD !important;
+}
+html.dark .text-\[\#0D1F4D\] {
+  color: #7BC4FF !important;
+}
+/* Exceptions: Elements with explicit light backgrounds that ensure contrast.
+   Flashcards, badges, and modals that keep a white/light bg in dark mode. */
+html.dark .bg-white .text-\[\#122D6A\],
+html.dark .bg-white.text-\[\#122D6A\],
+html.dark .bg-\[\#E8EDF5\] .text-\[\#122D6A\],
+html.dark .bg-\[\#D0D9EB\] .text-\[\#122D6A\],
+html.dark .bg-\[\#D6E4F5\] .text-\[\#122D6A\],
+html.dark .bg-blue-50 .text-\[\#122D6A\],
+html.dark .bg-blue-100 .text-\[\#122D6A\] {
+  color: #122D6A !important;
+}
+/* Override: header icons MUST stay white (header has blue bg) */
+header.sticky .text-\[\#122D6A\] {
+  color: #122D6A;
+}
+html.dark header.sticky .text-\[\#122D6A\] {
+  color: #ffffff !important;
+}
+
 /* ===== iOS/Safari Critical Fixes ===== */
 html {
   -webkit-text-size-adjust: 100%;
