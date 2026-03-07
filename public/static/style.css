@@ -28,19 +28,43 @@ header.sticky.top-0.z-50 {
   background-image: linear-gradient(to right, #122D6A, #2A4A9F) !important;
   color: #ffffff !important;
 }
-header.sticky.top-0.z-50 * {
-  color: inherit;
+/* White text for direct header UI (buttons, labels) EXCEPT dropdown menus.
+   Dropdowns (#userMenu, #helpMenu, #configMenu) use inline styles for correct colors.
+   Strategy: Only force white on header's own buttons, not dropdown buttons. */
+header.sticky.top-0.z-50 > div > div > div > button,
+header.sticky.top-0.z-50 > div > div > div > a,
+header.sticky.top-0.z-50 > div > div > button,
+header.sticky.top-0.z-50 > div > div > a,
+header.sticky.top-0.z-50 > div > button,
+header.sticky.top-0.z-50 h1,
+header.sticky.top-0.z-50 h2,
+header.sticky.top-0.z-50 span:not(#userMenu span):not(#helpMenu span):not(#configMenu span) {
+  color: #ffffff;
 }
 header.sticky.top-0.z-50 i.fas,
 header.sticky.top-0.z-50 i.far,
 header.sticky.top-0.z-50 i.fab {
   color: #ffffff !important;
 }
+/* Dropdown elements use their OWN colors (inline styles) - override header white */
+header.sticky.top-0.z-50 #userMenu,
+header.sticky.top-0.z-50 #userMenu *,
+header.sticky.top-0.z-50 #helpMenu,
+header.sticky.top-0.z-50 #helpMenu *,
+header.sticky.top-0.z-50 #configMenu,
+header.sticky.top-0.z-50 #configMenu * {
+  color: unset;
+}
+header.sticky.top-0.z-50 #userMenu i.fas,
+header.sticky.top-0.z-50 #userMenu i.far,
+header.sticky.top-0.z-50 #helpMenu i.fas,
+header.sticky.top-0.z-50 #helpMenu i.far,
+header.sticky.top-0.z-50 #configMenu i.fas,
+header.sticky.top-0.z-50 #configMenu i.far {
+  color: unset !important;
+}
 header.sticky.top-0.z-50 .text-\[#7BC4FF\] {
   color: #7BC4FF !important;
-}
-header.sticky.top-0.z-50 button {
-  color: #ffffff !important;
 }
 
 /* ===== CRITICAL: Dark mode auto-contrast for text-[#122D6A] ===== */
@@ -485,7 +509,11 @@ a, button, [onclick] {
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
   }
-}
+  /* Force calendar day cells to have proper background rendering on iOS */
+  .grid.grid-cols-7 > div[style*="background-color"] {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
 }
 .concursos-summary-cards {
   display: grid !important;

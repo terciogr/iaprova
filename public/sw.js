@@ -1,7 +1,7 @@
-// IAprova Service Worker v3.6 - v121 iOS calendar grid-cols-7 definitive fix
-const CACHE_NAME = 'iaprova-v121';
-const STATIC_CACHE = 'iaprova-static-v121';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v121';
+// IAprova Service Worker v3.7 - v122 Fix dropdown visibility, chat filters, iOS calendar CSS syntax
+const CACHE_NAME = 'iaprova-v122';
+const STATIC_CACHE = 'iaprova-static-v122';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v122';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [

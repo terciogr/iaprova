@@ -5896,7 +5896,7 @@ function renderEntrevistaStep2() {
                 <i class="fas fa-calendar-week mr-1 text-[#1A3A7F]"></i>
                 Quais dias da semana pode estudar?
               </label>
-              <div class="grid grid-cols-7 gap-1 md:gap-2">
+              <div class="grid grid-cols-7 gap-1 md:gap-2" style="display:grid;grid-template-columns:repeat(7,1fr);">
                 ${[
                   { val: 0, label: 'D', labelFull: 'Dom' },
                   { val: 1, label: 'S', labelFull: 'Seg' },
@@ -8853,17 +8853,17 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
                   ${currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
                 </button>
                 <!-- User Dropdown Moderno -->
-                <div id="userMenu" class="hidden absolute right-0 mt-2 w-52 ${themes[currentTheme].card} rounded-xl shadow-2xl border ${themes[currentTheme].border} z-50 overflow-hidden backdrop-blur-xl">
-                  <div class="p-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white">
-                    <p class="font-semibold text-sm truncate">${currentUser.name || 'Usuário'}</p>
-                    <p class="text-[10px] opacity-80 truncate">${currentUser.email}</p>
+                <div id="userMenu" class="hidden absolute right-0 mt-2 w-52 rounded-xl shadow-2xl z-50 overflow-hidden" style="background:${currentTheme === 'dark' ? '#1f2937' : '#ffffff'};border:1px solid ${currentTheme === 'dark' ? '#374151' : '#e5e7eb'};">
+                  <div style="padding:12px;background:linear-gradient(to right,#122D6A,#2A4A9F);color:#ffffff;">
+                    <p style="font-weight:600;font-size:14px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;">${currentUser.name || 'Usuário'}</p>
+                    <p style="font-size:10px;color:rgba(255,255,255,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:2px 0 0;">${currentUser.email}</p>
                   </div>
-                  <div class="py-1">
-                    <button onclick="abrirModalEditarPerfil()" class="w-full px-3 py-2 text-left ${themes[currentTheme].text} hover:bg-[#E8EDF5] dark:hover:bg-[#0A1839]/30 transition flex items-center gap-2 text-xs">
-                      <i class="fas fa-user-edit w-4 text-[#2A4A9F]"></i> Editar Perfil
+                  <div style="padding:4px 0;">
+                    <button onclick="abrirModalEditarPerfil()" style="width:100%;padding:8px 12px;text-align:left;display:flex;align-items:center;gap:8px;font-size:12px;border:none;cursor:pointer;transition:background 0.15s;background:transparent;color:${currentTheme === 'dark' ? '#f3f4f6' : '#1f2937'};" onmouseover="this.style.background='${currentTheme === 'dark' ? 'rgba(255,255,255,0.08)' : '#E8EDF5'}'" onmouseout="this.style.background='transparent'">
+                      <i class="fas fa-user-edit" style="width:16px;color:#2A4A9F;"></i> Editar Perfil
                     </button>
-                    <button onclick="logout()" class="w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition flex items-center gap-2 text-xs">
-                      <i class="fas fa-sign-out-alt w-4"></i> Sair
+                    <button onclick="logout()" style="width:100%;padding:8px 12px;text-align:left;display:flex;align-items:center;gap:8px;font-size:12px;border:none;cursor:pointer;transition:background 0.15s;background:transparent;color:#dc2626;" onmouseover="this.style.background='${currentTheme === 'dark' ? 'rgba(239,68,68,0.1)' : '#FEF2F2'}'" onmouseout="this.style.background='transparent'">
+                      <i class="fas fa-sign-out-alt" style="width:16px;color:#dc2626;"></i> Sair
                     </button>
                   </div>
                 </div>
@@ -9187,10 +9187,10 @@ function gerarCalendarioCompacto(historico) {
 
   return `
     <!-- Grade do calendário - Minimalista -->
-    <div class="grid grid-cols-7 gap-0.5 mb-1 text-center text-[9px] font-medium text-gray-500">
+    <div class="grid grid-cols-7 gap-0.5 mb-1 text-center text-[9px] font-medium text-gray-500" style="display:grid;grid-template-columns:repeat(7,1fr);">
       <div>D</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>S</div>
     </div>
-    <div class="grid grid-cols-7 gap-0.5 justify-items-center">
+    <div class="grid grid-cols-7 gap-0.5 justify-items-center" style="display:grid;grid-template-columns:repeat(7,1fr);">
       ${diasHTML}
     </div>
   `;
@@ -17563,7 +17563,7 @@ function _renderChatAdminList(conversations) {
   var content = document.getElementById('chat-admin-content');
   if (!content) return;
   
-  // Filtro atual: 'all' (todas), 'unread' (não lidas), 'read' (lidas)
+  // Filtro padrão: 'all' mostra todas conversas (não lidas primeiro)
   var filter = window._chatAdminFilter || 'all';
   
   var html = '';
@@ -17575,6 +17575,7 @@ function _renderChatAdminList(conversations) {
     var unreadConvs = conversations.filter(function(c) { return c.unread_from_user > 0; });
     var readConvs = conversations.filter(function(c) { return !c.unread_from_user || c.unread_from_user === 0; });
     var unreadCount = unreadConvs.length;
+    var totalUnreadMsgs = unreadConvs.reduce(function(sum, c) { return sum + (c.unread_from_user || 0); }, 0);
     
     // Barra de filtros
     var btnBase = 'padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;border:none;cursor:pointer;transition:all 0.15s;';
@@ -17597,19 +17598,20 @@ function _renderChatAdminList(conversations) {
     } else if (filter === 'read') {
       filteredConvs = readConvs;
     } else {
+      // all: não lidas primeiro, depois lidas
       filteredConvs = unreadConvs.concat(readConvs);
     }
     
     if (filteredConvs.length > 0) {
       if (filter === 'all' && unreadCount > 0) {
-        html += '<p style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#EF4444;margin-bottom:6px;"><i class="fas fa-circle" style="font-size:5px;vertical-align:middle;margin-right:4px;"></i>Não lidas</p>';
+        html += '<p style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#EF4444;margin-bottom:6px;"><i class="fas fa-circle" style="font-size:5px;vertical-align:middle;margin-right:4px;"></i>Não lidas (' + totalUnreadMsgs + ' mensagens)</p>';
       }
       html += '<div style="display:flex;flex-direction:column;gap:6px;">';
       var passedUnread = false;
       filteredConvs.forEach(function(conv) {
         if (filter === 'all' && unreadCount > 0 && !passedUnread && (!conv.unread_from_user || conv.unread_from_user === 0)) {
           passedUnread = true;
-          html += '</div><p style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:' + (_d?'#6B7280':'#9CA3AF') + ';margin:12px 0 6px;">Lidas</p><div style="display:flex;flex-direction:column;gap:6px;">';
+          html += '</div><p style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:' + (_d?'#6B7280':'#9CA3AF') + ';margin:12px 0 6px;"><i class="fas fa-check-circle" style="font-size:5px;vertical-align:middle;margin-right:4px;"></i>Lidas</p><div style="display:flex;flex-direction:column;gap:6px;">';
         }
         html += _renderConvItem(conv, _d);
       });
@@ -20010,7 +20012,7 @@ window.verVisitasDetalhadas = async function() {
               <i class="fas fa-chart-line text-blue-500"></i>
               Visitas por Dia (últimos 7 dias)
             </h4>
-            <div class="grid grid-cols-7 gap-2">
+            <div class="grid grid-cols-7 gap-2" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">
               ${(daily_stats || []).slice(0, 7).map(day => `
                 <div class="text-center ${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-lg p-2">
                   <p class="text-xs ${themes[currentTheme].textSecondary}">${new Date(day.date).toLocaleDateString('pt-BR', {weekday: 'short'})}</p>
