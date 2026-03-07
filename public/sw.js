@@ -1,7 +1,7 @@
-// IAprova Service Worker v3.7 - v122 Fix dropdown visibility, chat filters, iOS calendar CSS syntax
-const CACHE_NAME = 'iaprova-v122';
-const STATIC_CACHE = 'iaprova-static-v122';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v122';
+// IAprova Service Worker v3.8 - v123 Estudo avulso em dias sem previsão
+const CACHE_NAME = 'iaprova-v123';
+const STATIC_CACHE = 'iaprova-static-v123';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v123';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [

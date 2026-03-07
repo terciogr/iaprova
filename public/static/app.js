@@ -9632,6 +9632,241 @@ window.confirmarTrocaDisciplina = async function(metaId, planoId, diaSemana) {
   }
 }
 
+// ===== ESTUDO AVULSO: Adicionar disciplina+tópico em dias sem previsão =====
+
+window.abrirModalEstudoAvulso = async function(diaSemana) {
+  const planoId = window.planoAtivo?.id || window.currentPlano?.id;
+  if (!planoId || !currentUser) {
+    showToast('Plano não encontrado', 'warning');
+    return;
+  }
+
+  // Buscar disciplinas do plano
+  let disciplinas = [];
+  try {
+    const res = await axios.get(`/api/planos/${planoId}/disciplinas`);
+    disciplinas = res.data || [];
+  } catch (error) {
+    console.error('Erro ao carregar disciplinas:', error);
+    showToast('Erro ao carregar disciplinas', 'error');
+    return;
+  }
+
+  if (disciplinas.length === 0) {
+    showToast('Nenhuma disciplina encontrada no plano', 'warning');
+    return;
+  }
+
+  const _d = currentTheme === 'dark';
+  const bgModal = _d ? '#111827' : '#ffffff';
+  const bgHeader = 'linear-gradient(135deg, #122D6A, #2A4A9F)';
+  const bgField = _d ? '#1F2937' : '#F9FAFB';
+  const borderField = _d ? '#374151' : '#D1D5DB';
+  const textMain = _d ? '#F3F4F6' : '#1E293B';
+  const textSec = _d ? '#9CA3AF' : '#6B7280';
+  const borderModal = _d ? '#374151' : '#E5E7EB';
+
+  const diasNomes = ['', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-estudo-avulso';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;';
+  modal.innerHTML = `
+    <div style="background:${bgModal};border-radius:16px;box-shadow:0 25px 50px rgba(0,0,0,0.25);max-width:400px;width:100%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;border:1px solid ${borderModal};">
+      <!-- Header -->
+      <div style="background:${bgHeader};padding:16px 20px;display:flex;align-items:center;gap:12px;">
+        <div style="width:40px;height:40px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="fas fa-plus-circle" style="color:white;font-size:16px;"></i>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <h3 style="color:white;font-size:16px;font-weight:700;margin:0;">Estudo Avulso</h3>
+          <p style="color:rgba(255,255,255,0.7);font-size:11px;margin:2px 0 0;">${diasNomes[diaSemana]} — fora do planejamento</p>
+        </div>
+        <button onclick="fecharModalEstudoAvulso()" style="width:32px;height:32px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <i class="fas fa-times" style="font-size:12px;"></i>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div style="padding:20px;overflow-y:auto;flex:1;">
+        <!-- Info -->
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:${_d?'rgba(42,74,159,0.1)':'#F0F5FF'};border-radius:10px;margin-bottom:16px;border:1px solid ${_d?'rgba(42,74,159,0.2)':'#DBEAFE'};">
+          <i class="fas fa-info-circle" style="color:#4A90D9;font-size:13px;margin-top:2px;flex-shrink:0;"></i>
+          <p style="font-size:11px;color:${textSec};margin:0;line-height:1.5;">Este estudo será adicionado à sua semana e contabilizado nos seus KPIs e percentuais de progresso.</p>
+        </div>
+
+        <!-- Disciplina -->
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:12px;font-weight:600;color:${textMain};margin-bottom:6px;">
+            <i class="fas fa-book" style="margin-right:4px;color:#4A90D9;font-size:11px;"></i> Disciplina
+          </label>
+          <select id="avulso-disciplina" onchange="carregarTopicosAvulso(this.value, ${planoId})"
+            style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid ${borderField};background:${bgField};color:${textMain};font-size:13px;outline:none;box-sizing:border-box;cursor:pointer;transition:border-color 0.15s;"
+            onfocus="this.style.borderColor='#4A90D9';this.style.boxShadow='0 0 0 3px rgba(74,144,217,0.1)'"
+            onblur="this.style.borderColor='${borderField}';this.style.boxShadow='none'">
+            <option value="">Selecione uma disciplina...</option>
+            ${disciplinas.map(d => '<option value="' + d.id + '" data-nome="' + (d.nome||'').replace(/"/g, '&quot;') + '">' + d.nome + '</option>').join('')}
+          </select>
+        </div>
+
+        <!-- Tópico -->
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:12px;font-weight:600;color:${textMain};margin-bottom:6px;">
+            <i class="fas fa-list" style="margin-right:4px;color:#4A90D9;font-size:11px;"></i> Tópico
+          </label>
+          <select id="avulso-topico" disabled
+            style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid ${borderField};background:${bgField};color:${textMain};font-size:13px;outline:none;box-sizing:border-box;cursor:pointer;transition:border-color 0.15s;opacity:0.6;"
+            onfocus="this.style.borderColor='#4A90D9';this.style.boxShadow='0 0 0 3px rgba(74,144,217,0.1)'"
+            onblur="this.style.borderColor='${borderField}';this.style.boxShadow='none'">
+            <option value="">Primeiro selecione a disciplina...</option>
+          </select>
+          <p id="avulso-loading-topicos" class="hidden" style="font-size:11px;color:${textSec};margin:4px 0 0;">
+            <i class="fas fa-spinner fa-spin" style="margin-right:4px;"></i>Carregando tópicos...
+          </p>
+        </div>
+
+        <!-- Tempo -->
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:${textMain};margin-bottom:6px;">
+            <i class="fas fa-clock" style="margin-right:4px;color:#4A90D9;font-size:11px;"></i> Tempo estimado (min)
+          </label>
+          <input id="avulso-tempo" type="number" value="60" min="15" max="240" step="15"
+            style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid ${borderField};background:${bgField};color:${textMain};font-size:13px;outline:none;box-sizing:border-box;transition:border-color 0.15s;"
+            onfocus="this.style.borderColor='#4A90D9';this.style.boxShadow='0 0 0 3px rgba(74,144,217,0.1)'"
+            onblur="this.style.borderColor='${borderField}';this.style.boxShadow='none'">
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:16px 20px;border-top:1px solid ${borderModal};display:flex;gap:8px;">
+        <button onclick="fecharModalEstudoAvulso()" 
+          style="flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:${_d?'rgba(255,255,255,0.06)':'#F3F4F6'};color:${textSec};transition:background 0.15s;"
+          onmouseover="this.style.background='${_d?'rgba(255,255,255,0.1)':'#E5E7EB'}'"
+          onmouseout="this.style.background='${_d?'rgba(255,255,255,0.06)':'#F3F4F6'}'">
+          Cancelar
+        </button>
+        <button onclick="confirmarEstudoAvulso(${diaSemana})" 
+          style="flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:#122D6A;color:white;transition:background 0.15s;display:flex;align-items:center;justify-content:center;gap:6px;"
+          onmouseover="this.style.background='#0D1F4D'"
+          onmouseout="this.style.background='#122D6A'">
+          <i class="fas fa-plus" style="font-size:11px;"></i> Adicionar
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Fechar ao clicar fora
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) fecharModalEstudoAvulso();
+  });
+};
+
+window.fecharModalEstudoAvulso = function() {
+  var modal = document.getElementById('modal-estudo-avulso');
+  if (modal) modal.remove();
+};
+
+window.carregarTopicosAvulso = async function(disciplinaId, planoId) {
+  var selectTopico = document.getElementById('avulso-topico');
+  var loading = document.getElementById('avulso-loading-topicos');
+
+  if (!disciplinaId) {
+    selectTopico.innerHTML = '<option value="">Primeiro selecione a disciplina...</option>';
+    selectTopico.disabled = true;
+    selectTopico.style.opacity = '0.6';
+    return;
+  }
+
+  selectTopico.disabled = true;
+  selectTopico.style.opacity = '0.6';
+  if (loading) loading.classList.remove('hidden');
+
+  try {
+    var res = await axios.get('/api/planos/' + planoId + '/disciplinas/' + disciplinaId + '/topicos');
+    var topicos = res.data || [];
+
+    if (topicos.length === 0) {
+      selectTopico.innerHTML = '<option value="">Nenhum tópico cadastrado</option>';
+    } else {
+      var opts = '<option value="">Selecione um tópico...</option>';
+      topicos.forEach(function(t) {
+        var nome = (t.nome || '').replace(/"/g, '&quot;');
+        var status = t.estudado ? ' ✓' : '';
+        opts += '<option value="' + t.id + '" data-nome="' + nome + '">' + t.nome + status + '</option>';
+      });
+      selectTopico.innerHTML = opts;
+    }
+    selectTopico.disabled = false;
+    selectTopico.style.opacity = '1';
+  } catch (err) {
+    console.error('Erro ao carregar tópicos:', err);
+    selectTopico.innerHTML = '<option value="">Erro ao carregar tópicos</option>';
+  }
+
+  if (loading) loading.classList.add('hidden');
+};
+
+window.confirmarEstudoAvulso = async function(diaSemana) {
+  var selectDisciplina = document.getElementById('avulso-disciplina');
+  var selectTopico = document.getElementById('avulso-topico');
+  var tempoInput = document.getElementById('avulso-tempo');
+
+  if (!selectDisciplina || !selectDisciplina.value) {
+    showToast('Selecione uma disciplina', 'warning');
+    return;
+  }
+  if (!selectTopico || !selectTopico.value) {
+    showToast('Selecione um tópico', 'warning');
+    return;
+  }
+
+  var disciplinaId = parseInt(selectDisciplina.value);
+  var topicoId = parseInt(selectTopico.value);
+  var tempo = parseInt(tempoInput?.value) || 60;
+  var disciplinaNome = selectDisciplina.options[selectDisciplina.selectedIndex]?.dataset?.nome || selectDisciplina.options[selectDisciplina.selectedIndex]?.text || '';
+  var topicoNome = selectTopico.options[selectTopico.selectedIndex]?.dataset?.nome || selectTopico.options[selectTopico.selectedIndex]?.text || '';
+
+  if (!semanaAtual?.semana?.id) {
+    showToast('Semana ativa não encontrada', 'error');
+    return;
+  }
+
+  // Calcular a data do dia da semana na semana ativa
+  var dataInicio = new Date(semanaAtual.semana.data_inicio);
+  // dia_semana: 1=seg..7=dom; dataInicio é segunda
+  var offset = diaSemana - 1;
+  var dataDia = new Date(dataInicio);
+  dataDia.setDate(dataDia.getDate() + offset);
+  var dataStr = dataDia.toISOString().split('T')[0];
+
+  try {
+    var res = await axios.post('/api/metas/adicionar', {
+      semana_id: semanaAtual.semana.id,
+      user_id: currentUser.id,
+      disciplina_id: disciplinaId,
+      dia_semana: diaSemana,
+      data: dataStr,
+      tipo: 'estudo_avulso',
+      tempo_minutos: tempo,
+      topicos_sugeridos: [{ id: topicoId, nome: topicoNome }]
+    });
+
+    console.log('✅ Estudo avulso adicionado:', res.data);
+    fecharModalEstudoAvulso();
+    showToast(disciplinaNome + ' adicionada ao dia!', 'success');
+
+    // Recarregar calendário semanal e selecionar o dia
+    await carregarSemanaAtiva();
+    setTimeout(function() { selecionarDiaSemana(diaSemana); }, 300);
+  } catch (error) {
+    console.error('Erro ao adicionar estudo avulso:', error);
+    showToast('Erro ao adicionar. Tente novamente.', 'error');
+  }
+};
+
+// ===== FIM ESTUDO AVULSO =====
+
 // ✅ NOVO: Função para atualizar apenas os KPIs do header sem re-renderizar tudo
 async function atualizarEstatisticasHeader() {
   if (!currentUser) return;
@@ -26252,8 +26487,19 @@ function renderCalendarioSemanal() {
             </div>
             ` : ''}
           ` : `
-            <div class="flex items-center justify-center py-8 ${themes[currentTheme].textSecondary}">
-              <span class="text-sm">Nenhuma meta para este dia</span>
+            <div class="flex flex-col items-center justify-center py-8">
+              <div style="width:48px;height:48px;border-radius:12px;background:${currentTheme==='dark'?'rgba(42,74,159,0.15)':'#EFF6FF'};display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                <i class="fas fa-coffee" style="font-size:20px;color:${currentTheme==='dark'?'#7BC4FF':'#4A90D9'};"></i>
+              </div>
+              <p class="text-sm font-medium ${themes[currentTheme].textSecondary} mb-1">Dia livre de estudos</p>
+              <p class="text-xs ${themes[currentTheme].textMuted} mb-4">Nenhuma meta planejada para este dia</p>
+              <button onclick="abrirModalEstudoAvulso(${diaSemana})" 
+                style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;font-size:12px;font-weight:600;border:1px dashed ${currentTheme==='dark'?'rgba(42,74,159,0.4)':'#93B8E8'};background:${currentTheme==='dark'?'rgba(42,74,159,0.1)':'#F8FAFF'};color:#4A90D9;cursor:pointer;transition:all 0.15s;"
+                onmouseover="this.style.background='${currentTheme==='dark'?'rgba(42,74,159,0.2)':'#EFF6FF'}';"
+                onmouseout="this.style.background='${currentTheme==='dark'?'rgba(42,74,159,0.1)':'#F8FAFF'}';">
+                <i class="fas fa-plus-circle" style="font-size:13px;"></i>
+                Adicionar estudo avulso
+              </button>
             </div>
           `}
           </div>
