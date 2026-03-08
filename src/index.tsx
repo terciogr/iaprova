@@ -14686,9 +14686,9 @@ app.get('/api/estatisticas/:user_id/progresso-semanal', async (c) => {
 app.post('/api/metas/gerar-semana/:user_id', async (c) => {
   const { DB } = c.env
   const user_id = parseInt(c.req.param('user_id'))
-  const { plano_id, data_inicio } = await c.req.json()
+  const { plano_id, data_inicio, dias_customizados } = await c.req.json()
 
-  console.log('📅 Gerando metas semanais:', { user_id, plano_id, data_inicio })
+  console.log('📅 Gerando metas semanais:', { user_id, plano_id, data_inicio, dias_customizados })
 
   try {
     // ✅ CORREÇÃO: Desativar TODAS as semanas antigas do usuário antes de criar nova
@@ -14797,7 +14797,12 @@ app.post('/api/metas/gerar-semana/:user_id', async (c) => {
     
     // ✅ NOVO: Dias da semana que o usuário pode estudar (0=Dom, 1=Seg, ..., 6=Sáb)
     let diasDisponiveis: number[] = [1, 2, 3, 4, 5] // Default: seg a sex
-    if (planoInfo?.dias_semana) {
+    
+    // ✅ v123: Se dias_customizados for enviado, usar ele no lugar dos dias da entrevista
+    if (dias_customizados && Array.isArray(dias_customizados) && dias_customizados.length > 0) {
+      diasDisponiveis = dias_customizados
+      console.log(`📅 Usando dias CUSTOMIZADOS pelo usuário: ${diasDisponiveis.join(', ')}`)
+    } else if (planoInfo?.dias_semana) {
       try {
         diasDisponiveis = JSON.parse(planoInfo.dias_semana)
       } catch (e) {

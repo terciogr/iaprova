@@ -26173,14 +26173,18 @@ async function gerarMetasSemana() {
     // Verificar se já existe semana ativa
     const checkSemana = await axios.get(`/api/metas/semana-ativa/${currentUser.id}`)
     if (checkSemana.data.semana && checkSemana.data.metas && checkSemana.data.metas.length > 0) {
-      // Modal de confirmação moderno
-      const confirmar = await mostrarModalConfirmacao(
-        'Atenção: Já existe uma semana ativa!',
-        `Você já tem ${checkSemana.data.metas.length} metas geradas para esta semana. Gerar novas metas pode afetar seu histórico de acompanhamento. Deseja continuar?`,
-        'Gerar Nova Semana',
-        'Cancelar'
-      )
-      if (!confirmar) return
+      // Modal de confirmação COM opção de dias customizados
+      const resultado = await mostrarModalGerarSemana(checkSemana.data.metas.length)
+      if (!resultado) return
+      // resultado pode ser { dias: null } (manter padrão) ou { dias: [0,1,2,...] } (customizado)
+      if (resultado.dias) {
+        window._diasCustomizadosSemana = resultado.dias
+      } else {
+        window._diasCustomizadosSemana = null
+      }
+    } else {
+      // Primeira geração: também oferecer escolha de dias
+      window._diasCustomizadosSemana = null
     }
 
     showLoading('Gerando metas da semana...')
@@ -26203,11 +26207,16 @@ async function gerarMetasSemana() {
     const nomesDias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
     console.log(`📅 Gerando metas começando hoje (${nomesDias[diaSemanaHoje]}, ${dataInicio})`)
 
-    // Gerar metas
-    const response = await axios.post(`/api/metas/gerar-semana/${currentUser.id}`, {
+    // Gerar metas (com dias customizados se selecionados)
+    const payload = {
       plano_id: plano.id,
       data_inicio: dataInicio
-    })
+    }
+    if (window._diasCustomizadosSemana) {
+      payload.dias_customizados = window._diasCustomizadosSemana
+    }
+    
+    const response = await axios.post(`/api/metas/gerar-semana/${currentUser.id}`, payload)
 
     console.log('✅ Metas semanais geradas:', response.data)
     
@@ -26226,6 +26235,186 @@ async function gerarMetasSemana() {
     hideLoading()
     showError('Erro ao gerar metas da semana. Tente novamente.')
   }
+}
+
+// Modal de geração de metas com opção de dias customizados
+function mostrarModalGerarSemana(totalMetasExistentes) {
+  return new Promise((resolve) => {
+    const _d = currentTheme === 'dark';
+    const bgModal = _d ? '#111827' : '#ffffff';
+    const bgField = _d ? '#1F2937' : '#F9FAFB';
+    const textMain = _d ? '#F3F4F6' : '#1E293B';
+    const textSec = _d ? '#9CA3AF' : '#6B7280';
+    const borderC = _d ? '#374151' : '#E5E7EB';
+
+    const dias = [
+      { val: 0, short: 'D', full: 'Dom' },
+      { val: 1, short: 'S', full: 'Seg' },
+      { val: 2, short: 'T', full: 'Ter' },
+      { val: 3, short: 'Q', full: 'Qua' },
+      { val: 4, short: 'Q', full: 'Qui' },
+      { val: 5, short: 'S', full: 'Sex' },
+      { val: 6, short: 'S', full: 'Sáb' }
+    ];
+
+    const modal = document.createElement('div');
+    modal.id = 'modal-gerar-semana';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;';
+    modal.innerHTML = `
+      <div style="background:${bgModal};border-radius:16px;box-shadow:0 25px 50px rgba(0,0,0,0.25);max-width:420px;width:100%;overflow:hidden;border:1px solid ${borderC};">
+        <!-- Header -->
+        <div style="padding:20px;text-align:center;border-bottom:1px solid ${borderC};">
+          <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#122D6A,#2A4A9F);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+            <i class="fas fa-calendar-week" style="color:white;font-size:20px;"></i>
+          </div>
+          <h3 style="font-size:18px;font-weight:700;color:${textMain};margin:0 0 4px;">Gerar Nova Semana</h3>
+          <p style="font-size:12px;color:${textSec};margin:0;">Você já tem <strong style="color:#EF4444;">${totalMetasExistentes} metas</strong> nesta semana</p>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:20px;">
+          <!-- Aviso -->
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:${_d?'rgba(251,191,36,0.1)':'#FFFBEB'};border-radius:10px;margin-bottom:16px;border:1px solid ${_d?'rgba(251,191,36,0.2)':'#FEF3C7'};">
+            <i class="fas fa-exclamation-triangle" style="color:#F59E0B;font-size:13px;margin-top:2px;flex-shrink:0;"></i>
+            <p style="font-size:11px;color:${textSec};margin:0;line-height:1.5;">Gerar novas metas substituirá as metas atuais. O progresso concluído é mantido no histórico.</p>
+          </div>
+
+          <!-- Toggle: Alterar dias de estudo -->
+          <div style="margin-bottom:4px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 12px;border-radius:10px;border:1px solid ${borderC};background:${bgField};transition:all 0.15s;"
+              id="toggle-dias-label"
+              onclick="(function(){
+                var cb = document.getElementById('toggle-dias-custom');
+                cb.checked = !cb.checked;
+                var cont = document.getElementById('dias-custom-container');
+                var label = document.getElementById('toggle-dias-label');
+                if (cb.checked) {
+                  cont.style.maxHeight = '120px';
+                  cont.style.opacity = '1';
+                  cont.style.marginTop = '12px';
+                  label.style.borderColor = '#4A90D9';
+                  label.style.background = '${_d ? "rgba(42,74,159,0.1)" : "#F0F5FF"}';
+                } else {
+                  cont.style.maxHeight = '0';
+                  cont.style.opacity = '0';
+                  cont.style.marginTop = '0';
+                  label.style.borderColor = '${borderC}';
+                  label.style.background = '${bgField}';
+                }
+              })()">
+              <input type="checkbox" id="toggle-dias-custom" style="display:none;">
+              <div style="width:18px;height:18px;border-radius:5px;border:2px solid ${_d?'#4B5563':'#D1D5DB'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;" id="toggle-dias-check">
+                <i class="fas fa-check" style="font-size:10px;color:transparent;transition:color 0.15s;" id="toggle-dias-icon"></i>
+              </div>
+              <div style="flex:1;">
+                <p style="font-size:13px;font-weight:600;color:${textMain};margin:0;">Alterar dias de estudo</p>
+                <p style="font-size:11px;color:${textSec};margin:2px 0 0;">Escolher dias diferentes do planejamento</p>
+              </div>
+              <i class="fas fa-calendar-alt" style="color:#4A90D9;font-size:14px;flex-shrink:0;"></i>
+            </label>
+          </div>
+
+          <!-- Seletor de dias (colapsado por padrão) -->
+          <div id="dias-custom-container" style="max-height:0;opacity:0;overflow:hidden;transition:all 0.3s ease;">
+            <p style="font-size:11px;color:${textSec};margin:0 0 8px;text-align:center;">Selecione os dias que poderá estudar esta semana:</p>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;" id="dias-grid">
+              ${dias.map(d => `
+                <button type="button" data-dia="${d.val}" onclick="toggleDiaCustom(this, ${d.val})"
+                  style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border-radius:10px;border:2px solid ${borderC};background:${bgField};cursor:pointer;transition:all 0.15s;min-height:48px;"
+                  onmouseover="if(!this.dataset.selected) this.style.borderColor='#93B8E8'"
+                  onmouseout="if(!this.dataset.selected) this.style.borderColor='${borderC}'">
+                  <span style="font-size:14px;font-weight:700;color:${textMain};line-height:1;">${d.short}</span>
+                  <span style="font-size:9px;color:${textSec};margin-top:2px;">${d.full}</span>
+                </button>
+              `).join('')}
+            </div>
+            <p id="dias-count" style="font-size:10px;color:${textSec};margin:6px 0 0;text-align:center;">0 dias selecionados</p>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:16px 20px;border-top:1px solid ${borderC};display:flex;gap:8px;">
+          <button onclick="document.getElementById('modal-gerar-semana')?.remove()" id="btn-cancelar-gerar"
+            style="flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:${_d?'rgba(255,255,255,0.06)':'#F3F4F6'};color:${textSec};transition:background 0.15s;"
+            onmouseover="this.style.background='${_d?'rgba(255,255,255,0.1)':'#E5E7EB'}'"
+            onmouseout="this.style.background='${_d?'rgba(255,255,255,0.06)':'#F3F4F6'}'">
+            Cancelar
+          </button>
+          <button id="btn-confirmar-gerar"
+            style="flex:1.2;padding:10px;border-radius:10px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:#122D6A;color:white;transition:background 0.15s;display:flex;align-items:center;justify-content:center;gap:6px;"
+            onmouseover="this.style.background='#0D1F4D'"
+            onmouseout="this.style.background='#122D6A'">
+            <i class="fas fa-magic" style="font-size:12px;"></i> Gerar Nova Semana
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Checkbox visual update
+    var cb = document.getElementById('toggle-dias-custom');
+    var observer = new MutationObserver(function() {
+      var check = document.getElementById('toggle-dias-check');
+      var icon = document.getElementById('toggle-dias-icon');
+      if (cb && cb.checked) {
+        check.style.background = '#122D6A';
+        check.style.borderColor = '#122D6A';
+        icon.style.color = 'white';
+      } else {
+        check.style.background = 'transparent';
+        check.style.borderColor = _d ? '#4B5563' : '#D1D5DB';
+        icon.style.color = 'transparent';
+      }
+    });
+    observer.observe(cb, { attributes: true });
+
+    // Toggle dia
+    window.toggleDiaCustom = function(btn, dia) {
+      var selected = btn.dataset.selected === 'true';
+      if (selected) {
+        btn.dataset.selected = '';
+        btn.style.background = _d ? '#1F2937' : '#F9FAFB';
+        btn.style.borderColor = _d ? '#374151' : '#E5E7EB';
+        btn.querySelector('span').style.color = textMain;
+      } else {
+        btn.dataset.selected = 'true';
+        btn.style.background = _d ? 'rgba(42,74,159,0.2)' : '#EFF6FF';
+        btn.style.borderColor = '#4A90D9';
+        btn.querySelector('span').style.color = '#4A90D9';
+      }
+      // Atualizar contagem
+      var count = document.querySelectorAll('#dias-grid button[data-selected="true"]').length;
+      document.getElementById('dias-count').textContent = count + ' dia' + (count !== 1 ? 's' : '') + ' selecionado' + (count !== 1 ? 's' : '');
+      document.getElementById('dias-count').style.color = count > 0 ? '#4A90D9' : textSec;
+    };
+
+    document.getElementById('btn-confirmar-gerar').onclick = function() {
+      var usaCustom = document.getElementById('toggle-dias-custom').checked;
+      var dias = null;
+      if (usaCustom) {
+        var btns = document.querySelectorAll('#dias-grid button[data-selected="true"]');
+        dias = Array.from(btns).map(function(b) { return parseInt(b.dataset.dia); });
+        if (dias.length === 0) {
+          showToast('Selecione pelo menos um dia', 'warning');
+          return;
+        }
+      }
+      modal.remove();
+      resolve({ dias: dias });
+    };
+
+    document.getElementById('btn-cancelar-gerar').onclick = function() {
+      modal.remove();
+      resolve(null);
+    };
+
+    modal.onclick = function(e) {
+      if (e.target === modal) {
+        modal.remove();
+        resolve(null);
+      }
+    };
+  });
 }
 
 // 2. Carregar semana ativa
@@ -32093,8 +32282,8 @@ window.createHelpButton = function() {
             <i class="fas fa-book-open text-white text-sm"></i>
           </div>
           <div class="text-left">
-            <p class="font-semibold text-sm" style="color:${currentTheme==='dark'?'#E5E7EB':'#1F2937'};">Documentação</p>
-            <p class="text-xs" style="color:${currentTheme==='dark'?'#9CA3AF':'#6B7280'};">Como usar cada recurso</p>
+            <p class="font-semibold text-sm" style="color:${currentTheme==='dark'?'#E5E7EB':'#1F2937'};">Manual do Usuário</p>
+            <p class="text-xs" style="color:${currentTheme==='dark'?'#9CA3AF':'#6B7280'};">Guia completo do sistema</p>
           </div>
         </button>
       </div>
@@ -33196,79 +33385,540 @@ function mostrarTooltipOpcao(event, tooltip) {
   }
 }
 
-// Modal de Ajuda
+// ✅ v124: Manual do Usuário Completo
 window.abrirModalAjuda = function() {
   var _d = currentTheme === 'dark';
-  var bgCard = _d ? '#1F2937' : '#FFFFFF';
-  var textMain = _d ? '#F3F4F6' : '#1F2937';
-  var textSec = _d ? '#9CA3AF' : '#6B7280';
-  var borderC = _d ? '#374151' : '#E5E7EB';
-  
-  const modal = document.createElement('div');
-  modal.id = 'modal-ajuda';
-  modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
-  modal.innerHTML = `
-    <div style="background:${bgCard};border-radius:12px;max-width:672px;width:100%;max-height:80vh;overflow-y:auto;">
-      <div style="padding:24px;border-bottom:1px solid ${borderC};">
-        <div class="flex justify-between items-center">
-          <h2 class="text-2xl font-bold" style="color:${textMain};">
-            <i class="fas fa-question-circle mr-2" style="color:#4A90D9;"></i>
-            Central de Ajuda
-          </h2>
-          <button onclick="document.getElementById('modal-ajuda').remove()" 
-            style="color:${textSec};cursor:pointer;padding:4px;" onmouseover="this.style.color='${textMain}'" onmouseout="this.style.color='${textSec}'">
-            <i class="fas fa-times text-xl"></i>
-          </button>
-        </div>
-      </div>
-      
-      <div style="padding:24px;" class="space-y-4">
-        <div style="background:${_d?'rgba(42,74,159,0.15)':'#EFF6FF'};border-radius:10px;padding:16px;">
-          <h3 class="font-bold text-lg mb-2" style="color:${_d?'#60A5FA':'#1E40AF'};">
-            <i class="fas fa-info-circle mr-2"></i>Como usar o IAprova?
-          </h3>
-          <ul class="space-y-2 text-sm" style="color:${textSec};">
-            <li>• Faça o upload do edital do seu concurso</li>
-            <li>• Preencha a entrevista inicial com seus dados</li>
-            <li>• Receba um plano de estudos personalizado</li>
-            <li>• Gere conteúdos com IA para cada tópico</li>
-          </ul>
-        </div>
-        
-        <div style="background:${_d?'rgba(16,185,129,0.12)':'#ECFDF5'};border-radius:10px;padding:16px;">
-          <h3 class="font-bold text-lg mb-2" style="color:${_d?'#34D399':'#065F46'};">
-            <i class="fas fa-graduation-cap mr-2"></i>Recursos Disponíveis
-          </h3>
-          <ul class="space-y-2 text-sm" style="color:${textSec};">
-            <li>• <strong>Teoria:</strong> Conteúdo completo do tópico</li>
-            <li>• <strong>Exercícios:</strong> Questões no estilo da banca</li>
-            <li>• <strong>Resumo:</strong> Síntese do conteúdo</li>
-            <li>• <strong>Flashcards:</strong> Cards para memorização</li>
-            <li>• <strong>Resumo Personalizado:</strong> Upload de PDF para resumo</li>
-          </ul>
-        </div>
-        
-        <div style="background:${_d?'rgba(245,158,11,0.12)':'#FFFBEB'};border-radius:10px;padding:16px;">
-          <h3 class="font-bold text-lg mb-2" style="color:${_d?'#FBBF24':'#92400E'};">
-            <i class="fas fa-lightbulb mr-2"></i>Dicas Importantes
-          </h3>
-          <ul class="space-y-2 text-sm" style="color:${textSec};">
-            <li>• Configure a IA no menu para personalizar o conteúdo</li>
-            <li>• Use o tema escuro para estudar à noite</li>
-            <li>• Acompanhe seu progresso no dashboard</li>
-            <li>• Revise regularmente com flashcards</li>
-          </ul>
-        </div>
-        
-        <div class="text-center pt-4">
-          <p class="text-sm" style="color:${textSec};">
-            Precisa de mais ajuda? Entre em contato pelo suporte.
-          </p>
-        </div>
-      </div>
-    </div>
-  `;
+  var bgMain = _d ? '#0F172A' : '#F8FAFC';
+  var bgCard = _d ? '#1E293B' : '#FFFFFF';
+  var bgSidebar = _d ? '#1E293B' : '#FFFFFF';
+  var textMain = _d ? '#F1F5F9' : '#0F172A';
+  var textSec = _d ? '#94A3B8' : '#64748B';
+  var borderC = _d ? '#334155' : '#E2E8F0';
+  var accent = '#122D6A';
+  var accentLight = _d ? 'rgba(42,74,159,0.2)' : '#EFF6FF';
+  var accentText = _d ? '#93B8E8' : '#1E40AF';
+  var hoverBg = _d ? 'rgba(255,255,255,0.05)' : 'rgba(18,45,106,0.04)';
+  var greenBg = _d ? 'rgba(16,185,129,0.1)' : '#ECFDF5';
+  var greenText = _d ? '#34D399' : '#065F46';
+  var amberBg = _d ? 'rgba(245,158,11,0.1)' : '#FFFBEB';
+  var amberText = _d ? '#FBBF24' : '#92400E';
+  var purpleBg = _d ? 'rgba(139,92,246,0.1)' : '#F5F3FF';
+  var purpleText = _d ? '#A78BFA' : '#5B21B6';
+
+  // Seções do manual
+  var sections = [
+    { id: 'visao-geral', icon: 'fas fa-home', label: 'Visao Geral' },
+    { id: 'primeiro-acesso', icon: 'fas fa-door-open', label: 'Primeiro Acesso' },
+    { id: 'plano-estudos', icon: 'fas fa-clipboard-list', label: 'Plano de Estudos' },
+    { id: 'metas-semanais', icon: 'fas fa-calendar-week', label: 'Metas Semanais' },
+    { id: 'estudar-conteudo', icon: 'fas fa-book-reader', label: 'Estudar Conteudo' },
+    { id: 'simulados', icon: 'fas fa-tasks', label: 'Simulados' },
+    { id: 'calendario', icon: 'fas fa-calendar-alt', label: 'Calendario' },
+    { id: 'desempenho', icon: 'fas fa-chart-line', label: 'Desempenho' },
+    { id: 'assistente-ia', icon: 'fas fa-robot', label: 'Assistente IA' },
+    { id: 'configuracoes', icon: 'fas fa-cog', label: 'Configuracoes' },
+    { id: 'dicas', icon: 'fas fa-lightbulb', label: 'Dicas de Uso' }
+  ];
+
+  var sidebarItems = sections.map(function(s, i) {
+    return '<button onclick="window._manualGoTo(\'' + s.id + '\')" id="manual-nav-' + s.id + '" ' +
+      'style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 14px;border:none;border-radius:10px;cursor:pointer;font-size:13px;font-weight:500;transition:all 0.15s;text-align:left;background:' + (i===0?accentLight:'transparent') + ';color:' + (i===0?accentText:textSec) + ';" ' +
+      'onmouseover="if(!this.classList.contains(\'active-nav\'))this.style.background=\'' + hoverBg + '\'" ' +
+      'onmouseout="if(!this.classList.contains(\'active-nav\'))this.style.background=\'transparent\'">' +
+      '<i class="' + s.icon + '" style="width:18px;text-align:center;font-size:13px;"></i>' +
+      '<span>' + s.label + '</span></button>';
+  }).join('');
+
+  var modal = document.createElement('div');
+  modal.id = 'modal-manual';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;padding:12px;';
+
+  modal.innerHTML = 
+    '<div style="background:' + bgMain + ';border-radius:20px;box-shadow:0 25px 60px rgba(0,0,0,0.3);max-width:960px;width:100%;height:90vh;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;border:1px solid ' + borderC + ';">' +
+      '<!-- Header -->' +
+      '<div style="background:linear-gradient(135deg,' + accent + ',#2A4A9F);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+        '<div style="display:flex;align-items:center;gap:14px;">' +
+          '<div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">' +
+            '<i class="fas fa-book-open" style="color:white;font-size:18px;"></i>' +
+          '</div>' +
+          '<div>' +
+            '<h2 style="font-size:20px;font-weight:800;color:white;margin:0;letter-spacing:-0.3px;">Manual do Usuario</h2>' +
+            '<p style="font-size:12px;color:rgba(255,255,255,0.7);margin:2px 0 0;">Guia completo do IAprova</p>' +
+          '</div>' +
+        '</div>' +
+        '<button onclick="document.getElementById(\'modal-manual\').remove()" style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.15);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:white;font-size:16px;transition:background 0.15s;" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'">' +
+          '<i class="fas fa-times"></i>' +
+        '</button>' +
+      '</div>' +
+
+      '<!-- Body -->' +
+      '<div style="display:flex;flex:1;overflow:hidden;min-height:0;">' +
+        '<!-- Sidebar (desktop) -->' +
+        '<nav id="manual-sidebar" style="width:200px;flex-shrink:0;background:' + bgSidebar + ';border-right:1px solid ' + borderC + ';padding:12px 8px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;" class="hidden md:flex">' +
+          sidebarItems +
+        '</nav>' +
+
+        '<!-- Mobile nav -->' +
+        '<div id="manual-mobile-nav" style="display:none;flex-shrink:0;background:' + bgSidebar + ';border-bottom:1px solid ' + borderC + ';padding:8px 12px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;">' +
+          sections.map(function(s) {
+            return '<button onclick="window._manualGoTo(\'' + s.id + '\')" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:600;background:transparent;color:' + textSec + ';white-space:nowrap;transition:all 0.15s;" id="manual-mob-' + s.id + '">' +
+              '<i class="' + s.icon + '" style="font-size:11px;"></i>' + s.label + '</button>';
+          }).join('') +
+        '</div>' +
+
+        '<!-- Content -->' +
+        '<div id="manual-content" style="flex:1;overflow-y:auto;padding:24px;min-width:0;scroll-behavior:smooth;">' +
+
+          // === VISAO GERAL ===
+          '<section id="sec-visao-geral" style="margin-bottom:40px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">' +
+              '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,' + accent + ',#2A4A9F);display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-home" style="color:white;font-size:14px;"></i>' +
+              '</div>' +
+              '<h3 style="font-size:20px;font-weight:800;color:' + textMain + ';margin:0;">Visao Geral</h3>' +
+            '</div>' +
+            '<div style="background:' + accentLight + ';border-radius:14px;padding:20px;border:1px solid ' + (_d?'rgba(42,74,159,0.3)':'rgba(18,45,106,0.1)') + ';margin-bottom:16px;">' +
+              '<p style="font-size:14px;color:' + textMain + ';line-height:1.7;margin:0;">O <strong>IAprova</strong> e sua plataforma inteligente de estudos para concursos publicos. Com inteligencia artificial, o sistema cria um plano de estudos personalizado, gera conteudos sob demanda e acompanha seu progresso ate a data da prova.</p>' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">' +
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:16px;text-align:center;">' +
+                '<div style="width:40px;height:40px;border-radius:10px;background:' + accentLight + ';display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">' +
+                  '<i class="fas fa-brain" style="color:' + accentText + ';font-size:16px;"></i>' +
+                '</div>' +
+                '<p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0 0 4px;">IA Personalizada</p>' +
+                '<p style="font-size:11px;color:' + textSec + ';margin:0;">Conteudos gerados sob medida para seu concurso</p>' +
+              '</div>' +
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:16px;text-align:center;">' +
+                '<div style="width:40px;height:40px;border-radius:10px;background:' + greenBg + ';display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">' +
+                  '<i class="fas fa-calendar-check" style="color:' + greenText + ';font-size:16px;"></i>' +
+                '</div>' +
+                '<p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0 0 4px;">Metas Semanais</p>' +
+                '<p style="font-size:11px;color:' + textSec + ';margin:0;">Planejamento automatico da sua semana de estudos</p>' +
+              '</div>' +
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:16px;text-align:center;">' +
+                '<div style="width:40px;height:40px;border-radius:10px;background:' + purpleBg + ';display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">' +
+                  '<i class="fas fa-chart-pie" style="color:' + purpleText + ';font-size:16px;"></i>' +
+                '</div>' +
+                '<p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0 0 4px;">Progresso Detalhado</p>' +
+                '<p style="font-size:11px;color:' + textSec + ';margin:0;">Acompanhe seu desempenho em tempo real</p>' +
+              '</div>' +
+            '</div>' +
+          '</section>' +
+
+          // === PRIMEIRO ACESSO ===
+          '<section id="sec-primeiro-acesso" style="margin-bottom:40px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">' +
+              '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-door-open" style="color:white;font-size:14px;"></i>' +
+              '</div>' +
+              '<h3 style="font-size:20px;font-weight:800;color:' + textMain + ';margin:0;">Primeiro Acesso</h3>' +
+            '</div>' +
+            '<p style="font-size:13px;color:' + textSec + ';margin:0 0 16px;line-height:1.6;">Ao acessar pela primeira vez, voce sera guiado por um processo simples de configuracao:</p>' +
+            '<div style="display:flex;flex-direction:column;gap:12px;">' +
+              // Step 1
+              '<div style="display:flex;gap:14px;align-items:flex-start;">' +
+                '<div style="width:32px;height:32px;border-radius:50%;background:' + accent + ';color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;">1</div>' +
+                '<div style="flex:1;background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                  '<p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0 0 4px;">Cadastro e Login</p>' +
+                  '<p style="font-size:12px;color:' + textSec + ';margin:0;line-height:1.5;">Crie sua conta com e-mail e senha ou faca login pelo Google. Seu progresso e salvo automaticamente.</p>' +
+                '</div>' +
+              '</div>' +
+              // Step 2
+              '<div style="display:flex;gap:14px;align-items:flex-start;">' +
+                '<div style="width:32px;height:32px;border-radius:50%;background:' + accent + ';color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;">2</div>' +
+                '<div style="flex:1;background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                  '<p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0 0 4px;">Upload do Edital</p>' +
+                  '<p style="font-size:12px;color:' + textSec + ';margin:0;line-height:1.5;">Envie o PDF do edital do seu concurso. A IA extrai automaticamente as disciplinas e topicos. Voce tambem pode pular esta etapa e adicionar disciplinas manualmente.</p>' +
+                '</div>' +
+              '</div>' +
+              // Step 3
+              '<div style="display:flex;gap:14px;align-items:flex-start;">' +
+                '<div style="width:32px;height:32px;border-radius:50%;background:' + accent + ';color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;">3</div>' +
+                '<div style="flex:1;background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                  '<p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0 0 4px;">Entrevista de Perfil</p>' +
+                  '<p style="font-size:12px;color:' + textSec + ';margin:0;line-height:1.5;">Responda perguntas sobre: area e cargo desejado, tempo disponivel por dia, dias da semana que pode estudar, data da prova e nivel de experiencia. Isso personaliza todo o plano.</p>' +
+                '</div>' +
+              '</div>' +
+              // Step 4
+              '<div style="display:flex;gap:14px;align-items:flex-start;">' +
+                '<div style="width:32px;height:32px;border-radius:50%;background:' + accent + ';color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;">4</div>' +
+                '<div style="flex:1;background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                  '<p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0 0 4px;">Plano Gerado Automaticamente</p>' +
+                  '<p style="font-size:12px;color:' + textSec + ';margin:0;line-height:1.5;">O sistema cria seu plano personalizado com disciplinas organizadas em ciclos, respeitando pesos e prioridades. As metas semanais sao geradas automaticamente.</p>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</section>' +
+
+          // === PLANO DE ESTUDOS ===
+          '<section id="sec-plano-estudos" style="margin-bottom:40px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">' +
+              '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#8B5CF6,#6D28D9);display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-clipboard-list" style="color:white;font-size:14px;"></i>' +
+              '</div>' +
+              '<h3 style="font-size:20px;font-weight:800;color:' + textMain + ';margin:0;">Plano de Estudos</h3>' +
+            '</div>' +
+            '<p style="font-size:13px;color:' + textSec + ';margin:0 0 16px;line-height:1.6;">O plano e o coracao do IAprova. Ele organiza todas as suas disciplinas e topicos em ciclos de estudo inteligentes.</p>' +
+            '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:14px;padding:18px;margin-bottom:14px;">' +
+              '<h4 style="font-size:14px;font-weight:700;color:' + accentText + ';margin:0 0 10px;"><i class="fas fa-list-ol mr-2"></i>O que o plano contem?</h4>' +
+              '<ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;">' +
+                '<li style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:' + textSec + ';line-height:1.5;"><i class="fas fa-check-circle" style="color:#10B981;margin-top:2px;flex-shrink:0;"></i><span><strong style="color:' + textMain + ';">Disciplinas</strong> - Extraidas do edital ou adicionadas manualmente</span></li>' +
+                '<li style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:' + textSec + ';line-height:1.5;"><i class="fas fa-check-circle" style="color:#10B981;margin-top:2px;flex-shrink:0;"></i><span><strong style="color:' + textMain + ';">Topicos</strong> - Conteudos detalhados de cada disciplina</span></li>' +
+                '<li style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:' + textSec + ';line-height:1.5;"><i class="fas fa-check-circle" style="color:#10B981;margin-top:2px;flex-shrink:0;"></i><span><strong style="color:' + textMain + ';">Ciclos</strong> - As disciplinas sao organizadas em ciclos de rotacao</span></li>' +
+                '<li style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:' + textSec + ';line-height:1.5;"><i class="fas fa-check-circle" style="color:#10B981;margin-top:2px;flex-shrink:0;"></i><span><strong style="color:' + textMain + ';">Analise de Viabilidade</strong> - O sistema calcula se ha tempo suficiente ate a prova</span></li>' +
+              '</ul>' +
+            '</div>' +
+            '<div style="background:' + amberBg + ';border:1px solid ' + (_d?'rgba(245,158,11,0.2)':'#FEF3C7') + ';border-radius:12px;padding:14px;display:flex;align-items:flex-start;gap:10px;">' +
+              '<i class="fas fa-lightbulb" style="color:' + amberText + ';margin-top:2px;flex-shrink:0;"></i>' +
+              '<p style="font-size:12px;color:' + textSec + ';margin:0;line-height:1.5;"><strong style="color:' + amberText + ';">Dica:</strong> Voce pode ter varios planos, mas apenas um fica ativo por vez. Acesse "Meus Planos" no menu lateral para gerenciar.</p>' +
+            '</div>' +
+          '</section>' +
+
+          // === METAS SEMANAIS ===
+          '<section id="sec-metas-semanais" style="margin-bottom:40px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">' +
+              '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#F59E0B,#D97706);display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-calendar-week" style="color:white;font-size:14px;"></i>' +
+              '</div>' +
+              '<h3 style="font-size:20px;font-weight:800;color:' + textMain + ';margin:0;">Metas Semanais</h3>' +
+            '</div>' +
+            '<p style="font-size:13px;color:' + textSec + ';margin:0 0 16px;line-height:1.6;">A cada semana, o sistema distribui os topicos ao longo dos dias disponiveis, respeitando seu tempo e priorizando disciplinas com maior peso.</p>' +
+            '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:14px;padding:18px;margin-bottom:14px;">' +
+              '<h4 style="font-size:14px;font-weight:700;color:' + accentText + ';margin:0 0 12px;"><i class="fas fa-cogs mr-2"></i>Como funciona?</h4>' +
+              '<div style="display:flex;flex-direction:column;gap:10px;">' +
+                '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+                  '<div style="width:24px;height:24px;border-radius:6px;background:' + accentLight + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-play" style="color:' + accentText + ';font-size:10px;"></i></div>' +
+                  '<p style="font-size:12px;color:' + textSec + ';margin:0;line-height:1.5;"><strong style="color:' + textMain + ';">Gerar Metas:</strong> Clique em "Gerar Metas" no dashboard. O sistema distribui os topicos nos dias configurados.</p>' +
+                '</div>' +
+                '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+                  '<div style="width:24px;height:24px;border-radius:6px;background:' + accentLight + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-exchange-alt" style="color:' + accentText + ';font-size:10px;"></i></div>' +
+                  '<p style="font-size:12px;color:' + textSec + ';margin:0;line-height:1.5;"><strong style="color:' + textMain + ';">Alterar Dias:</strong> Ao regerar metas, voce pode escolher dias diferentes do planejamento original (ex: estudar sabado em vez de segunda).</p>' +
+                '</div>' +
+                '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+                  '<div style="width:24px;height:24px;border-radius:6px;background:' + accentLight + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-plus-circle" style="color:' + accentText + ';font-size:10px;"></i></div>' +
+                  '<p style="font-size:12px;color:' + textSec + ';margin:0;line-height:1.5;"><strong style="color:' + textMain + ';">Estudo Avulso:</strong> Em dias sem meta programada, voce pode adicionar estudos extras. Eles contam nos seus KPIs e progresso.</p>' +
+                '</div>' +
+                '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+                  '<div style="width:24px;height:24px;border-radius:6px;background:' + accentLight + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-check" style="color:' + accentText + ';font-size:10px;"></i></div>' +
+                  '<p style="font-size:12px;color:' + textSec + ';margin:0;line-height:1.5;"><strong style="color:' + textMain + ';">Concluir Meta:</strong> Marque cada meta como concluida com o botao de check. O calendario e percentuais atualizam automaticamente.</p>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+              '<div style="background:' + greenBg + ';border-radius:10px;padding:12px;text-align:center;">' +
+                '<i class="fas fa-calendar-day" style="color:' + greenText + ';font-size:18px;"></i>' +
+                '<p style="font-size:11px;font-weight:600;color:' + greenText + ';margin:6px 0 0;">Abas por dia</p>' +
+                '<p style="font-size:10px;color:' + textSec + ';margin:2px 0 0;">Navegue entre os dias da semana</p>' +
+              '</div>' +
+              '<div style="background:' + purpleBg + ';border-radius:10px;padding:12px;text-align:center;">' +
+                '<i class="fas fa-history" style="color:' + purpleText + ';font-size:18px;"></i>' +
+                '<p style="font-size:11px;font-weight:600;color:' + purpleText + ';margin:6px 0 0;">Semanas anteriores</p>' +
+                '<p style="font-size:10px;color:' + textSec + ';margin:2px 0 0;">Consulte seu historico semanal</p>' +
+              '</div>' +
+            '</div>' +
+          '</section>' +
+
+          // === ESTUDAR CONTEUDO ===
+          '<section id="sec-estudar-conteudo" style="margin-bottom:40px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">' +
+              '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#3B82F6,#1D4ED8);display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-book-reader" style="color:white;font-size:14px;"></i>' +
+              '</div>' +
+              '<h3 style="font-size:20px;font-weight:800;color:' + textMain + ';margin:0;">Estudar Conteudo</h3>' +
+            '</div>' +
+            '<p style="font-size:13px;color:' + textSec + ';margin:0 0 16px;line-height:1.6;">Cada meta tem um botao <strong style="color:' + textMain + ';">"Estudar"</strong> que abre a tela de conteudo. A IA gera o material sob demanda para cada topico:</p>' +
+            '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:16px;">' +
+              // Teoria
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+                  '<div style="width:28px;height:28px;border-radius:8px;background:' + accentLight + ';display:flex;align-items:center;justify-content:center;"><i class="fas fa-book" style="color:' + accentText + ';font-size:12px;"></i></div>' +
+                  '<span style="font-size:13px;font-weight:700;color:' + textMain + ';">Teoria</span>' +
+                '</div>' +
+                '<p style="font-size:11px;color:' + textSec + ';margin:0;line-height:1.4;">Conteudo completo e detalhado do topico, com explicacoes claras e exemplos.</p>' +
+              '</div>' +
+              // Exercicios
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+                  '<div style="width:28px;height:28px;border-radius:8px;background:' + greenBg + ';display:flex;align-items:center;justify-content:center;"><i class="fas fa-pen-alt" style="color:' + greenText + ';font-size:12px;"></i></div>' +
+                  '<span style="font-size:13px;font-weight:700;color:' + textMain + ';">Exercicios</span>' +
+                '</div>' +
+                '<p style="font-size:11px;color:' + textSec + ';margin:0;line-height:1.4;">Questoes no estilo da banca com gabarito comentado. Pratique e fixe o conteudo.</p>' +
+              '</div>' +
+              // Resumo
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+                  '<div style="width:28px;height:28px;border-radius:8px;background:' + amberBg + ';display:flex;align-items:center;justify-content:center;"><i class="fas fa-file-alt" style="color:' + amberText + ';font-size:12px;"></i></div>' +
+                  '<span style="font-size:13px;font-weight:700;color:' + textMain + ';">Resumo</span>' +
+                '</div>' +
+                '<p style="font-size:11px;color:' + textSec + ';margin:0;line-height:1.4;">Sintese esquematizada do conteudo. Ideal para revisoes rapidas antes da prova.</p>' +
+              '</div>' +
+              // Flashcards
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+                  '<div style="width:28px;height:28px;border-radius:8px;background:' + purpleBg + ';display:flex;align-items:center;justify-content:center;"><i class="fas fa-clone" style="color:' + purpleText + ';font-size:12px;"></i></div>' +
+                  '<span style="font-size:13px;font-weight:700;color:' + textMain + ';">Flashcards</span>' +
+                '</div>' +
+                '<p style="font-size:11px;color:' + textSec + ';margin:0;line-height:1.4;">Cartoes de memorizacao com perguntas e respostas. Toque para virar o card.</p>' +
+              '</div>' +
+            '</div>' +
+            '<div style="background:' + accentLight + ';border:1px solid ' + (_d?'rgba(42,74,159,0.3)':'rgba(18,45,106,0.1)') + ';border-radius:12px;padding:14px;display:flex;align-items:flex-start;gap:10px;">' +
+              '<i class="fas fa-info-circle" style="color:' + accentText + ';margin-top:2px;flex-shrink:0;"></i>' +
+              '<p style="font-size:12px;color:' + textSec + ';margin:0;line-height:1.5;">Os icones ao lado de cada meta indicam quais conteudos ja foram gerados (opaco = disponivel, transparente = ainda nao gerado). Voce pode gerar e acessar a qualquer momento.</p>' +
+            '</div>' +
+          '</section>' +
+
+          // === SIMULADOS ===
+          '<section id="sec-simulados" style="margin-bottom:40px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">' +
+              '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-tasks" style="color:white;font-size:14px;"></i>' +
+              '</div>' +
+              '<h3 style="font-size:20px;font-weight:800;color:' + textMain + ';margin:0;">Simulados</h3>' +
+            '</div>' +
+            '<p style="font-size:13px;color:' + textSec + ';margin:0 0 16px;line-height:1.6;">Teste seus conhecimentos com simulados gerados pela IA, baseados nas disciplinas do seu plano:</p>' +
+            '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:14px;">' +
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;text-align:center;">' +
+                '<p style="font-size:24px;font-weight:800;color:' + accentText + ';margin:0;">10</p>' +
+                '<p style="font-size:12px;font-weight:600;color:' + textMain + ';margin:4px 0 2px;">Rapido</p>' +
+                '<p style="font-size:10px;color:' + textSec + ';margin:0;">15 minutos</p>' +
+              '</div>' +
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;text-align:center;">' +
+                '<p style="font-size:24px;font-weight:800;color:' + accentText + ';margin:0;">30</p>' +
+                '<p style="font-size:12px;font-weight:600;color:' + textMain + ';margin:4px 0 2px;">Padrao</p>' +
+                '<p style="font-size:10px;color:' + textSec + ';margin:0;">45 minutos</p>' +
+              '</div>' +
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;text-align:center;">' +
+                '<p style="font-size:24px;font-weight:800;color:' + accentText + ';margin:0;">50</p>' +
+                '<p style="font-size:12px;font-weight:600;color:' + textMain + ';margin:4px 0 2px;">Completo</p>' +
+                '<p style="font-size:10px;color:' + textSec + ';margin:0;">90 minutos</p>' +
+              '</div>' +
+            '</div>' +
+            '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:14px;padding:16px;">' +
+              '<h4 style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0 0 8px;">Ao finalizar, voce recebe:</h4>' +
+              '<ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;">' +
+                '<li style="display:flex;align-items:center;gap:8px;font-size:12px;color:' + textSec + ';"><i class="fas fa-percentage" style="color:#10B981;width:14px;text-align:center;"></i> Percentual de acertos por disciplina</li>' +
+                '<li style="display:flex;align-items:center;gap:8px;font-size:12px;color:' + textSec + ';"><i class="fas fa-clock" style="color:#F59E0B;width:14px;text-align:center;"></i> Tempo gasto por questao</li>' +
+                '<li style="display:flex;align-items:center;gap:8px;font-size:12px;color:' + textSec + ';"><i class="fas fa-comment-dots" style="color:#3B82F6;width:14px;text-align:center;"></i> Gabarito comentado com explicacoes</li>' +
+                '<li style="display:flex;align-items:center;gap:8px;font-size:12px;color:' + textSec + ';"><i class="fas fa-chart-bar" style="color:#8B5CF6;width:14px;text-align:center;"></i> Historico de evolucao dos simulados</li>' +
+              '</ul>' +
+            '</div>' +
+          '</section>' +
+
+          // === CALENDARIO ===
+          '<section id="sec-calendario" style="margin-bottom:40px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">' +
+              '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#06B6D4,#0891B2);display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-calendar-alt" style="color:white;font-size:14px;"></i>' +
+              '</div>' +
+              '<h3 style="font-size:20px;font-weight:800;color:' + textMain + ';margin:0;">Calendario</h3>' +
+            '</div>' +
+            '<p style="font-size:13px;color:' + textSec + ';margin:0 0 16px;line-height:1.6;">O calendario mostra uma visao mensal dos seus dias de estudo com cores indicativas:</p>' +
+            '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:14px;padding:18px;">' +
+              '<div style="display:flex;flex-direction:column;gap:10px;">' +
+                '<div style="display:flex;align-items:center;gap:10px;">' +
+                  '<div style="width:24px;height:24px;border-radius:6px;background:#10B981;"></div>' +
+                  '<p style="font-size:12px;color:' + textSec + ';margin:0;"><strong style="color:' + textMain + ';">Verde</strong> - Dia com todas as metas concluidas</p>' +
+                '</div>' +
+                '<div style="display:flex;align-items:center;gap:10px;">' +
+                  '<div style="width:24px;height:24px;border-radius:6px;background:#F59E0B;"></div>' +
+                  '<p style="font-size:12px;color:' + textSec + ';margin:0;"><strong style="color:' + textMain + ';">Amarelo</strong> - Dia com estudo parcial</p>' +
+                '</div>' +
+                '<div style="display:flex;align-items:center;gap:10px;">' +
+                  '<div style="width:24px;height:24px;border-radius:6px;background:#EF4444;"></div>' +
+                  '<p style="font-size:12px;color:' + textSec + ';margin:0;"><strong style="color:' + textMain + ';">Vermelho</strong> - Dia sem estudo (com metas pendentes)</p>' +
+                '</div>' +
+                '<div style="display:flex;align-items:center;gap:10px;">' +
+                  '<div style="width:24px;height:24px;border-radius:6px;background:' + (_d?'#374151':'#E5E7EB') + ';"></div>' +
+                  '<p style="font-size:12px;color:' + textSec + ';margin:0;"><strong style="color:' + textMain + ';">Cinza</strong> - Dia sem dados ou sem metas programadas</p>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</section>' +
+
+          // === DESEMPENHO ===
+          '<section id="sec-desempenho" style="margin-bottom:40px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">' +
+              '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#EC4899,#DB2777);display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-chart-line" style="color:white;font-size:14px;"></i>' +
+              '</div>' +
+              '<h3 style="font-size:20px;font-weight:800;color:' + textMain + ';margin:0;">Desempenho</h3>' +
+            '</div>' +
+            '<p style="font-size:13px;color:' + textSec + ';margin:0 0 16px;line-height:1.6;">Acompanhe suas metricas de desempenho em detalhes:</p>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<i class="fas fa-fire" style="color:#EF4444;font-size:16px;"></i>' +
+                '<p style="font-size:12px;font-weight:700;color:' + textMain + ';margin:6px 0 2px;">Sequencia de Dias</p>' +
+                '<p style="font-size:11px;color:' + textSec + ';margin:0;">Quantos dias seguidos voce estudou</p>' +
+              '</div>' +
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<i class="fas fa-trophy" style="color:#F59E0B;font-size:16px;"></i>' +
+                '<p style="font-size:12px;font-weight:700;color:' + textMain + ';margin:6px 0 2px;">Score Geral</p>' +
+                '<p style="font-size:11px;color:' + textSec + ';margin:0;">Pontuacao baseada em metas, simulados e constancia</p>' +
+              '</div>' +
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<i class="fas fa-clock" style="color:#3B82F6;font-size:16px;"></i>' +
+                '<p style="font-size:12px;font-weight:700;color:' + textMain + ';margin:6px 0 2px;">Horas Estudadas</p>' +
+                '<p style="font-size:11px;color:' + textSec + ';margin:0;">Total de horas dedicadas ao estudo</p>' +
+              '</div>' +
+              '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<i class="fas fa-bullseye" style="color:#10B981;font-size:16px;"></i>' +
+                '<p style="font-size:12px;font-weight:700;color:' + textMain + ';margin:6px 0 2px;">% de Conclusao</p>' +
+                '<p style="font-size:11px;color:' + textSec + ';margin:0;">Percentual de metas concluidas na semana</p>' +
+              '</div>' +
+            '</div>' +
+          '</section>' +
+
+          // === ASSISTENTE IA ===
+          '<section id="sec-assistente-ia" style="margin-bottom:40px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">' +
+              '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#4F46E5);display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-robot" style="color:white;font-size:14px;"></i>' +
+              '</div>' +
+              '<h3 style="font-size:20px;font-weight:800;color:' + textMain + ';margin:0;">Assistente IA</h3>' +
+            '</div>' +
+            '<p style="font-size:13px;color:' + textSec + ';margin:0 0 16px;line-height:1.6;">O IAprova conta com uma assistente virtual integrada que pode ajudar com diversas duvidas:</p>' +
+            '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:14px;padding:18px;">' +
+              '<ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;">' +
+                '<li style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:' + textSec + ';line-height:1.5;"><i class="fas fa-comment" style="color:#6366F1;margin-top:2px;flex-shrink:0;"></i><span>Tire duvidas sobre conteudo de qualquer disciplina</span></li>' +
+                '<li style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:' + textSec + ';line-height:1.5;"><i class="fas fa-compass" style="color:#6366F1;margin-top:2px;flex-shrink:0;"></i><span>Peca orientacoes sobre como estudar determinado tema</span></li>' +
+                '<li style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:' + textSec + ';line-height:1.5;"><i class="fas fa-question" style="color:#6366F1;margin-top:2px;flex-shrink:0;"></i><span>Pergunte sobre funcionalidades do sistema</span></li>' +
+                '<li style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:' + textSec + ';line-height:1.5;"><i class="fas fa-lightbulb" style="color:#6366F1;margin-top:2px;flex-shrink:0;"></i><span>Receba sugestoes de estudo personalizadas</span></li>' +
+              '</ul>' +
+            '</div>' +
+          '</section>' +
+
+          // === CONFIGURACOES ===
+          '<section id="sec-configuracoes" style="margin-bottom:40px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">' +
+              '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#64748B,#475569);display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-cog" style="color:white;font-size:14px;"></i>' +
+              '</div>' +
+              '<h3 style="font-size:20px;font-weight:800;color:' + textMain + ';margin:0;">Configuracoes</h3>' +
+            '</div>' +
+            '<div style="background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:14px;padding:18px;">' +
+              '<div style="display:flex;flex-direction:column;gap:12px;">' +
+                '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+                  '<i class="fas fa-moon" style="color:#6366F1;margin-top:2px;width:16px;text-align:center;flex-shrink:0;"></i>' +
+                  '<div><p style="font-size:13px;font-weight:600;color:' + textMain + ';margin:0;">Tema Claro / Escuro</p><p style="font-size:11px;color:' + textSec + ';margin:2px 0 0;">Alterne entre tema claro e escuro pelo icone no header.</p></div>' +
+                '</div>' +
+                '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+                  '<i class="fas fa-sliders-h" style="color:#F59E0B;margin-top:2px;width:16px;text-align:center;flex-shrink:0;"></i>' +
+                  '<div><p style="font-size:13px;font-weight:600;color:' + textMain + ';margin:0;">Configurar IA</p><p style="font-size:11px;color:' + textSec + ';margin:2px 0 0;">Acesse as configuracoes (engrenagem) para escolher o provedor de IA, ajustar temperatura e parametros de geracao de conteudo.</p></div>' +
+                '</div>' +
+                '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+                  '<i class="fas fa-user-edit" style="color:#10B981;margin-top:2px;width:16px;text-align:center;flex-shrink:0;"></i>' +
+                  '<div><p style="font-size:13px;font-weight:600;color:' + textMain + ';margin:0;">Editar Perfil</p><p style="font-size:11px;color:' + textSec + ';margin:2px 0 0;">Clique no seu avatar no header para acessar "Editar Perfil" e alterar nome ou senha.</p></div>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</section>' +
+
+          // === DICAS DE USO ===
+          '<section id="sec-dicas" style="margin-bottom:20px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">' +
+              '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#F59E0B,#D97706);display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-lightbulb" style="color:white;font-size:14px;"></i>' +
+              '</div>' +
+              '<h3 style="font-size:20px;font-weight:800;color:' + textMain + ';margin:0;">Dicas de Uso</h3>' +
+            '</div>' +
+            '<div style="display:flex;flex-direction:column;gap:10px;">' +
+              '<div style="display:flex;align-items:flex-start;gap:10px;background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<span style="font-size:18px;flex-shrink:0;">1.</span>' +
+                '<div><p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0;">Seja realista no tempo</p><p style="font-size:11px;color:' + textSec + ';margin:4px 0 0;">Informe o tempo real que consegue estudar por dia. E melhor cumprir 2h do que planejar 6h e nao cumprir.</p></div>' +
+              '</div>' +
+              '<div style="display:flex;align-items:flex-start;gap:10px;background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<span style="font-size:18px;flex-shrink:0;">2.</span>' +
+                '<div><p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0;">Siga a ordem sugerida</p><p style="font-size:11px;color:' + textSec + ';margin:4px 0 0;">Os topicos sao organizados pensando em pre-requisitos e prioridades do concurso.</p></div>' +
+              '</div>' +
+              '<div style="display:flex;align-items:flex-start;gap:10px;background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<span style="font-size:18px;flex-shrink:0;">3.</span>' +
+                '<div><p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0;">Use todos os recursos</p><p style="font-size:11px;color:' + textSec + ';margin:4px 0 0;">Combine teoria, exercicios, resumos e flashcards. Cada formato ativa um tipo diferente de memoria.</p></div>' +
+              '</div>' +
+              '<div style="display:flex;align-items:flex-start;gap:10px;background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<span style="font-size:18px;flex-shrink:0;">4.</span>' +
+                '<div><p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0;">Faca simulados regularmente</p><p style="font-size:11px;color:' + textSec + ';margin:4px 0 0;">Simulados medem seu progresso real e ajudam a identificar pontos fracos.</p></div>' +
+              '</div>' +
+              '<div style="display:flex;align-items:flex-start;gap:10px;background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<span style="font-size:18px;flex-shrink:0;">5.</span>' +
+                '<div><p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0;">Marque as conclusoes</p><p style="font-size:11px;color:' + textSec + ';margin:4px 0 0;">Registre seu progresso diariamente. Isso atualiza seu calendario, estatisticas e score.</p></div>' +
+              '</div>' +
+              '<div style="display:flex;align-items:flex-start;gap:10px;background:' + bgCard + ';border:1px solid ' + borderC + ';border-radius:12px;padding:14px;">' +
+                '<span style="font-size:18px;flex-shrink:0;">6.</span>' +
+                '<div><p style="font-size:13px;font-weight:700;color:' + textMain + ';margin:0;">Aproveite os dias livres</p><p style="font-size:11px;color:' + textSec + ';margin:4px 0 0;">Em dias sem meta programada, use o "Estudo Avulso" para adiantar conteudo. Tudo e contabilizado.</p></div>' +
+              '</div>' +
+            '</div>' +
+          '</section>' +
+
+        '</div>' + // end content
+      '</div>' + // end body flex
+    '</div>'; // end modal card
+
   document.body.appendChild(modal);
+
+  // Responsive: show mobile nav on small screens
+  var checkMobile = function() {
+    var sidebar = document.getElementById('manual-sidebar');
+    var mobileNav = document.getElementById('manual-mobile-nav');
+    if (window.innerWidth < 768) {
+      if (sidebar) sidebar.style.display = 'none';
+      if (mobileNav) mobileNav.style.display = 'block';
+    } else {
+      if (sidebar) sidebar.style.display = 'flex';
+      if (mobileNav) mobileNav.style.display = 'none';
+    }
+  };
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+
+  // Navigation function
+  window._manualGoTo = function(id) {
+    var el = document.getElementById('sec-' + id);
+    var content = document.getElementById('manual-content');
+    if (el && content) {
+      content.scrollTo({ top: el.offsetTop - 20, behavior: 'smooth' });
+    }
+    // Update active nav
+    sections.forEach(function(s) {
+      var nav = document.getElementById('manual-nav-' + s.id);
+      var mob = document.getElementById('manual-mob-' + s.id);
+      if (s.id === id) {
+        if (nav) { nav.style.background = accentLight; nav.style.color = accentText; nav.classList.add('active-nav'); }
+        if (mob) { mob.style.background = accentLight; mob.style.color = accentText; }
+      } else {
+        if (nav) { nav.style.background = 'transparent'; nav.style.color = textSec; nav.classList.remove('active-nav'); }
+        if (mob) { mob.style.background = 'transparent'; mob.style.color = textSec; }
+      }
+    });
+  };
+
+  // Scroll spy
+  var contentEl = document.getElementById('manual-content');
+  if (contentEl) {
+    contentEl.addEventListener('scroll', function() {
+      var scrollTop = contentEl.scrollTop;
+      var current = sections[0].id;
+      sections.forEach(function(s) {
+        var sec = document.getElementById('sec-' + s.id);
+        if (sec && sec.offsetTop - 40 <= scrollTop) {
+          current = s.id;
+        }
+      });
+      sections.forEach(function(s) {
+        var nav = document.getElementById('manual-nav-' + s.id);
+        var mob = document.getElementById('manual-mob-' + s.id);
+        if (s.id === current) {
+          if (nav) { nav.style.background = accentLight; nav.style.color = accentText; nav.classList.add('active-nav'); }
+          if (mob) { mob.style.background = accentLight; mob.style.color = accentText; }
+        } else {
+          if (nav) { nav.style.background = 'transparent'; nav.style.color = textSec; nav.classList.remove('active-nav'); }
+          if (mob) { mob.style.background = 'transparent'; mob.style.color = textSec; }
+        }
+      });
+    });
+  }
+
+  // Close on overlay click
+  modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
 }
 
 // Funções do Menu de Ajuda

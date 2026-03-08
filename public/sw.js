@@ -1,7 +1,7 @@
-// IAprova Service Worker v3.8 - v123 Estudo avulso em dias sem previsão
-const CACHE_NAME = 'iaprova-v123';
-const STATIC_CACHE = 'iaprova-static-v123';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v123';
+// IAprova Service Worker v3.9 - v124 Dias customizados + Manual do Usuário
+const CACHE_NAME = 'iaprova-v124';
+const STATIC_CACHE = 'iaprova-static-v124';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v124';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
