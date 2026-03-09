@@ -19628,30 +19628,38 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
     4. Destaque conceitos-chave e definições importantes
     5. Inclua exemplos relevantes quando houver
     6. Mantenha informações críticas e elimine redundâncias
-    7. Use formatação HTML para melhor legibilidade
+    7. Use APENAS formatação Markdown (NÃO use HTML, NÃO use tags como <div>, <p>, <h2>, <span>, etc.)
     
-    FORMATO DO RESUMO (use classes Tailwind com azul #122D6A):
-    <div class="resumo-personalizado">
-      <h2 class="text-2xl font-bold text-[#122D6A] mb-4">📄 Resumo: ${file.name}</h2>
-      
-      <div class="info-documento bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
-        <p><strong>Documento original:</strong> ${file.name}</p>
-        <p><strong>Tamanho:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
-        <p><strong>Processado em:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-      </div>
-      
-      <h3 class="text-xl font-bold text-[#122D6A] mb-4">📌 Pontos Principais</h3>
-      [Liste os principais pontos do documento]
-      
-      <h3 class="text-xl font-bold text-[#122D6A] mb-4 mt-6">📚 Conteúdo Detalhado</h3>
-      [Desenvolva o resumo organizado]
-      
-      <h3 class="text-xl font-bold text-[#122D6A] mb-4 mt-6">💡 Conceitos-Chave</h3>
-      [Destaque definições e conceitos importantes]
-      
-      <h3 class="text-xl font-bold text-[#122D6A] mb-4 mt-6">📝 Observações Importantes</h3>
-      [Notas e destaques relevantes]
-    </div>
+    FORMATO DO RESUMO (use SOMENTE Markdown puro):
+    
+    ## 📄 Resumo: ${file.name}
+    
+    **Documento original:** ${file.name}
+    **Tamanho:** ${(file.size / 1024).toFixed(2)} KB
+    **Processado em:** ${new Date().toLocaleDateString('pt-BR')}
+    
+    ---
+    
+    ### 📌 Pontos Principais
+    [Liste os principais pontos do documento como bullet points]
+    
+    ### 📚 Conteúdo Detalhado
+    [Desenvolva o resumo organizado com subtítulos ####, **negrito**, listas e tabelas Markdown]
+    
+    ### 💡 Conceitos-Chave
+    [Destaque definições e conceitos importantes]
+    
+    ### 📝 Observações Importantes
+    [Notas e destaques relevantes]
+    
+    REGRAS DE FORMATAÇÃO:
+    - Use ## para títulos, ### para subtítulos, #### para sub-subtítulos
+    - Use **negrito** para termos importantes
+    - Use - para listas com bullet points
+    - Use | para tabelas quando necessário (formato Markdown: | Col1 | Col2 |)
+    - Use > para citações ou destaques
+    - Use --- para separadores
+    - NUNCA use tags HTML como <div>, <p>, <h2>, <span>, <strong>, <ul>, <li>, etc.
     
     IMPORTANTE: Respeite o limite de ${limiteResumo}, preservando as informações essenciais.
     `

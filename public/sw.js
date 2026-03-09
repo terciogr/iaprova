@@ -1,7 +1,7 @@
-// IAprova Service Worker v4.4 - v130 KPI icons + barra semanal gradiente claro
-const CACHE_NAME = 'iaprova-v130';
-const STATIC_CACHE = 'iaprova-static-v130';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v130';
+// IAprova Service Worker v4.5 - v132 Modal upload responsivo, PDF markdown, aceita PDF
+const CACHE_NAME = 'iaprova-v132';
+const STATIC_CACHE = 'iaprova-static-v132';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v132';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [

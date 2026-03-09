@@ -12799,6 +12799,9 @@ function criarPDFjsPDF(titulo) {
   // Reproduz cards coloridos, tabelas, negrito inline, ícones textuais
   // ============================================================================
   function writeResumoEsquematizado(text) {
+    // v132: Strip HTML tags (fallback para conteúdos antigos gerados com HTML)
+    text = text.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+    
     // Paleta de cores RGB espelhando o frontend (10 cores)
     const cores = [
       { r:59,g:130,b:246, lr:219,lg:234,lb:254, dr:30,dg:64,db:175 },   // blue
@@ -22944,34 +22947,34 @@ window.abrirModalResumoPersonalizado = function(metaId) {
   
   const modal = document.createElement('div');
   modal.id = 'modal-resumo-personalizado-upload';
-  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in';
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in p-2 sm:p-4';
   modal.innerHTML = `
-    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden animate-scale-in">
-      <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-6">
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-lg max-h-[95vh] overflow-hidden animate-scale-in flex flex-col">
+      <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-4 sm:p-6 flex-shrink-0">
         <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-2xl font-bold flex items-center gap-3">
-              <i class="fas fa-file-upload text-3xl"></i>
-              Resumo Personalizado
+          <div class="min-w-0 flex-1">
+            <h2 class="text-lg sm:text-2xl font-bold flex items-center gap-2 sm:gap-3">
+              <i class="fas fa-file-upload text-xl sm:text-3xl"></i>
+              <span class="truncate">Resumo Personalizado</span>
             </h2>
-            <p class="text-[#A8D4FF] mt-2">Upload de documento para gerar resumo com IA</p>
+            <p class="text-[#A8D4FF] mt-1 text-xs sm:text-sm truncate">Upload de documento para gerar resumo com IA</p>
           </div>
-          <button onclick="this.closest('.fixed').remove()" class="text-white/80 hover:text-white transition">
+          <button onclick="this.closest('.fixed').remove()" class="text-white/80 hover:text-white transition ml-2 flex-shrink-0">
             <i class="fas fa-times text-xl"></i>
           </button>
         </div>
       </div>
       
-      <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+      <div class="p-4 sm:p-6 overflow-y-auto flex-1">
         <!-- Informações do contexto -->
-        <div class="bg-[#E8EDF5] rounded-lg p-4 mb-6">
+        <div class="${currentTheme === 'dark' ? 'bg-gray-700/50' : 'bg-[#E8EDF5]'} rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
           <div class="flex items-center gap-3">
-            <i class="fas fa-info-circle text-[#3A5AB0]"></i>
-            <div>
-              <p class="text-sm text-gray-700">
+            <i class="fas fa-info-circle ${currentTheme === 'dark' ? 'text-blue-400' : 'text-[#3A5AB0]'} flex-shrink-0"></i>
+            <div class="min-w-0">
+              <p class="text-xs sm:text-sm ${themes[currentTheme].text} truncate">
                 <strong>Disciplina:</strong> ${meta.disciplina_nome}
               </p>
-              <p class="text-sm text-gray-700">
+              <p class="text-xs sm:text-sm ${themes[currentTheme].text} truncate">
                 <strong>Tópico:</strong> ${meta.topico_nome}
               </p>
             </div>
@@ -22979,35 +22982,35 @@ window.abrirModalResumoPersonalizado = function(metaId) {
         </div>
         
         <!-- Área de upload -->
-        <div class="border-2 border-dashed border-[#C5D1E8] rounded-lg p-8 text-center mb-6 hover:border-[#3A5AB0] transition-all" id="dropzone">
-          <input type="file" id="file-upload" accept=".txt,.doc,.docx" class="hidden">
+        <div class="border-2 border-dashed ${currentTheme === 'dark' ? 'border-gray-600 hover:border-blue-400' : 'border-[#C5D1E8] hover:border-[#3A5AB0]'} rounded-lg p-4 sm:p-8 text-center mb-4 sm:mb-6 transition-all" id="dropzone">
+          <input type="file" id="file-upload" accept=".pdf,.txt,.doc,.docx" class="hidden">
           
-          <i class="fas fa-cloud-upload-alt text-6xl text-[#3A5AB0] opacity-50 mb-4"></i>
+          <i class="fas fa-cloud-upload-alt text-4xl sm:text-6xl ${currentTheme === 'dark' ? 'text-blue-400' : 'text-[#3A5AB0]'} opacity-50 mb-3 sm:mb-4"></i>
           
-          <h3 class="text-xl font-semibold text-gray-700 mb-2">
+          <h3 class="text-base sm:text-xl font-semibold ${themes[currentTheme].text} mb-1 sm:mb-2">
             Arraste um arquivo ou clique para selecionar
           </h3>
           
-          <p class="text-gray-500 mb-4">
-            Formatos aceitos: TXT, DOC, DOCX (máx. 10MB)
+          <p class="${themes[currentTheme].textSecondary} text-xs sm:text-sm mb-3 sm:mb-4">
+            Formatos aceitos: PDF, TXT, DOC, DOCX (máx. 10MB)
           </p>
           
           <button onclick="document.getElementById('file-upload').click()" 
-            class="bg-[#3A5AB0] text-white px-6 py-3 rounded-lg hover:bg-[#2A4A9F] transition font-medium">
+            class="${currentTheme === 'dark' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-[#3A5AB0] hover:bg-[#2A4A9F]'} text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition font-medium text-sm sm:text-base">
             <i class="fas fa-folder-open mr-2"></i>
             Selecionar Arquivo
           </button>
           
-          <div id="file-selected" class="hidden mt-6">
-            <div class="bg-green-50 rounded-lg p-4 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <i class="fas fa-file-alt text-blue-500 text-2xl"></i>
-                <div>
-                  <p class="font-medium text-gray-700" id="file-name"></p>
-                  <p class="text-sm text-gray-500" id="file-size"></p>
+          <div id="file-selected" class="hidden mt-4 sm:mt-6">
+            <div class="${currentTheme === 'dark' ? 'bg-green-900/30 border border-green-700' : 'bg-green-50'} rounded-lg p-3 sm:p-4 flex items-center justify-between">
+              <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                <i class="fas fa-file-alt text-blue-500 text-lg sm:text-2xl flex-shrink-0"></i>
+                <div class="min-w-0">
+                  <p class="font-medium ${themes[currentTheme].text} text-sm truncate" id="file-name"></p>
+                  <p class="text-xs ${themes[currentTheme].textSecondary}" id="file-size"></p>
                 </div>
               </div>
-              <button onclick="removerArquivo()" class="text-red-500 hover:text-red-700">
+              <button onclick="removerArquivo()" class="text-red-500 hover:text-red-700 flex-shrink-0 ml-2">
                 <i class="fas fa-times"></i>
               </button>
             </div>
@@ -23015,16 +23018,16 @@ window.abrirModalResumoPersonalizado = function(metaId) {
         </div>
         
         <!-- Configurações opcionais -->
-        <div class="bg-gray-50 rounded-lg p-4 mb-6">
-          <h4 class="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <i class="fas fa-cog text-gray-500"></i>
-            Configurações do Resumo (Opcional)
+        <div class="${currentTheme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+          <h4 class="font-semibold ${themes[currentTheme].text} mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
+            <i class="fas fa-cog ${themes[currentTheme].textSecondary}"></i>
+            Configurações (Opcional)
           </h4>
           
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label class="text-sm text-gray-600 mb-1 block">Tamanho do Resumo</label>
-              <select id="tamanho-resumo" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#122D6A]">
+              <label class="text-xs sm:text-sm ${themes[currentTheme].textSecondary} mb-1 block">Tamanho do Resumo</label>
+              <select id="tamanho-resumo" class="w-full px-3 py-2 border ${themes[currentTheme].border} rounded-lg focus:ring-2 focus:ring-[#122D6A] ${themes[currentTheme].bg} ${themes[currentTheme].text} text-sm">
                 <option value="curto">Curto (1-2 páginas)</option>
                 <option value="medio" selected>Médio (2-3 páginas)</option>
                 <option value="longo">Longo (3-5 páginas)</option>
@@ -23032,8 +23035,8 @@ window.abrirModalResumoPersonalizado = function(metaId) {
             </div>
             
             <div>
-              <label class="text-sm text-gray-600 mb-1 block">Foco do Resumo</label>
-              <select id="foco-resumo" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#122D6A]">
+              <label class="text-xs sm:text-sm ${themes[currentTheme].textSecondary} mb-1 block">Foco do Resumo</label>
+              <select id="foco-resumo" class="w-full px-3 py-2 border ${themes[currentTheme].border} rounded-lg focus:ring-2 focus:ring-[#122D6A] ${themes[currentTheme].bg} ${themes[currentTheme].text} text-sm">
                 <option value="geral" selected>Geral</option>
                 <option value="conceitos">Conceitos Principais</option>
                 <option value="pratico">Aplicação Prática</option>
@@ -23047,25 +23050,25 @@ window.abrirModalResumoPersonalizado = function(metaId) {
         <button onclick="processarResumoPersonalizado(${metaId})" 
           id="btn-processar"
           disabled
-          class="w-full bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white py-4 rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-[#0D1F4D] hover:to-[#122D6A] transition flex items-center justify-center gap-3">
+          class="w-full bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-[#0D1F4D] hover:to-[#122D6A] transition flex items-center justify-center gap-2 sm:gap-3">
           <i class="fas fa-magic"></i>
           Gerar Resumo do Documento
         </button>
         
         <!-- Status de processamento -->
-        <div id="processing-status" class="hidden mt-6">
-          <div class="bg-[#E8EDF5] rounded-lg p-4">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="spinner-border animate-spin inline-block w-6 h-6 border-3 rounded-full border-[#3A5AB0] border-t-transparent"></div>
-              <div class="flex-1">
-                <p class="font-medium text-[#2A4A9F] text-sm" id="status-message">Enviando arquivo...</p>
+        <div id="processing-status" class="hidden mt-4 sm:mt-6">
+          <div class="${currentTheme === 'dark' ? 'bg-gray-700/50' : 'bg-[#E8EDF5]'} rounded-lg p-3 sm:p-4">
+            <div class="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+              <div class="spinner-border animate-spin inline-block w-5 h-5 sm:w-6 sm:h-6 border-3 rounded-full ${currentTheme === 'dark' ? 'border-blue-400' : 'border-[#3A5AB0]'} border-t-transparent"></div>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium ${currentTheme === 'dark' ? 'text-blue-300' : 'text-[#2A4A9F]'} text-xs sm:text-sm truncate" id="status-message">Enviando arquivo...</p>
               </div>
-              <span class="text-xs text-[#4A6AC0]" id="status-time"></span>
+              <span class="text-[10px] sm:text-xs ${themes[currentTheme].textSecondary} flex-shrink-0" id="status-time"></span>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
+            <div class="w-full ${currentTheme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'} rounded-full h-2">
               <div id="status-progress-bar" class="bg-[#122D6A] h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
             </div>
-            <p class="text-[10px] text-gray-500 mt-2 text-center" id="status-hint">Documentos maiores podem levar até 1 minuto</p>
+            <p class="text-[9px] sm:text-[10px] ${themes[currentTheme].textSecondary} mt-2 text-center" id="status-hint">Documentos maiores podem levar até 1 minuto</p>
           </div>
         </div>
       </div>
