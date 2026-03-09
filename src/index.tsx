@@ -6129,13 +6129,14 @@ app.post('/api/editais/upload', async (c) => {
         textoCompleto = await file.text()
         console.log(`✅ TXT lido: ${textoCompleto.length} caracteres`)
       } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-        // v135: PDF SUPORTADO - extrair texto usando Gemini direto
+        // v136: PDF → 1 chamada Gemini que extrai disciplinas DIRETO do PDF (como XLSX)
+        // Antes: 2 chamadas (extrair texto + processar disciplinas) = timeout
+        // Agora: 1 chamada que lê o PDF e retorna JSON com disciplinas/tópicos
         const arrayBuffer = await file.arrayBuffer()
         const fileSizeMB = arrayBuffer.byteLength / (1024 * 1024)
         
-        console.log(`📄 PDF detectado: ${file.name} (${fileSizeMB.toFixed(2)} MB) - Extraindo texto com Gemini`)
+        console.log(`📄 PDF detectado: ${file.name} (${fileSizeMB.toFixed(2)} MB) - Extração direta de disciplinas`)
         
-        // Validar tamanho (máx 5MB)
         if (fileSizeMB > 5) {
           return c.json({
             error: `PDF muito grande (${fileSizeMB.toFixed(1)}MB). Máximo: 5MB. Converta para TXT.`,
@@ -6147,7 +6148,7 @@ app.post('/api/editais/upload', async (c) => {
         }
         
         if (!geminiKey || geminiKey === 'SUA_CHAVE_GEMINI_AQUI') {
-          return c.json({ error: 'API key do Gemini não configurada para processar PDF' }, 500)
+          return c.json({ error: 'API key do Gemini não configurada' }, 500)
         }
         
         try {
@@ -6163,21 +6164,56 @@ app.post('/api/editais/upload', async (c) => {
           
           console.log(`📄 PDF base64: ${base64PDF.length} chars`)
           
-          // Prompt otimizado para extrair APENAS o texto do conteúdo programático
-          const extractPrompt = `Extraia TODO o texto deste documento PDF de forma fiel e completa.
-Foque especialmente nas seções de CONTEÚDO PROGRAMÁTICO, ANEXOS com disciplinas e tópicos.
-Mantenha a estrutura original: títulos, subtítulos, listas, numerações.
-Transcreva literalmente. NÃO resuma. NÃO comente. Apenas transcreva o texto.
-Se houver tabelas, transcreva cada coluna separada por " | ".`
+          // Buscar cargo da entrevista para contexto
+          let cargoDesejado = ''
+          try {
+            const entrevista = await DB.prepare(
+              'SELECT cargo FROM interviews WHERE user_id = ? ORDER BY id DESC LIMIT 1'
+            ).bind(userId).first() as any
+            cargoDesejado = entrevista?.cargo || ''
+          } catch (e) { /* ok */ }
           
-          // Tentar múltiplos modelos com fallback
-          const modelos = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
-          let textoExtraidoPDF = ''
+          // Prompt que extrai disciplinas e tópicos DIRETO do PDF (1 chamada só)
+          const promptPDF = `VOCÊ É UM ESPECIALISTA EM ANÁLISE DE EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
+
+TAREFA: Analise este PDF (edital de concurso) e extraia TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
+
+${cargoDesejado ? `CARGO DO CANDIDATO: ${cargoDesejado.toUpperCase()}` : 'Analise para o cargo principal do edital.'}
+${nomeConcurso ? `CONCURSO: ${nomeConcurso}` : ''}
+${bancaInformada ? `BANCA: ${bancaInformada}` : ''}
+
+INSTRUÇÕES:
+1. LEIA O DOCUMENTO COMPLETO - procure por "CONTEÚDO PROGRAMÁTICO", "ANEXO" com disciplinas
+2. Se houver múltiplos cargos, extraia APENAS as disciplinas do cargo especificado
+3. DIFERENCIE "CONHECIMENTOS BÁSICOS" de "CONHECIMENTOS ESPECÍFICOS"
+4. EXTRAIA OS NOMES EXATOS DAS DISCIPLINAS conforme o edital
+5. EXTRAIA OS TÓPICOS REAIS listados sob cada disciplina
+6. NÃO INVENTE - use APENAS o que está escrito no documento
+
+RESPONDA APENAS COM JSON VÁLIDO (sem markdown, sem \`\`\`):
+{
+  "cargo_detectado": "Nome do cargo identificado",
+  "disciplinas": [
+    {
+      "nome": "Nome EXATO da Disciplina",
+      "peso": 1,
+      "categoria": "CONHECIMENTOS BÁSICOS ou CONHECIMENTOS ESPECÍFICOS",
+      "topicos": ["Tópico 1 exato", "Tópico 2 exato"]
+    }
+  ]
+}
+
+REGRAS DE PESO: peso 1 = Básicos, peso 2 = Específicos
+INCLUA TODAS as disciplinas (geralmente 8 a 15). Cada uma com seus tópicos REAIS.`
+          
+          // Tentar modelos com fallback
+          const modelos = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite']
+          let textoGemini = ''
           let modeloUsado = ''
           
           for (const modelo of modelos) {
             try {
-              console.log(`🚀 Tentando ${modelo} para extração de texto do PDF...`)
+              console.log(`🚀 Tentando ${modelo} para PDF...`)
               const pdfResponse = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${geminiKey}`,
                 {
@@ -6186,12 +6222,12 @@ Se houver tabelas, transcreva cada coluna separada por " | ".`
                   body: JSON.stringify({
                     contents: [{
                       parts: [
-                        { text: extractPrompt },
+                        { text: promptPDF },
                         { inline_data: { mime_type: 'application/pdf', data: base64PDF } }
                       ]
                     }],
                     generationConfig: {
-                      temperature: 0.01,
+                      temperature: 0.1,
                       maxOutputTokens: 65536
                     }
                   })
@@ -6210,11 +6246,11 @@ Se houver tabelas, transcreva cada coluna separada por " | ".`
               }
               
               const pdfData = await pdfResponse.json() as any
-              textoExtraidoPDF = pdfData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+              textoGemini = pdfData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
               
-              if (textoExtraidoPDF && textoExtraidoPDF.length > 100) {
+              if (textoGemini && textoGemini.length > 50) {
                 modeloUsado = modelo
-                console.log(`✅ ${modelo} extraiu: ${textoExtraidoPDF.length} caracteres`)
+                console.log(`✅ ${modelo} respondeu: ${textoGemini.length} chars`)
                 break
               }
             } catch (err: any) {
@@ -6222,23 +6258,60 @@ Se houver tabelas, transcreva cada coluna separada por " | ".`
             }
           }
           
-          if (!textoExtraidoPDF || textoExtraidoPDF.length < 100) {
-            console.error('❌ Nenhum modelo conseguiu extrair texto do PDF')
+          if (!textoGemini) {
             return c.json({
-              error: 'Não foi possível extrair texto do PDF. Tente converter para TXT.',
-              suggestion: 'Use https://smallpdf.com/pdf-to-text para converter',
+              error: 'Não foi possível processar o PDF. Tente converter para TXT.',
+              suggestion: 'Use https://smallpdf.com/pdf-to-text',
               errorType: 'PDF_EXTRACTION_FAILED'
             }, 422)
           }
           
-          textoCompleto = textoExtraidoPDF
-          console.log(`✅ PDF processado com ${modeloUsado}: ${textoCompleto.length} caracteres extraídos`)
+          // Parsear JSON da resposta
+          const jsonMatch = textoGemini.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            try {
+              const resultado = JSON.parse(
+                jsonMatch[0].replace(/[\x00-\x1F\x7F]/g, ' ').replace(/,\s*([}\]])/g, '$1')
+              )
+              
+              if (resultado?.disciplinas?.length > 0) {
+                disciplinasExtraidas = resultado.disciplinas.map((d: any, i: number) => ({
+                  nome: d.nome,
+                  peso: d.peso || 1,
+                  ordem: i + 1,
+                  topicos: Array.isArray(d.topicos) ? d.topicos : []
+                }))
+                
+                // Criar texto descritivo para salvar no banco
+                textoCompleto = `EDITAL PDF PROCESSADO POR IA (${modeloUsado})\n`
+                textoCompleto += `Cargo: ${resultado.cargo_detectado || cargoDesejado || 'N/A'}\n\n`
+                disciplinasExtraidas.forEach((d: any) => {
+                  textoCompleto += `${d.nome}:\n`
+                  d.topicos.forEach((t: string) => {
+                    textoCompleto += `  - ${t}\n`
+                  })
+                  textoCompleto += '\n'
+                })
+                
+                console.log(`✅ PDF: ${disciplinasExtraidas.length} disciplinas extraídas direto com ${modeloUsado}`)
+              }
+            } catch (parseErr) {
+              console.error('❌ Erro ao parsear JSON do PDF:', parseErr)
+              // Fallback: salvar texto bruto para processamento posterior
+              textoCompleto = textoGemini
+              console.log('⚠️ Usando texto bruto do PDF como fallback')
+            }
+          } else {
+            // Sem JSON válido - salvar texto bruto
+            textoCompleto = textoGemini
+            console.log('⚠️ Sem JSON no retorno do PDF, usando texto bruto')
+          }
         } catch (pdfError: any) {
           console.error('❌ Erro ao processar PDF:', pdfError)
           return c.json({
             error: 'Erro ao processar PDF. Tente converter para TXT.',
-            details: pdfError?.message || 'Falha na extração',
-            suggestion: 'Use https://smallpdf.com/pdf-to-text para converter'
+            details: pdfError?.message || 'Falha no processamento',
+            suggestion: 'Use https://smallpdf.com/pdf-to-text'
           }, 500)
         }
       } else {

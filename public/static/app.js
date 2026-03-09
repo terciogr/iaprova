@@ -4626,16 +4626,17 @@ async function processarEditalAntesDeStep2() {
     // Aguardar 500ms para transição visual
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // 2️⃣ Processar cada edital via IA (APENAS SE NÃO FOR XLSX)
+    // 2️⃣ Processar cada edital via IA (APENAS SE NÃO FOR XLSX/PDF processado)
     for (const edital of uploadRes.data.editais) {
-      // ✅ NOVO: Se foi XLSX, já está processado automaticamente
+      // ✅ Se foi XLSX ou PDF processado direto, já tem disciplinas extraídas
       if (edital.processado_automaticamente) {
-        console.log(`📊 XLSX ${edital.id} já processado automaticamente (${edital.disciplinas_extraidas} disciplinas)`);
-        atualizarFeedbackUI(2, `📊 XLSX detectado! ${edital.disciplinas_extraidas} disciplinas já extraídas.`, 'success');
+        const tipoLabel = edital.tipo === 'pdf' ? 'PDF' : 'XLSX';
+        console.log(`📊 ${tipoLabel} ${edital.id} processado automaticamente (${edital.disciplinas_extraidas} disciplinas)`);
+        atualizarFeedbackUI(2, `📊 ${tipoLabel} processado! ${edital.disciplinas_extraidas} disciplinas extraídas pela IA.`, 'success');
         interviewData.edital_id = edital.id;
         
         // Pular para etapa 4 (salvar)
-        atualizarFeedbackUI(4, `💾 Dados salvos automaticamente pelo XLSX.`, 'success');
+        atualizarFeedbackUI(4, `💾 Dados salvos automaticamente.`, 'success');
         continue; // Pular processamento via IA
       }
       

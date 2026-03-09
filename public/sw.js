@@ -1,7 +1,7 @@
-// IAprova Service Worker v4.8 - v135 Upload PDF edital (extração Gemini)
-const CACHE_NAME = 'iaprova-v135';
-const STATIC_CACHE = 'iaprova-static-v135';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v135';
+// IAprova Service Worker v4.9 - v136 PDF edital 1 chamada (disciplinas direto)
+const CACHE_NAME = 'iaprova-v136';
+const STATIC_CACHE = 'iaprova-static-v136';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v136';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
