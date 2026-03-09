@@ -4542,13 +4542,20 @@ async function processarEditalAntesDeStep2() {
     }
 
     console.log('📤 Enviando edital para backend...');
-    atualizarFeedbackUI(1, 'Enviando arquivos para o servidor...');
+    
+    // Detectar se tem PDF para mostrar mensagem adequada
+    const temPDF = Array.from(interviewData.editais_arquivos).some(f => f.name.toLowerCase().endsWith('.pdf'));
+    if (temPDF) {
+      atualizarFeedbackUI(1, '📄 Enviando PDF para análise com IA... (pode levar 1-2 minutos)');
+    } else {
+      atualizarFeedbackUI(1, 'Enviando arquivos para o servidor...');
+    }
     
     let uploadRes;
     try {
       uploadRes = await axios.post('/api/editais/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 120000 // 2 minutos de timeout
+        timeout: 180000 // 3 minutos de timeout (PDF pode levar ~90s com Files API)
       });
     } catch (uploadError) {
       console.error('❌ Erro no upload:', uploadError);
@@ -4602,6 +4609,96 @@ async function processarEditalAntesDeStep2() {
                         class="w-full py-3 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg font-semibold border ${themes[currentTheme].border} hover:opacity-80 transition-all flex items-center justify-center gap-2">
                   <i class="fas fa-redo"></i>
                   Tentar com outro arquivo
+                </button>
+                <button onclick="renderEntrevistaStep2()" 
+                        class="w-full py-2 text-gray-500 hover:text-gray-700 transition-all text-sm">
+                  Continuar sem edital →
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        isProcessingEdital = false;
+        return;
+      }
+      
+      // ✅ v137: Tratamento para PDF_EXTRACTION_FAILED (422) e FILE_TOO_LARGE (413)
+      if (errorType === 'PDF_EXTRACTION_FAILED' || status === 422) {
+        atualizarFeedbackUI(1, '❌ Não foi possível processar o PDF', 'error');
+        
+        document.getElementById('app').innerHTML = `
+          <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+            <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
+              <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
+                <i class="fas fa-file-pdf text-orange-500 text-4xl"></i>
+              </div>
+              <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-3">
+                Não foi possível processar o PDF
+              </h3>
+              <p class="text-gray-600 mb-4 text-sm">
+                O serviço de IA está temporariamente sobrecarregado. Tente novamente em 1 minuto ou converta para TXT.
+              </p>
+              
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                <h4 class="font-semibold text-blue-800 mb-3">💡 O que fazer:</h4>
+                <ul class="text-sm text-blue-700 space-y-2">
+                  <li>• <strong>Tente novamente</strong> em 1-2 minutos</li>
+                  <li>• Ou converta o PDF para TXT em <a href="https://smallpdf.com/pdf-to-text" target="_blank" class="underline font-semibold">smallpdf.com</a></li>
+                  <li>• Ou use a aba <strong>"Colar Texto"</strong> para colar o conteúdo programático</li>
+                </ul>
+              </div>
+              
+              <div class="flex flex-col gap-3">
+                <button onclick="processarEditalAntesDeStep2()" 
+                        class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all flex items-center justify-center gap-2">
+                  <i class="fas fa-redo"></i>
+                  Tentar novamente
+                </button>
+                <button onclick="renderEntrevistaStep1()" 
+                        class="w-full py-3 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg font-semibold border ${themes[currentTheme].border} hover:opacity-80 transition-all flex items-center justify-center gap-2">
+                  <i class="fas fa-arrow-left"></i>
+                  Voltar e escolher outro arquivo
+                </button>
+                <button onclick="renderEntrevistaStep2()" 
+                        class="w-full py-2 text-gray-500 hover:text-gray-700 transition-all text-sm">
+                  Continuar sem edital →
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        isProcessingEdital = false;
+        return;
+      }
+      
+      if (errorType === 'FILE_TOO_LARGE' || status === 413) {
+        const fileSizeInfo = uploadError?.response?.data?.fileSizeMB || '';
+        atualizarFeedbackUI(1, `❌ PDF muito grande${fileSizeInfo ? ' ('+fileSizeInfo+'MB)' : ''}`, 'error');
+        
+        document.getElementById('app').innerHTML = `
+          <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+            <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
+              <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+                <i class="fas fa-weight-hanging text-red-500 text-4xl"></i>
+              </div>
+              <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-3">
+                PDF muito grande${fileSizeInfo ? ' ('+fileSizeInfo+'MB)' : ''}
+              </h3>
+              <p class="text-gray-600 mb-4 text-sm">
+                O limite para PDFs é de 5MB. Converta para TXT ou use a aba "Colar Texto".
+              </p>
+              <div class="flex flex-col gap-3">
+                <a href="https://smallpdf.com/pdf-to-text" target="_blank"
+                   class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all flex items-center justify-center gap-2">
+                  <i class="fas fa-external-link-alt"></i>
+                  Converter PDF para TXT
+                </a>
+                <button onclick="renderEntrevistaStep1()" 
+                        class="w-full py-3 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg font-semibold border ${themes[currentTheme].border} hover:opacity-80 transition-all flex items-center justify-center gap-2">
+                  <i class="fas fa-arrow-left"></i>
+                  Voltar e escolher outro arquivo
                 </button>
                 <button onclick="renderEntrevistaStep2()" 
                         class="w-full py-2 text-gray-500 hover:text-gray-700 transition-all text-sm">

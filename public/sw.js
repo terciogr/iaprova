@@ -1,7 +1,7 @@
-// IAprova Service Worker v4.9 - v136 PDF edital 1 chamada (disciplinas direto)
-const CACHE_NAME = 'iaprova-v136';
-const STATIC_CACHE = 'iaprova-static-v136';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v136';
+// IAprova Service Worker v5.0 - v137 PDF edital Files API + modelos 2.5-flash + retry inteligente
+const CACHE_NAME = 'iaprova-v137';
+const STATIC_CACHE = 'iaprova-static-v137';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v137';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [

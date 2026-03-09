@@ -3717,7 +3717,7 @@ async function callAI(DB: any, env: any, options: AICallOptions): Promise<AICall
     try {
       // GEMINI
       if (provider === 'gemini' && geminiKey) {
-        const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite']
+        const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
         
         for (const model of models) {
           try {
@@ -6129,13 +6129,13 @@ app.post('/api/editais/upload', async (c) => {
         textoCompleto = await file.text()
         console.log(`✅ TXT lido: ${textoCompleto.length} caracteres`)
       } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-        // v136: PDF → 1 chamada Gemini que extrai disciplinas DIRETO do PDF (como XLSX)
-        // Antes: 2 chamadas (extrair texto + processar disciplinas) = timeout
-        // Agora: 1 chamada que lê o PDF e retorna JSON com disciplinas/tópicos
+        // v137: PDF → Files API do Gemini + extração direta de disciplinas em 1 chamada
+        // Usa Files API (upload do PDF ao Gemini) em vez de base64 inline
+        // Modelos atualizados: gemini-2.5-flash (primário) com retry inteligente
         const arrayBuffer = await file.arrayBuffer()
         const fileSizeMB = arrayBuffer.byteLength / (1024 * 1024)
         
-        console.log(`📄 PDF detectado: ${file.name} (${fileSizeMB.toFixed(2)} MB) - Extração direta de disciplinas`)
+        console.log(`📄 PDF detectado: ${file.name} (${fileSizeMB.toFixed(2)} MB) - Extração direta de disciplinas v137`)
         
         if (fileSizeMB > 5) {
           return c.json({
@@ -6152,18 +6152,6 @@ app.post('/api/editais/upload', async (c) => {
         }
         
         try {
-          // Converter PDF para base64
-          const bytes = new Uint8Array(arrayBuffer)
-          let binary = ''
-          const chunkSize = 8192
-          for (let i = 0; i < bytes.length; i += chunkSize) {
-            const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
-            binary += String.fromCharCode.apply(null, Array.from(chunk))
-          }
-          const base64PDF = btoa(binary)
-          
-          console.log(`📄 PDF base64: ${base64PDF.length} chars`)
-          
           // Buscar cargo da entrevista para contexto
           let cargoDesejado = ''
           try {
@@ -6173,7 +6161,7 @@ app.post('/api/editais/upload', async (c) => {
             cargoDesejado = entrevista?.cargo || ''
           } catch (e) { /* ok */ }
           
-          // Prompt que extrai disciplinas e tópicos DIRETO do PDF (1 chamada só)
+          // Prompt que extrai disciplinas e tópicos DIRETO do PDF
           const promptPDF = `VOCÊ É UM ESPECIALISTA EM ANÁLISE DE EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
 
 TAREFA: Analise este PDF (edital de concurso) e extraia TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
@@ -6205,62 +6193,198 @@ RESPONDA APENAS COM JSON VÁLIDO (sem markdown, sem \`\`\`):
 
 REGRAS DE PESO: peso 1 = Básicos, peso 2 = Específicos
 INCLUA TODAS as disciplinas (geralmente 8 a 15). Cada uma com seus tópicos REAIS.`
-          
-          // Tentar modelos com fallback
-          const modelos = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite']
+
+          // ====== MÉTODO 1: Files API do Gemini (mais confiável para PDFs) ======
           let textoGemini = ''
           let modeloUsado = ''
+          let fileUri = ''
           
-          for (const modelo of modelos) {
-            try {
-              console.log(`🚀 Tentando ${modelo} para PDF...`)
-              const pdfResponse = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${geminiKey}`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contents: [{
-                      parts: [
-                        { text: promptPDF },
-                        { inline_data: { mime_type: 'application/pdf', data: base64PDF } }
-                      ]
-                    }],
-                    generationConfig: {
-                      temperature: 0.1,
-                      maxOutputTokens: 65536
+          const sleepMs = (ms: number) => new Promise(r => setTimeout(r, ms))
+          
+          // Passo 1: Upload do PDF para o Gemini Files API
+          try {
+            console.log('📤 Fazendo upload do PDF para Gemini Files API...')
+            const pdfBytes = new Uint8Array(arrayBuffer)
+            const uploadUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${geminiKey}`
+            
+            const uploadFormData = new FormData()
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+            uploadFormData.append('file', blob, file.name)
+            
+            const uploadResponse = await fetch(uploadUrl, {
+              method: 'POST',
+              headers: { 'X-Goog-Upload-Protocol': 'multipart' },
+              body: uploadFormData
+            })
+            
+            if (uploadResponse.ok) {
+              const uploadData = await uploadResponse.json() as any
+              fileUri = uploadData?.file?.uri || ''
+              const fileName = uploadData?.file?.name || ''
+              
+              if (fileUri) {
+                console.log(`✅ Upload Files API concluído. URI: ${fileUri}`)
+                
+                // Passo 2: Aguardar arquivo ficar ACTIVE
+                let fileReady = false
+                for (let attempt = 0; attempt < 15; attempt++) {
+                  await sleepMs(2000)
+                  try {
+                    const statusResp = await fetch(
+                      `https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${geminiKey}`
+                    )
+                    if (statusResp.ok) {
+                      const statusData = await statusResp.json() as any
+                      console.log(`📊 Files API status (${attempt + 1}): ${statusData.state}`)
+                      if (statusData.state === 'ACTIVE') { fileReady = true; break }
+                      if (statusData.state === 'FAILED') { break }
                     }
-                  })
+                  } catch (e) { /* retry */ }
                 }
-              )
-              
-              if (pdfResponse.status === 429) {
-                console.log(`⚠️ ${modelo}: Rate limit, tentando próximo...`)
-                await new Promise(r => setTimeout(r, 2000))
-                continue
+                
+                if (fileReady) {
+                  // Passo 3: Gerar com o arquivo usando file_data (sem base64)
+                  const modelos = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
+                  
+                  for (const modelo of modelos) {
+                    try {
+                      console.log(`🚀 Files API + ${modelo}...`)
+                      const genResp = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${geminiKey}`,
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            contents: [{
+                              parts: [
+                                { text: promptPDF },
+                                { file_data: { mime_type: 'application/pdf', file_uri: fileUri } }
+                              ]
+                            }],
+                            generationConfig: { temperature: 0.1, maxOutputTokens: 65536 }
+                          })
+                        }
+                      )
+                      
+                      if (genResp.status === 429) {
+                        console.log(`⚠️ ${modelo}: Rate limit, aguardando 5s...`)
+                        await sleepMs(5000)
+                        continue
+                      }
+                      
+                      if (genResp.ok) {
+                        const genData = await genResp.json() as any
+                        const txt = genData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+                        if (txt.length > 50) {
+                          textoGemini = txt
+                          modeloUsado = `${modelo}+FilesAPI`
+                          console.log(`✅ ${modelo} (Files API) respondeu: ${txt.length} chars`)
+                          break
+                        }
+                      } else {
+                        console.log(`⚠️ ${modelo}: HTTP ${genResp.status}`)
+                      }
+                    } catch (err: any) {
+                      console.error(`❌ ${modelo} Files API erro:`, err.message)
+                    }
+                  }
+                  
+                  // Limpar arquivo temporário
+                  try {
+                    await fetch(`https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${geminiKey}`, { method: 'DELETE' })
+                    console.log('🗑️ Arquivo temporário deletado do Gemini')
+                  } catch (e) { /* não crítico */ }
+                } else {
+                  console.log('⚠️ Files API: arquivo não ficou pronto, tentando base64...')
+                }
+              } else {
+                console.log('⚠️ Files API não retornou URI, tentando base64...')
               }
-              
-              if (!pdfResponse.ok) {
-                console.log(`⚠️ ${modelo}: HTTP ${pdfResponse.status}`)
-                continue
+            } else {
+              console.log(`⚠️ Files API upload falhou (HTTP ${uploadResponse.status}), tentando base64...`)
+            }
+          } catch (filesApiErr: any) {
+            console.log(`⚠️ Files API indisponível: ${filesApiErr.message}, tentando base64...`)
+          }
+          
+          // ====== MÉTODO 2: Fallback base64 inline (caso Files API falhe) ======
+          if (!textoGemini) {
+            console.log('📄 Tentando método base64 inline...')
+            const bytes = new Uint8Array(arrayBuffer)
+            let binary = ''
+            const chunkSize = 8192
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+              const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
+              binary += String.fromCharCode.apply(null, Array.from(chunk))
+            }
+            const base64PDF = btoa(binary)
+            console.log(`📄 PDF base64: ${base64PDF.length} chars`)
+            
+            // Tentativas: cada modelo 2x, com delay progressivo entre rate limits
+            const tentativas = [
+              'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite',
+              'gemini-2.5-flash', 'gemini-2.0-flash'
+            ]
+            let totalRL = 0
+            
+            for (let t = 0; t < tentativas.length; t++) {
+              const modelo = tentativas[t]
+              try {
+                // Delay antes de retry se houve rate limits
+                if (totalRL > 0) {
+                  const delay = Math.min(totalRL * 4000, 15000)
+                  console.log(`⏳ Aguardando ${delay/1000}s antes de tentar ${modelo}...`)
+                  await sleepMs(delay)
+                }
+                
+                console.log(`🚀 Base64 + ${modelo} (tentativa ${t+1}/${tentativas.length})...`)
+                const pdfResponse = await fetch(
+                  `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${geminiKey}`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      contents: [{
+                        parts: [
+                          { text: promptPDF },
+                          { inline_data: { mime_type: 'application/pdf', data: base64PDF } }
+                        ]
+                      }],
+                      generationConfig: { temperature: 0.1, maxOutputTokens: 65536 }
+                    })
+                  }
+                )
+                
+                if (pdfResponse.status === 429) {
+                  totalRL++
+                  console.log(`⚠️ ${modelo}: Rate limit (${totalRL}x)`)
+                  continue
+                }
+                
+                consecutiveRL = 0
+                
+                if (pdfResponse.ok) {
+                  const pdfData = await pdfResponse.json() as any
+                  const txt = pdfData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+                  if (txt.length > 50) {
+                    textoGemini = txt
+                    modeloUsado = `${modelo}+base64`
+                    console.log(`✅ ${modelo} (base64) respondeu: ${txt.length} chars`)
+                    break
+                  }
+                } else {
+                  console.log(`⚠️ ${modelo}: HTTP ${pdfResponse.status}`)
+                }
+              } catch (err: any) {
+                console.error(`❌ ${modelo} base64 erro:`, err.message)
               }
-              
-              const pdfData = await pdfResponse.json() as any
-              textoGemini = pdfData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-              
-              if (textoGemini && textoGemini.length > 50) {
-                modeloUsado = modelo
-                console.log(`✅ ${modelo} respondeu: ${textoGemini.length} chars`)
-                break
-              }
-            } catch (err: any) {
-              console.error(`❌ ${modelo} erro:`, err.message)
             }
           }
           
+          // Se nenhum método funcionou
           if (!textoGemini) {
             return c.json({
-              error: 'Não foi possível processar o PDF. Tente converter para TXT.',
+              error: 'Não foi possível processar o PDF. Tente novamente em 1 minuto ou converta para TXT.',
               suggestion: 'Use https://smallpdf.com/pdf-to-text',
               errorType: 'PDF_EXTRACTION_FAILED'
             }, 422)
@@ -6309,7 +6433,7 @@ INCLUA TODAS as disciplinas (geralmente 8 a 15). Cada uma com seus tópicos REAI
         } catch (pdfError: any) {
           console.error('❌ Erro ao processar PDF:', pdfError)
           return c.json({
-            error: 'Erro ao processar PDF. Tente converter para TXT.',
+            error: 'Erro ao processar PDF. Tente novamente em 1 minuto ou converta para TXT.',
             details: pdfError?.message || 'Falha no processamento',
             suggestion: 'Use https://smallpdf.com/pdf-to-text'
           }, 500)
@@ -6822,10 +6946,10 @@ ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo princ
 - NÃO use disciplinas genéricas - use os nomes EXATOS do edital
 - Se não encontrar o cargo especificado, avise no campo cargo_detectado`
 
-            // ✅ v38: Tentar múltiplos modelos Gemini com fallback
+            // ✅ v137: Modelos atualizados com gemini-2.5-flash como primário
             const modelosGeminiPDF = [
-              'gemini-2.0-flash',
-              'gemini-1.5-flash', 
+              'gemini-2.5-flash',
+              'gemini-2.0-flash', 
               'gemini-2.0-flash-lite'
             ]
             
@@ -6859,8 +6983,8 @@ ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo princ
                 
                 if (response.status === 429) {
                   ultimoErroPDF = `${modelo}: Rate limit`
-                  console.log(`⚠️ ${modelo}: Rate limit, tentando próximo...`)
-                  await new Promise(r => setTimeout(r, 2000))
+                  console.log(`⚠️ ${modelo}: Rate limit, aguardando 5s...`)
+                  await new Promise(r => setTimeout(r, 5000))
                   continue
                 }
                 
