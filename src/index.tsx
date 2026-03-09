@@ -19508,7 +19508,7 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
     
     // Extrair texto baseado no tipo de arquivo
     if (file.type === 'application/pdf') {
-      // Extrair texto do PDF usando Gemini
+      // v132: Extrair texto do PDF usando Gemini - prompt genérico para resumo personalizado
       const arrayBuffer = await file.arrayBuffer()
       const geminiKey = c.env.GEMINI_API_KEY || ''
       
@@ -19517,7 +19517,57 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
       }
       
       try {
-        textoExtraido = await extractTextFromPDF(arrayBuffer, geminiKey)
+        // Converter PDF para base64
+        const bytes = new Uint8Array(arrayBuffer)
+        let binary = ''
+        const chunkSize = 8192
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
+          binary += String.fromCharCode.apply(null, Array.from(chunk))
+        }
+        const base64 = btoa(binary)
+        
+        console.log(`📄 PDF para resumo: ${bytes.length} bytes, base64: ${base64.length} chars`)
+        
+        // Prompt genérico para extração de texto de documentos de estudo
+        const extractPrompt = `Extraia TODO o texto deste documento PDF de forma fiel e completa.
+Mantenha a estrutura original: títulos, subtítulos, listas, tabelas, fórmulas e exemplos.
+Transcreva literalmente o conteúdo. NÃO resuma. NÃO comente. Apenas transcreva o texto completo.`
+        
+        const extractResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: extractPrompt },
+                  { inline_data: { mime_type: 'application/pdf', data: base64 } }
+                ]
+              }],
+              generationConfig: {
+                temperature: 0.01,
+                maxOutputTokens: 65536
+              }
+            })
+          }
+        )
+        
+        if (!extractResponse.ok) {
+          const errText = await extractResponse.text()
+          console.error('Erro extração PDF:', extractResponse.status, errText.substring(0, 200))
+          throw new Error(`Gemini API error: ${extractResponse.status}`)
+        }
+        
+        const extractData = await extractResponse.json() as any
+        textoExtraido = extractData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        
+        if (!textoExtraido || textoExtraido.length < 50) {
+          throw new Error('Texto extraído muito curto')
+        }
+        
+        console.log(`✅ Texto extraído do PDF: ${textoExtraido.length} caracteres`)
       } catch (error: any) {
         console.error('Erro ao extrair PDF:', error)
         return c.json({ 
@@ -19707,17 +19757,21 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
     // Salvar o resumo no banco de dados
     const titulo = `Resumo Personalizado: ${file.name}`
     
+    // v132: Garantir que topicoId e metaId sejam null quando vazios (evita FK constraint error)
+    const safeTopicoId = topicoId && !isNaN(parseInt(topicoId)) ? parseInt(topicoId) : null
+    const safeMetaId = metaId && !isNaN(parseInt(metaId)) && parseInt(metaId) > 0 ? parseInt(metaId) : null
+    
     const result = await DB.prepare(
       `INSERT INTO materiais_salvos (user_id, disciplina_id, topico_id, tipo, titulo, conteudo, meta_id) 
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       parseInt(userIdHeader),
       null, // disciplina_id pode ser null para resumo personalizado
-      topicoId ? parseInt(topicoId) : null,
+      safeTopicoId,
       'resumo_personalizado',
       titulo,
       resumoGerado,
-      metaId ? parseInt(metaId) : null
+      safeMetaId
     ).run()
     
     console.log('✅ Resumo personalizado salvo:', result.meta.last_row_id)

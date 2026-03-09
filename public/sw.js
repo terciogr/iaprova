@@ -1,7 +1,7 @@
-// IAprova Service Worker v4.5 - v132 Modal upload responsivo, PDF markdown, aceita PDF
-const CACHE_NAME = 'iaprova-v132';
-const STATIC_CACHE = 'iaprova-static-v132';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v132';
+// IAprova Service Worker v4.6 - v133 Fix upload resumo personalizado + PDF genérico
+const CACHE_NAME = 'iaprova-v133';
+const STATIC_CACHE = 'iaprova-static-v133';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v133';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [

@@ -23017,35 +23017,6 @@ window.abrirModalResumoPersonalizado = function(metaId) {
           </div>
         </div>
         
-        <!-- Configurações opcionais -->
-        <div class="${currentTheme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-          <h4 class="font-semibold ${themes[currentTheme].text} mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
-            <i class="fas fa-cog ${themes[currentTheme].textSecondary}"></i>
-            Configurações (Opcional)
-          </h4>
-          
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label class="text-xs sm:text-sm ${themes[currentTheme].textSecondary} mb-1 block">Tamanho do Resumo</label>
-              <select id="tamanho-resumo" class="w-full px-3 py-2 border ${themes[currentTheme].border} rounded-lg focus:ring-2 focus:ring-[#122D6A] ${themes[currentTheme].bg} ${themes[currentTheme].text} text-sm">
-                <option value="curto">Curto (1-2 páginas)</option>
-                <option value="medio" selected>Médio (2-3 páginas)</option>
-                <option value="longo">Longo (3-5 páginas)</option>
-              </select>
-            </div>
-            
-            <div>
-              <label class="text-xs sm:text-sm ${themes[currentTheme].textSecondary} mb-1 block">Foco do Resumo</label>
-              <select id="foco-resumo" class="w-full px-3 py-2 border ${themes[currentTheme].border} rounded-lg focus:ring-2 focus:ring-[#122D6A] ${themes[currentTheme].bg} ${themes[currentTheme].text} text-sm">
-                <option value="geral" selected>Geral</option>
-                <option value="conceitos">Conceitos Principais</option>
-                <option value="pratico">Aplicação Prática</option>
-                <option value="memorização">Memorização</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        
         <!-- Botão de envio -->
         <button onclick="processarResumoPersonalizado(${metaId})" 
           id="btn-processar"
@@ -23151,27 +23122,14 @@ async function processarResumoPersonalizado(metaId) {
   }
   
   const meta = window.metaAtual || {};
-  const tamanhoResumo = document.getElementById('tamanho-resumo').value;
-  const focoResumo = document.getElementById('foco-resumo').value;
   
-  // Mapear tamanho para extensão da IA
-  const extensaoMap = { curto: 'curto', medio: 'medio', longo: 'longo' };
-  
-  // Mapear foco para profundidade da IA
-  const profundidadeMap = { 
-    geral: 'aplicada', 
-    conceitos: 'conceitual', 
-    pratico: 'aplicada', 
-    memorização: 'conceitual' 
-  };
-  
-  // Carregar configuração de IA do localStorage e ajustar com as opções do modal
+  // v132: Usar configuração padrão (campos tamanho/foco removidos do modal)
   const savedConfig = JSON.parse(localStorage.getItem('iaConfig') || '{}');
   const configIA = {
     ...savedConfig,
-    extensao: extensaoMap[tamanhoResumo] || 'medio',
-    profundidade: profundidadeMap[focoResumo] || 'aplicada',
-    formatoResumo: focoResumo === 'memorização' ? 'topicos' : (savedConfig.formatoResumo || 'detalhado')
+    extensao: savedConfig.extensao || 'medio',
+    profundidade: savedConfig.profundidade || 'aplicada',
+    formatoResumo: savedConfig.formatoResumo || 'detalhado'
   };
   
   // Preparar FormData
@@ -23182,8 +23140,8 @@ async function processarResumoPersonalizado(metaId) {
   formData.append('disciplina_nome', meta.disciplina_nome || 'Disciplina');
   formData.append('meta_id', metaId);
   formData.append('user_id', currentUser.id);
-  formData.append('tamanho_resumo', tamanhoResumo);
-  formData.append('foco_resumo', focoResumo);
+  formData.append('tamanho_resumo', 'medio');
+  formData.append('foco_resumo', 'geral');
   formData.append('config_ia', JSON.stringify(configIA));
   
   // Mostrar status de processamento
