@@ -13146,12 +13146,20 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
            AND te.plano_id = ?
            AND utp.plano_id = ?
            AND utp.nivel_dominio >= 10) as estudados_te,
-        -- Contar TODAS as metas da disciplina no plano (total)
-        (SELECT COUNT(*) FROM metas_semana ms 
+        -- Contar TODAS as metas da disciplina no plano (total) - apenas tópicos DISTINTOS
+        (SELECT COUNT(DISTINCT CASE 
+          WHEN ms.topicos_sugeridos IS NOT NULL AND ms.topicos_sugeridos != '[]' AND ms.topicos_sugeridos != ''
+          THEN json_extract(ms.topicos_sugeridos, '$[0].id')
+          ELSE ms.id
+        END) FROM metas_semana ms 
          INNER JOIN semanas_estudo se ON ms.semana_id = se.id
-         WHERE ms.disciplina_id = c.disciplina_id AND se.plano_id = ?) as metas_total,
-        -- Contar metas CONCLUÍDAS da disciplina no plano
-        (SELECT COUNT(*) FROM metas_semana ms 
+         WHERE ms.disciplina_id = c.disciplina_id AND se.plano_id = ? AND se.ativa = 1) as metas_total,
+        -- Contar tópicos ÚNICOS concluídos da disciplina no plano (evita duplicação)
+        (SELECT COUNT(DISTINCT CASE 
+          WHEN ms.topicos_sugeridos IS NOT NULL AND ms.topicos_sugeridos != '[]' AND ms.topicos_sugeridos != ''
+          THEN json_extract(ms.topicos_sugeridos, '$[0].id')
+          ELSE ms.id
+        END) FROM metas_semana ms 
          INNER JOIN semanas_estudo se ON ms.semana_id = se.id
          WHERE ms.disciplina_id = c.disciplina_id AND se.plano_id = ? AND ms.concluida = 1) as metas_concluidas
       FROM ciclos_estudo c
@@ -13901,11 +13909,21 @@ app.post('/api/metas/concluir', async (c) => {
     return avancou
   }
 
+  // ✅ v126: Verificar se meta já está concluída antes de atualizar
+  const metaAtual = await DB.prepare(`
+    SELECT concluida FROM metas_semana WHERE id = ?
+  `).bind(meta_id).first() as any
+
+  if (metaAtual && metaAtual.concluida === 1) {
+    console.log(`⚠️ Meta ${meta_id} já está concluída (POST), ignorando re-conclusão`)
+    return c.json({ success: true, message: 'Meta já estava concluída', already_completed: true })
+  }
+
   // Tentar atualizar em metas_semana primeiro (fonte principal)
   const resultSemana = await DB.prepare(`
     UPDATE metas_semana 
     SET concluida = 1, tempo_real_minutos = ?
-    WHERE id = ?
+    WHERE id = ? AND concluida = 0
   `).bind(tempo_real_minutos, meta_id).run()
 
   if (resultSemana.meta.changes > 0) {
@@ -14863,9 +14881,32 @@ app.post('/api/metas/gerar-semana/:user_id', async (c) => {
 
     console.log(`📚 Total de atividades a alocar: ${atividades.length} (${userDisciplinas.length} disciplinas × ${ciclos.length} ciclos)`)
 
-    // 🎯 NOVO: Carregar TODOS os tópicos de cada disciplina do edital (EM ORDEM)
+    // 🎯 v126: Carregar tópicos de cada disciplina FILTRANDO JÁ CONCLUÍDOS
+    // Um tópico é considerado concluído se existe em metas_semana com concluida=1 
+    // para o mesmo user_id e disciplina_id
     const topicosCache = new Map<number, any[]>()
     const topicoIndex = new Map<number, number>() // Rastrear índice atual por disciplina
+    
+    // Buscar IDs de tópicos já concluídos pelo usuário neste plano
+    const { results: topicosConcluidos } = await DB.prepare(`
+      SELECT DISTINCT 
+        CASE 
+          WHEN ms.topicos_sugeridos IS NOT NULL AND ms.topicos_sugeridos != '[]' AND ms.topicos_sugeridos != ''
+          THEN json_extract(ms.topicos_sugeridos, '$[0].id')
+          ELSE NULL
+        END as topico_id
+      FROM metas_semana ms
+      INNER JOIN semanas_estudo se ON ms.semana_id = se.id
+      WHERE ms.user_id = ? AND se.plano_id = ? AND ms.concluida = 1
+    `).bind(user_id, plano_id).all()
+    
+    const setTopicosConcluidos = new Set<number>()
+    for (const tc of topicosConcluidos) {
+      if (tc.topico_id && typeof tc.topico_id === 'number') {
+        setTopicosConcluidos.add(tc.topico_id)
+      }
+    }
+    console.log(`🏁 Tópicos já concluídos pelo usuário: ${setTopicosConcluidos.size}`)
     
     for (const disc of userDisciplinas) {
       if (disc.edital_disciplina_id) {
@@ -14876,10 +14917,13 @@ app.post('/api/metas/gerar-semana/:user_id', async (c) => {
           ORDER BY ordem ASC
         `).bind(disc.edital_disciplina_id).all()
         
-        topicosCache.set(disc.edital_disciplina_id, todosTopicos)
+        // Filtrar tópicos não concluídos
+        const topicosNaoConcluidos = todosTopicos.filter((t: any) => !setTopicosConcluidos.has(t.id))
+        
+        topicosCache.set(disc.edital_disciplina_id, topicosNaoConcluidos)
         topicoIndex.set(disc.edital_disciplina_id, 0) // Começar no tópico 0
         
-        console.log(`  📖 ${disc.nome}: ${todosTopicos.length} tópicos carregados`)
+        console.log(`  📖 ${disc.nome}: ${todosTopicos.length} tópicos total, ${topicosNaoConcluidos.length} pendentes (${todosTopicos.length - topicosNaoConcluidos.length} já concluídos)`)
       }
     }
 
@@ -14927,7 +14971,7 @@ app.post('/api/metas/gerar-semana/:user_id', async (c) => {
             const todosTopicos = topicosCache.get(disciplina.edital_disciplina_id)!
             const indiceAtual = topicoIndex.get(disciplina.edital_disciplina_id)!
             
-            // Pegar 1 tópico por vez (sequencial)
+            // Pegar 1 tópico por vez (sequencial - apenas não concluídos)
             if (todosTopicos && todosTopicos.length > 0) {
               if (indiceAtual < todosTopicos.length) {
                 const topicoAtual = todosTopicos[indiceAtual]
@@ -14936,12 +14980,11 @@ app.post('/api/metas/gerar-semana/:user_id', async (c) => {
                   topicoIndex.set(disciplina.edital_disciplina_id, indiceAtual + 1)
                   console.log(`    ➡️ ${disciplina.nome} → Tópico ${indiceAtual + 1}/${todosTopicos.length}: ${topicoAtual.nome}`)
                 }
-              } else if (todosTopicos[0]) {
-                // Reiniciar do início (ciclo completo)
-                topicoIndex.set(disciplina.edital_disciplina_id, 0)
-                const primeiroTopico = todosTopicos[0]
-                topicosArray = [{ id: primeiroTopico.id, nome: primeiroTopico.nome || 'Tópico sem nome' }]
-                console.log(`    🔄 ${disciplina.nome} → Reiniciando ciclo: ${primeiroTopico.nome}`)
+              } else {
+                // ✅ v126: Todos os tópicos pendentes já foram alocados nesta semana
+                // NÃO reiniciar ciclo - disciplina já cobriu todos os pendentes
+                console.log(`    ⏭️ ${disciplina.nome} → Todos os ${todosTopicos.length} tópicos pendentes já foram alocados, pulando`)
+                continue
               }
             }
           }
@@ -15502,15 +15545,23 @@ app.put('/api/metas/concluir/:meta_id', async (c) => {
   console.log('✅ Concluindo meta:', { meta_id, tempo_real_minutos })
 
   try {
-    // 1. Buscar dados da meta COMPLETOS (incluindo tópicos)
+    // 1. Buscar dados da meta COMPLETOS (incluindo tópicos e status atual)
     const meta = await DB.prepare(`
-      SELECT user_id, data, disciplina_id, topicos_sugeridos, semana_id
-      FROM metas_semana 
-      WHERE id = ?
+      SELECT ms.user_id, ms.data, ms.disciplina_id, ms.topicos_sugeridos, ms.semana_id, ms.concluida,
+             se.plano_id
+      FROM metas_semana ms
+      INNER JOIN semanas_estudo se ON ms.semana_id = se.id
+      WHERE ms.id = ?
     `).bind(meta_id).first() as any
     
     if (!meta) {
       return c.json({ error: 'Meta não encontrada' }, 404)
+    }
+
+    // ✅ v126: Se a meta JÁ está concluída, não fazer nada (evita dupla contagem)
+    if (meta.concluida === 1) {
+      console.log(`⚠️ Meta ${meta_id} já está concluída, ignorando re-conclusão`)
+      return c.json({ success: true, message: 'Meta já estava concluída', already_completed: true })
     }
 
     // 2. Atualizar meta como concluída
@@ -15520,7 +15571,7 @@ app.put('/api/metas/concluir/:meta_id', async (c) => {
       WHERE id = ?
     `).bind(tempo_real_minutos, meta_id).run()
 
-    // 3. ✅ CORREÇÃO CRÍTICA: Atualizar progresso dos tópicos da meta
+    // 3. ✅ v126: Atualizar progresso dos tópicos da meta (com plano_id)
     if (meta.topicos_sugeridos) {
       try {
         const topicos = JSON.parse(meta.topicos_sugeridos)
@@ -15530,12 +15581,12 @@ app.put('/api/metas/concluir/:meta_id', async (c) => {
           const topicoId = topico.id
           if (!topicoId) continue
           
-          // Verificar se já existe registro de progresso
+          // Verificar se já existe registro de progresso (com plano_id)
           const existingProgress = await DB.prepare(`
             SELECT id, vezes_estudado, nivel_dominio 
             FROM user_topicos_progresso 
-            WHERE user_id = ? AND topico_id = ?
-          `).bind(meta.user_id, topicoId).first() as any
+            WHERE user_id = ? AND topico_id = ? AND (plano_id = ? OR plano_id IS NULL)
+          `).bind(meta.user_id, topicoId, meta.plano_id).first() as any
           
           if (existingProgress) {
             // Incrementar vezes_estudado e aumentar nivel_dominio
@@ -15544,17 +15595,18 @@ app.put('/api/metas/concluir/:meta_id', async (c) => {
               UPDATE user_topicos_progresso 
               SET vezes_estudado = vezes_estudado + 1, 
                   nivel_dominio = ?, 
+                  plano_id = COALESCE(plano_id, ?),
                   ultima_vez = CURRENT_TIMESTAMP
-              WHERE user_id = ? AND topico_id = ?
-            `).bind(novoNivel, meta.user_id, topicoId).run()
+              WHERE id = ?
+            `).bind(novoNivel, meta.plano_id, existingProgress.id).run()
             console.log(`  ✅ Tópico ${topicoId}: vezes+1, nivel ${existingProgress.nivel_dominio} → ${novoNivel}`)
           } else {
-            // Criar novo registro com nivel 2 (primeira vez estudado)
+            // Criar novo registro com nivel 2 (primeira vez estudado) incluindo plano_id
             await DB.prepare(`
-              INSERT INTO user_topicos_progresso (user_id, topico_id, vezes_estudado, nivel_dominio, ultima_vez)
-              VALUES (?, ?, 1, 2, CURRENT_TIMESTAMP)
-            `).bind(meta.user_id, topicoId).run()
-            console.log(`  ✅ Tópico ${topicoId}: novo registro (nivel 2)`)
+              INSERT INTO user_topicos_progresso (user_id, topico_id, plano_id, vezes_estudado, nivel_dominio, ultima_vez)
+              VALUES (?, ?, ?, 1, 2, CURRENT_TIMESTAMP)
+            `).bind(meta.user_id, topicoId, meta.plano_id).run()
+            console.log(`  ✅ Tópico ${topicoId}: novo registro (nivel 2, plano ${meta.plano_id})`)
           }
         }
       } catch (parseError) {
