@@ -9052,8 +9052,8 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
             <p class="text-xs sm:text-sm font-semibold ${themes[currentTheme].text}">Hoje: ${new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '')}</p>
             <div class="flex items-center gap-2">
               <span class="text-[10px] font-medium ${themes[currentTheme].textSecondary} whitespace-nowrap">Progresso do dia</span>
-              <div class="w-20 sm:w-32 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full">
-                <div class="h-1.5 bg-[#122D6A] rounded-full transition-all" style="width: ${progressoDia}%"></div>
+              <div class="w-20 sm:w-32 h-2 rounded-full" style="background: ${currentTheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#E5E7EB'};">
+                <div class="h-2 rounded-full transition-all" style="width: ${progressoDia}%; background: ${currentTheme === 'dark' ? '#5B8BD4' : 'linear-gradient(to right, #4A90D9, #6BB6FF)'};"></div>
               </div>
               <span class="text-xs font-medium ${themes[currentTheme].textSecondary}">${progressoDia}%</span>
             </div>
