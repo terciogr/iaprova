@@ -19505,10 +19505,12 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
     console.log('📄 Processando arquivo:', file.name, file.type, file.size, 'bytes')
     
     let textoExtraido = ''
+    let pdfBase64ForDirectSummary = '' // v134: PDF direto para Gemini (1 chamada só)
     
     // Extrair texto baseado no tipo de arquivo
     if (file.type === 'application/pdf') {
-      // v132: Extrair texto do PDF usando Gemini - prompt genérico para resumo personalizado
+      // v134: NÃO extrair texto separadamente - enviar PDF direto ao Gemini na etapa de resumo
+      // Isso evita timeout (2 chamadas Gemini → 1 chamada só)
       const arrayBuffer = await file.arrayBuffer()
       const geminiKey = c.env.GEMINI_API_KEY || ''
       
@@ -19517,7 +19519,6 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
       }
       
       try {
-        // Converter PDF para base64
         const bytes = new Uint8Array(arrayBuffer)
         let binary = ''
         const chunkSize = 8192
@@ -19525,54 +19526,17 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
           const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
           binary += String.fromCharCode.apply(null, Array.from(chunk))
         }
-        const base64 = btoa(binary)
+        pdfBase64ForDirectSummary = btoa(binary)
         
-        console.log(`📄 PDF para resumo: ${bytes.length} bytes, base64: ${base64.length} chars`)
+        console.log(`📄 PDF direto para resumo: ${bytes.length} bytes, base64: ${pdfBase64ForDirectSummary.length} chars`)
         
-        // Prompt genérico para extração de texto de documentos de estudo
-        const extractPrompt = `Extraia TODO o texto deste documento PDF de forma fiel e completa.
-Mantenha a estrutura original: títulos, subtítulos, listas, tabelas, fórmulas e exemplos.
-Transcreva literalmente o conteúdo. NÃO resuma. NÃO comente. Apenas transcreva o texto completo.`
-        
-        const extractResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: extractPrompt },
-                  { inline_data: { mime_type: 'application/pdf', data: base64 } }
-                ]
-              }],
-              generationConfig: {
-                temperature: 0.01,
-                maxOutputTokens: 65536
-              }
-            })
-          }
-        )
-        
-        if (!extractResponse.ok) {
-          const errText = await extractResponse.text()
-          console.error('Erro extração PDF:', extractResponse.status, errText.substring(0, 200))
-          throw new Error(`Gemini API error: ${extractResponse.status}`)
-        }
-        
-        const extractData = await extractResponse.json() as any
-        textoExtraido = extractData.candidates?.[0]?.content?.parts?.[0]?.text || ''
-        
-        if (!textoExtraido || textoExtraido.length < 50) {
-          throw new Error('Texto extraído muito curto')
-        }
-        
-        console.log(`✅ Texto extraído do PDF: ${textoExtraido.length} caracteres`)
+        // Marcar que vamos usar o fluxo direto (pula extração separada)
+        textoExtraido = '__PDF_DIRECT__'
       } catch (error: any) {
-        console.error('Erro ao extrair PDF:', error)
+        console.error('Erro ao processar PDF:', error)
         return c.json({ 
           error: 'Erro ao processar PDF. Tente converter para TXT.',
-          details: error?.message || 'Falha na extração do texto',
+          details: error?.message || 'Falha no processamento',
           suggestion: 'Use https://smallpdf.com/pdf-to-text para converter o PDF em TXT'
         }, 500)
       }
@@ -19603,11 +19567,11 @@ Transcreva literalmente o conteúdo. NÃO resuma. NÃO comente. Apenas transcrev
       }, 400)
     }
     
-    if (!textoExtraido || textoExtraido.length < 100) {
+    if (textoExtraido !== '__PDF_DIRECT__' && (!textoExtraido || textoExtraido.length < 100)) {
       return c.json({ error: 'Não foi possível extrair texto suficiente do arquivo' }, 400)
     }
     
-    console.log('📝 Texto extraído:', textoExtraido.length, 'caracteres')
+    console.log('📝 Modo:', textoExtraido === '__PDF_DIRECT__' ? 'PDF direto' : `Texto extraído: ${textoExtraido.length} chars`)
     console.log('🎨 Configuração IA:', JSON.stringify(iaConfig))
     
     // Gerar resumo personalizado usando Gemini
@@ -19651,68 +19615,79 @@ Transcreva literalmente o conteúdo. NÃO resuma. NÃO comente. Apenas transcrev
       limiteResumo = `aproximadamente ${palavras} palavras`
     }
     
-    const promptResumo = `
-    TAREFA: Criar um RESUMO PERSONALIZADO do documento fornecido.
+    // v134: Prompt base para resumo (usado tanto para texto quanto para PDF direto)
+    const promptResumoBase = `TAREFA: Criar um RESUMO PERSONALIZADO do documento fornecido.
+
+CONTEXTO:
+- Disciplina: ${disciplinaNome}
+- Tópico: ${topicoNome}
+- Arquivo: ${file.name}
+
+PERSONALIZAÇÃO DO CONTEÚDO:
+- TOM: ${tomInstrucoes[iaConfig.tom] || tomInstrucoes.didatico}
+- INTENSIDADE: ${intensidadeInstrucoes[iaConfig.intensidade] || intensidadeInstrucoes.intermediaria}
+- PROFUNDIDADE: ${profundidadeInstrucoes[iaConfig.profundidade] || profundidadeInstrucoes.aplicada}
+- FORMATO: ${formatoResumoInstrucoes[iaConfig.formatoResumo] || formatoResumoInstrucoes.detalhado}
+- EXTENSÃO: ${limiteResumo}
+
+${textoExtraido !== '__PDF_DIRECT__' ? `DOCUMENTO FORNECIDO:\n${textoExtraido.substring(0, 50000)}` : 'Leia o PDF anexado e crie o resumo a partir dele.'}
+
+INSTRUÇÕES PARA O RESUMO:
+1. SIGA as instruções de personalização acima
+2. Identifique os pontos principais do documento
+3. Organize em tópicos e subtópicos claros
+4. Destaque conceitos-chave e definições importantes
+5. Inclua exemplos relevantes quando houver
+6. Mantenha informações críticas e elimine redundâncias
+7. Use APENAS formatação Markdown (NÃO use HTML, NÃO use tags como <div>, <p>, <h2>, <span>, etc.)
+
+FORMATO DO RESUMO (use SOMENTE Markdown puro):
+
+## 📄 Resumo: ${file.name}
+
+**Documento original:** ${file.name}
+**Tamanho:** ${(file.size / 1024).toFixed(2)} KB
+**Processado em:** ${new Date().toLocaleDateString('pt-BR')}
+
+---
+
+### 📌 Pontos Principais
+[Liste os principais pontos do documento como bullet points]
+
+### 📚 Conteúdo Detalhado
+[Desenvolva o resumo organizado com subtítulos ####, **negrito**, listas e tabelas Markdown]
+
+### 💡 Conceitos-Chave
+[Destaque definições e conceitos importantes]
+
+### 📝 Observações Importantes
+[Notas e destaques relevantes]
+
+REGRAS DE FORMATAÇÃO:
+- Use ## para títulos, ### para subtítulos, #### para sub-subtítulos
+- Use **negrito** para termos importantes
+- Use - para listas com bullet points
+- Use | para tabelas quando necessário (formato Markdown: | Col1 | Col2 |)
+- Use > para citações ou destaques
+- Use --- para separadores
+- NUNCA use tags HTML como <div>, <p>, <h2>, <span>, <strong>, <ul>, <li>, etc.
+
+IMPORTANTE: Respeite o limite de ${limiteResumo}, preservando as informações essenciais.`
     
-    CONTEXTO:
-    - Disciplina: ${disciplinaNome}
-    - Tópico: ${topicoNome}
-    - Arquivo: ${file.name}
-    
-    ═══════════════════════════════════════════════
-    🎨 PERSONALIZAÇÃO DO CONTEÚDO (seguir obrigatoriamente):
-    ═══════════════════════════════════════════════
-    - TOM: ${tomInstrucoes[iaConfig.tom] || tomInstrucoes.didatico}
-    - INTENSIDADE: ${intensidadeInstrucoes[iaConfig.intensidade] || intensidadeInstrucoes.intermediaria}
-    - PROFUNDIDADE: ${profundidadeInstrucoes[iaConfig.profundidade] || profundidadeInstrucoes.aplicada}
-    - FORMATO: ${formatoResumoInstrucoes[iaConfig.formatoResumo] || formatoResumoInstrucoes.detalhado}
-    - EXTENSÃO: ${limiteResumo}
-    
-    DOCUMENTO FORNECIDO:
-    ${textoExtraido.substring(0, 50000)}
-    
-    INSTRUÇÕES PARA O RESUMO:
-    1. SIGA as instruções de personalização acima
-    2. Identifique os pontos principais do documento
-    3. Organize em tópicos e subtópicos claros
-    4. Destaque conceitos-chave e definições importantes
-    5. Inclua exemplos relevantes quando houver
-    6. Mantenha informações críticas e elimine redundâncias
-    7. Use APENAS formatação Markdown (NÃO use HTML, NÃO use tags como <div>, <p>, <h2>, <span>, etc.)
-    
-    FORMATO DO RESUMO (use SOMENTE Markdown puro):
-    
-    ## 📄 Resumo: ${file.name}
-    
-    **Documento original:** ${file.name}
-    **Tamanho:** ${(file.size / 1024).toFixed(2)} KB
-    **Processado em:** ${new Date().toLocaleDateString('pt-BR')}
-    
-    ---
-    
-    ### 📌 Pontos Principais
-    [Liste os principais pontos do documento como bullet points]
-    
-    ### 📚 Conteúdo Detalhado
-    [Desenvolva o resumo organizado com subtítulos ####, **negrito**, listas e tabelas Markdown]
-    
-    ### 💡 Conceitos-Chave
-    [Destaque definições e conceitos importantes]
-    
-    ### 📝 Observações Importantes
-    [Notas e destaques relevantes]
-    
-    REGRAS DE FORMATAÇÃO:
-    - Use ## para títulos, ### para subtítulos, #### para sub-subtítulos
-    - Use **negrito** para termos importantes
-    - Use - para listas com bullet points
-    - Use | para tabelas quando necessário (formato Markdown: | Col1 | Col2 |)
-    - Use > para citações ou destaques
-    - Use --- para separadores
-    - NUNCA use tags HTML como <div>, <p>, <h2>, <span>, <strong>, <ul>, <li>, etc.
-    
-    IMPORTANTE: Respeite o limite de ${limiteResumo}, preservando as informações essenciais.
-    `
+    // v134: Para PDF, enviar direto com inline_data (1 chamada só, evita timeout)
+    // Para TXT/DOC, enviar texto no prompt (como antes)
+    const requestParts: any[] = [{ text: promptResumoBase }]
+    if (textoExtraido === '__PDF_DIRECT__' && pdfBase64ForDirectSummary) {
+      requestParts.push({ 
+        inline_data: { 
+          mime_type: 'application/pdf', 
+          data: pdfBase64ForDirectSummary 
+        } 
+      })
+      console.log('📎 Enviando PDF direto ao Gemini para resumo (1 chamada)')
+    } else {
+      console.log('📝 Enviando texto extraído ao Gemini para resumo')
+    }
     
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
@@ -19721,7 +19696,7 @@ Transcreva literalmente o conteúdo. NÃO resuma. NÃO comente. Apenas transcrev
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: promptResumo }]
+            parts: requestParts
           }],
           generationConfig: {
             temperature: 0.7,

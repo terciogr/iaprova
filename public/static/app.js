@@ -23163,30 +23163,36 @@ async function processarResumoPersonalizado(metaId) {
   };
   
   // Simular progresso durante processamento da IA
+  // v134: Simulação de progresso mais lenta para PDF (demora mais que TXT)
+  const isPDF = window.selectedFile?.name?.toLowerCase().endsWith('.pdf');
   const startProgressSimulation = () => {
     currentProgress = 30; // Começa em 30% após upload
     progressInterval = setInterval(() => {
-      if (currentProgress < 90) {
-        // Progresso mais lento conforme avança
-        const increment = currentProgress < 50 ? 3 : currentProgress < 70 ? 2 : 1;
+      if (currentProgress < 92) {
+        // PDF: progresso mais lento (1 chamada Gemini com PDF inline demora mais)
+        const increment = isPDF 
+          ? (currentProgress < 50 ? 1.5 : currentProgress < 70 ? 1 : 0.5)
+          : (currentProgress < 50 ? 3 : currentProgress < 70 ? 2 : 1);
         currentProgress += increment;
         const messages = [
-          { min: 30, msg: 'Extraindo texto do documento...' },
+          { min: 30, msg: isPDF ? 'Processando PDF com IA...' : 'Extraindo texto do documento...' },
           { min: 45, msg: 'Analisando conteúdo...' },
           { min: 60, msg: 'Gerando resumo com IA...' },
           { min: 75, msg: 'Formatando resultado...' },
           { min: 85, msg: 'Finalizando...' }
         ];
         const currentMsg = messages.reverse().find(m => currentProgress >= m.min)?.msg || 'Processando...';
-        updateProgress(currentProgress, currentMsg, 'A IA está processando seu documento');
+        const hint = isPDF ? 'PDFs podem levar até 1-2 minutos' : 'A IA está processando seu documento';
+        updateProgress(currentProgress, currentMsg, hint);
       }
-    }, 800);
+    }, isPDF ? 1200 : 800); // PDF: intervalo maior
   };
   
   try {
     updateProgress(0, 'Enviando arquivo...', 'Aguarde o envio do arquivo');
     
     const response = await axios.post('/api/topicos/resumo-personalizado', formData, {
+      timeout: 120000, // v134: 120s timeout para PDF grande (Gemini pode demorar)
       headers: {
         'Content-Type': 'multipart/form-data',
         'X-User-ID': currentUser.id
@@ -23226,19 +23232,33 @@ async function processarResumoPersonalizado(metaId) {
         });
       }
       
-      // Fechar modal
-      document.querySelector('.fixed').remove();
+      // Fechar modal de upload (buscar pelo ID específico)
+      const uploadModal = document.getElementById('modal-resumo-personalizado-upload');
+      if (uploadModal) uploadModal.remove();
+      else document.querySelector('.fixed.inset-0:not(#loading-overlay)')?.remove();
     } else {
       throw new Error(response.data.error || 'Erro ao gerar resumo');
     }
   } catch (error) {
     console.error('Erro ao processar resumo:', error);
     if (progressInterval) clearInterval(progressInterval);
-    showToast(error.response?.data?.error || 'Erro ao processar documento. Tente novamente.', 'error');
     
-    // Resetar botão
-    document.getElementById('btn-processar').disabled = false;
-    document.getElementById('processing-status').classList.add('hidden');
+    // v134: Mensagem mais clara para timeout
+    let errorMsg = 'Erro ao processar documento. Tente novamente.';
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      errorMsg = 'O processamento demorou muito. Tente com um arquivo menor ou em formato TXT.';
+    } else if (error.response?.data?.error) {
+      errorMsg = error.response.data.error;
+    } else if (error.response?.data?.errorType === 'RATE_LIMIT') {
+      errorMsg = 'Servidor ocupado. Aguarde alguns segundos e tente novamente.';
+    }
+    showToast(errorMsg, 'error');
+    
+    // Resetar botão (verificar se ainda existe no DOM)
+    const btnProcessar = document.getElementById('btn-processar');
+    const processingStatus = document.getElementById('processing-status');
+    if (btnProcessar) btnProcessar.disabled = false;
+    if (processingStatus) processingStatus.classList.add('hidden');
   }
 }
 

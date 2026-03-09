@@ -1,7 +1,7 @@
-// IAprova Service Worker v4.6 - v133 Fix upload resumo personalizado + PDF genérico
-const CACHE_NAME = 'iaprova-v133';
-const STATIC_CACHE = 'iaprova-static-v133';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v133';
+// IAprova Service Worker v4.7 - v134 PDF direto Gemini (1 chamada) + timeout 120s
+const CACHE_NAME = 'iaprova-v134';
+const STATIC_CACHE = 'iaprova-static-v134';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v134';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
