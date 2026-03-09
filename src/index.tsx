@@ -13146,20 +13146,12 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
            AND te.plano_id = ?
            AND utp.plano_id = ?
            AND utp.nivel_dominio >= 10) as estudados_te,
-        -- Contar TODAS as metas da disciplina no plano (total) - apenas tópicos DISTINTOS
-        (SELECT COUNT(DISTINCT CASE 
-          WHEN ms.topicos_sugeridos IS NOT NULL AND ms.topicos_sugeridos != '[]' AND ms.topicos_sugeridos != ''
-          THEN json_extract(ms.topicos_sugeridos, '$[0].id')
-          ELSE ms.id
-        END) FROM metas_semana ms 
+        -- Contar TODAS as metas da disciplina na semana ativa do plano
+        (SELECT COUNT(*) FROM metas_semana ms 
          INNER JOIN semanas_estudo se ON ms.semana_id = se.id
-         WHERE ms.disciplina_id = c.disciplina_id AND se.plano_id = ? AND se.ativa = 1) as metas_total,
-        -- Contar tópicos ÚNICOS concluídos da disciplina no plano (evita duplicação)
-        (SELECT COUNT(DISTINCT CASE 
-          WHEN ms.topicos_sugeridos IS NOT NULL AND ms.topicos_sugeridos != '[]' AND ms.topicos_sugeridos != ''
-          THEN json_extract(ms.topicos_sugeridos, '$[0].id')
-          ELSE ms.id
-        END) FROM metas_semana ms 
+         WHERE ms.disciplina_id = c.disciplina_id AND se.plano_id = ? AND se.status = 'ativa') as metas_total,
+        -- Contar metas concluídas da disciplina no plano (todas as semanas)
+        (SELECT COUNT(*) FROM metas_semana ms 
          INNER JOIN semanas_estudo se ON ms.semana_id = se.id
          WHERE ms.disciplina_id = c.disciplina_id AND se.plano_id = ? AND ms.concluida = 1) as metas_concluidas
       FROM ciclos_estudo c
@@ -13185,8 +13177,12 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
         console.log(`   ⚠️ ${disc.disciplina_nome}: usando ${topicos} metas como base de progresso`)
       }
       
-      // ✅ CORREÇÃO v3: Usar a maior contagem de progresso entre tópicos estudados e metas concluídas
-      const estudados = Math.max(disc.estudados_te || 0, disc.metas_concluidas || 0)
+      // ✅ CORREÇÃO v127: Priorizar estudados_te (tópicos com nivel_dominio >= 10)
+      // metas_concluidas só como fallback se não há tópicos cadastrados
+      let estudados = disc.estudados_te || 0
+      if (estudados === 0 && topicos === 0 && (disc.metas_concluidas || 0) > 0) {
+        estudados = disc.metas_concluidas || 0
+      }
       
       console.log(`   📖 ${disc.disciplina_nome}: ${estudados}/${topicos} (te:${disc.topicos_te}, et:${disc.topicos_et}, estudados:${disc.estudados_te}, metas:${disc.metas_concluidas}/${disc.metas_total})`)
       
@@ -14888,22 +14884,23 @@ app.post('/api/metas/gerar-semana/:user_id', async (c) => {
     const topicoIndex = new Map<number, number>() // Rastrear índice atual por disciplina
     
     // Buscar IDs de tópicos já concluídos pelo usuário neste plano
-    const { results: topicosConcluidos } = await DB.prepare(`
-      SELECT DISTINCT 
-        CASE 
-          WHEN ms.topicos_sugeridos IS NOT NULL AND ms.topicos_sugeridos != '[]' AND ms.topicos_sugeridos != ''
-          THEN json_extract(ms.topicos_sugeridos, '$[0].id')
-          ELSE NULL
-        END as topico_id
+    const { results: metasConcluidas } = await DB.prepare(`
+      SELECT ms.topicos_sugeridos
       FROM metas_semana ms
       INNER JOIN semanas_estudo se ON ms.semana_id = se.id
       WHERE ms.user_id = ? AND se.plano_id = ? AND ms.concluida = 1
+        AND ms.topicos_sugeridos IS NOT NULL AND ms.topicos_sugeridos != '[]' AND ms.topicos_sugeridos != ''
     `).bind(user_id, plano_id).all()
     
     const setTopicosConcluidos = new Set<number>()
-    for (const tc of topicosConcluidos) {
-      if (tc.topico_id && typeof tc.topico_id === 'number') {
-        setTopicosConcluidos.add(tc.topico_id)
+    for (const mc of metasConcluidas) {
+      try {
+        const topicos = JSON.parse(mc.topicos_sugeridos as string)
+        if (Array.isArray(topicos) && topicos.length > 0 && topicos[0]?.id) {
+          setTopicosConcluidos.add(topicos[0].id)
+        }
+      } catch (e) {
+        // JSON inválido, ignorar
       }
     }
     console.log(`🏁 Tópicos já concluídos pelo usuário: ${setTopicosConcluidos.size}`)

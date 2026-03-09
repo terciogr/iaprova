@@ -1,7 +1,7 @@
-// IAprova Service Worker v4.1 - v126 Tópicos concluídos não repetem + fix dupla conclusão
-const CACHE_NAME = 'iaprova-v126';
-const STATIC_CACHE = 'iaprova-static-v126';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v126';
+// IAprova Service Worker v4.2 - v127 Fix dashboard: se.ativa→se.status, simplificar queries progresso
+const CACHE_NAME = 'iaprova-v127';
+const STATIC_CACHE = 'iaprova-static-v127';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v127';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
