@@ -11247,7 +11247,6 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
             </div>
           </div>
           <h3 class="text-xl font-bold ${themes[currentTheme].text}">Gerando ${tipoDescricao}</h3>
-          <p class="text-sm ${themes[currentTheme].textSecondary} mt-1">Modelo: Gemini 2.5 Flash</p>
         </div>
         
         <!-- Barra de progresso -->
