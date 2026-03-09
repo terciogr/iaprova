@@ -6129,21 +6129,118 @@ app.post('/api/editais/upload', async (c) => {
         textoCompleto = await file.text()
         console.log(`✅ TXT lido: ${textoCompleto.length} caracteres`)
       } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-        // ❌ PDF NÃO É SUPORTADO - Direcionar para conversão
+        // v135: PDF SUPORTADO - extrair texto usando Gemini direto
         const arrayBuffer = await file.arrayBuffer()
         const fileSizeMB = arrayBuffer.byteLength / (1024 * 1024)
         
-        console.log(`📄 PDF detectado: ${file.name} (${fileSizeMB.toFixed(2)} MB) - Rejeitando e direcionando para conversão`)
+        console.log(`📄 PDF detectado: ${file.name} (${fileSizeMB.toFixed(2)} MB) - Extraindo texto com Gemini`)
         
-        return c.json({
-          error: 'Arquivos PDF não são suportados diretamente.',
-          errorType: 'PDF_NOT_SUPPORTED',
-          suggestion: 'Por favor, converta seu PDF para TXT antes de anexar.',
-          converterUrl: 'https://convertio.co/pt/pdf-txt/',
-          converterUrl2: 'https://smallpdf.com/pdf-to-text',
-          fileName: file.name,
-          fileSizeMB: fileSizeMB.toFixed(2)
-        }, 415) // 415 = Unsupported Media Type
+        // Validar tamanho (máx 5MB)
+        if (fileSizeMB > 5) {
+          return c.json({
+            error: `PDF muito grande (${fileSizeMB.toFixed(1)}MB). Máximo: 5MB. Converta para TXT.`,
+            errorType: 'FILE_TOO_LARGE',
+            suggestion: 'Use https://smallpdf.com/pdf-to-text para converter',
+            fileName: file.name,
+            fileSizeMB: fileSizeMB.toFixed(2)
+          }, 413)
+        }
+        
+        if (!geminiKey || geminiKey === 'SUA_CHAVE_GEMINI_AQUI') {
+          return c.json({ error: 'API key do Gemini não configurada para processar PDF' }, 500)
+        }
+        
+        try {
+          // Converter PDF para base64
+          const bytes = new Uint8Array(arrayBuffer)
+          let binary = ''
+          const chunkSize = 8192
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
+            binary += String.fromCharCode.apply(null, Array.from(chunk))
+          }
+          const base64PDF = btoa(binary)
+          
+          console.log(`📄 PDF base64: ${base64PDF.length} chars`)
+          
+          // Prompt otimizado para extrair APENAS o texto do conteúdo programático
+          const extractPrompt = `Extraia TODO o texto deste documento PDF de forma fiel e completa.
+Foque especialmente nas seções de CONTEÚDO PROGRAMÁTICO, ANEXOS com disciplinas e tópicos.
+Mantenha a estrutura original: títulos, subtítulos, listas, numerações.
+Transcreva literalmente. NÃO resuma. NÃO comente. Apenas transcreva o texto.
+Se houver tabelas, transcreva cada coluna separada por " | ".`
+          
+          // Tentar múltiplos modelos com fallback
+          const modelos = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+          let textoExtraidoPDF = ''
+          let modeloUsado = ''
+          
+          for (const modelo of modelos) {
+            try {
+              console.log(`🚀 Tentando ${modelo} para extração de texto do PDF...`)
+              const pdfResponse = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${geminiKey}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contents: [{
+                      parts: [
+                        { text: extractPrompt },
+                        { inline_data: { mime_type: 'application/pdf', data: base64PDF } }
+                      ]
+                    }],
+                    generationConfig: {
+                      temperature: 0.01,
+                      maxOutputTokens: 65536
+                    }
+                  })
+                }
+              )
+              
+              if (pdfResponse.status === 429) {
+                console.log(`⚠️ ${modelo}: Rate limit, tentando próximo...`)
+                await new Promise(r => setTimeout(r, 2000))
+                continue
+              }
+              
+              if (!pdfResponse.ok) {
+                console.log(`⚠️ ${modelo}: HTTP ${pdfResponse.status}`)
+                continue
+              }
+              
+              const pdfData = await pdfResponse.json() as any
+              textoExtraidoPDF = pdfData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+              
+              if (textoExtraidoPDF && textoExtraidoPDF.length > 100) {
+                modeloUsado = modelo
+                console.log(`✅ ${modelo} extraiu: ${textoExtraidoPDF.length} caracteres`)
+                break
+              }
+            } catch (err: any) {
+              console.error(`❌ ${modelo} erro:`, err.message)
+            }
+          }
+          
+          if (!textoExtraidoPDF || textoExtraidoPDF.length < 100) {
+            console.error('❌ Nenhum modelo conseguiu extrair texto do PDF')
+            return c.json({
+              error: 'Não foi possível extrair texto do PDF. Tente converter para TXT.',
+              suggestion: 'Use https://smallpdf.com/pdf-to-text para converter',
+              errorType: 'PDF_EXTRACTION_FAILED'
+            }, 422)
+          }
+          
+          textoCompleto = textoExtraidoPDF
+          console.log(`✅ PDF processado com ${modeloUsado}: ${textoCompleto.length} caracteres extraídos`)
+        } catch (pdfError: any) {
+          console.error('❌ Erro ao processar PDF:', pdfError)
+          return c.json({
+            error: 'Erro ao processar PDF. Tente converter para TXT.',
+            details: pdfError?.message || 'Falha na extração',
+            suggestion: 'Use https://smallpdf.com/pdf-to-text para converter'
+          }, 500)
+        }
       } else {
         console.warn(`⚠️ Arquivo ${file.name} não é TXT, PDF nem XLSX. Será ignorado.`)
         textoCompleto = ''

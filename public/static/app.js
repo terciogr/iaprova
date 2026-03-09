@@ -3856,7 +3856,7 @@ function renderConcursoEspecifico() {
               <!-- Método 1: Upload de Arquivo -->
               <div id="metodo-upload" class="space-y-3">
                 <div class="bg-white rounded-lg p-2 md:p-3 border border-[#C5D1E8]/50">
-                  <div class="grid grid-cols-2 gap-2 text-center">
+                  <div class="grid grid-cols-3 gap-2 text-center">
                     <div class="p-2 rounded-lg hover:bg-gray-50 transition border border-gray-200">
                       <i class="fas fa-file-alt text-blue-500 text-lg md:text-xl mb-1"></i>
                       <p class="text-[9px] md:text-xs text-gray-700 font-medium">TXT</p>
@@ -3865,18 +3865,21 @@ function renderConcursoEspecifico() {
                       <i class="fas fa-file-excel text-green-600 text-lg md:text-xl mb-1"></i>
                       <p class="text-[9px] md:text-xs text-green-700 font-medium">XLSX ✨</p>
                     </div>
+                    <div class="p-2 rounded-lg hover:bg-red-50 transition border-2 border-red-300 bg-red-50/50">
+                      <i class="fas fa-file-pdf text-red-500 text-lg md:text-xl mb-1"></i>
+                      <p class="text-[9px] md:text-xs text-red-600 font-medium">PDF ✨</p>
+                    </div>
                   </div>
                 </div>
 
                 <div class="relative">
-                  <input type="file" id="editaisUpload" multiple accept=".txt,.xlsx"
+                  <input type="file" id="editaisUpload" multiple accept=".txt,.xlsx,.pdf"
                     class="w-full px-3 md:px-4 py-2 md:py-2.5 bg-white rounded-lg focus:ring-2 focus:ring-[#1A3A7F] file:mr-2 md:file:mr-4 file:py-1.5 md:file:py-2 file:px-3 md:file:px-4 file:rounded-lg file:border-0 file:text-xs md:file:text-sm file:font-semibold file:bg-[#122D6A] file:text-white hover:file:bg-[#0D1F4D] border-2 border-dashed border-gray-300 hover:border-[#1A3A7F] transition-all text-xs md:text-sm">
                 </div>
                 
-                <div class="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[10px] md:text-xs text-amber-700">
+                <div class="p-2 bg-blue-50 border border-blue-200 rounded-lg text-[10px] md:text-xs text-blue-700">
                   <i class="fas fa-info-circle mr-1"></i>
-                  <strong>Tem PDF?</strong> 
-                  <a href="https://convertio.co/pt/pdf-txt/" target="_blank" class="underline text-amber-800 hover:text-amber-900">Converta para TXT</a>
+                  <strong>PDF:</strong> máx. 5MB. Para editais muito grandes, prefira TXT.
                 </div>
                 
                 <div id="editaisPreview" class="space-y-1.5"></div>
@@ -4007,10 +4010,14 @@ CONHECIMENTOS ESPECÍFICOS
       return;
     }
     
-    preview.innerHTML = files.map((file, idx) => `
+    preview.innerHTML = files.map((file, idx) => {
+      const isPdf = file.name.endsWith('.pdf');
+      const isXlsx = file.name.endsWith('.xlsx');
+      const iconClass = isPdf ? 'file-pdf text-red-500' : isXlsx ? 'file-excel text-green-500' : 'file-alt text-[#2A4A9F]';
+      return `
       <div class="flex items-center justify-between bg-[#E8EDF5] px-3 py-2 rounded text-xs md:text-sm">
         <div class="flex items-center gap-2 min-w-0 flex-1">
-          <i class="fas fa-file-${file.name.endsWith('.xlsx') ? 'excel text-green-500' : 'alt text-[#2A4A9F]'} flex-shrink-0"></i>
+          <i class="fas fa-${iconClass} flex-shrink-0"></i>
           <span class="text-gray-700 truncate">${file.name}</span>
           <span class="text-gray-400 flex-shrink-0">(${(file.size / 1024).toFixed(1)} KB)</span>
         </div>
@@ -4018,7 +4025,7 @@ CONHECIMENTOS ESPECÍFICOS
           <i class="fas fa-times"></i>
         </button>
       </div>
-    `).join('');
+    `}).join('');
   });
 
   document.getElementById('concursoForm').addEventListener('submit', async (e) => {
@@ -4061,8 +4068,16 @@ CONHECIMENTOS ESPECÍFICOS
     // ✅ v53: Processar edital ANTES de ir para Step2
     // Para TXT: ler conteúdo client-side e usar processarTextoEditalColado (1 request só)
     // Para XLSX: usar upload normal (processamento inline no backend)
-    // Para PDF: bloqueado (pedir conversão)
+    // Para PDF: upload normal + extração de texto via Gemini no backend (v134)
     if (editaisFiles.length > 0) {
+      // v134: Validar tamanho de PDFs (máx 5MB)
+      for (const f of Array.from(editaisFiles)) {
+        if (f.name.toLowerCase().endsWith('.pdf') && f.size > 5 * 1024 * 1024) {
+          showToast(`PDF "${f.name}" é muito grande (${(f.size/1024/1024).toFixed(1)}MB). Máximo: 5MB. Converta para TXT.`, 'error');
+          return;
+        }
+      }
+      
       // ✅ v53: Verificar se TODOS os arquivos são TXT - se sim, ler client-side
       const allTxt = Array.from(editaisFiles).every(f => 
         f.name.toLowerCase().endsWith('.txt') || f.type === 'text/plain'
@@ -4091,7 +4106,7 @@ CONHECIMENTOS ESPECÍFICOS
           await processarEditalAntesDeStep2();
         }
       } else {
-        // XLSX ou misto: usar upload normal
+        // XLSX, PDF ou misto: usar upload normal
         await processarEditalAntesDeStep2();
       }
     } else if (textoEdital && textoEdital.length > 50) {
@@ -4451,79 +4466,66 @@ async function processarEditalAntesDeStep2() {
   atualizarFeedbackUI(1, 'Iniciando processamento do edital...');
 
   try {
-    // 🔍 VERIFICAÇÃO PRÉVIA: Rejeitar arquivos PDF - exigir conversão para TXT
+    // 🔍 VERIFICAÇÃO PRÉVIA: Validar tamanho de PDFs (máx 5MB)
     for (const file of interviewData.editais_arquivos) {
       if (file.name.toLowerCase().endsWith('.pdf')) {
         const fileSizeMB = file.size / (1024 * 1024);
-        console.warn(`⚠️ PDF detectado: ${file.name} (${fileSizeMB.toFixed(1)}MB) - Redirecionando para conversão`);
-        atualizarFeedbackUI(1, '⚠️ PDF não suportado - conversão necessária', 'warning');
-        
-        // Mostrar tela de conversão ANTES de enviar
-        document.getElementById('app').innerHTML = `
-          <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
-            <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
-              <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
-                <i class="fas fa-file-alt text-blue-500 text-4xl"></i>
-              </div>
-              <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-3">
-                Converta o PDF para TXT
-              </h3>
-              <p class="text-gray-600 mb-4 text-sm">
-                Para garantir um processamento rápido e sem erros, precisamos que você converta o arquivo <strong>${file.name}</strong> para TXT.
-              </p>
-              
-              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
-                <h4 class="font-semibold text-blue-800 mb-3">📝 Passo a passo (leva menos de 1 minuto):</h4>
-                <ol class="text-sm text-blue-700 space-y-3">
-                  <li class="flex items-start gap-2">
-                    <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">1</span>
-                    <span>Clique no botão abaixo para abrir o conversor</span>
-                  </li>
-                  <li class="flex items-start gap-2">
-                    <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">2</span>
-                    <span>Faça upload do seu PDF e baixe o TXT</span>
-                  </li>
-                  <li class="flex items-start gap-2">
-                    <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">3</span>
-                    <span>Volte aqui e anexe o arquivo TXT</span>
-                  </li>
-                </ol>
-              </div>
-              
-              <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 text-left">
-                <p class="text-green-800 text-xs">
-                  <i class="fas fa-check-circle mr-1"></i>
-                  <strong>Vantagem:</strong> Arquivos TXT são processados instantaneamente pela IA, sem erros ou travamentos!
+        if (fileSizeMB > 5) {
+          console.warn(`⚠️ PDF muito grande: ${file.name} (${fileSizeMB.toFixed(1)}MB)`);
+          atualizarFeedbackUI(1, `⚠️ PDF "${file.name}" excede 5MB`, 'error');
+          showToast(`PDF muito grande (${fileSizeMB.toFixed(1)}MB). Máximo: 5MB. Converta para TXT.`, 'error');
+          
+          document.getElementById('app').innerHTML = `
+            <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+              <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
+                  <i class="fas fa-file-pdf text-red-500 text-4xl"></i>
+                </div>
+                <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-3">
+                  PDF muito grande
+                </h3>
+                <p class="text-gray-600 mb-4 text-sm">
+                  O arquivo <strong>${file.name}</strong> tem ${fileSizeMB.toFixed(1)}MB. O limite para PDFs é de 5MB.
                 </p>
-              </div>
-              
-              <div class="flex flex-col gap-3">
-                <a href="https://convertio.co/pt/pdf-txt/" target="_blank"
-                   class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all flex items-center justify-center gap-2">
-                  <i class="fas fa-external-link-alt"></i>
-                  Converter PDF para TXT (convertio.co)
-                </a>
-                <a href="https://smallpdf.com/pdf-to-text" target="_blank"
-                   class="w-full py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-all flex items-center justify-center gap-2 text-sm border border-gray-200">
-                  <i class="fas fa-external-link-alt"></i>
-                  Opção alternativa: smallpdf.com
-                </a>
-                <button onclick="renderConcursoEspecifico()" 
-                        class="w-full py-2.5 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg font-semibold border ${themes[currentTheme].border} hover:opacity-80 transition-all flex items-center justify-center gap-2">
-                  <i class="fas fa-redo"></i>
-                  Voltar e anexar TXT ou Excel
-                </button>
-                <button onclick="renderEntrevistaStep2()" 
-                        class="w-full py-2 text-gray-500 hover:text-gray-700 transition-all text-sm">
-                  Continuar sem edital →
-                </button>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                  <h4 class="font-semibold text-blue-800 mb-3">💡 Soluções:</h4>
+                  <ol class="text-sm text-blue-700 space-y-3">
+                    <li class="flex items-start gap-2">
+                      <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">1</span>
+                      <span>Converta o PDF para TXT em <a href="https://smallpdf.com/pdf-to-text" target="_blank" class="underline font-semibold">smallpdf.com</a></span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">2</span>
+                      <span>Ou use a aba "Colar" e cole apenas o Conteúdo Programático</span>
+                    </li>
+                  </ol>
+                </div>
+                
+                <div class="flex flex-col gap-3">
+                  <a href="https://smallpdf.com/pdf-to-text" target="_blank"
+                     class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold hover:from-[#1A3A7F] hover:to-[#3A5AB0] transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-external-link-alt"></i>
+                    Converter PDF para TXT
+                  </a>
+                  <button onclick="renderConcursoEspecifico()" 
+                          class="w-full py-2.5 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg font-semibold border ${themes[currentTheme].border} hover:opacity-80 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-redo"></i>
+                    Voltar e tentar outro arquivo
+                  </button>
+                  <button onclick="renderEntrevistaStep2()" 
+                          class="w-full py-2 text-gray-500 hover:text-gray-700 transition-all text-sm">
+                    Continuar sem edital →
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        `;
-        
-        isProcessingEdital = false;
-        return; // Parar processamento
+          `;
+          
+          isProcessingEdital = false;
+          return;
+        }
+        console.log(`📄 PDF aceito: ${file.name} (${fileSizeMB.toFixed(1)}MB)`);
       }
     }
     
@@ -34006,7 +34008,7 @@ window.showFullHelp = function() {
       <div style="background:${sectionBg3};padding:16px;border-radius:8px;">
         <h3 class="font-bold mb-2" style="color:${headColor3};">⚠️ Problemas Comuns</h3>
         <ul class="space-y-1 text-sm" style="color:${textSec};">
-          <li>• PDF não funciona? Converta para TXT</li>
+          <li>• PDF muito grande? Converta para TXT (máx 5MB)</li>
           <li>• IA lenta? Aguarde 30-60 segundos</li>
           <li>• Email não chega? Verifique spam</li>
         </ul>

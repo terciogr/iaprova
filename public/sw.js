@@ -1,7 +1,7 @@
-// IAprova Service Worker v4.7 - v134 PDF direto Gemini (1 chamada) + timeout 120s
-const CACHE_NAME = 'iaprova-v134';
-const STATIC_CACHE = 'iaprova-static-v134';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v134';
+// IAprova Service Worker v4.8 - v135 Upload PDF edital (extração Gemini)
+const CACHE_NAME = 'iaprova-v135';
+const STATIC_CACHE = 'iaprova-static-v135';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v135';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
