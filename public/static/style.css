@@ -259,9 +259,17 @@ a, button, [onclick] {
   align-items: center !important;
   justify-content: center !important;
   text-align: center !important;
-  padding: 8px 4px !important;
+  padding: 6px 4px !important;
   min-height: 56px !important;
   border-radius: 8px !important;
+}
+
+/* v130: KPI icon - minimalista acima do valor */
+.kpi-card .kpi-icon {
+  font-size: 10px !important;
+  line-height: 1 !important;
+  margin-bottom: 2px !important;
+  opacity: 0.7;
 }
 
 .kpi-card .kpi-value {
@@ -285,8 +293,12 @@ a, button, [onclick] {
     gap: 12px !important;
   }
   .kpi-card {
-    padding: 12px 8px !important;
+    padding: 10px 8px !important;
     min-height: 64px !important;
+  }
+  .kpi-card .kpi-icon {
+    font-size: 12px !important;
+    margin-bottom: 3px !important;
   }
   .kpi-card .kpi-value {
     font-size: 20px !important;

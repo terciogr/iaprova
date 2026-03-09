@@ -1,7 +1,7 @@
-// IAprova Service Worker v4.3 - v129 Fix contraste barra progresso diário tema claro
-const CACHE_NAME = 'iaprova-v129';
-const STATIC_CACHE = 'iaprova-static-v129';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v129';
+// IAprova Service Worker v4.4 - v130 KPI icons + barra semanal gradiente claro
+const CACHE_NAME = 'iaprova-v130';
+const STATIC_CACHE = 'iaprova-static-v130';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v130';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [

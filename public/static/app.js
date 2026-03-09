@@ -9062,18 +9062,22 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
           <!-- KPIs Grid - 4 colunas fixas via CSS class, idêntico iOS/Android -->
           <div class="kpi-grid-4">
             <div onclick="renderPortfolioDisciplinas()" class="kpi-card cursor-pointer rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
+              <i class="fas fa-chart-line kpi-icon" style="color: ${currentTheme === 'dark' ? '#5B8BD4' : '#4A90D9'};"></i>
               <span class="kpi-value ${themes[currentTheme].text}">${progressoGeral?.progresso_percentual || 0}%</span>
               <span class="kpi-label ${themes[currentTheme].textSecondary}">Progresso</span>
             </div>
             <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
+              <i class="fas fa-clock kpi-icon" style="color: ${currentTheme === 'dark' ? '#5B8BD4' : '#4A90D9'};"></i>
               <span class="kpi-value ${themes[currentTheme].text}">${stats.horas_totais}h</span>
               <span class="kpi-label ${themes[currentTheme].textSecondary}">Estudado</span>
             </div>
             <div onclick="renderPortfolioDisciplinas()" class="kpi-card cursor-pointer rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
+              <i class="fas fa-book-open kpi-icon" style="color: ${currentTheme === 'dark' ? '#5B8BD4' : '#4A90D9'};"></i>
               <span class="kpi-value ${themes[currentTheme].text}">${progressoGeral?.disciplinas?.length || plano.diagnostico?.total_disciplinas || 0}</span>
               <span class="kpi-label ${themes[currentTheme].textSecondary}">Disciplinas</span>
             </div>
             <div onclick="window.renderDashboardSimulados()" class="kpi-card cursor-pointer rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:shadow-sm transition-all">
+              <i class="fas fa-pen-to-square kpi-icon" style="color: ${currentTheme === 'dark' ? '#5B8BD4' : '#4A90D9'};"></i>
               <span class="kpi-value ${themes[currentTheme].text}">${simuladosHome.length > 0 ? mediaSimuladosHome + '%' : '--'}</span>
               <span class="kpi-label ${themes[currentTheme].textSecondary}">Simulados</span>
               ${simuladosHome.length > 0 ? '<span style="font-size:8px;margin-top:1px;display:block">' + (diffCorte >= 0 ? '<span style="color:#22c55e">▲+' + diffCorte + '%</span>' : '<span style="color:#ef4444">▼' + diffCorte + '%</span>') + ' corte</span>' : ''}
@@ -26529,9 +26533,10 @@ function renderCalendarioSemanal() {
 
   const percentualSemana = semana.metas_totais > 0 ? Math.round((semana.metas_concluidas / semana.metas_totais) * 100) : 0;
   
-  // v96: Cor da barra de progresso
-  const corProgSemana = percentualSemana >= 70 ? '#10B981' : (percentualSemana >= 30 ? '#122D6A' : '#93B8E8');
+  // v129: Cor da barra de progresso - alinhada com barra diária (gradiente claro)
   const _isDk = currentTheme === 'dark';
+  const corProgSemana = percentualSemana >= 70 ? '#10B981' : (_isDk ? '#5B8BD4' : '#4A90D9');
+  const corProgSemanaCSS = percentualSemana >= 70 ? '#10B981' : (_isDk ? '#5B8BD4' : 'linear-gradient(to right, #4A90D9, #6BB6FF)');
   const _barBg = _isDk ? 'rgba(255,255,255,0.1)' : '#E5E7EB';
 
   container.innerHTML = `
@@ -26560,7 +26565,7 @@ function renderCalendarioSemanal() {
         <!-- Linha 2: Barra de Progresso com percentual -->
         <div class="flex items-center gap-2 sm:gap-3">
           <div class="flex-1 h-2 rounded-full overflow-hidden" style="background: ${_barBg};">
-            <div class="h-full rounded-full transition-all duration-700 ease-out" style="width: ${percentualSemana}%; background: ${corProgSemana};"></div>
+            <div class="h-full rounded-full transition-all duration-700 ease-out" style="width: ${percentualSemana}%; background: ${corProgSemanaCSS};"></div>
           </div>
           <span class="text-xs font-bold whitespace-nowrap flex-shrink-0" style="color: ${corProgSemana}; min-width: 32px; text-align: right;">${percentualSemana}%</span>
           <span class="text-xs ${themes[currentTheme].textSecondary} whitespace-nowrap flex-shrink-0 hidden sm:inline">${semana.metas_concluidas || 0}/${semana.metas_totais || 0}</span>
