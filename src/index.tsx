@@ -19043,7 +19043,7 @@ app.post('/api/chat', async (c) => {
       const metasRes = await DB.prepare(`
         SELECT COUNT(*) as total FROM metas_semana ms 
         JOIN semanas_estudo se ON ms.semana_id = se.id 
-        WHERE se.user_id = ? AND ms.status = 'concluida'
+        WHERE se.user_id = ? AND ms.concluida = 1
       `).bind(user_id).first()
       estatisticas.metas_concluidas = metasRes?.total || 0
       
@@ -19060,6 +19060,159 @@ app.post('/api/chat', async (c) => {
       estatisticas.materiais_salvos = materiaisRes?.total || 0
     } catch (e) {
       console.log('⚠️ Erro ao buscar estatísticas do chat:', e)
+    }
+    
+    // 🔍 v128: Buscar entrevista do plano ativo (para contexto de concurso e notícias)
+    let entrevista: any = null
+    if (plano) {
+      try {
+        entrevista = await DB.prepare(`
+          SELECT objetivo_tipo, concurso_nome, area_geral, cargo
+          FROM interviews WHERE id = ?
+        `).bind(plano.interview_id).first()
+      } catch (e) {
+        console.log('⚠️ Erro ao buscar entrevista:', e)
+      }
+    }
+    
+    // 🔍 v128: Detectar se o usuário está pedindo notícias/informações sobre concursos
+    let noticiasConcursoCtx = ''
+    const msgLower = message.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    const keywordsNoticias = [
+      'noticia', 'noticias', 'novidade', 'novidades',
+      'quando vai sair', 'quando sai', 'previsao',
+      'proximo concurso', 'proximos concursos', 'concursos abertos',
+      'edital publicado', 'edital saiu', 'novo edital',
+      'data da prova', 'data prova', 'inscricao', 'inscricoes',
+      'vagas', 'quantas vagas', 'numero de vagas',
+      'salario', 'remuneracao', 'quanto ganha',
+      'banca organizadora', 'qual banca',
+      'concurso previsto', 'concursos previstos',
+      'o que ta rolando', 'o que esta acontecendo',
+      'tem concurso', 'vai ter concurso', 'atualizacao',
+      'atualizacoes', 'info sobre o concurso', 'informacoes do concurso',
+      'situacao do concurso', 'status do concurso', 'andamento',
+      'previsao de edital', 'autorizado', 'foi autorizado'
+    ]
+    
+    const pedindoNoticias = keywordsNoticias.some(kw => msgLower.includes(kw))
+    
+    if (pedindoNoticias) {
+      console.log('📰 Lilu: Detectada pergunta sobre notícias de concursos')
+      
+      // Montar a query de busca baseada no tipo de plano
+      let queryBusca = ''
+      if (entrevista?.objetivo_tipo === 'concurso_especifico' && entrevista?.concurso_nome) {
+        // Plano por edital específico: buscar info desse concurso
+        queryBusca = `Concurso ${entrevista.concurso_nome} ${entrevista.cargo || ''} 2025 2026 últimas notícias edital vagas data prova`
+        console.log(`📰 Busca por concurso específico: "${queryBusca}"`)
+      } else if (entrevista?.area_geral) {
+        // Plano por área: buscar concursos abertos/previstos na área
+        const areasMap: Record<string, string> = {
+          'fiscal': 'concursos área fiscal tributária Receita Federal estadual',
+          'policial': 'concursos polícia federal civil militar PRF',
+          'tribunais': 'concursos tribunais TRT TRF TJ STJ STF',
+          'administrativo': 'concursos área administrativa INSS Correios Banco do Brasil',
+          'saude': 'concursos área saúde enfermagem medicina SUS',
+          'educacao': 'concursos professor educação magistério',
+          'tecnologia': 'concursos TI tecnologia informação analista sistemas',
+          'juridica': 'concursos área jurídica advocacia procuradoria defensoria',
+          'legislativo': 'concursos Câmara Senado assembléia legislativa',
+          'controle': 'concursos controle TCU TCE CGU auditoria'
+        }
+        const areaTermos = areasMap[entrevista.area_geral] || `concursos ${entrevista.area_geral}`
+        queryBusca = `${areaTermos} 2025 2026 concursos abertos previstos editais vagas`
+        console.log(`📰 Busca por área geral: "${queryBusca}"`)
+      } else {
+        // Sem plano ou sem info: busca genérica de concursos
+        queryBusca = 'concursos públicos Brasil 2025 2026 últimas notícias editais abertos previstos'
+        console.log('📰 Busca genérica de concursos')
+      }
+      
+      // Fazer busca via Gemini com Google Search grounding
+      try {
+        const searchUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
+        
+        const searchPrompt = entrevista?.objetivo_tipo === 'concurso_especifico'
+          ? `Busque as informações MAIS RECENTES e ATUALIZADAS sobre o concurso "${entrevista.concurso_nome}" ${entrevista.cargo ? `para o cargo de ${entrevista.cargo}` : ''}.
+Inclua:
+- Status atual do concurso (edital publicado? autorizado? previsto?)
+- Data da prova (se divulgada)
+- Período de inscrições (se divulgado)
+- Número de vagas
+- Salário/remuneração
+- Banca organizadora
+- Últimas notícias relevantes
+- Links de fontes quando disponíveis
+Responda em português brasileiro, com dados factuais.`
+          : `Busque os CONCURSOS PÚBLICOS MAIS RECENTES e PREVISTOS na área de ${entrevista?.area_geral || 'concursos públicos'} no Brasil.
+Liste:
+- Concursos com edital publicado (abertos para inscrição)
+- Concursos autorizados (edital em breve)
+- Concursos previstos para os próximos meses
+- Para cada um: órgão, vagas, salário, banca, status
+Responda em português brasileiro, com dados factuais.`
+        
+        const searchResponse = await fetch(searchUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: searchPrompt }] }],
+            tools: [{ google_search: {} }],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 4096
+            }
+          })
+        })
+        
+        const searchData: any = await searchResponse.json()
+        
+        if (searchData.candidates?.[0]?.content?.parts?.[0]?.text) {
+          const noticiasBruto = searchData.candidates[0].content.parts[0].text
+          
+          // Extrair fontes do grounding metadata se disponíveis
+          let fontes = ''
+          const groundingChunks = searchData.candidates?.[0]?.groundingMetadata?.groundingChunks
+          if (groundingChunks && groundingChunks.length > 0) {
+            const fontesUnicas = [...new Set(groundingChunks.slice(0, 5).map((ch: any) => ch.web?.title || ch.web?.uri).filter(Boolean))]
+            if (fontesUnicas.length > 0) {
+              fontes = `\nFontes consultadas: ${fontesUnicas.join(', ')}`
+            }
+          }
+          
+          noticiasConcursoCtx = `
+
+📰 INFORMAÇÕES ATUALIZADAS DE CONCURSOS (buscadas em tempo real via Google):
+${noticiasBruto}
+${fontes}
+
+INSTRUÇÕES PARA RESPONDER SOBRE NOTÍCIAS:
+- Use as informações acima para responder ao usuário de forma organizada e clara
+- Destaque as informações mais relevantes para o contexto do usuário
+- Se houver datas, vagas ou salários, apresente de forma destacada
+- Mencione que as informações foram obtidas de fontes públicas e podem ter atualizações
+- Mantenha seu tom natural de assistente — NÃO copie o texto bruto, reorganize com sua voz
+- Complete com dicas de estudo relevantes se apropriado
+- Se o usuário tem plano por edital específico, foque naquele concurso
+- Se o usuário tem plano por área, liste os principais concursos da área`
+          
+          console.log(`📰 Notícias carregadas com sucesso (${noticiasBruto.length} chars)`)
+        } else {
+          console.log('⚠️ Busca de notícias não retornou resultados:', searchData.error || 'resposta vazia')
+          noticiasConcursoCtx = `\n📰 NOTA: O usuário perguntou sobre notícias de concursos, mas não foi possível buscar informações em tempo real neste momento.
+Responda com base no seu conhecimento geral, recomende sites confiáveis como:
+- estrategiaconcursos.com.br
+- folhadirigida.com.br  
+- jcconcursos.com.br
+- pcioncursos.com.br
+E sugira que o usuário verifique esses sites para informações atualizadas.`
+        }
+      } catch (searchError) {
+        console.log('⚠️ Erro na busca de notícias:', searchError)
+        noticiasConcursoCtx = `\n📰 NOTA: O usuário perguntou sobre notícias de concursos, mas a busca em tempo real falhou.
+Responda com base no seu conhecimento geral e recomende sites confiáveis como estrategiaconcursos.com.br, folhadirigida.com.br e jcconcursos.com.br.`
+      }
     }
     
     // Contexto COMPLETO do sistema para a Lilu
@@ -19083,6 +19236,8 @@ app.post('/api/chat', async (c) => {
 - Nome: ${user?.name || 'Usuário'}
 - Email: ${user?.email || 'Não informado'}
 - Plano Ativo: ${plano ? plano.nome : 'Nenhum plano ativo'}
+- Tipo de Objetivo: ${entrevista?.objetivo_tipo === 'concurso_especifico' ? `Concurso Específico: ${entrevista.concurso_nome || 'N/I'}` : entrevista?.area_geral ? `Área Geral: ${entrevista.area_geral}` : 'Não definido'}
+- Concurso/Cargo: ${entrevista?.concurso_nome || 'Não especificado'}${entrevista?.cargo ? ` - ${entrevista.cargo}` : ''}
 - Total de Disciplinas no Plano: ${plano?.total_disciplinas || 0}
 - Tempo de Estudo Diário Configurado: ${plano?.tempo_diario || 0} minutos
 - Metas Concluídas: ${estatisticas.metas_concluidas}
@@ -19202,7 +19357,8 @@ INSTRUÇÕES PARA SUAS RESPOSTAS:
 - Use formatação Markdown: **negrito** para destaques, listas numeradas, bullets com -
 - Varie o tom: às vezes mais prática, às vezes mais motivacional, às vezes mais analítica
 - NÃO repita padrões de abertura/fechamento — cada resposta deve parecer fresca e única
-- Se a conversa já tem histórico, continue naturalmente sem recomeçar do zero`
+- Se a conversa já tem histórico, continue naturalmente sem recomeçar do zero
+${noticiasConcursoCtx}`
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
     

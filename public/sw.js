@@ -1,7 +1,7 @@
-// IAprova Service Worker v4.2 - v127 Fix dashboard: se.ativa→se.status, simplificar queries progresso
-const CACHE_NAME = 'iaprova-v127';
-const STATIC_CACHE = 'iaprova-static-v127';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v127';
+// IAprova Service Worker v4.3 - v128 Lilu busca notícias de concursos via Google Search
+const CACHE_NAME = 'iaprova-v128';
+const STATIC_CACHE = 'iaprova-static-v128';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v128';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
