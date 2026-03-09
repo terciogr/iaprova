@@ -1,7 +1,7 @@
-// IAprova Service Worker v3.9 - v124 Dias customizados + Manual do Usuário
-const CACHE_NAME = 'iaprova-v124';
-const STATIC_CACHE = 'iaprova-static-v124';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v124';
+// IAprova Service Worker v4.0 - v125 Fix manual, checkbox, domingo, Instagram
+const CACHE_NAME = 'iaprova-v125';
+const STATIC_CACHE = 'iaprova-static-v125';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v125';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [

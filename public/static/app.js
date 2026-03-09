@@ -2745,6 +2745,11 @@ function renderLandingPage() {
               © 2025 IAprova. Todos os direitos reservados.
             </p>
             <div class="flex items-center gap-4">
+              <a href="https://www.instagram.com/iaprova.app" target="_blank" rel="noopener noreferrer" 
+                class="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg text-white hover:bg-white/20 transition" title="Siga no Instagram">
+                <i class="fab fa-instagram text-lg"></i>
+                <span class="text-sm">@iaprova.app</span>
+              </a>
               <button onclick="showManualInstallInstructions ? showManualInstallInstructions() : goToLogin()" 
                 class="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg text-white hover:bg-white/20 transition">
                 <i class="fas fa-mobile-alt"></i>
@@ -26288,18 +26293,26 @@ function mostrarModalGerarSemana(totalMetasExistentes) {
                 cb.checked = !cb.checked;
                 var cont = document.getElementById('dias-custom-container');
                 var label = document.getElementById('toggle-dias-label');
+                var check = document.getElementById('toggle-dias-check');
+                var icon = document.getElementById('toggle-dias-icon');
                 if (cb.checked) {
-                  cont.style.maxHeight = '120px';
+                  cont.style.maxHeight = '200px';
                   cont.style.opacity = '1';
                   cont.style.marginTop = '12px';
                   label.style.borderColor = '#4A90D9';
                   label.style.background = '${_d ? "rgba(42,74,159,0.1)" : "#F0F5FF"}';
+                  check.style.background = '#122D6A';
+                  check.style.borderColor = '#122D6A';
+                  icon.style.color = 'white';
                 } else {
                   cont.style.maxHeight = '0';
                   cont.style.opacity = '0';
                   cont.style.marginTop = '0';
                   label.style.borderColor = '${borderC}';
                   label.style.background = '${bgField}';
+                  check.style.background = 'transparent';
+                  check.style.borderColor = '${_d ? "#4B5563" : "#D1D5DB"}';
+                  icon.style.color = 'transparent';
                 }
               })()">
               <input type="checkbox" id="toggle-dias-custom" style="display:none;">
@@ -26350,23 +26363,6 @@ function mostrarModalGerarSemana(totalMetasExistentes) {
       </div>
     `;
     document.body.appendChild(modal);
-
-    // Checkbox visual update
-    var cb = document.getElementById('toggle-dias-custom');
-    var observer = new MutationObserver(function() {
-      var check = document.getElementById('toggle-dias-check');
-      var icon = document.getElementById('toggle-dias-icon');
-      if (cb && cb.checked) {
-        check.style.background = '#122D6A';
-        check.style.borderColor = '#122D6A';
-        icon.style.color = 'white';
-      } else {
-        check.style.background = 'transparent';
-        check.style.borderColor = _d ? '#4B5563' : '#D1D5DB';
-        icon.style.color = 'transparent';
-      }
-    });
-    observer.observe(cb, { attributes: true });
 
     // Toggle dia
     window.toggleDiaCustom = function(btn, dia) {
@@ -33452,22 +33448,24 @@ window.abrirModalAjuda = function() {
       '</div>' +
 
       '<!-- Body -->' +
-      '<div style="display:flex;flex:1;overflow:hidden;min-height:0;">' +
-        '<!-- Sidebar (desktop) -->' +
-        '<nav id="manual-sidebar" style="width:200px;flex-shrink:0;background:' + bgSidebar + ';border-right:1px solid ' + borderC + ';padding:12px 8px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;" class="hidden md:flex">' +
+      '<div id="manual-body" style="display:flex;flex:1;overflow:hidden;min-height:0;">' +
+        '<!-- Sidebar (desktop only - controlled by JS) -->' +
+        '<nav id="manual-sidebar" style="width:200px;flex-shrink:0;background:' + bgSidebar + ';border-right:1px solid ' + borderC + ';padding:12px 8px;overflow-y:auto;display:none;flex-direction:column;gap:2px;">' +
           sidebarItems +
         '</nav>' +
 
-        '<!-- Mobile nav -->' +
-        '<div id="manual-mobile-nav" style="display:none;flex-shrink:0;background:' + bgSidebar + ';border-bottom:1px solid ' + borderC + ';padding:8px 12px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;">' +
-          sections.map(function(s) {
-            return '<button onclick="window._manualGoTo(\'' + s.id + '\')" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:600;background:transparent;color:' + textSec + ';white-space:nowrap;transition:all 0.15s;" id="manual-mob-' + s.id + '">' +
-              '<i class="' + s.icon + '" style="font-size:11px;"></i>' + s.label + '</button>';
-          }).join('') +
-        '</div>' +
+        '<!-- Right column: mobile nav + content -->' +
+        '<div style="display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden;">' +
+          '<!-- Mobile nav (controlled by JS) -->' +
+          '<div id="manual-mobile-nav" style="display:none;flex-shrink:0;background:' + bgSidebar + ';border-bottom:1px solid ' + borderC + ';padding:8px 12px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;">' +
+            sections.map(function(s) {
+              return '<button onclick="window._manualGoTo(\'' + s.id + '\')" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:600;background:transparent;color:' + textSec + ';white-space:nowrap;transition:all 0.15s;" id="manual-mob-' + s.id + '">' +
+                '<i class="' + s.icon + '" style="font-size:11px;"></i>' + s.label + '</button>';
+            }).join('') +
+          '</div>' +
 
-        '<!-- Content -->' +
-        '<div id="manual-content" style="flex:1;overflow-y:auto;padding:24px;min-width:0;scroll-behavior:smooth;">' +
+          '<!-- Content -->' +
+          '<div id="manual-content" style="flex:1;overflow-y:auto;padding:24px;min-width:0;scroll-behavior:smooth;">' +
 
           // === VISAO GERAL ===
           '<section id="sec-visao-geral" style="margin-bottom:40px;">' +
@@ -33850,6 +33848,7 @@ window.abrirModalAjuda = function() {
           '</section>' +
 
         '</div>' + // end content
+        '</div>' + // end right column (mobile nav + content)
       '</div>' + // end body flex
     '</div>'; // end modal card
 
@@ -33860,15 +33859,16 @@ window.abrirModalAjuda = function() {
     var sidebar = document.getElementById('manual-sidebar');
     var mobileNav = document.getElementById('manual-mobile-nav');
     if (window.innerWidth < 768) {
-      if (sidebar) sidebar.style.display = 'none';
-      if (mobileNav) mobileNav.style.display = 'block';
+      if (sidebar) { sidebar.style.display = 'none'; }
+      if (mobileNav) { mobileNav.style.display = 'block'; }
     } else {
-      if (sidebar) sidebar.style.display = 'flex';
-      if (mobileNav) mobileNav.style.display = 'none';
+      if (sidebar) { sidebar.style.display = 'flex'; sidebar.style.flexDirection = 'column'; }
+      if (mobileNav) { mobileNav.style.display = 'none'; }
     }
   };
   checkMobile();
-  window.addEventListener('resize', checkMobile);
+  var _manualResizeHandler = function() { checkMobile(); };
+  window.addEventListener('resize', _manualResizeHandler);
 
   // Navigation function
   window._manualGoTo = function(id) {

@@ -14907,15 +14907,17 @@ app.post('/api/metas/gerar-semana/:user_id', async (c) => {
             (jaTemDisciplina || quantidadeDisciplinas < MAX_DISCIPLINAS_DIA)) {
           // Dia tem espaço disponível!
           
-          // ✅ NOVO: Calcular a data correta baseada no dia da semana
+          // ✅ v125: Calcular a data correta baseada no dia da semana
+          // Domingo (0) é tratado como dia 7 quando o início é durante a semana
           const dataMeta = new Date(dataInicioDate)
-          const diffDias = dia - diaInicioSemana
-          if (diffDias >= 0) {
-            dataMeta.setDate(dataMeta.getDate() + diffDias)
-          } else {
-            // Se o dia é antes do início (ex: domingo quando começou quinta), pula
-            continue
+          let diffDias = dia - diaInicioSemana
+          if (diffDias < 0) {
+            // Dia da semana é anterior ao dia de início
+            // Ex: domingo (0) quando começou segunda (1): diff = -1
+            // Domingo vem DEPOIS de sábado, então adicionar 7
+            diffDias += 7
           }
+          dataMeta.setDate(dataMeta.getDate() + diffDias)
 
           // 🎯 NOVO: Pegar próximo tópico EM ORDEM (não sempre os mesmos 3)
           let topicosArray = []
