@@ -9063,19 +9063,53 @@ window.mostrarAguardandoPagamento = function() {
 };
 
 // Verificar se pagamento foi confirmado
+// v148: Tenta verify-and-activate se tiver paymentId no localStorage (sincroniza mesmo se webhook demorou)
 window.verificarPagamento = async function() {
   try {
     showToast('Verificando pagamento...', 'info');
+
+    // 1. Verificar status atual via subscription/status
     const response = await axios.get(`/api/subscription/status/${currentUser.id}`);
-    
+
     if (response.data.isActive) {
       showToast('🎉 Pagamento confirmado! Bem-vindo ao IAprova Premium!', 'success');
       localStorage.removeItem('selectedPlan');
       localStorage.removeItem('paymentInitiated');
+      localStorage.removeItem('lastPaymentId');
       setTimeout(() => verificarEntrevista(), 1500);
-    } else {
-      showToast('Pagamento ainda não confirmado. Aguarde alguns minutos.', 'info');
+      return;
     }
+
+    // 2. Status ainda não ativo — tentar forçar sincronização via verify-and-activate
+    const storedPaymentId = localStorage.getItem('lastPaymentId');
+    if (storedPaymentId && currentUser?.id) {
+      console.log('🔄 Tentando sincronizar pagamento via API MP:', storedPaymentId);
+      try {
+        const activateResp = await axios.post(
+          `/api/mercadopago/verify-and-activate/${storedPaymentId}`,
+          {},
+          { headers: { 'X-User-ID': String(currentUser.id) } }
+        );
+        if (activateResp.data.success) {
+          // Atualizar dados locais
+          if (currentUser && activateResp.data.user) {
+            currentUser.is_premium = activateResp.data.user.is_premium;
+            currentUser.subscription_status = activateResp.data.user.subscription_status;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+          }
+          showToast('🎉 Pagamento verificado e ativado! Bem-vindo ao IAprova Premium!', 'success');
+          localStorage.removeItem('selectedPlan');
+          localStorage.removeItem('paymentInitiated');
+          localStorage.removeItem('lastPaymentId');
+          setTimeout(() => verificarEntrevista(), 1500);
+          return;
+        }
+      } catch (activateErr) {
+        console.warn('Pagamento ainda não confirmado na API MP:', activateErr?.response?.data?.error || activateErr.message);
+      }
+    }
+
+    showToast('Pagamento ainda não confirmado pelo Mercado Pago. Aguarde alguns minutos e tente novamente.', 'info', 6000);
   } catch (error) {
     console.error('Erro ao verificar pagamento:', error);
     showToast('Erro ao verificar. Tente novamente.', 'error');
@@ -22324,6 +22358,13 @@ window.iniciarPagamento = async function(plano) {
       // Redirecionar para o Mercado Pago
       console.log('🔗 Redirecionando para Mercado Pago:', response.data.init_point);
       
+      // Salvar plano e preferenceId para sincronização pós-pagamento
+      localStorage.setItem('selectedPlan', plano);
+      localStorage.setItem('paymentInitiated', 'true');
+      if (response.data.preference_id) {
+        localStorage.setItem('lastPreferenceId', response.data.preference_id);
+      }
+      
       // Remover loading antes de redirecionar
       document.getElementById('modal-payment-loading')?.remove();
       
@@ -22344,12 +22385,18 @@ window.iniciarPagamento = async function(plano) {
 };
 
 // Verificar se retornou de um pagamento
+// v148: Salva paymentId no localStorage para sincronização manual se webhook demorar
 window.verificarRetornoPagamento = async function() {
   const urlParams = new URLSearchParams(window.location.search);
   const paymentStatus = urlParams.get('payment');
   const paymentId = urlParams.get('payment_id');
   
   if (!paymentStatus) return;
+  
+  // Salvar paymentId para uso no botão "Verificar Pagamento"
+  if (paymentId) {
+    localStorage.setItem('lastPaymentId', paymentId);
+  }
   
   // Limpar URL
   window.history.replaceState({}, document.title, window.location.pathname);

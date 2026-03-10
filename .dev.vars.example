@@ -1,8 +1,63 @@
-# GROQ API KEY (GRATUITA)
-# Obtenha sua chave em: https://console.groq.com/keys
-# Modelo usado: Llama 3.3 70B (840 tokens/segundo)
-# Limites gratuitos: Generosos para desenvolvimento
+# =============================================================
+# IAprova — Variáveis de Ambiente para Desenvolvimento Local
+# Copie este arquivo para .dev.vars e preencha com seus valores
+# NUNCA commite o .dev.vars real no git
+# =============================================================
+
+# ── IA / LLM ──────────────────────────────────────────────────
+# GROQ API KEY (gratuita) — https://console.groq.com/keys
+# Modelo: Llama 3.3 70B (840 tokens/segundo)
 GROQ_API_KEY=gsk_your_groq_api_key_here
 
-# OPCIONAL: Gemini API (não mais necessária)
+# Gemini API (opcional — fallback para PDFs grandes)
 # GEMINI_API_KEY=your_gemini_key_here
+
+# ── EMAIL ─────────────────────────────────────────────────────
+# Resend — https://resend.com
+RESEND_API_KEY=re_your_resend_api_key_here
+FROM_EMAIL=noreply@iaprova.app
+
+# ── APP ───────────────────────────────────────────────────────
+APP_URL=https://iaprova.app
+
+# ── MERCADO PAGO ─────────────────────────────────────────────
+# ⚠️ TODAS as variáveis abaixo são OBRIGATÓRIAS para pagamentos
+#
+# 1. MP_ACCESS_TOKEN — Token de acesso (obtido no painel MP)
+#    Painel: https://www.mercadopago.com.br/developers/panel/app
+#    Produção: APP_USR-...
+#    Teste: TEST-...
+MP_ACCESS_TOKEN=APP_USR-your_access_token_here
+
+# 2. MP_WEBHOOK_SECRET — OBRIGATÓRIO para segurança do webhook
+#    ⚠️ SEM ESTE VALOR, o webhook fica DESABILITADO em produção!
+#    Como obter:
+#      a) Acesse: https://www.mercadopago.com.br/developers/panel/app
+#      b) Selecione sua aplicação
+#      c) Vá em "Webhooks" → "Configurar notificações"
+#      d) URL do webhook: https://iaprova.pages.dev/api/webhook/mercadopago
+#      e) Eventos: Pagamentos (payment)
+#      f) Copie o "Secret" gerado pelo MP
+MP_WEBHOOK_SECRET=your_webhook_secret_here
+
+# 3. MP_CLIENT_ID e MP_CLIENT_SECRET — Para refresh automático de token OAuth
+#    (opcional se usar apenas MP_ACCESS_TOKEN fixo)
+#    Obtidos no painel MP → Credenciais da aplicação
+# MP_CLIENT_ID=your_client_id_here
+# MP_CLIENT_SECRET=your_client_secret_here
+
+# ── GOOGLE OAuth ──────────────────────────────────────────────
+# Para login com Google (opcional)
+# GOOGLE_CLIENT_ID=your_google_client_id
+# GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# ── DEPLOY: Como configurar secrets no Cloudflare Pages ──────
+# Execute um a um:
+#   npx wrangler pages secret put MP_ACCESS_TOKEN
+#   npx wrangler pages secret put MP_WEBHOOK_SECRET
+#   npx wrangler pages secret put RESEND_API_KEY
+#   npx wrangler pages secret put GROQ_API_KEY
+#   npx wrangler pages secret put GEMINI_API_KEY
+#
+# Para listar secrets configurados:
+#   npx wrangler pages secret list --project-name iaprova

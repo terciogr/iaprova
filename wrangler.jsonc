@@ -6,11 +6,22 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  // Variáveis de ambiente (production)
-  // Configure em produção com: npx wrangler pages secret put GEMINI_API_KEY
-  // "vars": {
-  //   "GEMINI_API_KEY": "configure-via-secret"
-  // },
+  // ── Secrets de produção (configure via CLI) ──────────────────
+  // Execute um a um para configurar no Cloudflare Pages:
+  //
+  //   npx wrangler pages secret put MP_ACCESS_TOKEN        ← Token de acesso MP (OBRIGATÓRIO)
+  //   npx wrangler pages secret put MP_WEBHOOK_SECRET      ← Secret HMAC do webhook (OBRIGATÓRIO)
+  //   npx wrangler pages secret put MP_CLIENT_ID           ← Client ID OAuth MP (para refresh)
+  //   npx wrangler pages secret put MP_CLIENT_SECRET       ← Client Secret OAuth MP (para refresh)
+  //   npx wrangler pages secret put RESEND_API_KEY         ← Email transacional
+  //   npx wrangler pages secret put GROQ_API_KEY           ← LLM
+  //   npx wrangler pages secret put GEMINI_API_KEY         ← Gemini (fallback PDFs grandes)
+  //
+  //   Para listar: npx wrangler pages secret list --project-name iaprova
+  //
+  // ⚠️  ATENÇÃO: SEM MP_WEBHOOK_SECRET o webhook fica DESABILITADO!
+  //     Configure também a URL do webhook no painel Mercado Pago:
+  //     https://iaprova.pages.dev/api/webhook/mercadopago
   // "kv_namespaces": [
   //   {
   //     "binding": "MY_KV_NAMESPACE",

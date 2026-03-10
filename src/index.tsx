@@ -1894,11 +1894,9 @@ app.post('/api/login', async (c) => {
 
 // ============== SISTEMA DE TRIAL E ASSINATURA ==============
 
-// Links de pagamento do Mercado Pago
-const PAYMENT_LINKS = {
-  mensal: 'https://mpago.la/13tzztx',    // R$ 29,90
-  anual: 'https://mpago.la/2ZBgz1w'      // R$ 249,90
-}
+// ⚠️ PAYMENT_LINKS removidos: links diretos do MP não criam external_reference
+// O pagamento DEVE ser iniciado via /api/mercadopago/create-preference
+// para que o user_id seja associado ao pagamento e o webhook funcione corretamente.
 
 // Verificar status da assinatura do usuário
 app.get('/api/subscription/status/:userId', async (c) => {
@@ -2050,7 +2048,7 @@ app.get('/api/subscription/status/:userId', async (c) => {
       status: 'expired',
       isActive: false,
       needsPayment: true,
-      paymentLinks: PAYMENT_LINKS,
+      paymentLinks: null, // Use /api/mercadopago/create-preference para iniciar pagamento
       message: 'Seu período de teste expirou. Escolha um plano para continuar.'
     })
     
@@ -2815,52 +2813,70 @@ async function ativarAssinaturaSegura(
 }
 
 // Webhook para receber confirmação de pagamento do Mercado Pago
-// ✅ SEGURANÇA v145: Validação HMAC obrigatória + verificação completa
+// ✅ SEGURANÇA v148: Validação HMAC obrigatória + verificação completa
+
+// GET: endpoint de health/teste do webhook (usado pelo painel MP para verificar conectividade)
+app.get('/api/webhook/mercadopago', async (c) => {
+  const { MP_WEBHOOK_SECRET } = c.env as any
+  return c.json({
+    status: 'ok',
+    webhook: 'iaprova-mercadopago',
+    hmac_validation: MP_WEBHOOK_SECRET ? 'enabled' : 'disabled - configure MP_WEBHOOK_SECRET!',
+    timestamp: new Date().toISOString()
+  })
+})
+
 app.post('/api/webhook/mercadopago', async (c) => {
   const { DB, MP_WEBHOOK_SECRET } = c.env as any
+  
+  // ✅ SEGURANÇA v148: MP_WEBHOOK_SECRET é OBRIGATÓRIO em produção
+  // Sem ele, qualquer pessoa pode chamar o webhook e ativar planos fraudulentos
+  if (!MP_WEBHOOK_SECRET) {
+    console.error('🚨 SEGURANÇA CRÍTICA: MP_WEBHOOK_SECRET não configurado!')
+    console.error('   Configure com: npx wrangler pages secret put MP_WEBHOOK_SECRET')
+    // Retornar 200 para não causar retry loop no MP, mas NÃO processar
+    return c.json({ received: true, processed: false, reason: 'Webhook desabilitado: secret não configurado' })
+  }
   
   try {
     const body = await c.req.json()
     console.log('📦 Webhook Mercado Pago recebido:', JSON.stringify(body).substring(0, 500))
     
-    // ✅ SEGURANÇA: Validar assinatura HMAC do webhook (se secret configurado)
+    // ✅ SEGURANÇA v148: Validar assinatura HMAC — OBRIGATÓRIA
     const signature = c.req.header('x-signature')
     const requestId = c.req.header('x-request-id')
     const dataId = body.data?.id?.toString() || ''
     
-    if (MP_WEBHOOK_SECRET) {
-      const isValidSignature = await validarWebhookHMAC(signature, requestId, dataId, MP_WEBHOOK_SECRET)
-      if (!isValidSignature) {
-        console.error('🚨 SEGURANÇA: Webhook com assinatura INVÁLIDA rejeitado!')
-        console.error(`   Signature: ${signature}`)
-        console.error(`   Request ID: ${requestId}`)
-        console.error(`   Data ID: ${dataId}`)
-        // Registrar tentativa de fraude
-        try {
-          await DB.prepare(`
-            CREATE TABLE IF NOT EXISTS audit_log (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              action TEXT NOT NULL,
-              user_id INTEGER,
-              details TEXT,
-              ip_address TEXT,
-              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-          `).run()
-          await DB.prepare(`
-            INSERT INTO audit_log (action, details, ip_address, created_at)
-            VALUES ('webhook_invalid_signature', ?, ?, datetime('now'))
-          `).bind(
-            JSON.stringify({ signature, requestId, dataId, body: JSON.stringify(body).substring(0, 200) }),
-            c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
-          ).run()
-        } catch (e) { /* audit não é crítico */ }
-        return c.json({ error: 'Assinatura inválida' }, 401)
-      }
-    } else {
-      console.warn('⚠️ MP_WEBHOOK_SECRET não configurado - validação HMAC desabilitada')
-      console.warn('   CONFIGURE MP_WEBHOOK_SECRET para segurança em produção!')
+    const isValidSignature = await validarWebhookHMAC(signature, requestId, dataId, MP_WEBHOOK_SECRET)
+    if (!isValidSignature) {
+      console.error('🚨 SEGURANÇA: Webhook com assinatura INVÁLIDA rejeitado!')
+      console.error(`   Signature: ${signature}`)
+      console.error(`   Request ID: ${requestId}`)
+      console.error(`   Data ID: ${dataId}`)
+      // Registrar tentativa de fraude
+      try {
+        await DB.prepare(`
+          CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL,
+            user_id INTEGER,
+            details TEXT,
+            ip_address TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run()
+        await DB.prepare(`
+          INSERT INTO audit_log (action, details, ip_address, created_at)
+          VALUES ('webhook_invalid_signature', ?, ?, datetime('now'))
+        `).bind(
+          JSON.stringify({ signature, requestId, dataId, body: JSON.stringify(body).substring(0, 200) }),
+          c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
+        ).run()
+      } catch (e) { /* audit não é crítico */ }
+      return c.json({ error: 'Assinatura inválida' }, 401)
     }
+    
+    console.log('✅ Assinatura HMAC do webhook validada com sucesso')
     
     // Verificar tipo de notificação
     if (body.type !== 'payment' && body.action !== 'payment.created' && body.action !== 'payment.updated') {
@@ -3061,6 +3077,98 @@ app.get('/api/admin/payments', async (c) => {
     console.error('Erro ao listar pagamentos:', error)
     return c.json({ error: 'Erro ao listar pagamentos' }, 500)
   }
+})
+
+// ✅ v148: Diagnóstico da configuração de pagamentos (admin only)
+// Verifica se MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET e webhook estão configurados corretamente
+app.get('/api/admin/payment-health', async (c) => {
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+
+  const { DB, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET, MP_CLIENT_ID, MP_CLIENT_SECRET } = c.env as any
+
+  const checks: Record<string, { ok: boolean; message: string }> = {}
+
+  // 1. Verificar MP_WEBHOOK_SECRET
+  checks.webhook_secret = MP_WEBHOOK_SECRET
+    ? { ok: true, message: 'MP_WEBHOOK_SECRET configurado ✅' }
+    : { ok: false, message: '❌ MP_WEBHOOK_SECRET NÃO configurado — webhook DESABILITADO!' }
+
+  // 2. Verificar token de acesso
+  checks.access_token = MP_ACCESS_TOKEN
+    ? { ok: true, message: 'MP_ACCESS_TOKEN presente ✅' }
+    : { ok: false, message: '❌ MP_ACCESS_TOKEN não configurado' }
+
+  // 3. Testar se o token MP realmente funciona chamando a API
+  if (MP_ACCESS_TOKEN || MP_CLIENT_ID) {
+    try {
+      const token = await getValidMPToken(c.env)
+      const testResp = await fetch('https://api.mercadopago.com/v1/payment_methods', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      checks.mp_api_connection = testResp.ok
+        ? { ok: true, message: `Token MP válido e API acessível ✅ (status ${testResp.status})` }
+        : { ok: false, message: `❌ Token MP inválido ou API indisponível (status ${testResp.status})` }
+    } catch (e: any) {
+      checks.mp_api_connection = { ok: false, message: `❌ Erro ao testar API MP: ${e.message}` }
+    }
+  } else {
+    checks.mp_api_connection = { ok: false, message: '❌ Sem credenciais MP para testar' }
+  }
+
+  // 4. Verificar OAuth MP (refresh automático)
+  checks.mp_oauth = (MP_CLIENT_ID && MP_CLIENT_SECRET)
+    ? { ok: true, message: 'MP_CLIENT_ID e MP_CLIENT_SECRET configurados ✅ (refresh automático ativo)' }
+    : { ok: true, message: 'ℹ️ Usando MP_ACCESS_TOKEN fixo (sem refresh automático)' }
+
+  // 5. Verificar planos ativos no banco
+  try {
+    const plans = await DB.prepare('SELECT COUNT(*) as count FROM payment_plans WHERE is_active = 1').first() as any
+    checks.payment_plans = (plans?.count > 0)
+      ? { ok: true, message: `${plans.count} plano(s) ativo(s) no banco ✅` }
+      : { ok: false, message: '❌ Nenhum plano ativo no banco — pagamentos sem plano configurado' }
+  } catch {
+    checks.payment_plans = { ok: false, message: '❌ Tabela payment_plans não existe ou erro ao consultar' }
+  }
+
+  // 6. Verificar tabela payment_history
+  try {
+    const hist = await DB.prepare('SELECT COUNT(*) as count FROM payment_history').first() as any
+    checks.payment_history = { ok: true, message: `Tabela payment_history existe com ${hist?.count || 0} registros ✅` }
+  } catch {
+    checks.payment_history = { ok: false, message: '⚠️ Tabela payment_history ainda não criada (será criada no primeiro pagamento)' }
+  }
+
+  // 7. Verificar tabela audit_log
+  try {
+    const audit = await DB.prepare('SELECT COUNT(*) as count FROM audit_log').first() as any
+    checks.audit_log = { ok: true, message: `Tabela audit_log existe com ${audit?.count || 0} registros ✅` }
+  } catch {
+    checks.audit_log = { ok: false, message: '⚠️ Tabela audit_log ainda não criada (será criada no primeiro evento)' }
+  }
+
+  const allOk = Object.values(checks).every(c => c.ok)
+  const criticalFail = !checks.webhook_secret.ok || !checks.access_token.ok || !checks.mp_api_connection?.ok
+
+  return c.json({
+    status: criticalFail ? 'critical' : (allOk ? 'healthy' : 'warnings'),
+    summary: criticalFail
+      ? '🚨 Configuração crítica ausente — pagamentos podem NÃO funcionar!'
+      : (allOk ? '✅ Sistema de pagamentos configurado corretamente' : '⚠️ Algumas configurações precisam de atenção'),
+    checks,
+    webhook_url: 'https://iaprova.pages.dev/api/webhook/mercadopago',
+    instructions: {
+      configure_secrets: [
+        'npx wrangler pages secret put MP_ACCESS_TOKEN --project-name iaprova',
+        'npx wrangler pages secret put MP_WEBHOOK_SECRET --project-name iaprova',
+        'npx wrangler pages secret put MP_CLIENT_ID --project-name iaprova',
+        'npx wrangler pages secret put MP_CLIENT_SECRET --project-name iaprova',
+      ],
+      list_secrets: 'npx wrangler pages secret list --project-name iaprova',
+      mp_webhook_config: 'Configure a URL do webhook no painel MP: https://www.mercadopago.com.br/developers/panel/app'
+    }
+  })
 })
 
 // Verificar status de pagamento
