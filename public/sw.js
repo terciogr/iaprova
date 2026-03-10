@@ -1,7 +1,7 @@
-// IAprova Service Worker v5.1 - v138 PDF edital: converter para texto primeiro, depois fluxo TXT natural
-const CACHE_NAME = 'iaprova-v138';
-const STATIC_CACHE = 'iaprova-static-v138';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v138';
+// IAprova Service Worker v6.0 - v140 PDF: pdf.js browser + fallback servidor + UI com etapas
+const CACHE_NAME = 'iaprova-v140';
+const STATIC_CACHE = 'iaprova-static-v140';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v140';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
@@ -18,7 +18,9 @@ const STATIC_ASSETS = [
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://cdn.jsdelivr.net/npm/chart.js',
-  'https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js'
+  'https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
 ];
 
 // Instalação do Service Worker

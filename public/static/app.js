@@ -4065,12 +4065,12 @@ CONHECIMENTOS ESPECÍFICOS
       console.log(`Área detectada automaticamente: ${areaDetectada} para cargo: ${interviewData.cargo}`);
     }
     
-    // ✅ v53: Processar edital ANTES de ir para Step2
-    // Para TXT: ler conteúdo client-side e usar processarTextoEditalColado (1 request só)
-    // Para XLSX: usar upload normal (processamento inline no backend)
-    // Para PDF: upload normal + extração de texto via Gemini no backend (v134)
+    // ✅ v140: Processar edital ANTES de ir para Step2
+    // TXT: ler client-side → processarTextoEditalColado (1 request)
+    // PDF: converter para texto via pdf.js no browser → processarTextoEditalColado (1 request)
+    // XLSX: upload normal (processamento inline no backend)
     if (editaisFiles.length > 0) {
-      // v134: Validar tamanho de PDFs (máx 5MB)
+      // Validar tamanho de PDFs (máx 5MB)
       for (const f of Array.from(editaisFiles)) {
         if (f.name.toLowerCase().endsWith('.pdf') && f.size > 5 * 1024 * 1024) {
           showToast(`PDF "${f.name}" é muito grande (${(f.size/1024/1024).toFixed(1)}MB). Máximo: 5MB. Converta para TXT.`, 'error');
@@ -4078,22 +4078,25 @@ CONHECIMENTOS ESPECÍFICOS
         }
       }
       
-      // ✅ v53: Verificar se TODOS os arquivos são TXT - se sim, ler client-side
+      // Classificar arquivos
       const allTxt = Array.from(editaisFiles).every(f => 
         f.name.toLowerCase().endsWith('.txt') || f.type === 'text/plain'
       );
+      const allPdf = Array.from(editaisFiles).every(f => 
+        f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf'
+      );
+      const hasPdf = Array.from(editaisFiles).some(f => 
+        f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf'
+      );
       
       if (allTxt) {
-        // ✅ v53: Ler TXT client-side e usar processarTextoEditalColado (evita upload + processar = 2 requests)
-        console.log('📄 v53: TXT detectado - lendo client-side para processamento direto');
+        // ✅ TXT: ler client-side direto
+        console.log('📄 TXT detectado - lendo client-side');
         try {
           let textoConcat = '';
           for (const f of editaisFiles) {
-            const texto = await f.text();
-            textoConcat += texto + '\n\n';
+            textoConcat += (await f.text()) + '\n\n';
           }
-          console.log(`📄 v53: ${editaisFiles.length} arquivo(s) TXT lido(s): ${textoConcat.length} caracteres`);
-          
           if (textoConcat.trim().length > 50) {
             await processarTextoEditalColado(textoConcat.trim());
           } else {
@@ -4101,21 +4104,378 @@ CONHECIMENTOS ESPECÍFICOS
             renderEntrevistaStep2();
           }
         } catch (readErr) {
-          console.error('❌ v53: Erro ao ler TXT client-side:', readErr);
-          // Fallback: usar upload normal
+          console.error('❌ Erro ao ler TXT:', readErr);
           await processarEditalAntesDeStep2();
         }
+      } else if (hasPdf) {
+        // ✅ v140: PDF → converter para texto no browser via pdf.js + fallback servidor
+        console.log('📄 v140: PDF detectado - convertendo para texto no browser via pdf.js');
+        try {
+          await converterPDFParaTextoEProcessar(editaisFiles);
+        } catch (pdfErr) {
+          console.error('❌ Erro ao converter PDF:', pdfErr);
+          showToast('Erro ao converter PDF. Tente converter manualmente para TXT.', 'error');
+          renderEntrevistaStep1();
+        }
       } else {
-        // XLSX, PDF ou misto: usar upload normal
+        // XLSX ou misto: usar upload normal
         await processarEditalAntesDeStep2();
       }
     } else if (textoEdital && textoEdital.length > 50) {
-      // Processar texto colado
       await processarTextoEditalColado(textoEdital);
     } else {
       renderEntrevistaStep2();
     }
   });
+}
+
+// ✅ v140: DEFINITIVO - Converter PDF para texto e processar como TXT
+// Fluxo: PDF → pdf.js (browser) → texto → /api/editais/processar-texto
+// Fallback: Se pdf.js falhar → envia PDF ao servidor → Gemini converte → texto → processar-texto
+async function converterPDFParaTextoEProcessar(editaisFiles) {
+  const arquivos = Array.from(editaisFiles);
+  const pdfFiles = arquivos.filter(f => f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf');
+  const outrosFiles = arquivos.filter(f => !f.name.toLowerCase().endsWith('.pdf') && f.type !== 'application/pdf');
+  
+  console.log('📄 v140: Iniciando fluxo PDF→TXT definitivo');
+  console.log(`📄 ${pdfFiles.length} PDF(s), ${outrosFiles.length} outro(s) arquivo(s)`);
+  
+  // ═══════════════════════════════════════════════════════════════
+  // UI DE PROGRESSO COM ETAPAS CLARAS
+  // ═══════════════════════════════════════════════════════════════
+  function renderProgressUI(etapaAtual, mensagem, detalhes) {
+    const etapas = [
+      { num: 1, titulo: 'Converter PDF em texto', icone: 'fa-file-alt' },
+      { num: 2, titulo: 'Enviar texto ao servidor', icone: 'fa-cloud-upload-alt' },
+      { num: 3, titulo: 'IA processa o edital', icone: 'fa-robot' },
+      { num: 4, titulo: 'Importar disciplinas', icone: 'fa-check-circle' }
+    ];
+    
+    const etapasHTML = etapas.map(e => {
+      let statusClass = '';
+      let iconClass = '';
+      let textClass = '';
+      if (e.num < etapaAtual) {
+        statusClass = 'bg-green-50 border-green-200';
+        iconClass = 'fas fa-check-circle text-green-500';
+        textClass = 'text-green-700';
+      } else if (e.num === etapaAtual) {
+        statusClass = 'bg-blue-50 border-blue-200';
+        iconClass = 'fas fa-spinner fa-spin text-blue-600';
+        textClass = 'text-blue-700 font-semibold';
+      } else {
+        statusClass = 'bg-gray-50 border-gray-100 opacity-50';
+        iconClass = 'far fa-circle text-gray-400';
+        textClass = 'text-gray-500';
+      }
+      return `<div class="flex items-center gap-3 p-3 rounded-lg border ${statusClass}">
+        <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center">
+          <i class="${e.num < etapaAtual ? iconClass : (e.num === etapaAtual ? iconClass : iconClass)}"></i>
+        </div>
+        <div class="flex-1">
+          <span class="text-sm ${textClass}">${e.num}. ${e.titulo}</span>
+        </div>
+        ${e.num < etapaAtual ? '<i class="fas fa-check text-green-400 text-xs"></i>' : ''}
+      </div>`;
+    }).join('');
+    
+    document.getElementById('app').innerHTML = `
+      <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+        <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 shadow-xl">
+          <div class="text-center mb-5">
+            <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+              <i class="fas fa-file-pdf text-white text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-bold ${themes[currentTheme].text}">Processando Edital PDF</h3>
+            <p class="text-gray-500 text-sm mt-1">${mensagem}</p>
+          </div>
+          
+          <div class="space-y-2 mb-4">${etapasHTML}</div>
+          
+          ${detalhes ? `<div class="bg-gray-50 rounded-lg p-3 mt-3">
+            <p class="text-xs text-gray-600" id="pdf-detalhe">${detalhes}</p>
+          </div>` : ''}
+          
+          <div class="flex items-center justify-center gap-2 mt-4 text-xs text-gray-400">
+            <i class="fas fa-info-circle"></i>
+            <span>Isso pode levar de 30s a 2 minutos</span>
+          </div>
+          
+          <button onclick="cancelarCountdownENavegar('step1')" 
+            class="mt-4 w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition border border-gray-200 rounded-lg">
+            <i class="fas fa-times mr-1"></i> Cancelar
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  
+  function updateDetalhe(msg) {
+    const el = document.getElementById('pdf-detalhe');
+    if (el) el.textContent = msg;
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // ETAPA 1: CONVERTER PDF → TEXTO
+  // ═══════════════════════════════════════════════════════════════
+  renderProgressUI(1, 'Convertendo PDF para texto...', 'Preparando o conversor...');
+  
+  let textoCompleto = '';
+  let usouFallbackServidor = false;
+  
+  try {
+    // Tentar converter no browser com pdf.js
+    textoCompleto = await _extrairTextoPDFNoBrowser(pdfFiles, updateDetalhe);
+    console.log(`✅ v140: pdf.js extraiu ${textoCompleto.length} chars no browser`);
+  } catch (browserErr) {
+    console.warn('⚠️ v140: pdf.js falhou no browser:', browserErr.message);
+    
+    // FALLBACK: Enviar PDF ao servidor para conversão via Gemini
+    updateDetalhe('Conversor local indisponivel. Enviando PDF ao servidor...');
+    try {
+      textoCompleto = await _extrairTextoPDFNoServidor(pdfFiles[0], updateDetalhe);
+      usouFallbackServidor = true;
+      console.log(`✅ v140: Servidor extraiu ${textoCompleto.length} chars via Gemini`);
+    } catch (serverErr) {
+      console.error('❌ v140: Servidor tambem falhou:', serverErr.message);
+      // Mostrar tela de erro final
+      _mostrarErroPDFConversao(serverErr.message || browserErr.message);
+      return;
+    }
+  }
+  
+  // Adicionar texto de outros arquivos TXT
+  for (const f of outrosFiles) {
+    if (f.name.toLowerCase().endsWith('.txt') || f.type === 'text/plain') {
+      textoCompleto += '\n\n' + (await f.text());
+    }
+  }
+  
+  // Validar texto extraido
+  if (textoCompleto.trim().length < 100) {
+    console.warn('⚠️ v140: Texto extraido muito curto:', textoCompleto.length);
+    _mostrarErroPDFSemTexto();
+    return;
+  }
+  
+  console.log(`✅ v140: Texto total do PDF: ${textoCompleto.trim().length} chars. Seguindo fluxo TXT...`);
+  
+  // ═══════════════════════════════════════════════════════════════
+  // ETAPA 2: ENVIAR TEXTO AO SERVIDOR
+  // ═══════════════════════════════════════════════════════════════
+  renderProgressUI(2, 'Enviando texto extraido para o servidor...', `${textoCompleto.trim().length} caracteres prontos para analise`);
+  await new Promise(r => setTimeout(r, 400)); // pequeno delay visual
+  
+  // ═══════════════════════════════════════════════════════════════
+  // ETAPA 3 e 4: IA PROCESSA → IMPORTA (via processarTextoEditalColado)
+  // ═══════════════════════════════════════════════════════════════
+  renderProgressUI(3, 'IA esta analisando o conteudo do edital...', 'Extraindo disciplinas e topicos...');
+  
+  // Resetar flag para que processarTextoEditalColado nao seja bloqueado
+  isProcessingEdital = false;
+  
+  // Chamar o fluxo natural de processamento de texto (igual TXT)
+  await processarTextoEditalColado(textoCompleto.trim());
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FUNCAO AUXILIAR: Extrair texto do PDF no browser usando pdf.js
+// ═══════════════════════════════════════════════════════════════
+async function _extrairTextoPDFNoBrowser(pdfFiles, updateDetalhe) {
+  // Verificar se pdf.js esta disponivel
+  let pdfjsLib = window.pdfjsLib;
+  
+  if (!pdfjsLib && window._pdfJsLoaded) {
+    updateDetalhe('Aguardando pdf.js carregar...');
+    pdfjsLib = await Promise.race([
+      window._pdfJsLoaded,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout carregando pdf.js')), 8000))
+    ]);
+  }
+  
+  if (!pdfjsLib) {
+    // Tentar carregar dinamicamente via script tag (nao ESM)
+    updateDetalhe('Baixando conversor de PDF...');
+    pdfjsLib = await new Promise((resolve, reject) => {
+      // Verificar se ja existe no window (carregado pelo script tag)
+      if (window.pdfjsLib) { resolve(window.pdfjsLib); return; }
+      
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      script.onload = () => {
+        if (window.pdfjsLib) {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          resolve(window.pdfjsLib);
+        } else {
+          reject(new Error('pdf.js carregou mas pdfjsLib nao encontrado'));
+        }
+      };
+      script.onerror = () => reject(new Error('Falha ao baixar pdf.js'));
+      document.head.appendChild(script);
+      
+      // Timeout de 10s
+      setTimeout(() => reject(new Error('Timeout baixando pdf.js')), 10000);
+    });
+  }
+  
+  if (!pdfjsLib || !pdfjsLib.getDocument) {
+    throw new Error('pdf.js nao disponivel neste navegador');
+  }
+  
+  updateDetalhe('Conversor pronto! Lendo PDF...');
+  
+  let textoTotal = '';
+  
+  for (let i = 0; i < pdfFiles.length; i++) {
+    const file = pdfFiles[i];
+    updateDetalhe(`Lendo ${file.name} (${(file.size/1024/1024).toFixed(1)}MB)...`);
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+    const totalPages = pdf.numPages;
+    
+    updateDetalhe(`${file.name}: ${totalPages} paginas encontradas`);
+    
+    let textoArquivo = '';
+    for (let p = 1; p <= totalPages; p++) {
+      const page = await pdf.getPage(p);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+      textoArquivo += pageText + '\n';
+      
+      if (p % 10 === 0 || p === totalPages) {
+        updateDetalhe(`${file.name}: pagina ${p}/${totalPages}`);
+      }
+    }
+    
+    console.log(`✅ PDF ${file.name}: ${totalPages} pags → ${textoArquivo.length} chars`);
+    textoTotal += textoArquivo + '\n\n';
+  }
+  
+  return textoTotal;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FUNCAO AUXILIAR: Fallback - Enviar PDF ao servidor para conversao
+// ═══════════════════════════════════════════════════════════════
+async function _extrairTextoPDFNoServidor(pdfFile, updateDetalhe) {
+  updateDetalhe('Enviando PDF para o servidor converter...');
+  
+  const formData = new FormData();
+  formData.append('arquivo', pdfFile);
+  formData.append('user_id', currentUser?.id || '');
+  
+  const response = await axios.post('/api/editais/pdf-para-texto', formData, {
+    timeout: 120000, // 2 minutos
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (p) => {
+      if (p.total) {
+        const pct = Math.round((p.loaded / p.total) * 100);
+        updateDetalhe(`Enviando PDF... ${pct}%`);
+      }
+    }
+  });
+  
+  if (response.data && response.data.texto && response.data.texto.length > 100) {
+    updateDetalhe(`Servidor extraiu ${response.data.texto.length} caracteres`);
+    return response.data.texto;
+  }
+  
+  throw new Error(response.data?.error || 'Servidor nao conseguiu extrair texto do PDF');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FUNCAO AUXILIAR: Tela de erro - PDF nao pode ser convertido
+// ═══════════════════════════════════════════════════════════════
+function _mostrarErroPDFConversao(errorMsg) {
+  document.getElementById('app').innerHTML = `
+    <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+      <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
+          <i class="fas fa-exclamation-triangle text-orange-500 text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-bold ${themes[currentTheme].text} mb-2">Nao foi possivel converter o PDF</h3>
+        <p class="text-gray-600 mb-4 text-sm">
+          A conversao automatica nao funcionou. Converta manualmente:
+        </p>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-left">
+          <p class="text-sm font-semibold text-blue-800 mb-2">Como resolver:</p>
+          <ol class="text-sm text-blue-700 space-y-2">
+            <li class="flex items-start gap-2">
+              <span class="font-bold text-blue-800">1.</span> 
+              Acesse <a href="https://smallpdf.com/pdf-to-text" target="_blank" class="underline font-semibold">smallpdf.com/pdf-to-text</a>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="font-bold text-blue-800">2.</span> 
+              Faca upload do PDF e converta para TXT
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="font-bold text-blue-800">3.</span> 
+              Volte aqui e anexe o arquivo <strong>.TXT</strong>
+            </li>
+          </ol>
+        </div>
+        ${errorMsg ? `<p class="text-xs text-gray-400 mb-3">Detalhe: ${errorMsg}</p>` : ''}
+        <div class="flex flex-col gap-3">
+          <a href="https://smallpdf.com/pdf-to-text" target="_blank"
+             class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold flex items-center justify-center gap-2">
+            <i class="fas fa-external-link-alt"></i> Converter PDF para TXT
+          </a>
+          <button onclick="renderEntrevistaStep1()" 
+                  class="w-full py-3 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg font-semibold border ${themes[currentTheme].border}">
+            <i class="fas fa-arrow-left mr-2"></i> Voltar
+          </button>
+          <button onclick="renderEntrevistaStep2()" 
+                  class="w-full py-2 text-gray-500 hover:text-gray-700 text-sm">
+            Continuar sem edital →
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FUNCAO AUXILIAR: Tela de erro - PDF sem texto extraivel
+// ═══════════════════════════════════════════════════════════════
+function _mostrarErroPDFSemTexto() {
+  document.getElementById('app').innerHTML = `
+    <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
+      <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 text-center shadow-xl">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
+          <i class="fas fa-file-pdf text-orange-500 text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-bold ${themes[currentTheme].text} mb-2">PDF sem texto extraivel</h3>
+        <p class="text-gray-600 mb-4 text-sm">
+          O PDF parece ser uma imagem escaneada ou esta protegido. 
+          O texto nao pode ser lido automaticamente.
+        </p>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-left">
+          <p class="text-sm font-semibold text-blue-800 mb-2">Solucao:</p>
+          <ol class="text-sm text-blue-700 space-y-2">
+            <li><strong>1.</strong> Acesse <a href="https://smallpdf.com/pdf-to-text" target="_blank" class="underline font-semibold">smallpdf.com/pdf-to-text</a> (usa OCR)</li>
+            <li><strong>2.</strong> Converta o PDF para TXT</li>
+            <li><strong>3.</strong> Volte aqui e anexe o arquivo .TXT</li>
+          </ol>
+        </div>
+        <p class="text-xs text-gray-400 mb-3">Dica: voce tambem pode copiar e colar o conteudo programatico na aba "Colar Texto".</p>
+        <div class="flex flex-col gap-3">
+          <a href="https://smallpdf.com/pdf-to-text" target="_blank"
+             class="w-full py-3 bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-lg font-semibold flex items-center justify-center gap-2">
+            <i class="fas fa-external-link-alt"></i> Converter PDF para TXT
+          </a>
+          <button onclick="renderEntrevistaStep1()" 
+                  class="w-full py-3 ${themes[currentTheme].bgAlt} ${themes[currentTheme].text} rounded-lg font-semibold border ${themes[currentTheme].border}">
+            <i class="fas fa-arrow-left mr-2"></i> Voltar
+          </button>
+          <button onclick="renderEntrevistaStep2()" 
+                  class="w-full py-2 text-gray-500 hover:text-gray-700 text-sm">
+            Continuar sem edital →
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 // ✅ NOVA FUNÇÃO: Processar edital ANTES de mostrar disciplinas

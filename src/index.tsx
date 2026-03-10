@@ -6129,13 +6129,13 @@ app.post('/api/editais/upload', async (c) => {
         textoCompleto = await file.text()
         console.log(`✅ TXT lido: ${textoCompleto.length} caracteres`)
       } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-        // v138: PDF → converter para TEXTO PURO via Gemini (rápido) → seguir fluxo TXT natural
-        // NÃO tenta extrair disciplinas aqui. Apenas converte PDF→texto.
-        // O /processar/:id cuida da extração de disciplinas depois (igual TXT).
+        // v140: PDF no upload é apenas armazenado. A conversão PDF→texto acontece no frontend (pdf.js)
+        // ou via /api/editais/pdf-para-texto (fallback Gemini).
+        // O texto convertido é enviado via /api/editais/processar-texto (fluxo TXT natural).
         const arrayBuffer = await file.arrayBuffer()
         const fileSizeMB = arrayBuffer.byteLength / (1024 * 1024)
         
-        console.log(`📄 PDF detectado: ${file.name} (${fileSizeMB.toFixed(2)} MB) - Convertendo para texto v138`)
+        console.log(`📄 PDF detectado no upload: ${file.name} (${fileSizeMB.toFixed(2)} MB) - v140: apenas armazenamento`)
         
         if (fileSizeMB > 5) {
           return c.json({
@@ -6147,105 +6147,11 @@ app.post('/api/editais/upload', async (c) => {
           }, 413)
         }
         
-        if (!geminiKey || geminiKey === 'SUA_CHAVE_GEMINI_AQUI') {
-          return c.json({ error: 'API key do Gemini não configurada' }, 500)
-        }
+        // v140: PDF no upload = apenas armazenar, sem conversão Gemini
+        // A conversão já foi feita no frontend (pdf.js) ou será feita via /api/editais/pdf-para-texto
+        textoCompleto = '[PDF ARMAZENADO - TEXTO EXTRAIDO NO FRONTEND]'
+        console.log(`📄 v140: PDF armazenado sem processamento Gemini. Conversão no frontend.`)
         
-        try {
-          // Converter PDF para base64
-          const bytes = new Uint8Array(arrayBuffer)
-          let binary = ''
-          const chunkSize = 8192
-          for (let i = 0; i < bytes.length; i += chunkSize) {
-            const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
-            binary += String.fromCharCode.apply(null, Array.from(chunk))
-          }
-          const base64PDF = btoa(binary)
-          console.log(`📄 PDF base64: ${base64PDF.length} chars`)
-          
-          // Prompt SIMPLES: apenas transcrever o conteúdo do PDF como texto
-          const promptTexto = `TRANSCREVA O CONTEÚDO COMPLETO deste documento PDF para texto puro.
-
-INSTRUÇÕES:
-- TRANSCREVA literalmente TODO o conteúdo do documento
-- PRIORIZE as seções de CONTEÚDO PROGRAMÁTICO, ANEXOS e QUADRO DE PROVAS se existirem
-- Mantenha a estrutura (títulos, subtítulos, listas, numeração)
-- NÃO resuma, NÃO comente, NÃO interprete
-- NÃO adicione formatação markdown
-- Apenas transcreva o texto como está no documento
-
-INICIE A TRANSCRIÇÃO:`
-
-          const sleepMs = (ms: number) => new Promise(r => setTimeout(r, ms))
-          const modelos = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
-          let textoExtraido = ''
-          let modeloUsado = ''
-          
-          for (const modelo of modelos) {
-            try {
-              console.log(`🚀 Convertendo PDF→texto com ${modelo}...`)
-              const resp = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${geminiKey}`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contents: [{
-                      parts: [
-                        { text: promptTexto },
-                        { inline_data: { mime_type: 'application/pdf', data: base64PDF } }
-                      ]
-                    }],
-                    generationConfig: { temperature: 0.05, maxOutputTokens: 65536 }
-                  })
-                }
-              )
-              
-              if (resp.status === 429) {
-                console.log(`⚠️ ${modelo}: Rate limit, aguardando 5s...`)
-                await sleepMs(5000)
-                continue
-              }
-              
-              if (resp.ok) {
-                const data = await resp.json() as any
-                const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-                if (txt.length > 200) {
-                  textoExtraido = txt
-                  modeloUsado = modelo
-                  console.log(`✅ PDF→texto com ${modelo}: ${txt.length} caracteres extraídos`)
-                  break
-                } else {
-                  console.log(`⚠️ ${modelo}: texto muito curto (${txt.length} chars)`)
-                }
-              } else {
-                console.log(`⚠️ ${modelo}: HTTP ${resp.status}`)
-              }
-            } catch (err: any) {
-              console.error(`❌ ${modelo} erro:`, err.message)
-            }
-          }
-          
-          if (!textoExtraido) {
-            return c.json({
-              error: 'Não foi possível converter o PDF para texto. Tente novamente em 1 minuto ou converta para TXT manualmente.',
-              suggestion: 'Use https://smallpdf.com/pdf-to-text',
-              errorType: 'PDF_EXTRACTION_FAILED'
-            }, 422)
-          }
-          
-          // Salvar o TEXTO EXTRAÍDO (como se fosse um TXT) → fluxo natural de processamento
-          textoCompleto = textoExtraido
-          console.log(`✅ PDF convertido para texto (${modeloUsado}): ${textoCompleto.length} chars - seguirá fluxo TXT`)
-          
-        } catch (pdfError: any) {
-          console.error('❌ Erro ao converter PDF:', pdfError)
-          return c.json({
-            error: 'Erro ao processar PDF. Tente novamente em 1 minuto ou converta para TXT.',
-            details: pdfError?.message || 'Falha no processamento',
-            suggestion: 'Use https://smallpdf.com/pdf-to-text'
-          }, 500)
-        }
       } else {
         console.warn(`⚠️ Arquivo ${file.name} não é TXT, PDF nem XLSX. Será ignorado.`)
         textoCompleto = ''
@@ -7131,6 +7037,117 @@ ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo princ
       suggestion: suggestion,
       canRetry: canRetry
     }, 500)
+  }
+})
+
+// ════════════════════════════════════════════════════════════════════════
+// ✅ v140: ENDPOINT FALLBACK - Converter PDF para texto puro via Gemini
+// Usado quando pdf.js falha no browser (Safari/iOS/PWA)
+// ════════════════════════════════════════════════════════════════════════
+app.post('/api/editais/pdf-para-texto', async (c) => {
+  try {
+    const formData = await c.req.parseBody()
+    const arquivo = formData['arquivo'] as File
+    
+    if (!arquivo || !(arquivo instanceof File)) {
+      return c.json({ error: 'Nenhum arquivo PDF recebido' }, 400)
+    }
+    
+    console.log('═'.repeat(60))
+    console.log('📄 v140: FALLBACK PDF→TEXTO via Gemini')
+    console.log('═'.repeat(60))
+    console.log(`📄 Arquivo: ${arquivo.name} (${(arquivo.size / 1024 / 1024).toFixed(2)} MB)`)
+    
+    if (arquivo.size > 5 * 1024 * 1024) {
+      return c.json({ error: 'PDF muito grande (max 5MB)' }, 413)
+    }
+    
+    // Obter API key do Gemini
+    const apiKeys = await getActiveAPIKeys(c.env.DB)
+    const geminiKey = apiKeys.find((k: any) => k.provider === 'gemini')?.api_key || c.env.GEMINI_API_KEY || ''
+    
+    if (!geminiKey) {
+      return c.json({ error: 'API key do Gemini nao configurada' }, 500)
+    }
+    
+    // Converter PDF para base64
+    const arrayBuffer = await arquivo.arrayBuffer()
+    const bytes = new Uint8Array(arrayBuffer)
+    let binary = ''
+    const chunkSize = 8192
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
+      binary += String.fromCharCode.apply(null, Array.from(chunk))
+    }
+    const base64PDF = btoa(binary)
+    console.log(`📄 PDF base64: ${base64PDF.length} chars`)
+    
+    // Prompt simples: apenas transcrever texto
+    const promptTexto = 'TRANSCREVA O CONTEUDO COMPLETO deste documento PDF para texto puro.\n\nINSTRUCOES:\n- TRANSCREVA literalmente TODO o conteudo do documento\n- PRIORIZE as secoes de CONTEUDO PROGRAMATICO, ANEXOS e QUADRO DE PROVAS se existirem\n- Mantenha a estrutura (titulos, subtitulos, listas, numeracao)\n- NAO resuma, NAO comente, NAO interprete\n- NAO adicione formatacao markdown\n- Apenas transcreva o texto como esta no documento\n\nINICIE A TRANSCRICAO:'
+    
+    const sleepMs = (ms: number) => new Promise(r => setTimeout(r, ms))
+    const modelos = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
+    let textoExtraido = ''
+    
+    for (const modelo of modelos) {
+      try {
+        console.log('🚀 Convertendo PDF→texto com ' + modelo + '...')
+        const resp = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/' + modelo + ':generateContent?key=' + geminiKey,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: promptTexto },
+                  { inline_data: { mime_type: 'application/pdf', data: base64PDF } }
+                ]
+              }],
+              generationConfig: { temperature: 0.05, maxOutputTokens: 65536 }
+            })
+          }
+        )
+        
+        if (resp.status === 429) {
+          console.log('⚠️ ' + modelo + ': Rate limit, aguardando 5s...')
+          await sleepMs(5000)
+          continue
+        }
+        
+        if (resp.ok) {
+          const data = await resp.json() as any
+          const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+          if (txt.length > 200) {
+            textoExtraido = txt
+            console.log('✅ PDF→texto com ' + modelo + ': ' + txt.length + ' chars')
+            break
+          }
+        } else {
+          console.log('⚠️ ' + modelo + ': HTTP ' + resp.status)
+        }
+      } catch (err: any) {
+        console.error('❌ ' + modelo + ' erro:', err.message)
+      }
+    }
+    
+    if (!textoExtraido) {
+      return c.json({ 
+        error: 'Nao foi possivel converter o PDF. Tente converter manualmente em smallpdf.com/pdf-to-text',
+        errorType: 'PDF_EXTRACTION_FAILED'
+      }, 422)
+    }
+    
+    console.log('✅ v140: PDF convertido para texto: ' + textoExtraido.length + ' chars')
+    return c.json({ 
+      success: true, 
+      texto: textoExtraido,
+      caracteres: textoExtraido.length
+    })
+    
+  } catch (err: any) {
+    console.error('❌ Erro no fallback PDF→texto:', err)
+    return c.json({ error: err.message || 'Erro ao processar PDF' }, 500)
   }
 })
 
@@ -21547,6 +21564,20 @@ app.get('/home', (c) => {
     <!-- Marked.js for Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
     
+    <!-- PDF.js v3 (legacy, script normal - compativel com todos os browsers) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+      // Configurar pdf.js worker
+      if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        console.log('✅ PDF.js v3 carregado');
+        window._pdfJsLoaded = Promise.resolve(window.pdfjsLib);
+      } else {
+        console.warn('⚠️ PDF.js nao carregou');
+        window._pdfJsLoaded = Promise.resolve(null);
+      }
+    </script>
+    
     <!-- Main App Script -->
     <script src="/static/app.js?v=${Date.now()}"></script>
     
@@ -23582,6 +23613,17 @@ app.get('*', (c) => {
             </div>
         </div>
     </div>
+    
+    <!-- PDF.js v3 (legacy, script normal) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+      if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        window._pdfJsLoaded = Promise.resolve(window.pdfjsLib);
+      } else {
+        window._pdfJsLoaded = Promise.resolve(null);
+      }
+    </script>
     
     <!-- Main App Script -->
     <script src="/static/app.js?v=${Date.now()}"></script>
