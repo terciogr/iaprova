@@ -1,7 +1,7 @@
-// IAprova Service Worker v5.0 - v137 PDF edital Files API + modelos 2.5-flash + retry inteligente
-const CACHE_NAME = 'iaprova-v137';
-const STATIC_CACHE = 'iaprova-static-v137';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v137';
+// IAprova Service Worker v5.1 - v138 PDF edital: converter para texto primeiro, depois fluxo TXT natural
+const CACHE_NAME = 'iaprova-v138';
+const STATIC_CACHE = 'iaprova-static-v138';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v138';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [

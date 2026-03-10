@@ -4723,9 +4723,10 @@ async function processarEditalAntesDeStep2() {
     // Aguardar 500ms para transição visual
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // 2️⃣ Processar cada edital via IA (APENAS SE NÃO FOR XLSX/PDF processado)
+    // 2️⃣ Processar cada edital via IA (APENAS SE NÃO FOR XLSX processado automaticamente)
+    // PDF v138: texto já foi extraído no upload, agora segue fluxo TXT natural
     for (const edital of uploadRes.data.editais) {
-      // ✅ Se foi XLSX ou PDF processado direto, já tem disciplinas extraídas
+      // ✅ Se foi XLSX processado direto, já tem disciplinas extraídas
       if (edital.processado_automaticamente) {
         const tipoLabel = edital.tipo === 'pdf' ? 'PDF' : 'XLSX';
         console.log(`📊 ${tipoLabel} ${edital.id} processado automaticamente (${edital.disciplinas_extraidas} disciplinas)`);
