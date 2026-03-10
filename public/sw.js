@@ -1,6 +1,6 @@
-// IAprova Service Worker v6.5 - v145: HOTFIX SEGURANCA - webhook HMAC, auth obrigatoria, protecao contra elevacao de privilegio
-const CACHE_NAME = 'iaprova-v145';
-const STATIC_CACHE = 'iaprova-static-v145';
+// IAprova Service Worker v6.6 - v146: Admin Google Only + force logout + bloqueio completo endpoints admin
+const CACHE_NAME = 'iaprova-v146';
+const STATIC_CACHE = 'iaprova-static-v146';
 const DYNAMIC_CACHE = 'iaprova-dynamic-v141';
 
 // Arquivos essenciais para cache offline

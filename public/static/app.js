@@ -1485,13 +1485,49 @@ function checkUser() {
     picture: localStorage.getItem('userPicture') || null,
     authProvider: localStorage.getItem('authProvider') || 'email'
   };
-  verificarEntrevista();
+  
+  // ✅ SEGURANÇA v146: Validar sessão no servidor antes de continuar
+  validarSessaoEContinuar();
   
   // Criar botão de ajuda flutuante após login
   setTimeout(createHelpButton, 1000);
   
   // Adicionar botão de ajuda no header (?) à direita
   setTimeout(addHelpToHeader, 500);
+}
+
+// ✅ SEGURANÇA v146: Validar sessão no servidor antes de permitir acesso
+async function validarSessaoEContinuar() {
+  try {
+    const response = await axios.get('/api/auth/validate-session', {
+      headers: { 
+        'X-User-ID': currentUser.id,
+        'X-Auth-Provider': currentUser.authProvider || 'email'
+      }
+    });
+    
+    if (response.data.force_logout) {
+      console.warn('🔒 Sessão invalidada pelo servidor:', response.data.reason);
+      
+      // Se é Google Only, mostrar mensagem específica
+      if (response.data.googleOnly) {
+        showToast('⚠️ Esta conta requer autenticação via Google. Faça login novamente.', 'warning', 5000);
+      } else {
+        showToast('⚠️ Sua sessão foi encerrada. Faça login novamente.', 'warning', 4000);
+      }
+      
+      // Forçar logout
+      logout();
+      return;
+    }
+    
+    // Sessão válida — continuar normalmente
+    verificarEntrevista();
+  } catch (error) {
+    console.warn('⚠️ Erro ao validar sessão, continuando normalmente:', error);
+    // Em caso de erro de rede, não bloquear o usuário
+    verificarEntrevista();
+  }
 }
 
 // Login com Google
@@ -3066,6 +3102,11 @@ window.handleLandingSignup = async function(event) {
           return;
         }
       } catch (loginError) {
+        // ✅ SEGURANÇA v146: Se é conta Google Only, mostrar mensagem
+        if (loginError.response?.data?.googleOnly) {
+          showToast('Esta conta usa autenticação via Google. Use "Entrar com Google".', 'warning');
+          return;
+        }
         // Se falhou no login também, mostrar erro específico
         if (loginError.response?.data?.message?.includes('Senha incorreta')) {
           showToast('Email já cadastrado. Senha incorreta.', 'error');
@@ -3074,7 +3115,12 @@ window.handleLandingSignup = async function(event) {
         }
       }
     } else {
-      showToast(error.response?.data?.message || 'Erro ao criar conta. Tente novamente.', 'error');
+      // ✅ SEGURANÇA v146: Tratar googleOnly no cadastro
+      if (error.response?.data?.googleOnly) {
+        showToast('Esta conta usa autenticação via Google. Use "Entrar com Google".', 'warning');
+      } else {
+        showToast(error.response?.data?.message || error.response?.data?.error || 'Erro ao criar conta. Tente novamente.', 'error');
+      }
     }
   } finally {
     btn.disabled = false;
@@ -3373,8 +3419,19 @@ function renderLogin() {
         const errorData = error.response?.data;
         const errorMsg = errorData?.error || error.message || 'Erro na operação';
         
+        // ✅ SEGURANÇA v146: Se é conta Google Only, redirecionar para login Google
+        if (errorData?.googleOnly) {
+          showModal(
+            'Esta conta utiliza exclusivamente autenticação via Google.<br><br>' +
+            '<button onclick="document.querySelector(\'.modal-overlay\')?.remove(); loginComGoogle();" ' +
+            'class="mt-3 px-6 py-2 bg-white border-2 border-gray-300 rounded-lg font-semibold hover:bg-gray-50 flex items-center gap-2 mx-auto">' +
+            '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">' +
+            'Entrar com Google</button>',
+            { type: 'warning', title: '🔒 Autenticação Google' }
+          );
+        }
         // Se o email não foi verificado
-        if (errorData?.needsVerification) {
+        else if (errorData?.needsVerification) {
           renderEmailVerification(errorData.email || email, errorMsg, true);
         } else {
           showModal(errorMsg, { type: 'error' });

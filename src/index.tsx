@@ -7,6 +7,10 @@ import OpenAI from 'openai'
 import * as XLSX from 'xlsx'
 // EmailService movido para funções inline com templates atualizados
 
+// ✅ SEGURANÇA v146: Email do administrador — ÚNICA conta com acesso admin
+// Esta conta SÓ pode autenticar via Google OAuth
+const ADMIN_EMAIL = 'terciogomesrabelo@gmail.com'
+
 // ✅ FUNÇÃO PARA PDFs GRANDES - USA FILES API DO GEMINI
 async function extractLargePDFWithFilesAPI(pdfBytes: Uint8Array, geminiKey: string): Promise<string> {
   console.log('🚀 Usando Files API do Gemini para PDF grande...')
@@ -1644,6 +1648,15 @@ app.post('/api/register', async (c) => {
     return c.json({ error: 'Email inválido' }, 400)
   }
 
+  // ✅ SEGURANÇA v146: Bloquear registro por email/senha para o admin
+  if (email === ADMIN_EMAIL) {
+    console.warn(`🚨 SEGURANÇA: Tentativa de registro por email/senha bloqueada para admin (${email})`)
+    return c.json({ 
+      error: 'Esta conta utiliza exclusivamente autenticação via Google. Use o botão "Entrar com Google".',
+      googleOnly: true
+    }, 403)
+  }
+
   try {
     // Verificar se email já existe
     const existingUser = await DB.prepare(
@@ -1830,6 +1843,15 @@ app.post('/api/login', async (c) => {
   // Validar formato do email
   if (!isValidEmail(email)) {
     return c.json({ error: 'Email inválido' }, 400)
+  }
+
+  // ✅ SEGURANÇA v146: Admin DEVE autenticar via Google — bloquear login por email/senha
+  if (email === ADMIN_EMAIL) {
+    console.warn(`🚨 SEGURANÇA: Tentativa de login por email/senha bloqueada para admin (${email})`)
+    return c.json({ 
+      error: 'Esta conta utiliza exclusivamente autenticação via Google. Use o botão "Entrar com Google".',
+      googleOnly: true
+    }, 403)
   }
 
   try {
@@ -3394,18 +3416,27 @@ app.get('/obrigado-premium', async (c) => {
 })
 
 // ============== MÓDULO ADMINISTRADOR (EXCLUSIVO) ==============
-// ⚠️ ACESSO RESTRITO: Apenas terciogomesrabelo@gmail.com
-
-const ADMIN_EMAIL = 'terciogomesrabelo@gmail.com'
+// ⚠️ ACESSO RESTRITO: Apenas ADMIN_EMAIL (definido no topo do arquivo)
+// ⚠️ Admin SÓ autentica via Google OAuth
 
 // Middleware para verificar se é admin
+// ✅ SEGURANÇA v146: Admin DEVE ter autenticado via Google
 async function isAdmin(c: any): Promise<boolean> {
   const userId = c.req.header('X-User-ID')
   if (!userId) return false
   
   const { DB } = c.env
-  const user = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first() as any
-  return user?.email === ADMIN_EMAIL
+  const user = await DB.prepare('SELECT email, auth_provider FROM users WHERE id = ?').bind(userId).first() as any
+  if (!user || user.email !== ADMIN_EMAIL) return false
+  
+  // ✅ SEGURANÇA: Verificar que auth_provider inclui 'google'
+  const provider = (user.auth_provider || '').toLowerCase()
+  if (provider !== 'google' && provider !== 'both') {
+    console.warn(`🚨 SEGURANÇA: Admin ${userId} rejeitado - auth_provider=${provider} (requer google)`)
+    return false
+  }
+  
+  return true
 }
 
 // Registrar log de email enviado
@@ -5290,6 +5321,107 @@ app.get('/api/admin/check', async (c) => {
   return c.json({ isAdmin: isAdminUser })
 })
 
+// ✅ SEGURANÇA v146: Endpoint para validar sessão ativa
+// O frontend chama isso ao iniciar para verificar se a sessão é válida
+// Retorna force_logout=true se a sessão foi invalidada
+app.get('/api/auth/validate-session', async (c) => {
+  const { DB } = c.env
+  const userId = c.req.header('X-User-ID')
+  const authProvider = c.req.header('X-Auth-Provider') || ''
+  
+  if (!userId) {
+    return c.json({ valid: false, force_logout: true, reason: 'Sem identificação de usuário' })
+  }
+  
+  try {
+    // Auto-migrate: garantir que coluna force_logout_at existe
+    try {
+      await DB.prepare('SELECT force_logout_at FROM users LIMIT 1').first()
+    } catch {
+      await DB.prepare('ALTER TABLE users ADD COLUMN force_logout_at DATETIME DEFAULT NULL').run()
+      console.log('✅ Coluna force_logout_at adicionada automaticamente')
+    }
+    
+    const user = await DB.prepare(
+      'SELECT id, email, auth_provider, force_logout_at FROM users WHERE id = ?'
+    ).bind(userId).first() as any
+    
+    if (!user) {
+      return c.json({ valid: false, force_logout: true, reason: 'Usuário não encontrado' })
+    }
+    
+    // ✅ SEGURANÇA: Admin DEVE estar autenticado via Google
+    if (user.email === ADMIN_EMAIL && authProvider !== 'google') {
+      console.warn(`🚨 SEGURANÇA: Admin sessão inválida - auth_provider=${authProvider}, forçando logout`)
+      return c.json({ 
+        valid: false, 
+        force_logout: true, 
+        reason: 'Sessão administrativa requer autenticação via Google',
+        googleOnly: true
+      })
+    }
+    
+    // ✅ Verificar force_logout_at (se definido, a sessão foi invalidada pelo admin)
+    if (user.force_logout_at) {
+      console.log(`🔒 Force logout ativo para usuário ${userId} desde ${user.force_logout_at}`)
+      // Limpar o flag após enviar o force_logout
+      await DB.prepare('UPDATE users SET force_logout_at = NULL WHERE id = ?').bind(userId).run()
+      return c.json({ valid: false, force_logout: true, reason: 'Sessão invalidada pelo administrador' })
+    }
+    
+    return c.json({ valid: true, force_logout: false })
+  } catch (error: any) {
+    console.error('Erro ao validar sessão:', error)
+    return c.json({ valid: true, force_logout: false }) // Em caso de erro, não deslogar
+  }
+})
+
+// ✅ SEGURANÇA v146: Endpoint admin para forçar logout de um usuário
+app.post('/api/admin/force-logout/:userId', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  const targetUserId = c.req.param('userId')
+  
+  try {
+    await DB.prepare(
+      'UPDATE users SET force_logout_at = datetime(\'now\') WHERE id = ?'
+    ).bind(targetUserId).run()
+    
+    console.log(`🔒 Force logout definido para usuário ${targetUserId} pelo admin`)
+    return c.json({ success: true, message: `Logout forçado definido para usuário ${targetUserId}` })
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500)
+  }
+})
+
+// ✅ SEGURANÇA v146: Endpoint admin para forçar logout de TODOS os usuários (exceto admin)
+app.post('/api/admin/force-logout-all', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const result = await DB.prepare(
+      `UPDATE users SET force_logout_at = datetime('now') WHERE email != ?`
+    ).bind(ADMIN_EMAIL).run()
+    
+    console.log(`🔒 Force logout definido para TODOS os usuários (exceto admin)`)
+    return c.json({ 
+      success: true, 
+      message: `Logout forçado definido para ${result.meta.changes || 0} usuários`,
+      affected: result.meta.changes || 0
+    })
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500)
+  }
+})
+
 // Buscar detalhes de um usuário específico (admin)
 app.get('/api/admin/users/:id', async (c) => {
   const { DB } = c.env
@@ -5639,6 +5771,14 @@ app.get('/api/auth/google/callback', async (c) => {
       ).run()
       
       console.log(`✅ Usuário ${user.id} atualizado com Google OAuth`)
+      
+      // ✅ SEGURANÇA v146: Se é o admin, garantir que auth_provider = 'google' e limpar force_logout
+      if (user.email === ADMIN_EMAIL || googleUser.email === ADMIN_EMAIL) {
+        await DB.prepare(`
+          UPDATE users SET auth_provider = 'google', force_logout_at = NULL WHERE id = ?
+        `).bind(user.id).run()
+        console.log(`🔒 Admin ${user.id} autenticado via Google — auth_provider forçado para 'google'`)
+      }
     } else {
       // Criar novo usuário
       const result = await DB.prepare(`
@@ -5965,6 +6105,15 @@ app.post('/api/forgot-password', async (c) => {
   
   if (!email || !isValidEmail(email)) {
     return c.json({ error: 'Email inválido' }, 400)
+  }
+  
+  // ✅ SEGURANÇA v146: Admin não pode usar recuperação de senha (Google Only)
+  if (email === ADMIN_EMAIL) {
+    console.warn(`🚨 SEGURANÇA: Tentativa de reset de senha bloqueada para admin (${email})`)
+    return c.json({ 
+      error: 'Esta conta utiliza exclusivamente autenticação via Google. Não é possível recuperar senha.',
+      googleOnly: true
+    }, 403)
   }
   
   try {
@@ -24045,9 +24194,8 @@ app.post('/api/admin/messages', async (c) => {
     return c.json({ error: 'admin_id, user_id e message são obrigatórios' }, 400);
   }
   
-  // Verificar se admin
-  const admin = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(admin_id).first();
-  if (!admin || admin.email !== ADMIN_EMAIL) {
+  // ✅ SEGURANÇA v146: Usar isAdmin() padrão
+  if (!await isAdmin(c)) {
     return c.json({ error: 'Acesso negado' }, 403);
   }
   
@@ -24098,13 +24246,10 @@ app.post('/api/messages/reply', async (c) => {
 // para que "conversations" não seja capturado como :user_id
 app.get('/api/admin/messages/conversations', async (c) => {
   const { env } = c;
-  const adminId = c.req.query('admin_id');
   
-  if (adminId) {
-    const admin = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(adminId).first();
-    if (!admin || admin.email !== ADMIN_EMAIL) {
-      return c.json({ error: 'Acesso negado' }, 403);
-    }
+  // ✅ SEGURANÇA v146: Verificação admin OBRIGATÓRIA
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403);
   }
   
   try {
@@ -24145,6 +24290,12 @@ app.get('/api/admin/messages/conversations', async (c) => {
 // Total de mensagens não lidas para o admin (sidebar badge)
 app.get('/api/admin/messages/unread-total', async (c) => {
   const { env } = c;
+  
+  // ✅ SEGURANÇA v146: Verificação admin OBRIGATÓRIA
+  if (!await isAdmin(c)) {
+    return c.json({ total: 0 });
+  }
+  
   try {
     const result = await env.DB.prepare(`
       SELECT COUNT(*) as total 
@@ -24185,14 +24336,10 @@ app.post('/api/admin/messages/mark-read', async (c) => {
 app.get('/api/admin/messages/:user_id', async (c) => {
   const { env } = c;
   const userId = c.req.param('user_id');
-  const adminId = c.req.query('admin_id');
   
-  // Verificar admin
-  if (adminId) {
-    const admin = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(adminId).first();
-    if (!admin || admin.email !== ADMIN_EMAIL) {
-      return c.json({ error: 'Acesso negado' }, 403);
-    }
+  // ✅ SEGURANÇA v146: Verificação admin OBRIGATÓRIA
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403);
   }
   
   const messages = await env.DB.prepare(
