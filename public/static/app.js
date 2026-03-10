@@ -1334,7 +1334,9 @@ function createUnifiedFAB() {
 // Verificar mensagens não lidas para o admin (sidebar badge)
 async function checkAdminUnreadMessages() {
   try {
-    const res = await axios.get('/api/admin/messages/unread-total');
+    const res = await axios.get('/api/admin/messages/unread-total', {
+      headers: { 'X-User-ID': currentUser?.id }
+    });
     const total = res.data?.total || 0;
     const badge = document.getElementById('sidebar-chat-badge');
     const notifIcon = document.getElementById('sidebar-chat-notif-icon');
@@ -18348,7 +18350,10 @@ window.abrirChatAdmin = async function() {
   
   try {
     var results = await Promise.allSettled([
-      axios.get('/api/admin/messages/conversations', { params: { admin_id: currentUser.id } }),
+      axios.get('/api/admin/messages/conversations', { 
+        params: { admin_id: currentUser.id },
+        headers: { 'X-User-ID': currentUser.id }
+      }),
       axios.get('/api/admin/chat-users', { headers: { 'X-User-ID': currentUser.id } })
     ]);
     var conversations = results[0].status === 'fulfilled' ? (results[0].value.data.conversations || []) : [];
@@ -18606,7 +18611,10 @@ window.abrirChatComUsuarioId = async function(userId, userName) {
   content.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i></div>';
   
   try {
-    var res = await axios.get('/api/admin/messages/' + userId, { params: { admin_id: currentUser.id } });
+    var res = await axios.get('/api/admin/messages/' + userId, { 
+      params: { admin_id: currentUser.id },
+      headers: { 'X-User-ID': currentUser.id }
+    });
     var messages = res.data.messages || [];
     
     var html = '';
@@ -18687,6 +18695,8 @@ window.enviarMensagemAdmin = async function(userId) {
       admin_id: currentUser.id,
       user_id: userId,
       message: msg
+    }, {
+      headers: { 'X-User-ID': currentUser.id }
     });
     showToast('Mensagem enviada!', 'success');
     // Recarregar conversa
@@ -18756,7 +18766,9 @@ window.abrirChatUsuario = async function() {
   if (notif) notif.remove();
   
   try {
-    var res = await axios.get('/api/admin/messages/' + currentUser.id);
+    var res = await axios.get('/api/messages/history/' + currentUser.id, {
+      headers: { 'X-User-ID': currentUser.id }
+    });
     var messages = res.data.messages || [];
     
     var modal = document.createElement('div');

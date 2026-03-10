@@ -24580,6 +24580,41 @@ app.get('/api/messages/unread/:user_id', async (c) => {
   }
 });
 
+// Buscar mensagens do próprio usuário (para alunos verem seu histórico de chat)
+// ✅ CORREÇÃO: Endpoint dedicado para alunos - NÃO exige isAdmin()
+app.get('/api/messages/history/:user_id', async (c) => {
+  const { env } = c;
+  const userId = c.req.param('user_id');
+  const requestUserId = c.req.header('X-User-ID');
+  
+  // Segurança: o usuário só pode ver suas próprias mensagens
+  if (!requestUserId || requestUserId.toString() !== userId.toString()) {
+    return c.json({ error: 'Acesso negado' }, 403);
+  }
+  
+  try {
+    // Criar tabela se não existir
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      sender_type TEXT NOT NULL DEFAULT 'admin',
+      message TEXT NOT NULL,
+      read_at DATETIME DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`).run();
+    
+    const messages = await env.DB.prepare(
+      'SELECT id, sender_type, message, read_at, created_at FROM admin_messages WHERE user_id = ? ORDER BY created_at ASC LIMIT 200'
+    ).bind(userId).all();
+    
+    return c.json({ messages: messages.results || [] });
+  } catch (e: any) {
+    console.error('Erro ao buscar mensagens do usuário:', e?.message || e);
+    return c.json({ messages: [] });
+  }
+});
+
 // Marcar mensagens como lidas
 app.post('/api/messages/mark-read', async (c) => {
   const { env } = c;
