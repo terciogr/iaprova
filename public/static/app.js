@@ -4340,8 +4340,36 @@ async function _extrairTextoPDFNoBrowser(pdfFiles, updateDetalhe) {
     for (let p = 1; p <= totalPages; p++) {
       const page = await pdf.getPage(p);
       const textContent = await page.getTextContent();
-      const pageText = textContent.items.map(item => item.str).join(' ');
-      textoArquivo += pageText + '\n';
+      
+      // v141: Reconstruir texto preservando estrutura de linhas
+      // Usar posicao Y dos items para detectar mudancas de linha
+      let lastY = null;
+      let lineText = '';
+      const pageLines = [];
+      
+      for (const item of textContent.items) {
+        if (!item.str || item.str.trim() === '') continue;
+        
+        const y = item.transform ? item.transform[5] : null;
+        
+        if (lastY !== null && y !== null && Math.abs(y - lastY) > 3) {
+          // Mudanca de linha detectada (diferenca Y > 3 pontos)
+          if (lineText.trim()) {
+            pageLines.push(lineText.trim());
+          }
+          lineText = item.str;
+        } else {
+          // Mesma linha - adicionar com espaco
+          lineText += (lineText ? ' ' : '') + item.str;
+        }
+        lastY = y;
+      }
+      // Ultima linha da pagina
+      if (lineText.trim()) {
+        pageLines.push(lineText.trim());
+      }
+      
+      textoArquivo += pageLines.join('\n') + '\n\n'; // Quebra dupla entre paginas
       
       if (p % 10 === 0 || p === totalPages) {
         updateDetalhe(`${file.name}: pagina ${p}/${totalPages}`);

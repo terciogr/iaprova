@@ -7179,6 +7179,12 @@ app.post('/api/editais/processar-texto', async (c) => {
     console.log(`📝 Texto recebido: ${texto.length} caracteres`)
     console.log(`👤 Usuário: ${user_id}`)
     console.log(`🎯 Cargo: ${cargo || 'Não especificado'}`)
+    console.log(`🏢 Concurso: ${concurso_nome || 'Não especificado'}`)
+    console.log(`📝 Primeiros 300 chars do texto: ${texto.substring(0, 300).replace(/\n/g, ' | ')}`)
+    
+    // v141: Verificar se o texto menciona o cargo informado
+    const cargoNoTexto = cargo && texto.toUpperCase().includes(cargo.toUpperCase())
+    console.log(`🔍 Cargo "${cargo}" encontrado no texto: ${cargoNoTexto ? 'SIM' : 'NÃO'}`)
     
     // Detectar área automaticamente pelo cargo
     const cargoLower = cargo?.toLowerCase() || ''
@@ -7207,6 +7213,7 @@ app.post('/api/editais/processar-texto', async (c) => {
     const geminiKey = geminiKeyFromDB || c.env.GEMINI_API_KEY || ''
     const openaiKey = openaiKeyFromDB || c.env.OPENAI_API_KEY || ''
     const groqKey = groqKeyFromDB || c.env.GROQ_API_KEY || ''
+    
     
     const cargoUpper = cargo?.toUpperCase() || 'GERAL'
     console.log(`📝 Processando para cargo: ${cargoUpper}`)
@@ -7536,7 +7543,7 @@ RETORNE APENAS JSON válido:
         if ((l.includes('MÓDULO I') && l.includes('CONHECIMENTOS')) ||
             (l.includes('CONHECIMENTOS GERAIS') && !l.includes('QUESTÕES') && !l.includes('ACERTOS'))) {
           const prox = linhas.slice(i+1, i+6).join(' ').toLowerCase()
-          if (prox.includes('língua') || prox.includes('raciocínio') || prox.includes('português')) {
+          if (prox.includes('língua') || prox.includes('lingua') || prox.includes('raciocínio') || prox.includes('raciocinio') || prox.includes('português') || prox.includes('portugues')) {
             inicioConteudo = i
             console.log(`📍 Início de conteúdo (fallback): linha ${i+1}`)
             break
@@ -7555,16 +7562,29 @@ RETORNE APENAS JSON válido:
     const variacoesCargo: string[] = [cargoUpper]
     if (cargoUpper.includes('AUDITOR')) variacoesCargo.push('AUDITOR-FISCAL', 'AUDITOR FISCAL')
     if (cargoUpper.includes('ANALISTA')) variacoesCargo.push('ANALISTA-TRIBUTÁRIO', 'ANALISTA TRIBUTÁRIO')
-    // v64: Variações de cargos de saúde
+    // v142: Variações de cargos de saúde - mais estritas para evitar falsos positivos
     if (cargoUpper.includes('ENFERMEIRO') || cargoUpper.includes('ENFERMAGEM')) {
-      variacoesCargo.push('ENFERMEIRO', 'ENFERMEIRA', 'ENFERMAGEM')
-      if (cargoUpper.includes('TÉCNICO')) variacoesCargo.push('TÉCNICO DE ENFERMAGEM', 'TÉCNICO EM ENFERMAGEM')
+      variacoesCargo.push('ENFERMEIRO', 'ENFERMEIRA')
+      // Só adicionar "ENFERMAGEM" se o cargo inclui "TÉCNICO" (ex: "Técnico em Enfermagem")
+      if (cargoUpper.includes('TÉCNICO')) {
+        variacoesCargo.push('TÉCNICO DE ENFERMAGEM', 'TÉCNICO EM ENFERMAGEM', 'ENFERMAGEM')
+      }
     }
     if (cargoUpper.includes('MÉDICO')) variacoesCargo.push('MÉDICO', 'MÉDICA')
     if (cargoUpper.includes('FARMACÊUTICO')) variacoesCargo.push('FARMACÊUTICO', 'FARMACÊUTICA')
     if (cargoUpper.includes('FISIOTERAPEUTA')) variacoesCargo.push('FISIOTERAPEUTA')
     if (cargoUpper.includes('NUTRICIONISTA')) variacoesCargo.push('NUTRICIONISTA')
     if (cargoUpper.includes('PSICÓLOGO')) variacoesCargo.push('PSICÓLOGO', 'PSICÓLOGA')
+    
+    // ✅ v142: Extrair prefixo base e especialidade para cargos compostos
+    // Ex: "MÉDICO - ANESTESIOLOGIA" → prefixo "MÉDICO", especialidade "ANESTESIOLOGIA"
+    const separadorCargo = cargoUpper.includes(' - ') ? ' - ' : cargoUpper.includes(' – ') ? ' – ' : null
+    const prefixoBaseCargo = separadorCargo ? cargoUpper.split(separadorCargo)[0].trim() : null
+    const especialidadeCargo = separadorCargo ? cargoUpper.split(separadorCargo).slice(1).join(separadorCargo).trim() : null
+    
+    if (prefixoBaseCargo && especialidadeCargo) {
+      console.log(`📍 v142: Cargo composto detectado - Prefixo: "${prefixoBaseCargo}", Especialidade: "${especialidadeCargo}"`)
+    }
     
     let inicioSecaoCargo = -1
     let fimSecaoCargo = -1
@@ -7585,7 +7605,7 @@ RETORNE APENAS JSON válido:
               (areaEspecifica.includes('COMUM') && l.includes('COMUM')) ||
               (areaEspecifica.includes('TECNOLOGIA') && l.includes('TECNOLOGIA'))) {
             const prox = linhas.slice(i+1, i+10).join(' ').toLowerCase()
-            if (prox.includes('conhecimentos') || prox.includes('língua') || prox.includes('direito')) {
+            if (prox.includes('conhecimentos') || prox.includes('língua') || prox.includes('lingua') || prox.includes('direito')) {
               inicioSecaoCargo = i
               console.log(`📍 v61: Seção do cargo+área encontrada: linha ${i+1} - "${l.substring(0, 80)}"`)
               break
@@ -7599,12 +7619,29 @@ RETORNE APENAS JSON válido:
     if (inicioSecaoCargo === -1) {
       for (let i = inicioConteudo; i < linhas.length; i++) {
         const l = linhas[i].trim().toUpperCase()
+        const lNorm = l.replace(/\s+/g, ' ').trim()
         for (const v of variacoesCargo) {
-          if ((l === v || (l.length < 100 && l.includes(v) && !l.includes('VAGA') && !l.includes('QUESTÕES') && !l.includes('SALÁRIO'))) && l.length < 100) {
+          // ✅ v142: Para cargos compostos, usar correspondência mais estrita
+          // "MÉDICO - ANESTESIOLOGIA" NÃO deve casar com "MÉDICO VETERINÁRIO"
+          let ehMatch = false
+          if (v === cargoUpper || v.includes(' - ') || v.includes(' – ')) {
+            // Variação completa (ex: "MÉDICO - ANESTESIOLOGIA") → correspondência exata/inicio
+            ehMatch = lNorm === v || lNorm.startsWith(v + '\n') || lNorm === v.replace(' - ', ' – ') || lNorm === v.replace(' – ', ' - ')
+          } else if (prefixoBaseCargo && v === prefixoBaseCargo) {
+            // Prefixo genérico (ex: "MÉDICO") → exigir que a linha contenha a especialidade
+            // ou seja exatamente o cargo completo com separador diferente
+            ehMatch = (lNorm.includes(v) && especialidadeCargo && lNorm.includes(especialidadeCargo)) ||
+                      lNorm === v
+          } else {
+            // Cargo simples (ex: "ENFERMEIRO") → correspondência original
+            ehMatch = (l === v || (l.length < 100 && l.includes(v) && !l.includes('VAGA') && !l.includes('QUESTÕES') && !l.includes('SALÁRIO'))) && l.length < 100
+          }
+          
+          if (ehMatch) {
             const prox = linhas.slice(i+1, i+5).join(' ').toLowerCase()
-            if (prox.includes('módulo') || prox.includes('conhecimentos') || prox.includes('língua') || prox.includes('direito') || prox.includes('raciocínio')) {
+            if (prox.includes('módulo') || prox.includes('modulo') || prox.includes('conhecimentos') || prox.includes('língua') || prox.includes('lingua') || prox.includes('direito') || prox.includes('raciocínio') || prox.includes('raciocinio') || prox.includes('fundamentos') || prox.includes('farmacologia')) {
               inicioSecaoCargo = i
-              console.log(`📍 Seção do cargo: linha ${i+1}`)
+              console.log(`📍 v142: Seção do cargo: linha ${i+1} - "${l.substring(0, 80)}"`)
               break
             }
           }
@@ -7619,50 +7656,93 @@ RETORNE APENAS JSON válido:
       console.log(`📍 Usando todo conteúdo programático desde linha ${inicioConteudo+1}`)
     }
     
-    // ✅ v61: Lista melhorada de marcadores de fim de seção
-    // Incluir padrões de outras áreas do mesmo cargo
+    // ════════════════════════════════════════════════════════════════
+    // ✅ v142: DETECÇÃO DE FIM DE SEÇÃO - CORREÇÃO DEFINITIVA PARA CARGOS COMPOSTOS
+    // Problema anterior: Para "MÉDICO - ANESTESIOLOGIA", o filtro removia "MÉDICO" 
+    // da lista de outros cargos, fazendo com que "Médico – Cardiologia" não fosse
+    // detectado como fim da seção. Resultado: 25 disciplinas em vez de ~7.
+    //
+    // Solução: Detectar cargos compostos (com " - " ou " – ") e usar o prefixo base
+    // + especialidade para identificar OUTROS cargos do mesmo tipo mas especialidade diferente.
+    // Ex: "MÉDICO - ANESTESIOLOGIA" → prefixo "MÉDICO", especialidade "ANESTESIOLOGIA"
+    //     Ao encontrar "MÉDICO – CARDIOLOGIA" → outro cargo → FIM DA SEÇÃO
+    // ════════════════════════════════════════════════════════════════
+    
     const outrosCargosConhecidos = ['AUDITOR-FISCAL', 'ANALISTA-TRIBUTÁRIO', 'ANALISTA TRIBUTÁRIO',
       'AUDITOR FISCAL', 'ASSISTENTE SOCIAL', 'ENFERMEIRO', 'MÉDICO', 'FARMACÊUTICO',
       'FISIOTERAPEUTA', 'NUTRICIONISTA', 'PSICÓLOGO', 'TÉCNICO', 'ENGENHEIRO',
       'FONOAUDIÓLOGO', 'DENTISTA', 'BIOMÉDICO', 'VETERINÁRIO', 'ECONOMISTA',
       'CIRURGIÃO', 'PROFESSOR', 'DELEGADO', 'PERITO', 'AGENTE', 'CONTADOR', 'ADVOGADO',
-      // v64: Cargos de saúde adicionais
       'TÉCNICO DE ENFERMAGEM', 'TÉCNICO EM ENFERMAGEM', 'AUXILIAR DE ENFERMAGEM',
       'TERAPEUTA OCUPACIONAL', 'EDUCADOR FÍSICO', 'BIÓLOGO',
       'TÉCNICO DE LABORATÓRIO', 'TÉCNICO EM RADIOLOGIA', 'TÉCNICO DE SAÚDE BUCAL',
-      // v64: Cargos administrativos adicionais
       'ADMINISTRADOR', 'OFICIAL DE JUSTIÇA', 'ESCRIVÃO', 'ANALISTA JUDICIÁRIO',
       'TÉCNICO JUDICIÁRIO', 'PROCURADOR', 'PROMOTOR', 'DEFENSOR',
-      'AUDITOR DE CONTROLE', 'ANALISTA DE CONTROLE']
-      .filter(c => !variacoesCargo.some(v => v.includes(c) || c.includes(v)))
+      'AUDITOR DE CONTROLE', 'ANALISTA DE CONTROLE',
+      'MÉDICO VETERINÁRIO', 'CIRURGIÃO DENTISTA', 'ENGENHEIRO CLÍNICO']
+      // v142: Filtro corrigido - para cargos compostos, não remover o prefixo base genérico
+      .filter(c => {
+        // Se o cargo do usuário é composto (ex: "MÉDICO - ANESTESIOLOGIA"),
+        // NÃO remover "MÉDICO" genérico da lista - ele será útil para detectar outros médicos
+        // Apenas remover se o cargo na lista é EXATAMENTE igual ao cargo completo do usuário
+        if (prefixoBaseCargo) {
+          // Cargo composto: remover apenas a correspondência EXATA do cargo completo
+          return c !== cargoUpper && !variacoesCargo.some(v => v === c)
+        }
+        // Cargo simples: manter filtro original
+        return !variacoesCargo.some(v => v.includes(c) || c.includes(v))
+      })
     
-    // ✅ v61: Encontrar fim da seção do cargo
-    // IMPORTANTE: Parar quando encontrar "PARA O CARGO DE..." de OUTRA área
+    // ✅ v142: Encontrar fim da seção do cargo
     for (let i = inicioSecaoCargo + 1; i < linhas.length; i++) {
       const l = linhas[i].trim().toUpperCase()
       
-      // ✅ v61: Detectar início de seção de OUTRO cargo/área
+      // ════════════════════════════════════════════════════════════════
+      // ✅ v142 PRIORIDADE 1: Para cargos compostos, detectar OUTRO cargo do mesmo prefixo
+      // Ex: Cargo="MÉDICO - ANESTESIOLOGIA", encontra "Médico – Cardiologia" → FIM
+      // Isso é o cenário mais comum em editais de saúde com múltiplas especialidades
+      // ════════════════════════════════════════════════════════════════
+      if (prefixoBaseCargo && l.length < 120 && l.length > 3) {
+        // Verificar se a linha começa com o prefixo base (ex: "MÉDICO")
+        // seguido de separador e especialidade DIFERENTE
+        const lNorm = l.replace(/\s+/g, ' ').trim()
+        const ehMesmoPrefixo = lNorm.startsWith(prefixoBaseCargo + ' -') || 
+                                lNorm.startsWith(prefixoBaseCargo + ' –') ||
+                                lNorm.startsWith(prefixoBaseCargo + ' COM ') ||
+                                lNorm === prefixoBaseCargo
+        
+        if (ehMesmoPrefixo) {
+          // É um cargo com mesmo prefixo - verificar se é especialidade DIFERENTE
+          const ehMesmoCargoExato = variacoesCargo.some(v => lNorm === v || lNorm.startsWith(v + '\n'))
+          
+          if (!ehMesmoCargoExato) {
+            // É OUTRO cargo do mesmo tipo (ex: "MÉDICO – CARDIOLOGIA" quando eu sou "MÉDICO - ANESTESIOLOGIA")
+            const prox = linhas.slice(i+1, i+5).join(' ')
+            if (prox.length > 20) {
+              fimSecaoCargo = i
+              console.log(`📍 v142: Fim da seção (outro ${prefixoBaseCargo} com especialidade diferente): linha ${i+1} - "${l.substring(0, 80)}"`)
+              break
+            }
+          }
+        }
+      }
+      
+      // ✅ v61: Detectar "PARA O CARGO DE..." de OUTRA área
       if (l.includes('PARA O CARGO DE') || l.includes('PARA OS CARGOS DE')) {
-        // ✅ v62: Lógica melhorada - sub-áreas de TI são tratadas como mesma área principal
-        // INFRAESTRUTURA e SISTEMAS são sub-áreas de TECNOLOGIA DA INFORMAÇÃO
         const areaTI = areaEspecifica && (
           areaEspecifica.includes('INFRAESTRUTURA') || 
           areaEspecifica.includes('SISTEMAS') || 
           areaEspecifica.includes('TECNOLOGIA') ||
           areaEspecifica.includes('TI')
         )
-        
-        // Se minha área é sub-área de TI, incluir tudo de TI até encontrar área totalmente diferente
         const linhaParece_TI = l.includes('TECNOLOGIA') || l.includes('INFRAESTRUTURA') || l.includes('SISTEMAS') || l.includes('TI –')
         const linhaParece_Engenharia = l.includes('ENGENHARIA') && !l.includes('DADOS') && !l.includes('SISTEMAS')
         const linhaParece_AreaComum = l.includes('ÁREA COMUM')
         
         let ehOutraArea = true
         if (areaTI) {
-          // Se eu sou TI/Infraestrutura/Sistemas, só é "outra área" se for Engenharia pura ou Área Comum
           ehOutraArea = linhaParece_Engenharia || linhaParece_AreaComum
         } else if (areaEspecifica) {
-          // Para outras áreas (Engenharia, Área Comum), verificar se contém minha área
           ehOutraArea = (
             !l.includes(areaEspecifica) &&
             !(areaEspecifica.includes('ENGENHARIA') && linhaParece_Engenharia) &&
@@ -7672,22 +7752,20 @@ RETORNE APENAS JSON válido:
         
         if (ehOutraArea) {
           fimSecaoCargo = i
-          console.log(`📍 v62: Fim da seção (outro cargo/área): linha ${i+1} - "${l.substring(0, 60)}"`)
+          console.log(`📍 v142: Fim da seção (outro cargo/área): linha ${i+1} - "${l.substring(0, 60)}"`)
           break
         } else {
-          console.log(`📍 v62: Mesma área/sub-área, continuando: linha ${i+1} - "${l.substring(0, 60)}"`)
+          console.log(`📍 v142: Mesma área/sub-área, continuando: linha ${i+1} - "${l.substring(0, 60)}"`)
         }
       }
       
       // ✅ v61: Detectar "CONHECIMENTOS ESPECIALIZADOS" de outra área
       if (l.includes('CONHECIMENTOS ESPECIALIZADOS') && areaEspecifica) {
-        // ✅ v62: Mesma lógica - sub-áreas de TI são tratadas como mesma área
         const areaTI = areaEspecifica && (
           areaEspecifica.includes('INFRAESTRUTURA') || 
           areaEspecifica.includes('SISTEMAS') || 
           areaEspecifica.includes('TECNOLOGIA')
         )
-        
         const linhaParece_TI = l.includes('INFRAESTRUTURA') || l.includes('SISTEMAS') || l.includes('DADOS')
         const linhaParece_Engenharia = l.includes('ENGENHARIA') && !l.includes('DADOS')
         const linhaParece_AreaComum = l.includes('COMUM')
@@ -7705,22 +7783,20 @@ RETORNE APENAS JSON válido:
         }
         
         if (!ehMinhaArea && i > inicioSecaoCargo + 50) {
-          // Provavelmente é conhecimento especializado de outra área
-          // Mas só parar se já processamos bastante conteúdo
           fimSecaoCargo = i
-          console.log(`📍 v62: Fim da seção (conhecimentos de outra área): linha ${i+1}`)
+          console.log(`📍 v142: Fim da seção (conhecimentos de outra área): linha ${i+1}`)
           break
         }
       }
       
-      // Detectar outros cargos conhecidos
+      // Detectar outros cargos conhecidos (lista genérica)
       if (l.length < 80 && l.length > 3) {
         for (const outro of outrosCargosConhecidos) {
           if (l === outro || l.startsWith(outro + ' ') || l.startsWith(outro + ' -') || l.startsWith(outro + ' –')) {
             const prox = linhas.slice(i+1, i+5).join(' ')
             if (prox.length > 50) {
               fimSecaoCargo = i
-              console.log(`📍 Fim: linha ${i+1} (${outro})`)
+              console.log(`📍 v142: Fim: linha ${i+1} (${outro})`)
               break
             }
           }
@@ -7748,9 +7824,9 @@ RETORNE APENAS JSON válido:
       let secaoGeraisTexto = ''
       for (let i = inicioConteudo; i < inicioSecaoCargo; i++) {
         const l = linhas[i].trim().toUpperCase()
-        if ((l.includes('CONHECIMENTOS GERAIS') || l.includes('CONHECIMENTOS BÁSICOS')) && l.length < 80) {
+        if ((l.includes('CONHECIMENTOS GERAIS') || l.includes('CONHECIMENTOS BÁSICOS') || l.includes('CONHECIMENTOS BASICOS')) && l.length < 80) {
           const prox = linhas.slice(i+1, i+10).join(' ').toLowerCase()
-          if (prox.includes('língua') || prox.includes('raciocínio') || prox.includes('cargos de ensino')) {
+          if (prox.includes('língua') || prox.includes('lingua') || prox.includes('raciocínio') || prox.includes('raciocinio') || prox.includes('cargos de ensino') || prox.includes('portugues')) {
             const secaoLinhas: string[] = []
             for (let j = i; j < inicioSecaoCargo; j++) {
               const lj = linhas[j].trim().toUpperCase()
@@ -8003,6 +8079,7 @@ RETORNE APENAS JSON válido:
       let pesoAtual = 1
       let disciplinaAtual: { nome: string, peso: number, categoria: string, textoCompleto: string } | null = null
       const disciplinasRaw: typeof disciplinaAtual[] = []
+      let jaPassouDoCargoAlvo = false // v142: flag para parar ao encontrar outro cargo após o nosso
       
       // Função para verificar se um nome é disciplina real ou subtópico
       const ehNomeDeDisciplina = (nome: string): boolean => {
@@ -8157,14 +8234,38 @@ RETORNE APENAS JSON válido:
             disciplinaAtual = null
             categoriaAtual = 'ESPECÍFICOS'
             pesoAtual = 2
+            jaPassouDoCargoAlvo = true
             console.log(`   📌 Cargo ALVO detectado: "${linha.trim()}" → mudando para ESPECÍFICOS, continuando extração`)
             continue
           } else if (ehOutroCargo) {
-            // Outro cargo: ignorar (parar se vier depois do cargo alvo)
+            // ✅ v142: Outro cargo detectado
             if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
             disciplinaAtual = null
-            console.log(`   📌 Outro cargo detectado: "${linha.trim()}" → ignorado`)
+            // v142: Se já passamos pelo cargo alvo, PARAR extração (estamos em outro cargo)
+            if (jaPassouDoCargoAlvo) {
+              console.log(`   📌 v142: Outro cargo "${linha.trim()}" detectado APÓS cargo alvo → PARANDO extração`)
+              break
+            }
+            console.log(`   📌 Outro cargo detectado: "${linha.trim()}" → ignorado (antes do cargo alvo)`)
             continue
+          }
+          
+          // ✅ v142: Para cargos compostos, detectar OUTRO cargo do mesmo prefixo
+          if (prefixoBaseCargo) {
+            const ehOutroMesmoPrefixo = (linhaUpperTrim.startsWith(prefixoBaseCargo + ' -') || 
+                                          linhaUpperTrim.startsWith(prefixoBaseCargo + ' –') ||
+                                          linhaUpperTrim.startsWith(prefixoBaseCargo + ' COM ')) &&
+                                         !variacoesCargo.some(v => linhaUpperTrim === v)
+            if (ehOutroMesmoPrefixo) {
+              if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
+              disciplinaAtual = null
+              if (jaPassouDoCargoAlvo) {
+                console.log(`   📌 v142: Outro ${prefixoBaseCargo} "${linha.trim()}" → PARANDO extração`)
+                break
+              }
+              console.log(`   📌 v142: Outro ${prefixoBaseCargo} "${linha.trim()}" → ignorado (antes do cargo alvo)`)
+              continue
+            }
           }
         }
         
@@ -8548,9 +8649,23 @@ RETORNE APENAS JSON válido:
     const temEspecificas = disciplinasExtraidas.some((d: any) => 
       d.categoria === 'ESPECÍFICOS' || d.peso >= 2
     )
+    // ✅ v143: Separar disciplinas que são comuns (SUS/Legislação) das realmente específicas do cargo
+    // CUIDADO: "Ética e legislação" para Enfermeiro É específica, não confundir com SUS genérico
+    const temEspecificasDoCargo = disciplinasExtraidas.some((d: any) => {
+      if (d.categoria !== 'ESPECÍFICOS' && d.peso < 2) return false
+      const nomeLower = d.nome.toLowerCase()
+      // Apenas excluir disciplinas claramente genéricas de SUS/Legislação
+      const ehSUSGenerico = (
+        (nomeLower.includes('sistema único') || nomeLower.includes('sus')) &&
+        (nomeLower.includes('legislação') || nomeLower.includes('saúde'))
+      ) || nomeLower.includes('para todos')
+      return !ehSUSGenerico
+    })
     const textoMuitoGrande = textoSecaoCargo.length > 5000
     const poucasDisciplinas = disciplinasExtraidas.length < 3
-    const poucasParaTextoGrande = textoMuitoGrande && disciplinasExtraidas.length < 5 && !temEspecificas
+    const poucasParaTextoGrande = textoMuitoGrande && disciplinasExtraidas.length < 5 && !temEspecificasDoCargo
+    // ✅ v142: Se temos básicas mas NENHUMA específica do cargo, forçar IA
+    const semEspecificasDoCargo = disciplinasExtraidas.length >= 3 && !temEspecificasDoCargo && textoSecaoCargo.length > 1000
     
     // ✅ v56: Detectar quando temos disciplinas da tabela mas sem tópicos
     // (texto truncado - conteúdo programático não incluído)
@@ -8563,8 +8678,74 @@ RETORNE APENAS JSON válido:
       console.log(`   Retornando disciplinas com pesos corretos sem tópicos (usuário pode adicionar depois)`)
     }
     
-    if (poucasDisciplinas || poucasParaTextoGrande) {
-      const motivo = poucasDisciplinas ? 'poucas disciplinas' : 'texto grande mas sem específicas'
+    // ✅ v143: FALLBACK PROGRAMÁTICO - Quando temos texto do cargo mas extração por padrão falhou
+    // Muitos editais usam formato de lista corrida: "Tópico1. Tópico2. Tópico3."
+    // Sem o padrão "Disciplina: conteúdo", a extração por regex não funciona
+    // Neste caso, criamos UMA disciplina genérica com os tópicos extraídos por separação de pontos
+    if (semEspecificasDoCargo && inicioSecaoCargo >= 0 && fimSecaoCargo > inicioSecaoCargo) {
+      const secaoCargoOnly = linhas.slice(inicioSecaoCargo, fimSecaoCargo).join('\n')
+      console.log(`\n📋 v143: Tentando extração programática de tópicos por pontos (seção cargo: ${secaoCargoOnly.length} chars)`)
+      
+      if (secaoCargoOnly.length > 50) {
+        // Remover a primeira linha se for o nome do cargo
+        const linhasCargo = secaoCargoOnly.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+        const cargoNorm = cargo?.trim().toUpperCase() || ''
+        let textoTopicos = ''
+        // Pular linhas que são o nome do cargo
+        const linhasSemCargo = linhasCargo.filter(l => {
+          const lu = l.toUpperCase().trim()
+          return lu !== cargoNorm && lu !== cargoNorm.replace(/ - /g, ' – ') && lu.length > 3
+        })
+        textoTopicos = linhasSemCargo.join(' ')
+        
+        // Extrair tópicos separados por ponto (formato lista corrida)
+        // Ex: "Química Farmacêutica. Biologia Celular. Anatomia." → ["Química Farmacêutica", "Biologia Celular", "Anatomia"]
+        const topicosExtraidos = textoTopicos
+          .split(/\.\s+/)
+          .map(t => t.replace(/^\d+[\.\)]\s*/, '').trim())
+          .filter(t => t.length >= 5 && t.length <= 300)
+          .map(t => t.endsWith('.') ? t.slice(0, -1).trim() : t)
+          .filter(t => t.length >= 5)
+          // Remover tópicos que são só números de página ou artefatos de PDF
+          .filter(t => !/^\d+$/.test(t) && !/^[\d\s]+$/.test(t))
+          // Limitar a 50 tópicos
+          .slice(0, 50)
+        
+        if (topicosExtraidos.length >= 2) {
+          const nomeDisciplina = `Conhecimentos Específicos - ${cargo || 'Cargo'}`
+          console.log(`✅ v143: ${topicosExtraidos.length} tópicos extraídos por pontos para "${nomeDisciplina}"`)
+          topicosExtraidos.slice(0, 5).forEach((t, i) => console.log(`   📎 ${i+1}. ${t}`))
+          if (topicosExtraidos.length > 5) console.log(`   ... e mais ${topicosExtraidos.length - 5} tópicos`)
+          
+          disciplinasExtraidas.push({
+            nome: nomeDisciplina,
+            peso: 2,
+            categoria: 'ESPECÍFICOS',
+            topicos: topicosExtraidos
+          })
+          // Recalcular flag
+          const agoraTemEspecificas = true
+          console.log(`✅ v143: Disciplina específica adicionada programaticamente. Total: ${disciplinasExtraidas.length}`)
+        } else {
+          console.log(`⚠️ v143: Poucos tópicos extraídos (${topicosExtraidos.length}), continuando para IA...`)
+        }
+      }
+    }
+    
+    // Recalcular flags após possível adição programática (mesma lógica v143)
+    const temEspecificasDoCargoFinal = disciplinasExtraidas.some((d: any) => {
+      if (d.categoria !== 'ESPECÍFICOS' && d.peso < 2) return false
+      const nomeLower = d.nome.toLowerCase()
+      const ehSUSGenerico = (
+        (nomeLower.includes('sistema único') || nomeLower.includes('sus')) &&
+        (nomeLower.includes('legislação') || nomeLower.includes('saúde'))
+      ) || nomeLower.includes('para todos')
+      return !ehSUSGenerico
+    })
+    const semEspecificasDoCargoFinal = disciplinasExtraidas.length >= 3 && !temEspecificasDoCargoFinal && textoSecaoCargo.length > 1000
+    
+    if (poucasDisciplinas || poucasParaTextoGrande || semEspecificasDoCargoFinal) {
+      const motivo = poucasDisciplinas ? 'poucas disciplinas' : semEspecificasDoCargoFinal ? 'sem específicas do cargo' : 'texto grande mas sem específicas'
       console.log(`\n🤖 Extração programática insuficiente (${motivo}: ${disciplinasExtraidas.length} disc, ${textoSecaoCargo.length} chars), usando IA...`)
       
       // ✅ v64: Se textoSecaoCargo é muito pequeno, usar texto completo do edital
@@ -8575,22 +8756,27 @@ RETORNE APENAS JSON válido:
       }
       const textoParaIA = textoBaseIA.length > 40000 ? textoBaseIA.substring(0, 40000) : textoBaseIA
       const promptIA = `TAREFA CRÍTICA: Extrair disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO abaixo.
-Cargo do candidato: "${cargoUpper}"
+CARGO DO CANDIDATO: "${cargoUpper}"
 
-REGRAS ABSOLUTAS E INVIOLÁVEIS:
-1. EXTRAIA APENAS disciplinas e tópicos que EXISTEM LITERALMENTE no texto abaixo
+REGRA FUNDAMENTAL DE FILTRAGEM POR CARGO:
+- O edital pode conter disciplinas para VÁRIOS cargos diferentes
+- Você DEVE extrair APENAS as disciplinas que se aplicam ao cargo "${cargoUpper}"
+- Disciplinas de "Conhecimentos Básicos/Gerais" ou "Para todos os cargos" = INCLUIR (peso 1, categoria BÁSICOS)
+- Disciplinas de "Conhecimentos Específicos" = INCLUIR somente se forem do cargo "${cargoUpper}" (peso 2, categoria ESPECÍFICOS)
+- Se encontrar seções como "PARA O CARGO DE X" onde X é DIFERENTE de "${cargoUpper}", IGNORE completamente essas disciplinas
+- Se não encontrar seção específica para "${cargoUpper}", extraia as disciplinas gerais + específicas mais prováveis para esse cargo
+
+REGRAS ADICIONAIS:
+1. EXTRAIA APENAS disciplinas e tópicos que EXISTEM LITERALMENTE no texto
 2. NÃO INVENTE, NÃO SUGIRA, NÃO ADICIONE nenhuma disciplina que não esteja ESCRITA no texto
 3. Cada matéria/disciplina listada (seguida de ":" ou em linha separada) = UMA disciplina
 4. Conteúdo após o nome = TÓPICOS da disciplina
-5. MÓDULO I / Conhecimentos Básicos/Gerais = peso 1 e categoria "BÁSICOS"
-6. MÓDULO II / Conhecimentos Específicos = peso 2 e categoria "ESPECÍFICOS"
-7. Retorne APENAS JSON válido, sem markdown, sem explicações
-8. Se uma disciplina aparece no texto mas você não encontra tópicos detalhados, retorne a disciplina com topicos vazio []
-9. Se o texto não contém conteúdo programático identificável, retorne {"disciplinas":[]}
-10. PROIBIDO: Inventar disciplinas como "Doutrina", "Jurisprudência" ou qualquer outra que NÃO ESTÁ no texto
-11. VERIFICAÇÃO: Cada disciplina retornada DEVE ter seu nome presente no texto fornecido
+5. Retorne APENAS JSON válido, sem markdown, sem explicações
+6. Se uma disciplina aparece no texto mas sem tópicos detalhados, retorne com topicos vazio []
+7. Se o texto não contém conteúdo programático, retorne {"disciplinas":[]}
+8. PROIBIDO: Inventar disciplinas que NÃO ESTÃO no texto
 
-FORMATO: {"disciplinas":[{"nome":"Nome Exato da Disciplina como aparece no texto","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}
+FORMATO: {"disciplinas":[{"nome":"Nome Exato da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}
 
 TEXTO DO EDITAL:
 ${textoParaIA}`
@@ -8606,6 +8792,7 @@ ${textoParaIA}`
       
       if (geminiKey) {
         try {
+          console.log(`🤖 Chamando Gemini para extração IA...`)
           const controller = new AbortController()
           const timer = setTimeout(() => controller.abort(), iaTimeout)
           const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
@@ -8614,8 +8801,14 @@ ${textoParaIA}`
             signal: controller.signal
           })
           clearTimeout(timer)
-          if (r.ok) { const d = await r.json() as any; respostaIA = d?.candidates?.[0]?.content?.parts?.[0]?.text || '' }
-        } catch (e: any) { console.log(`⚠️ Gemini fallback erro: ${e.message?.substring(0, 80)}`) }
+          if (r.ok) { 
+            const d = await r.json() as any
+            respostaIA = d?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            console.log(`🤖 Gemini IA retornou: ${respostaIA.length} chars`)
+          } else {
+            console.log(`⚠️ Gemini HTTP ${r.status}`)
+          }
+        } catch (e: any) { console.log(`⚠️ Gemini fallback erro: ${e.message?.substring(0, 100)}`) }
       }
       if (!respostaIA && openaiKey) {
         try {
@@ -8702,18 +8895,22 @@ ${textoParaIA}`
       if (geminiKey && texto.length > 200) {
         try {
           const textoCompletoParaIA = texto.length > 40000 ? texto.substring(0, 40000) : texto
-          const promptExtracaoFinal = `TAREFA: Extrair TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO deste edital de concurso.
-Cargo do candidato: "${cargo || 'Não especificado'}"
+          const promptExtracaoFinal = `TAREFA: Extrair disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO deste edital de concurso.
+CARGO DO CANDIDATO: "${cargo || 'Não especificado'}"
 
-REGRAS ABSOLUTAS:
-1. EXTRAIA APENAS disciplinas que EXISTEM no texto abaixo
-2. NÃO INVENTE, NÃO SUGIRA, NÃO ADICIONE disciplinas que NÃO estejam no texto
+FILTRAGEM POR CARGO (REGRA PRINCIPAL):
+- O edital pode conter disciplinas para vários cargos
+- Extraia APENAS as disciplinas do cargo "${cargo || 'Não especificado'}"
+- Conhecimentos Básicos/Gerais ou "Para todos os cargos" = INCLUIR (peso 1, BÁSICOS)
+- Conhecimentos Específicos = INCLUIR somente se forem do cargo "${cargo || 'Não especificado'}" (peso 2, ESPECÍFICOS)
+- IGNORE disciplinas de outros cargos
+
+REGRAS:
+1. EXTRAIA APENAS disciplinas que EXISTEM no texto
+2. NÃO INVENTE disciplinas que NÃO estejam no texto
 3. Procure seções como "CONTEÚDO PROGRAMÁTICO", "ANEXO II", "MÓDULO I/II"
-4. Procure padrões como "Disciplina: tópico1; tópico2" ou listas numeradas
-5. Se encontrar disciplinas, extraia com nome EXATO conforme o edital
-6. Se o texto NÃO contiver conteúdo programático, retorne {"disciplinas":[]}
-7. PROIBIDO inventar: "Doutrina", "Jurisprudência", ou qualquer termo não presente no texto
-8. peso 1 = Básicos/Gerais; peso 2 = Específicos
+4. Se o texto NÃO contiver conteúdo programático, retorne {"disciplinas":[]}
+5. peso 1 = Básicos/Gerais; peso 2 = Específicos
 
 FORMATO: {"disciplinas":[{"nome":"Nome Exato do Texto","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}
 

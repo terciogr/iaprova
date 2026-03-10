@@ -1,7 +1,7 @@
-// IAprova Service Worker v6.0 - v140 PDF: pdf.js browser + fallback servidor + UI com etapas
-const CACHE_NAME = 'iaprova-v140';
-const STATIC_CACHE = 'iaprova-static-v140';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v140';
+// IAprova Service Worker v6.3 - v143: fallback programatico para topicos em lista corrida (Farmaceutico etc) + filtro SUS generico melhorado
+const CACHE_NAME = 'iaprova-v141';
+const STATIC_CACHE = 'iaprova-static-v141';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v141';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
