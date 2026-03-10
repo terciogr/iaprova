@@ -2265,18 +2265,50 @@ app.get('/api/subscription/payment-links', async (c) => {
   })
 })
 
-// Ativar assinatura após pagamento confirmado (chamado manualmente pelo admin ou webhook)
+// Ativar assinatura após pagamento confirmado (APENAS admin pode chamar diretamente)
+// ✅ SEGURANÇA v145: Autenticação admin OBRIGATÓRIA
 app.post('/api/subscription/activate', async (c) => {
   const { DB } = c.env
   const { userId, plan, paymentId, activatedBy } = await c.req.json()
   
-  // Verificar se quem está ativando é admin
+  // ✅ SEGURANÇA: Admin OBRIGATÓRIO - sem exceções
   const adminCheck = c.req.header('X-User-ID')
-  if (adminCheck) {
-    const admin = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(adminCheck).first() as any
-    if (admin?.email !== 'terciogomesrabelo@gmail.com') {
-      return c.json({ error: 'Apenas administradores podem ativar assinaturas' }, 403)
-    }
+  if (!adminCheck) {
+    console.warn('🚨 SEGURANÇA: Tentativa de ativar assinatura sem X-User-ID')
+    return c.json({ error: 'Autenticação obrigatória' }, 401)
+  }
+  
+  const admin = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(adminCheck).first() as any
+  if (!admin || admin.email !== ADMIN_EMAIL) {
+    console.warn(`🚨 SEGURANÇA: Usuário ${adminCheck} (${admin?.email}) tentou ativar assinatura para ${userId}`)
+    // Log de auditoria
+    try {
+      await DB.prepare(`
+        CREATE TABLE IF NOT EXISTS audit_log (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          action TEXT NOT NULL,
+          user_id INTEGER,
+          details TEXT,
+          ip_address TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+      await DB.prepare(`
+        INSERT INTO audit_log (action, user_id, details, ip_address, created_at)
+        VALUES ('unauthorized_activate_attempt', ?, ?, ?, datetime('now'))
+      `).bind(
+        parseInt(adminCheck),
+        JSON.stringify({ targetUserId: userId, plan, email: admin?.email }),
+        c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
+      ).run()
+    } catch (e) { /* audit não é crítico */ }
+    return c.json({ error: 'Apenas administradores podem ativar assinaturas' }, 403)
+  }
+  
+  // ✅ SEGURANÇA: Verificar que o alvo não é o admin (não faz sentido)
+  const targetUser = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first() as any
+  if (targetUser?.email === ADMIN_EMAIL) {
+    return c.json({ error: 'Admin já tem acesso ilimitado' }, 400)
   }
   
   try {
@@ -2491,30 +2523,246 @@ app.post('/api/mercadopago/create-preference', async (c) => {
   }
 })
 
+// ✅ SEGURANÇA v145: Função para validar assinatura HMAC do webhook MercadoPago
+async function validarWebhookHMAC(
+  xSignature: string | null, 
+  xRequestId: string | null, 
+  dataId: string,
+  webhookSecret: string
+): Promise<boolean> {
+  if (!xSignature || !webhookSecret) return false
+  
+  try {
+    // Formato: ts=TIMESTAMP,v1=HASH
+    const parts: Record<string, string> = {}
+    xSignature.split(',').forEach(part => {
+      const [key, ...valueParts] = part.trim().split('=')
+      if (key && valueParts.length > 0) {
+        parts[key] = valueParts.join('=')
+      }
+    })
+    
+    const ts = parts['ts']
+    const v1 = parts['v1']
+    
+    if (!ts || !v1) {
+      console.log('🔐 Assinatura webhook: formato inválido')
+      return false
+    }
+    
+    // Montar template de validação conforme documentação MP
+    // template: id:[data_id];request-id:[x-request-id];ts:[ts];
+    let manifest = ''
+    if (dataId) manifest += `id:${dataId};`
+    if (xRequestId) manifest += `request-id:${xRequestId};`
+    manifest += `ts:${ts};`
+    
+    // Gerar HMAC-SHA256 com Web Crypto API (compatível com Cloudflare Workers)
+    const encoder = new TextEncoder()
+    const keyData = encoder.encode(webhookSecret)
+    const messageData = encoder.encode(manifest)
+    
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    )
+    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData)
+    
+    // Converter para hex
+    const hashArray = Array.from(new Uint8Array(signatureBuffer))
+    const computedHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+    
+    const isValid = computedHash === v1
+    console.log(`🔐 Validação HMAC webhook: ${isValid ? '✅ VÁLIDA' : '❌ INVÁLIDA'}`)
+    
+    return isValid
+  } catch (e: any) {
+    console.error('🔐 Erro ao validar HMAC webhook:', e.message)
+    return false
+  }
+}
+
+// ✅ SEGURANÇA v145: Função auxiliar para ativar assinatura de forma segura (usada pelo webhook e verify-and-activate)
+async function ativarAssinaturaSegura(
+  DB: any, 
+  userId: number, 
+  plan: string, 
+  days: number, 
+  paymentId: string, 
+  paymentAmount: number, 
+  externalReference: string | null,
+  payerEmail: string | null,
+  paymentDetails: any,
+  env: any
+): Promise<{ success: boolean; expiresAt: string }> {
+  const now = new Date()
+  const expiresAt = new Date(now.getTime() + (days || 30) * 24 * 60 * 60 * 1000).toISOString()
+  
+  // Verificar se o usuário existe e NÃO é admin
+  const user = await DB.prepare('SELECT id, email, name, is_premium, subscription_status, payment_id FROM users WHERE id = ?').bind(userId).first() as any
+  if (!user) {
+    throw new Error('Usuário não encontrado')
+  }
+  
+  // ✅ SEGURANÇA: Nunca alterar o admin via pagamento
+  if (user.email === ADMIN_EMAIL) {
+    console.log(`🛡️ SEGURANÇA: Tentativa de alterar admin via pagamento bloqueada`)
+    throw new Error('Operação não permitida')
+  }
+  
+  // ✅ SEGURANÇA: Verificar se este pagamento já foi processado (idempotência)
+  if (user.payment_id === paymentId.toString()) {
+    console.log(`ℹ️ Pagamento ${paymentId} já foi processado para usuário ${userId}`)
+    return { success: true, expiresAt: user.subscription_expires_at || expiresAt }
+  }
+  
+  // Ativar assinatura - NUNCA como admin, apenas como premium
+  await DB.prepare(`
+    UPDATE users SET 
+      subscription_status = 'active',
+      subscription_plan = ?,
+      subscription_expires_at = ?,
+      payment_id = ?,
+      payment_date = ?,
+      is_premium = 1,
+      premium_expires_at = ?
+    WHERE id = ? AND email != ?
+  `).bind(plan, expiresAt, paymentId.toString(), now.toISOString(), expiresAt, userId, ADMIN_EMAIL).run()
+  
+  console.log(`✅ Assinatura ${plan} ativada para usuário ${userId} até ${expiresAt}`)
+  
+  // Enviar email de confirmação
+  try {
+    await sendPaymentConfirmationEmail(
+      user.email,
+      user.name || 'Usuário',
+      plan,
+      paymentAmount,
+      expiresAt,
+      paymentId.toString(),
+      env
+    )
+    console.log(`📧 Email de confirmação enviado para ${user.email}`)
+  } catch (emailError) {
+    console.error('⚠️ Erro ao enviar email de confirmação (não crítico):', emailError)
+  }
+  
+  // Registrar histórico de pagamento
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS payment_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        payment_id TEXT NOT NULL UNIQUE,
+        plan TEXT NOT NULL,
+        amount REAL,
+        status TEXT NOT NULL,
+        external_reference TEXT,
+        payer_email TEXT,
+        transaction_details TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    
+    await DB.prepare(`
+      INSERT OR REPLACE INTO payment_history (user_id, payment_id, plan, amount, status, external_reference, payer_email, transaction_details, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      userId, 
+      paymentId.toString(), 
+      plan, 
+      paymentAmount, 
+      'approved',
+      externalReference,
+      payerEmail,
+      JSON.stringify(paymentDetails || {}),
+      now.toISOString()
+    ).run()
+    console.log(`📝 Histórico de pagamento registrado: payment_id=${paymentId}, user_id=${userId}`)
+  } catch (e: any) {
+    console.log('⚠️ Erro ao registrar histórico de pagamento:', e.message)
+  }
+  
+  // ✅ SEGURANÇA v145: Log de auditoria
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        action TEXT NOT NULL,
+        user_id INTEGER,
+        details TEXT,
+        ip_address TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    await DB.prepare(`
+      INSERT INTO audit_log (action, user_id, details, created_at)
+      VALUES ('payment_activated', ?, ?, datetime('now'))
+    `).bind(userId, JSON.stringify({ plan, paymentId, amount: paymentAmount })).run()
+  } catch (e: any) {
+    // Log de auditoria não é crítico
+  }
+  
+  return { success: true, expiresAt }
+}
+
 // Webhook para receber confirmação de pagamento do Mercado Pago
+// ✅ SEGURANÇA v145: Validação HMAC obrigatória + verificação completa
 app.post('/api/webhook/mercadopago', async (c) => {
   const { DB, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET } = c.env as any
   
   try {
-    // Validar assinatura do webhook (segurança)
+    const body = await c.req.json()
+    console.log('📦 Webhook Mercado Pago recebido:', JSON.stringify(body).substring(0, 500))
+    
+    // ✅ SEGURANÇA: Validar assinatura HMAC do webhook
     const signature = c.req.header('x-signature')
     const requestId = c.req.header('x-request-id')
+    const dataId = body.data?.id?.toString() || ''
     
-    if (MP_WEBHOOK_SECRET && signature) {
-      // O Mercado Pago envia assinatura no formato: ts=timestamp,v1=hash
-      console.log('🔐 Validando assinatura do webhook...')
-      console.log('Signature:', signature)
-      console.log('Request ID:', requestId)
-      // Por enquanto, apenas logamos - a validação completa requer crypto
+    if (MP_WEBHOOK_SECRET) {
+      const isValidSignature = await validarWebhookHMAC(signature, requestId, dataId, MP_WEBHOOK_SECRET)
+      if (!isValidSignature) {
+        console.error('🚨 SEGURANÇA: Webhook com assinatura INVÁLIDA rejeitado!')
+        console.error(`   Signature: ${signature}`)
+        console.error(`   Request ID: ${requestId}`)
+        console.error(`   Data ID: ${dataId}`)
+        // Registrar tentativa de fraude
+        try {
+          await DB.prepare(`
+            CREATE TABLE IF NOT EXISTS audit_log (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              action TEXT NOT NULL,
+              user_id INTEGER,
+              details TEXT,
+              ip_address TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run()
+          await DB.prepare(`
+            INSERT INTO audit_log (action, details, ip_address, created_at)
+            VALUES ('webhook_invalid_signature', ?, ?, datetime('now'))
+          `).bind(
+            JSON.stringify({ signature, requestId, dataId, body: JSON.stringify(body).substring(0, 200) }),
+            c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
+          ).run()
+        } catch (e) { /* audit não é crítico */ }
+        return c.json({ error: 'Assinatura inválida' }, 401)
+      }
+    } else {
+      console.warn('⚠️ MP_WEBHOOK_SECRET não configurado - validação HMAC desabilitada')
+      console.warn('   CONFIGURE MP_WEBHOOK_SECRET para segurança em produção!')
     }
-    
-    const body = await c.req.json()
-    console.log('📦 Webhook Mercado Pago recebido:', JSON.stringify(body))
     
     // Verificar tipo de notificação
     if (body.type !== 'payment' && body.action !== 'payment.created' && body.action !== 'payment.updated') {
       console.log('Notificação ignorada:', body.type, body.action)
       return c.json({ received: true })
+    }
+    
+    // ✅ SEGURANÇA: Verificar que temos o token para consultar MP
+    if (!MP_ACCESS_TOKEN) {
+      console.error('🚨 MP_ACCESS_TOKEN não configurado!')
+      return c.json({ error: 'Configuração incompleta' }, 500)
     }
     
     // Buscar detalhes do pagamento na API do Mercado Pago
@@ -2528,114 +2776,59 @@ app.post('/api/webhook/mercadopago', async (c) => {
       headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
     })
     
-    const payment = await paymentResponse.json() as any
-    console.log('💳 Detalhes do pagamento:', JSON.stringify(payment))
+    if (!paymentResponse.ok) {
+      console.error(`🚨 Erro ao consultar pagamento ${paymentId}: ${paymentResponse.status}`)
+      return c.json({ error: 'Erro ao consultar pagamento' }, 500)
+    }
     
-    // Verificar se pagamento foi aprovado
+    const payment = await paymentResponse.json() as any
+    console.log('💳 Detalhes do pagamento:', JSON.stringify(payment).substring(0, 500))
+    
+    // ✅ SEGURANÇA: Verificar se pagamento foi aprovado - CONFIAR APENAS na API do MP
     if (payment.status !== 'approved') {
       console.log(`Pagamento ${paymentId} não aprovado: ${payment.status}`)
       return c.json({ received: true, status: payment.status })
     }
     
-    // Extrair dados do external_reference
+    // ✅ SEGURANÇA: Extrair dados do external_reference (que nós mesmos criamos na preferência)
     let userData
     try {
       userData = JSON.parse(payment.external_reference)
     } catch {
-      console.error('external_reference inválido:', payment.external_reference)
+      console.error('🚨 external_reference inválido:', payment.external_reference)
       return c.json({ error: 'Referência inválida' }, 400)
+    }
+    
+    // ✅ SEGURANÇA: Validar que user_id e plan existem no external_reference
+    if (!userData?.user_id || !userData?.plan) {
+      console.error('🚨 Dados incompletos no external_reference:', userData)
+      return c.json({ error: 'Dados de referência incompletos' }, 400)
     }
     
     const { user_id, plan, days } = userData
     
-    // Calcular data de expiração
-    const now = new Date()
-    const expiresAt = new Date(now.getTime() + (days || 30) * 24 * 60 * 60 * 1000).toISOString()
-    
-    // ✅ CORREÇÃO v9: Atualizar usuário com assinatura ativa E is_premium = 1
-    await DB.prepare(`
-      UPDATE users SET 
-        subscription_status = 'active',
-        subscription_plan = ?,
-        subscription_expires_at = ?,
-        payment_id = ?,
-        payment_date = ?,
-        is_premium = 1,
-        premium_expires_at = ?
-      WHERE id = ?
-    `).bind(plan, expiresAt, paymentId.toString(), now.toISOString(), expiresAt, user_id).run()
-    
-    console.log(`✅ Assinatura ${plan} ativada para usuário ${user_id} até ${expiresAt}`)
-    
-    // Buscar dados do usuário para enviar email
-    const user = await DB.prepare('SELECT email, name FROM users WHERE id = ?').bind(user_id).first() as any
-    
-    // Enviar email de confirmação de pagamento
-    if (user) {
-      try {
-        await sendPaymentConfirmationEmail(
-          user.email,
-          user.name || 'Usuário',
-          plan,
-          payment.transaction_amount,
-          expiresAt,
-          paymentId.toString(),
-          c.env
-        )
-        console.log(`📧 Email de confirmação enviado para ${user.email}`)
-      } catch (emailError) {
-        console.error('⚠️ Erro ao enviar email de confirmação (não crítico):', emailError)
-      }
-    }
-    
-    // ✅ CORREÇÃO v11: Registrar histórico de pagamento com mais detalhes para auditoria
-    try {
-      // Criar tabela se não existir (auto-migrate)
-      await DB.prepare(`
-        CREATE TABLE IF NOT EXISTS payment_history (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          payment_id TEXT NOT NULL UNIQUE,
-          plan TEXT NOT NULL,
-          amount REAL,
-          status TEXT NOT NULL,
-          external_reference TEXT,
-          payer_email TEXT,
-          transaction_details TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `).run()
-      
-      await DB.prepare(`
-        INSERT OR REPLACE INTO payment_history (user_id, payment_id, plan, amount, status, external_reference, payer_email, transaction_details, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        user_id, 
-        paymentId.toString(), 
-        plan, 
-        payment.transaction_amount, 
-        'approved',
-        payment.external_reference,
-        payment.payer?.email || null,
-        JSON.stringify({
-          status_detail: payment.status_detail,
-          payment_method: payment.payment_method_id,
-          date_approved: payment.date_approved,
-          date_created: payment.date_created
-        }),
-        now.toISOString()
-      ).run()
-      console.log(`📝 Histórico de pagamento registrado: payment_id=${paymentId}, user_id=${user_id}`)
-    } catch (e: any) {
-      console.log('⚠️ Erro ao registrar histórico de pagamento:', e.message)
-    }
+    // ✅ SEGURANÇA: Usar função centralizada e segura para ativar assinatura
+    const result = await ativarAssinaturaSegura(
+      DB, user_id, plan, days || 30, paymentId.toString(),
+      payment.transaction_amount,
+      payment.external_reference,
+      payment.payer?.email || null,
+      {
+        status_detail: payment.status_detail,
+        payment_method: payment.payment_method_id,
+        date_approved: payment.date_approved,
+        date_created: payment.date_created,
+        source: 'webhook'
+      },
+      c.env
+    )
     
     return c.json({ 
       received: true, 
       processed: true,
       user_id,
       plan,
-      expires_at: expiresAt
+      expires_at: result.expiresAt
     })
   } catch (error: any) {
     console.error('Erro no webhook:', error)
@@ -2759,16 +2952,42 @@ app.get('/api/admin/payments', async (c) => {
 })
 
 // Verificar status de pagamento
+// ✅ SEGURANÇA v145: Requer autenticação e MP_ACCESS_TOKEN
 app.get('/api/mercadopago/payment-status/:payment_id', async (c) => {
   const { MP_ACCESS_TOKEN } = c.env as any
   const paymentId = c.req.param('payment_id')
+  const requestUserId = c.req.header('X-User-ID')
+  
+  // ✅ SEGURANÇA: Requer usuário autenticado
+  if (!requestUserId) {
+    return c.json({ error: 'Autenticação obrigatória' }, 401)
+  }
+  
+  if (!MP_ACCESS_TOKEN) {
+    return c.json({ error: 'Serviço de pagamento não configurado' }, 500)
+  }
   
   try {
     const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
     })
     
+    if (!response.ok) {
+      return c.json({ error: 'Pagamento não encontrado' }, 404)
+    }
+    
     const payment = await response.json() as any
+    
+    // ✅ SEGURANÇA: Verificar que o pagamento pertence ao usuário que está consultando
+    let isOwner = false
+    try {
+      const refData = JSON.parse(payment.external_reference || '{}')
+      isOwner = refData.user_id?.toString() === requestUserId.toString()
+    } catch { /* ignore parse errors */ }
+    
+    if (!isOwner && !await isAdmin(c)) {
+      return c.json({ error: 'Acesso negado' }, 403)
+    }
     
     return c.json({
       status: payment.status,
@@ -2782,6 +3001,7 @@ app.get('/api/mercadopago/payment-status/:payment_id', async (c) => {
 })
 
 // Callback de retorno após pagamento
+// ✅ SEGURANÇA v145: Validação completa via API do MP (não confiar em query params)
 app.get('/pagamento/sucesso', async (c) => {
   const { DB, MP_ACCESS_TOKEN } = c.env as any
   const paymentId = c.req.query('payment_id')
@@ -2790,78 +3010,95 @@ app.get('/pagamento/sucesso', async (c) => {
   
   console.log(`💰 Retorno de pagamento: ${paymentId}, status: ${status}, ref: ${externalReference}`)
   
-  // ✅ CORREÇÃO v10: Tentar ativar assinatura automaticamente no retorno
-  if (paymentId && status === 'approved') {
+  // ✅ SEGURANÇA: Ativar assinatura SOMENTE se podemos verificar via API do MP
+  if (paymentId && MP_ACCESS_TOKEN) {
     try {
-      // Buscar detalhes do pagamento na API do Mercado Pago
+      // SEMPRE consultar a API do MP para confirmar status real
       const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
         headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
       })
       
-      const payment = await paymentResponse.json() as any
-      console.log('💳 Pagamento aprovado, ativando assinatura:', payment.status)
-      
-      if (payment.status === 'approved' && payment.external_reference) {
-        // Extrair dados do external_reference
-        let userData
-        try {
-          userData = JSON.parse(payment.external_reference)
-        } catch {
-          console.error('external_reference inválido no callback:', payment.external_reference)
-        }
+      if (paymentResponse.ok) {
+        const payment = await paymentResponse.json() as any
+        console.log('💳 Pagamento verificado via API MP:', payment.status)
         
-        if (userData?.user_id) {
-          const { user_id, plan, days } = userData
-          
-          // Verificar se já não foi ativado
-          const user = await DB.prepare('SELECT subscription_status, payment_id FROM users WHERE id = ?').bind(user_id).first() as any
-          
-          if (!user?.payment_id || user.payment_id !== paymentId.toString()) {
-            // Calcular data de expiração
-            const now = new Date()
-            const expiresAt = new Date(now.getTime() + (days || 30) * 24 * 60 * 60 * 1000).toISOString()
-            
-            // Ativar assinatura
-            await DB.prepare(`
-              UPDATE users SET 
-                subscription_status = 'active',
-                subscription_plan = ?,
-                subscription_expires_at = ?,
-                payment_id = ?,
-                payment_date = ?,
-                is_premium = 1,
-                premium_expires_at = ?
-              WHERE id = ?
-            `).bind(plan || 'mensal', expiresAt, paymentId.toString(), now.toISOString(), expiresAt, user_id).run()
-            
-            console.log(`✅ Assinatura ativada via callback para usuário ${user_id}`)
-          } else {
-            console.log(`ℹ️ Assinatura já estava ativa para usuário ${user_id}`)
+        // ✅ SEGURANÇA: CONFIAR APENAS no status da API do MP, não no query param
+        if (payment.status === 'approved' && payment.external_reference) {
+          let userData
+          try {
+            userData = JSON.parse(payment.external_reference)
+          } catch {
+            console.error('external_reference inválido no callback:', payment.external_reference)
           }
+          
+          if (userData?.user_id) {
+            try {
+              await ativarAssinaturaSegura(
+                DB, userData.user_id, userData.plan || 'mensal', userData.days || 30,
+                paymentId.toString(),
+                payment.transaction_amount,
+                payment.external_reference,
+                payment.payer?.email || null,
+                {
+                  status_detail: payment.status_detail,
+                  payment_method: payment.payment_method_id,
+                  date_approved: payment.date_approved,
+                  source: 'callback'
+                },
+                c.env
+              )
+              console.log(`✅ Assinatura ativada via callback para usuário ${userData.user_id}`)
+            } catch (err: any) {
+              console.log(`ℹ️ Callback: ${err.message}`)
+            }
+          }
+        } else {
+          console.log(`⚠️ Pagamento ${paymentId} não aprovado via API MP: ${payment.status} (query param dizia: ${status})`)
         }
+      } else {
+        console.error(`⚠️ Erro ao verificar pagamento via API MP: ${paymentResponse.status}`)
       }
     } catch (error) {
       console.error('Erro ao ativar assinatura no callback:', error)
     }
+  } else if (!MP_ACCESS_TOKEN) {
+    console.warn('⚠️ Callback sem MP_ACCESS_TOKEN - não pode verificar pagamento!')
   }
   
   // Redirecionar para o app com parâmetros
   return c.redirect(`/?payment=success&payment_id=${paymentId}&status=${status}`)
 })
 
-// ✅ NOVO v10: Endpoint para verificar e ativar pagamento manualmente (admin ou usuário)
+// ✅ SEGURANÇA v145: Endpoint para verificar e ativar pagamento (com validação completa via API MP)
 app.post('/api/mercadopago/verify-and-activate/:payment_id', async (c) => {
   const { DB, MP_ACCESS_TOKEN } = c.env as any
   const paymentId = c.req.param('payment_id')
-  const userId = c.req.header('X-User-ID')
+  const requestUserId = c.req.header('X-User-ID')
   
-  console.log(`🔍 Verificando pagamento ${paymentId} para usuário ${userId}`)
+  // ✅ SEGURANÇA: Requer usuário autenticado
+  if (!requestUserId) {
+    console.warn('🚨 SEGURANÇA: verify-and-activate chamado sem X-User-ID')
+    return c.json({ error: 'Autenticação obrigatória' }, 401)
+  }
+  
+  // ✅ SEGURANÇA: Requer token do MercadoPago configurado
+  if (!MP_ACCESS_TOKEN) {
+    console.error('🚨 MP_ACCESS_TOKEN não configurado!')
+    return c.json({ error: 'Serviço de pagamento não configurado' }, 500)
+  }
+  
+  console.log(`🔍 Verificando pagamento ${paymentId} para usuário ${requestUserId}`)
   
   try {
-    // Buscar detalhes do pagamento na API do Mercado Pago
+    // ✅ SEGURANÇA: Consultar pagamento DIRETAMENTE na API do Mercado Pago
     const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
     })
+    
+    if (!paymentResponse.ok) {
+      console.error(`🚨 Erro ao consultar pagamento ${paymentId}: ${paymentResponse.status}`)
+      return c.json({ error: 'Pagamento não encontrado ou erro ao consultar', status: paymentResponse.status }, 400)
+    }
     
     const payment = await paymentResponse.json() as any
     
@@ -2873,41 +3110,65 @@ app.post('/api/mercadopago/verify-and-activate/:payment_id', async (c) => {
       }, 400)
     }
     
-    // Extrair dados do external_reference
+    // ✅ SEGURANÇA: Extrair e validar external_reference
     let userData
     try {
       userData = JSON.parse(payment.external_reference)
     } catch {
-      // Se não conseguiu parsear, usar o userId do header
-      userData = { user_id: parseInt(userId || '0'), plan: 'mensal', days: 30 }
+      console.error('🚨 external_reference inválido no verify-and-activate:', payment.external_reference)
+      return c.json({ error: 'Referência de pagamento inválida' }, 400)
     }
     
-    const targetUserId = userData.user_id || parseInt(userId || '0')
-    
+    // ✅ SEGURANÇA CRÍTICA: Verificar que o pagamento pertence ao usuário que está solicitando
+    const targetUserId = userData?.user_id
     if (!targetUserId) {
-      return c.json({ error: 'Usuário não identificado' }, 400)
+      console.error('🚨 user_id não encontrado no external_reference')
+      return c.json({ error: 'Dados de pagamento incompletos' }, 400)
+    }
+    
+    // O userId do external_reference DEVE ser igual ao userId do header (quem está solicitando)
+    if (targetUserId.toString() !== requestUserId.toString()) {
+      console.warn(`🚨 SEGURANÇA: Usuário ${requestUserId} tentou ativar pagamento ${paymentId} que pertence ao usuário ${targetUserId}`)
+      // Log de auditoria
+      try {
+        await DB.prepare(`
+          CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL,
+            user_id INTEGER,
+            details TEXT,
+            ip_address TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run()
+        await DB.prepare(`
+          INSERT INTO audit_log (action, user_id, details, ip_address, created_at)
+          VALUES ('payment_user_mismatch', ?, ?, ?, datetime('now'))
+        `).bind(
+          parseInt(requestUserId),
+          JSON.stringify({ paymentId, requestUserId, targetUserId }),
+          c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
+        ).run()
+      } catch (e) { /* audit não é crítico */ }
+      return c.json({ error: 'Este pagamento não pertence a este usuário' }, 403)
     }
     
     const { plan, days } = userData
     
-    // Calcular data de expiração
-    const now = new Date()
-    const expiresAt = new Date(now.getTime() + (days || 30) * 24 * 60 * 60 * 1000).toISOString()
-    
-    // Ativar assinatura
-    await DB.prepare(`
-      UPDATE users SET 
-        subscription_status = 'active',
-        subscription_plan = ?,
-        subscription_expires_at = ?,
-        payment_id = ?,
-        payment_date = ?,
-        is_premium = 1,
-        premium_expires_at = ?
-      WHERE id = ?
-    `).bind(plan || 'mensal', expiresAt, paymentId.toString(), now.toISOString(), expiresAt, targetUserId).run()
-    
-    console.log(`✅ Assinatura ${plan || 'mensal'} ativada manualmente para usuário ${targetUserId}`)
+    // ✅ SEGURANÇA: Usar função centralizada e segura para ativar
+    const result = await ativarAssinaturaSegura(
+      DB, targetUserId, plan || 'mensal', days || 30, paymentId.toString(),
+      payment.transaction_amount,
+      payment.external_reference,
+      payment.payer?.email || null,
+      {
+        status_detail: payment.status_detail,
+        payment_method: payment.payment_method_id,
+        date_approved: payment.date_approved,
+        source: 'verify-and-activate'
+      },
+      c.env
+    )
     
     // Buscar usuário atualizado
     const user = await DB.prepare('SELECT id, email, name, subscription_status, subscription_plan, is_premium FROM users WHERE id = ?').bind(targetUserId).first()
@@ -2916,11 +3177,11 @@ app.post('/api/mercadopago/verify-and-activate/:payment_id', async (c) => {
       success: true, 
       message: 'Assinatura ativada com sucesso!',
       user,
-      expires_at: expiresAt
+      expires_at: result.expiresAt
     })
   } catch (error: any) {
     console.error('Erro ao verificar pagamento:', error)
-    return c.json({ error: error.message }, 500)
+    return c.json({ error: error.message || 'Erro ao verificar pagamento' }, 500)
   }
 })
 
@@ -6304,171 +6565,189 @@ app.post('/api/editais/upload', async (c) => {
 // ==========================================
 // FUNÇÃO AUXILIAR: Extrair seção de conteúdo programático
 // ==========================================
+// ✅ v144: Reescrita completa para suportar múltiplos formatos de editais
+// Problema anterior: ANEXO II era "Quadro de Vagas" em EBSERH, conteúdo real em ANEXO VII
 function extrairConteudoProgramatico(texto: string): { conteudo: string, encontrado: boolean, posicao: number } {
-  // ✅ NORMALIZAR texto: remover espaços extras e normalizar quebras de linha
   const textoNormalizado = texto.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
   const textoLower = textoNormalizado.toLowerCase()
   
-  console.log(`📝 extrairConteudoProgramatico: texto total ${textoLower.length} caracteres`)
+  console.log(`📝 v144 extrairConteudoProgramatico: texto total ${textoLower.length} caracteres`)
   
-  // Padrões para encontrar fim do conteúdo programático
+  // ✅ v144: Coletar TODOS os candidatos possíveis e escolher o melhor
+  const candidatos: { pos: number, score: number, label: string }[] = []
+  
+  // Função auxiliar: verifica se próximos N chars contêm disciplinas/conteúdo real
+  const temDisciplinasProximas = (pos: number, range: number = 3000): boolean => {
+    const trecho = textoLower.substring(pos, pos + range)
+    return (trecho.includes('língua portuguesa') || trecho.includes('lingua portuguesa') ||
+            trecho.includes('raciocínio lógico') || trecho.includes('raciocinio logico') ||
+            trecho.includes('conhecimentos básicos') || trecho.includes('conhecimentos basicos') ||
+            trecho.includes('conhecimentos gerais') ||
+            trecho.includes('conhecimentos específicos') || trecho.includes('conhecimentos especificos') ||
+            // Formatos de editais diversos
+            trecho.includes('programa:') || trecho.includes('programa ') ||
+            trecho.includes('cargo 0') || trecho.includes('cargo 1') || trecho.includes('cargo 2') ||
+            trecho.includes('cargo 3') || trecho.includes('cargo 4') ||
+            trecho.includes('grupo 1') || trecho.includes('grupo 2') || trecho.includes('grupo 3'))
+  }
+  
+  // ════ Buscar TODOS os ANEXOS como títulos ════
+  const regexAnexo = /[\f\n][ \t]*anexo\s+(i{1,4}|iv|v|vi{0,3}|[0-9]+)[ \t]*[–\-]?[^\n]*[\r\n]/gi
+  let matchAnexo
+  while ((matchAnexo = regexAnexo.exec(textoLower)) !== null) {
+    const pos = matchAnexo.index + 1
+    const textoAnexo = textoLower.substring(pos, pos + 200).replace(/\n/g, ' ')
+    let score = 0
+    
+    // Score alto se o título menciona "conteúdo programático" ou "programas"
+    if (textoAnexo.includes('conteúdo programático') || textoAnexo.includes('conteudo programatico') ||
+        textoAnexo.includes('programas') || textoAnexo.includes('dos conteúdos')) {
+      score += 10
+    }
+    // Score se há disciplinas próximas
+    if (temDisciplinasProximas(pos, 5000)) score += 5
+    // Score negativo se parece ser quadro de vagas/cronograma
+    if (textoAnexo.includes('vagas') || textoAnexo.includes('quadro') || textoAnexo.includes('cronograma') ||
+        textoAnexo.includes('atribuições') || textoAnexo.includes('retribuição')) {
+      score -= 10
+    }
+    
+    if (score > 0) {
+      candidatos.push({ pos, score, label: `ANEXO: "${textoAnexo.substring(0, 80).trim()}"` })
+    }
+  }
+  
+  // ════ Buscar "CONTEÚDO PROGRAMÁTICO" como título ════
+  const regexCP = /[\f\n][ \t]*(conteúdo|conteudo)\s*(programático|programatico)s?[ \t]*[\r\n]/gi
+  let matchCP
+  while ((matchCP = regexCP.exec(textoLower)) !== null) {
+    const pos = matchCP.index + 1
+    let score = 8
+    if (temDisciplinasProximas(pos)) score += 5
+    candidatos.push({ pos, score, label: 'CONTEÚDO PROGRAMÁTICO como título' })
+  }
+  
+  // ════ Buscar "CONHECIMENTOS BÁSICOS" com disciplinas ════
+  const regexCB = /[\f\n][ \t]*conhecimentos\s+b[áa]sicos[^\n]*[\r\n]/gi
+  let matchCB
+  while ((matchCB = regexCB.exec(textoLower)) !== null) {
+    const pos = matchCB.index + 1
+    if (temDisciplinasProximas(pos)) {
+      candidatos.push({ pos, score: 6, label: 'CONHECIMENTOS BÁSICOS com disciplinas' })
+    }
+  }
+  
+  // ════ Buscar "CONHECIMENTOS GERAIS" com disciplinas ════
+  const regexCG = /[\f\n][ \t]*conhecimentos?\s+gerais[ \t]*[\r\n]/gi
+  let matchCG
+  while ((matchCG = regexCG.exec(textoLower)) !== null) {
+    const pos = matchCG.index + 1
+    if (temDisciplinasProximas(pos)) {
+      candidatos.push({ pos, score: 6, label: 'CONHECIMENTOS GERAIS com disciplinas' })
+    }
+  }
+  
+  // ════ Buscar "Língua Portuguesa:" como início de disciplinas ════
+  const regexLP = /[\f\n][ \t]*(?:1\.?\s*)?l[ií]ngua\s+portuguesa\s*:/gi
+  let matchLP
+  while ((matchLP = regexLP.exec(textoLower)) !== null) {
+    const pos = Math.max(0, matchLP.index - 500) // Voltar para pegar cabeçalho
+    candidatos.push({ pos, score: 4, label: `Língua Portuguesa: na posição ${matchLP.index}` })
+  }
+  
+  // ════ Buscar "CARGO NN:" que indica seção de conteúdo por cargo ════
+  const regexCargo = /[\f\n][ \t]*cargo\s+\d{1,3}\s*:/gi
+  let matchCargo
+  let primeiroCargo = true
+  while ((matchCargo = regexCargo.exec(textoLower)) !== null) {
+    if (primeiroCargo) {
+      const pos = Math.max(0, matchCargo.index - 500)
+      candidatos.push({ pos, score: 5, label: `Primeiro CARGO N: na posição ${matchCargo.index}` })
+      primeiroCargo = false
+    }
+  }
+  
+  // ════ Buscar "Grupo N –" que indica conteúdo por grupo (EBSERH) ════
+  const regexGrupo = /[\f\n][ \t]*grupo\s+\d+\s*[–\-]/gi
+  let matchGrupo
+  let primeiroGrupo = true
+  while ((matchGrupo = regexGrupo.exec(textoLower)) !== null) {
+    if (primeiroGrupo) {
+      const pos = Math.max(0, matchGrupo.index - 500)
+      candidatos.push({ pos, score: 5, label: `Primeiro Grupo N – na posição ${matchGrupo.index}` })
+      primeiroGrupo = false
+    }
+  }
+  
+  console.log(`📍 v144: ${candidatos.length} candidatos encontrados`)
+  for (const c of candidatos.sort((a, b) => b.score - a.score).slice(0, 5)) {
+    console.log(`   score ${c.score}: ${c.label} (pos ${c.pos})`)
+  }
+  
+  // Escolher o melhor candidato
+  if (candidatos.length === 0) {
+    console.log(`⚠️ v144: Nenhum padrão de conteúdo programático encontrado, usando texto completo`)
+    return { conteudo: texto.substring(0, 80000), encontrado: false, posicao: 0 }
+  }
+  
+  // Ordenar por score descendente; em empate, preferir posição mais ANTIGA (conteúdo real é geralmente a primeira ocorrência verdadeira)
+  candidatos.sort((a, b) => b.score - a.score || a.pos - b.pos)
+  const melhor = candidatos[0]
+  let posInicio = melhor.pos
+  console.log(`📍 v144: Melhor candidato: ${melhor.label} (score ${melhor.score}, pos ${posInicio})`)
+  
+  // ════ Encontrar fim da seção ════
+  // Procurar por padrões que indicam fim do conteúdo programático
+  let posFim = textoNormalizado.length
   const padroesFim = [
-    '\fanexo iii',
-    '\nexo iii',
-    'anexo iii',
-    'anexo iv',
-    'cronograma previsto',
-    '\fcronograma',
-    '\ncronograma'
+    // Buscar ANEXO seguinte que NÃO seja de conteúdo
+    /\natribuições\s+dos\s+cargos/i,
+    /\ncronograma/i,
+    /\nmodelo\s+de/i,
+    /\nformul[áa]rio/i
   ]
   
-  let posInicio = -1
-  
-  // ✅ PASSO 1: Buscar "ANEXO II" como TÍTULO (isolado, não como referência)
-  // O ANEXO II real geralmente começa com quebra de página (\f) ou está em linha própria
-  // Procuramos por padrões como: "\fANEXO II", "\nANEXO II\n", "ANEXO II\r\n"
-  
-  // Buscar ANEXO II que é um TÍTULO (seguido de quebra de linha ou CONTEÚDO PROGRAMÁTICO)
-  const regexAnexoIITitulo = /[\f\n][ \t]*anexo\s+ii[ \t]*[\r\n]/gi
-  let matchTitulo = regexAnexoIITitulo.exec(textoLower)
-  if (matchTitulo) {
-    posInicio = matchTitulo.index + 1 // Pular o \f ou \n inicial
-    console.log(`📍 Encontrado ANEXO II como TÍTULO na posição ${posInicio}`)
-  }
-  
-  // ✅ PASSO 2: Buscar "ANEXO II" seguido de "CONTEÚDO PROGRAMÁTICO" na mesma linha/próximas linhas
-  if (posInicio === -1) {
-    const regexAnexoCP = /[\f\n][ \t]*anexo\s+ii[^\n]*conteúdo\s*programático|[\f\n][ \t]*anexo\s+ii[\r\n]+[^\n]*conteúdo\s*programático/gi
-    let matchAnexoCP = regexAnexoCP.exec(textoLower)
-    if (matchAnexoCP) {
-      posInicio = matchAnexoCP.index + 1
-      console.log(`📍 Encontrado ANEXO II + CONTEÚDO PROGRAMÁTICO na posição ${posInicio}`)
-    }
-  }
-  
-  // ✅ PASSO 3: Buscar "CONTEÚDO PROGRAMÁTICO" como título de seção (não referência)
-  // Evitar frases como "consta do Anexo II" - procurar quando aparece como TÍTULO
-  if (posInicio === -1) {
-    const regexCPTitulo = /[\f\n][ \t]*conteúdo\s*programático[ \t]*[\r\n]/gi
-    let matchCP = regexCPTitulo.exec(textoLower)
-    if (matchCP) {
-      posInicio = matchCP.index + 1
-      console.log(`📍 Encontrado CONTEÚDO PROGRAMÁTICO como TÍTULO na posição ${posInicio}`)
-    }
-  }
-  
-  // ✅ PASSO 4: Buscar "CONHECIMENTOS GERAIS" que NÃO é referência (seguido de disciplinas)
-  if (posInicio === -1) {
-    const regexCG = /[\f\n][ \t]*(?:cargos?\s+de\s+)?(?:nível\s+(?:médio|superior)[^\n]*[\r\n]+)?[ \t]*conhecimentos?\s+gerais[ \t]*[\r\n]/gi
-    let matchCG
-    while ((matchCG = regexCG.exec(textoLower)) !== null) {
-      const posCG = matchCG.index + 1
-      // Verificar se há "Língua Portuguesa" nos próximos 1500 caracteres (indica conteúdo real)
-      const proximosChars = textoLower.substring(posCG, posCG + 1500)
-      if (proximosChars.includes('língua portuguesa') || proximosChars.includes('lingua portuguesa')) {
-        posInicio = posCG
-        console.log(`📍 Encontrado CONHECIMENTOS GERAIS com disciplinas na posição ${posInicio}`)
-        break
-      }
-    }
-  }
-  
-  // ✅ PASSO 5: Buscar "Língua Portuguesa:" como início de listagem de tópicos
-  if (posInicio === -1) {
-    // Buscar padrão: "Língua Portuguesa:" seguido de tópicos
-    const regexLP = /[\f\n][ \t]*1\.?\s*língua\s+portuguesa\s*:|[\f\n][ \t]*língua\s+portuguesa\s*:/gi
-    let matchLP = regexLP.exec(textoLower)
-    if (matchLP) {
-      // Voltar um pouco para pegar o cabeçalho
-      posInicio = Math.max(0, matchLP.index - 300)
-      console.log(`📍 Encontrado "Língua Portuguesa:" na posição ${matchLP.index}, iniciando em ${posInicio}`)
-    }
-  }
-  
-  // ✅ PASSO 6: Buscar seção "CARGOS DE NÍVEL" que precede conteúdo programático
-  if (posInicio === -1) {
-    const regexNivel = /[\f\n][ \t]*cargos?\s+de\s+nível\s+(?:médio|superior)/gi
-    let matchNivel
-    while ((matchNivel = regexNivel.exec(textoLower)) !== null) {
-      const posNivel = matchNivel.index + 1
-      const proximosChars = textoLower.substring(posNivel, posNivel + 2000)
-      if (proximosChars.includes('língua portuguesa') || proximosChars.includes('conhecimentos gerais')) {
-        posInicio = posNivel
-        console.log(`📍 Encontrado seção CARGOS DE NÍVEL com disciplinas na posição ${posInicio}`)
-        break
-      }
-    }
-  }
-  
-  // Se ainda não encontrou, retornar texto original truncado
-  if (posInicio === -1) {
-    console.log(`⚠️ Nenhum padrão de conteúdo programático encontrado, usando texto completo`)
-    return { 
-      conteudo: texto.substring(0, 60000), 
-      encontrado: false,
-      posicao: 0 
-    }
-  }
-  
-  // Encontrar fim - buscar ANEXO III ou próxima seção
-  let posFim = textoNormalizado.length
   for (const padrao of padroesFim) {
-    const pos = textoLower.indexOf(padrao, posInicio + 2000) // Procurar após 2000 chars do início
-    if (pos !== -1 && pos < posFim) {
-      posFim = pos
-      console.log(`📍 Encontrado padrão de fim "${padrao.replace(/[\f\n]/g, '\\n')}" na posição ${pos}`)
-      break
+    const match = textoNormalizado.substring(posInicio + 3000).match(padrao)
+    if (match && match.index !== undefined) {
+      const posPadrao = posInicio + 3000 + match.index
+      if (posPadrao < posFim) {
+        posFim = posPadrao
+        console.log(`📍 v144: Fim da seção encontrado na posição ${posFim}`)
+      }
     }
   }
   
-  // Limitar a 60k caracteres do conteúdo programático
-  const maxLength = 60000
+  // ✅ v144: Limitar a 80k caracteres (mais generoso para editais grandes como EBSERH)
+  const maxLength = 80000
   if (posFim - posInicio > maxLength) {
     posFim = posInicio + maxLength
   }
   
   const conteudoExtraido = textoNormalizado.substring(posInicio, posFim)
-  console.log(`📝 Conteúdo extraído: ${conteudoExtraido.length} caracteres (posição ${posInicio} a ${posFim})`)
-  console.log(`📄 Preview início: ${conteudoExtraido.substring(0, 200).replace(/\r?\n/g, ' ')}...`)
+  console.log(`📝 v144: Conteúdo extraído: ${conteudoExtraido.length} caracteres (posição ${posInicio} a ${posFim})`)
+  console.log(`📄 Preview: ${conteudoExtraido.substring(0, 200).replace(/\r?\n/g, ' ')}...`)
   
-  // ✅ VALIDAÇÃO: Verificar se o conteúdo extraído parece ter disciplinas
+  // Validação final
   const conteudoLower = conteudoExtraido.toLowerCase()
-  const temDisciplinas = conteudoLower.includes('língua portuguesa') ||
-                         conteudoLower.includes('lingua portuguesa') ||
-                         conteudoLower.includes('raciocínio lógico') ||
-                         conteudoLower.includes('raciocinio logico') ||
-                         conteudoLower.includes('conhecimentos específicos') ||
-                         conteudoLower.includes('conhecimentos especificos')
+  const temConteudo = conteudoLower.includes('língua portuguesa') || conteudoLower.includes('lingua portuguesa') ||
+                      conteudoLower.includes('conhecimentos') || conteudoLower.includes('programa:') ||
+                      conteudoLower.includes('cargo ') || conteudoLower.includes('grupo ')
   
-  if (!temDisciplinas) {
-    console.log(`⚠️ Conteúdo extraído não parece ter disciplinas listadas, buscando no texto completo...`)
-    
-    // Tentar encontrar qualquer seção com disciplinas no texto completo
-    const regexQualquerDisciplina = /língua\s+portuguesa\s*:/gi
-    const matchQualquer = regexQualquerDisciplina.exec(textoLower)
-    if (matchQualquer) {
-      const novoInicio = Math.max(0, matchQualquer.index - 500)
-      const novoFim = Math.min(textoNormalizado.length, novoInicio + 60000)
-      console.log(`📍 Fallback: encontrado disciplinas em ${matchQualquer.index}, extraindo de ${novoInicio}`)
-      return {
-        conteudo: textoNormalizado.substring(novoInicio, novoFim),
-        encontrado: true,
-        posicao: novoInicio
-      }
+  if (!temConteudo) {
+    console.log(`⚠️ v144: Conteúdo extraído não parece ter disciplinas, usando fallback...`)
+    // Fallback: encontrar qualquer trecho com disciplinas
+    const regexFallback = /l[ií]ngua\s+portuguesa\s*:/gi
+    const matchFallback = regexFallback.exec(textoLower)
+    if (matchFallback) {
+      const novoInicio = Math.max(0, matchFallback.index - 1000)
+      const novoFim = Math.min(textoNormalizado.length, novoInicio + 80000)
+      return { conteudo: textoNormalizado.substring(novoInicio, novoFim), encontrado: true, posicao: novoInicio }
     }
-    
-    return {
-      conteudo: textoNormalizado.substring(0, 60000),
-      encontrado: false,
-      posicao: 0
-    }
+    return { conteudo: texto.substring(Math.max(0, texto.length - 80000)), encontrado: false, posicao: 0 }
   }
   
-  return {
-    conteudo: conteudoExtraido,
-    encontrado: true,
-    posicao: posInicio
-  }
+  return { conteudo: conteudoExtraido, encontrado: true, posicao: posInicio }
 }
 
 // ✅ ENDPOINT: Deletar edital e permitir re-upload
@@ -7226,22 +7505,57 @@ app.post('/api/editais/processar-texto', async (c) => {
     // ════════════════════════════════════════════════════════════════
     
     let textoParaProcessar = texto
+    let preExtracaoFeita = false  // ✅ v144: flag para indicar que já extraímos o conteúdo programático
     if (texto.length > 30000) {
       console.log(`📝 v65: Texto muito grande (${texto.length} chars), pré-extraindo conteúdo programático...`)
       const preExtracao = extrairConteudoProgramatico(texto)
       if (preExtracao.encontrado && preExtracao.conteudo.length > 500) {
         textoParaProcessar = preExtracao.conteudo
+        preExtracaoFeita = true
         console.log(`✅ v65: Seção de conteúdo programático extraída: ${textoParaProcessar.length} chars (de ${texto.length})`)
+        
+        // ✅ v144: Verificar se o cargo alvo está na seção extraída
+        // Se não estiver, buscar no texto completo a seção que contém o cargo
+        if (cargo && !textoParaProcessar.toUpperCase().includes(cargoUpper)) {
+          console.log(`⚠️ v144: Cargo "${cargoUpper}" não encontrado na seção extraída, buscando no texto completo...`)
+          const textoUpper = texto.toUpperCase()
+          // Buscar pelo cargo ou variações
+          const varBusca = [cargoUpper]
+          if (cargoUpper.includes('ENFERMEIRO')) varBusca.push('ENFERMAGEM')
+          if (cargoUpper.includes('FARMACÊUTICO')) varBusca.push('FARMÁCIA', 'FARMACÊUTICO')
+          if (cargoUpper.includes('ADMINISTRADOR')) varBusca.push('ADMINISTRAÇÃO', 'ADMINISTRADOR')
+          
+          let posCargo = -1
+          for (const v of varBusca) {
+            const pos = textoUpper.indexOf(v, preExtracao.posicao)
+            if (pos !== -1 && (posCargo === -1 || pos < posCargo)) {
+              posCargo = pos
+            }
+          }
+          
+          if (posCargo !== -1) {
+            // Extrair 80k chars centrado no cargo
+            const inicio = Math.max(0, posCargo - 10000)
+            const fim = Math.min(texto.length, inicio + 80000)
+            textoParaProcessar = texto.substring(inicio, fim)
+            console.log(`✅ v144: Re-extraído ${textoParaProcessar.length} chars centrado no cargo (pos ${posCargo})`)
+          } else {
+            // Cargo não encontrado em parte alguma após o conteúdo programático
+            // Usar texto completo dos últimos 80k chars
+            textoParaProcessar = texto.substring(Math.max(0, texto.length - 80000))
+            console.log(`⚠️ v144: Cargo não encontrado, usando últimos ${textoParaProcessar.length} chars`)
+          }
+        }
       } else {
-        // Se não encontrou conteúdo programático, usar últimos 60k chars (mais provável conter o conteúdo)
-        textoParaProcessar = texto.substring(Math.max(0, texto.length - 60000))
+        // Se não encontrou conteúdo programático, usar últimos 80k chars (mais provável conter o conteúdo)
+        textoParaProcessar = texto.substring(Math.max(0, texto.length - 80000))
         console.log(`⚠️ v65: Conteúdo programático não encontrado, usando últimos ${textoParaProcessar.length} chars`)
       }
     }
-    // ✅ v65: Limitar texto a 60k chars no máximo (segurança adicional contra CPU timeout)
-    if (textoParaProcessar.length > 60000) {
-      console.log(`⚠️ v65: Texto ainda muito grande (${textoParaProcessar.length}), truncando para 60k chars`)
-      textoParaProcessar = textoParaProcessar.substring(0, 60000)
+    // ✅ v144: Limitar texto a 80k chars no máximo (mais generoso para editais grandes)
+    if (textoParaProcessar.length > 80000) {
+      console.log(`⚠️ v144: Texto ainda muito grande (${textoParaProcessar.length}), truncando para 80k chars`)
+      textoParaProcessar = textoParaProcessar.substring(0, 80000)
     }
     
     // ════════════════════════════════════════════════════════════════
@@ -7538,7 +7852,9 @@ RETORNE APENAS JSON válido:
     }
     if (inicioConteudo === -1) {
       // Fallback: buscar por MÓDULO I ou CONHECIMENTOS GERAIS com conteúdo
-      for (let i = Math.floor(linhas.length * 0.4); i < linhas.length; i++) {
+      // ✅ v144: Se já extraímos o conteúdo programático, buscar desde o início
+      const startSearch = preExtracaoFeita ? 0 : Math.floor(linhas.length * 0.4)
+      for (let i = startSearch; i < linhas.length; i++) {
         const l = linhas[i].trim().toUpperCase()
         if ((l.includes('MÓDULO I') && l.includes('CONHECIMENTOS')) ||
             (l.includes('CONHECIMENTOS GERAIS') && !l.includes('QUESTÕES') && !l.includes('ACERTOS'))) {
@@ -7551,7 +7867,7 @@ RETORNE APENAS JSON válido:
         }
       }
     }
-    if (inicioConteudo === -1) inicioConteudo = Math.floor(linhas.length * 0.5)
+    if (inicioConteudo === -1) inicioConteudo = preExtracaoFeita ? 0 : Math.floor(linhas.length * 0.5)
     
     // ════════════════════════════════════════════════════════════════
     // ✅ v61: LOCALIZAÇÃO INTELIGENTE DE SEÇÃO DO CARGO
@@ -7562,19 +7878,28 @@ RETORNE APENAS JSON válido:
     const variacoesCargo: string[] = [cargoUpper]
     if (cargoUpper.includes('AUDITOR')) variacoesCargo.push('AUDITOR-FISCAL', 'AUDITOR FISCAL')
     if (cargoUpper.includes('ANALISTA')) variacoesCargo.push('ANALISTA-TRIBUTÁRIO', 'ANALISTA TRIBUTÁRIO')
-    // v142: Variações de cargos de saúde - mais estritas para evitar falsos positivos
+    // v144: Variações de cargos - incluir ÁREA genérica para editais que usam "Grupo N – ÁREA"
     if (cargoUpper.includes('ENFERMEIRO') || cargoUpper.includes('ENFERMAGEM')) {
-      variacoesCargo.push('ENFERMEIRO', 'ENFERMEIRA')
-      // Só adicionar "ENFERMAGEM" se o cargo inclui "TÉCNICO" (ex: "Técnico em Enfermagem")
+      variacoesCargo.push('ENFERMEIRO', 'ENFERMEIRA', 'ENFERMAGEM')
       if (cargoUpper.includes('TÉCNICO')) {
-        variacoesCargo.push('TÉCNICO DE ENFERMAGEM', 'TÉCNICO EM ENFERMAGEM', 'ENFERMAGEM')
+        variacoesCargo.push('TÉCNICO DE ENFERMAGEM', 'TÉCNICO EM ENFERMAGEM')
       }
     }
-    if (cargoUpper.includes('MÉDICO')) variacoesCargo.push('MÉDICO', 'MÉDICA')
-    if (cargoUpper.includes('FARMACÊUTICO')) variacoesCargo.push('FARMACÊUTICO', 'FARMACÊUTICA')
-    if (cargoUpper.includes('FISIOTERAPEUTA')) variacoesCargo.push('FISIOTERAPEUTA')
-    if (cargoUpper.includes('NUTRICIONISTA')) variacoesCargo.push('NUTRICIONISTA')
-    if (cargoUpper.includes('PSICÓLOGO')) variacoesCargo.push('PSICÓLOGO', 'PSICÓLOGA')
+    if (cargoUpper.includes('MÉDICO')) variacoesCargo.push('MÉDICO', 'MÉDICA', 'MEDICINA')
+    if (cargoUpper.includes('FARMACÊUTICO')) variacoesCargo.push('FARMACÊUTICO', 'FARMACÊUTICA', 'FARMÁCIA')
+    if (cargoUpper.includes('FISIOTERAPEUTA')) variacoesCargo.push('FISIOTERAPEUTA', 'FISIOTERAPIA')
+    if (cargoUpper.includes('NUTRICIONISTA')) variacoesCargo.push('NUTRICIONISTA', 'NUTRIÇÃO')
+    if (cargoUpper.includes('PSICÓLOGO')) variacoesCargo.push('PSICÓLOGO', 'PSICÓLOGA', 'PSICOLOGIA')
+    if (cargoUpper.includes('ADMINISTRADOR')) variacoesCargo.push('ADMINISTRADOR', 'ADMINISTRAÇÃO')
+    if (cargoUpper.includes('CONTADOR')) variacoesCargo.push('CONTADOR', 'CONTABILIDADE')
+    if (cargoUpper.includes('ENGENHEIRO')) variacoesCargo.push('ENGENHEIRO', 'ENGENHARIA')
+    if (cargoUpper.includes('ASSISTENTE SOCIAL')) variacoesCargo.push('ASSISTENTE SOCIAL', 'SERVIÇO SOCIAL')
+    if (cargoUpper.includes('PEDAGOGO')) variacoesCargo.push('PEDAGOGO', 'PEDAGOGIA')
+    if (cargoUpper.includes('BIOMÉDICO')) variacoesCargo.push('BIOMÉDICO', 'BIOMEDICINA')
+    if (cargoUpper.includes('FONOAUDIÓLOGO')) variacoesCargo.push('FONOAUDIÓLOGO', 'FONOAUDIOLOGIA')
+    if (cargoUpper.includes('DENTISTA') || cargoUpper.includes('ODONTOL')) variacoesCargo.push('DENTISTA', 'ODONTOLOGIA', 'CIRURGIÃO DENTISTA')
+    if (cargoUpper.includes('VETERINÁRIO')) variacoesCargo.push('VETERINÁRIO', 'MEDICINA VETERINÁRIA')
+    if (cargoUpper.includes('BIÓLOGO')) variacoesCargo.push('BIÓLOGO', 'BIOLOGIA')
     
     // ✅ v142: Extrair prefixo base e especialidade para cargos compostos
     // Ex: "MÉDICO - ANESTESIOLOGIA" → prefixo "MÉDICO", especialidade "ANESTESIOLOGIA"
@@ -7620,6 +7945,45 @@ RETORNE APENAS JSON válido:
       for (let i = inicioConteudo; i < linhas.length; i++) {
         const l = linhas[i].trim().toUpperCase()
         const lNorm = l.replace(/\s+/g, ' ').trim()
+        
+        // ✅ v144: Detectar "CARGO NN: NOME" (padrão GHC, UNIRIO)
+        const matchCargoNum = lNorm.match(/^CARGO\s+(\d+)\s*:?\s*(.*)/)
+        if (matchCargoNum) {
+          const nomeCargo = matchCargoNum[2].trim()
+          const ehCargoAlvo = variacoesCargo.some(v => 
+            nomeCargo === v || nomeCargo.startsWith(v + ' ') || nomeCargo.startsWith(v + '(') ||
+            nomeCargo.includes(v) || v.includes(nomeCargo)
+          )
+          if (ehCargoAlvo) {
+            const prox = linhas.slice(i+1, i+10).join(' ').toLowerCase()
+            if (prox.includes('programa') || prox.includes('conhecimentos') || prox.includes('língua') || 
+                prox.includes('lingua') || prox.includes('fundamentos') || prox.length > 50) {
+              inicioSecaoCargo = i
+              console.log(`📍 v144: Seção do cargo (CARGO N:): linha ${i+1} - "${lNorm.substring(0, 80)}"`)
+              break
+            }
+          }
+        }
+        
+        // ✅ v144: Detectar "Grupo N – NOME_AREA" (padrão EBSERH)
+        const matchGrupo = lNorm.match(/^GRUPO\s+(\d+)\s*[–\-]\s*(.*)/)
+        if (matchGrupo) {
+          const nomeGrupo = matchGrupo[2].trim()
+          const ehGrupoAlvo = variacoesCargo.some(v => 
+            nomeGrupo === v || nomeGrupo.startsWith(v) || v.startsWith(nomeGrupo) ||
+            nomeGrupo.includes(v) || v.includes(nomeGrupo)
+          )
+          if (ehGrupoAlvo) {
+            const prox = linhas.slice(i+1, i+10).join(' ').toLowerCase()
+            if (prox.length > 30) {
+              inicioSecaoCargo = i
+              console.log(`📍 v144: Seção do cargo (Grupo N –): linha ${i+1} - "${lNorm.substring(0, 80)}"`)
+              break
+            }
+          }
+        }
+        
+        // Original cargo matching logic
         for (const v of variacoesCargo) {
           // ✅ v142: Para cargos compostos, usar correspondência mais estrita
           // "MÉDICO - ANESTESIOLOGIA" NÃO deve casar com "MÉDICO VETERINÁRIO"
@@ -7639,9 +8003,9 @@ RETORNE APENAS JSON válido:
           
           if (ehMatch) {
             const prox = linhas.slice(i+1, i+5).join(' ').toLowerCase()
-            if (prox.includes('módulo') || prox.includes('modulo') || prox.includes('conhecimentos') || prox.includes('língua') || prox.includes('lingua') || prox.includes('direito') || prox.includes('raciocínio') || prox.includes('raciocinio') || prox.includes('fundamentos') || prox.includes('farmacologia')) {
+            if (prox.includes('módulo') || prox.includes('modulo') || prox.includes('conhecimentos') || prox.includes('língua') || prox.includes('lingua') || prox.includes('direito') || prox.includes('raciocínio') || prox.includes('raciocinio') || prox.includes('fundamentos') || prox.includes('farmacologia') || prox.includes('programa')) {
               inicioSecaoCargo = i
-              console.log(`📍 v142: Seção do cargo: linha ${i+1} - "${l.substring(0, 80)}"`)
+              console.log(`📍 v144: Seção do cargo: linha ${i+1} - "${l.substring(0, 80)}"`)
               break
             }
           }
@@ -7791,6 +8155,16 @@ RETORNE APENAS JSON válido:
       
       // Detectar outros cargos conhecidos (lista genérica)
       if (l.length < 80 && l.length > 3) {
+        // ✅ v144: Detectar "CARGO N:" ou "Grupo N –" de OUTRO cargo como fim de seção
+        const matchOutroCargoNum = l.match(/^CARGO\s+\d+\s*:/)
+        const matchOutroGrupo = l.match(/^GRUPO\s+\d+\s*[–\-]/)
+        if (matchOutroCargoNum || matchOutroGrupo) {
+          // É definitivamente outro cargo/grupo
+          fimSecaoCargo = i
+          console.log(`📍 v144: Fim da seção (outro ${matchOutroCargoNum ? 'CARGO N:' : 'Grupo N –'}): linha ${i+1} - "${l.substring(0, 80)}"`)
+          break
+        }
+        
         for (const outro of outrosCargosConhecidos) {
           if (l === outro || l.startsWith(outro + ' ') || l.startsWith(outro + ' -') || l.startsWith(outro + ' –')) {
             const prox = linhas.slice(i+1, i+5).join(' ')
@@ -7905,11 +8279,11 @@ RETORNE APENAS JSON válido:
         if (topicos.length > 2) return topicos.slice(0, 50)
       }
       
-      // Tentar dividir por numeração
-      const partesPorNumero = textoDisc.split(/(?=\d+\.\s)/)
+      // Tentar dividir por numeração (formato "1. " ou "1) " ou "1.1)" etc.)
+      const partesPorNumero = textoDisc.split(/(?=(?:^|\s)\d+(?:\.\d+)*[.)]\s)/m)
       if (partesPorNumero.length > 3) {
         for (const p of partesPorNumero) {
-          const t = p.trim().replace(/^\d+\.?\s*/, '').replace(/[.;]+$/, '').trim()
+          const t = p.trim().replace(/^\d+(?:\.\d+)*[.)]\s*/, '').replace(/[.;]+$/, '').trim()
           if (t.length > 5 && t.length < 300) topicos.push(t)
         }
         if (topicos.length > 3) return topicos.slice(0, 50)
@@ -8056,7 +8430,12 @@ RETORNE APENAS JSON válido:
         // v64: Disciplinas de TI
         'SEGURANÇA DA INFORMAÇÃO', 'REDES DE COMPUTADORES', 'BANCO DE DADOS',
         'PROGRAMAÇÃO', 'DESENVOLVIMENTO DE SISTEMAS', 'GOVERNANÇA DE TI',
-        'ENGENHARIA DE SOFTWARE', 'SISTEMAS OPERACIONAIS', 'INTELIGÊNCIA ARTIFICIAL'
+        'ENGENHARIA DE SOFTWARE', 'SISTEMAS OPERACIONAIS', 'INTELIGÊNCIA ARTIFICIAL',
+        // v144: Disciplinas adicionais de editais reais (EBSERH, GHC, etc.)
+        'LEGISLAÇÃO EBSERH', 'POLÍTICAS PÚBLICAS', 'LEGISLAÇÃO CLT',
+        'BIOÉTICA', 'BIOQUÍMICA', 'HEMATOLOGIA', 'IMUNOLOGIA', 'MICROBIOLOGIA MÉDICA',
+        'FARMACOTÉCNICA', 'FARMACOCINÉTICA', 'FARMACODINÂMICA',
+        'CÓDIGO DE ÉTICA', 'ÉTICA PROFISSIONAL'
       ]
       
       // Padrões que indicam que algo é subtópico, NÃO disciplina
@@ -8090,8 +8469,13 @@ RETORNE APENAS JSON válido:
         if (padroesSubtopico.some(p => p.test(nome))) return false
         // Se o nome é muito longo (>60 chars) e contém muitas vírgulas, provavelmente é subtópico
         if (nome.length > 60 && (nome.match(/,/g) || []).length >= 2) return false
+        // ✅ v144: Se o nome tem muitas palavras (>8) provavelmente é descrição, não disciplina
+        if (nome.split(/\s+/).length > 8) return false
         // Se começa com letra minúscula, não é disciplina
         if (/^[a-z]/.test(nome)) return false
+        // ✅ v144: Se contém preposições demais, provavelmente é subtópico
+        const preposicoes = (nome.match(/\b(em|de|da|do|das|dos|na|no|nas|nos|para|ao|à|com|sem)\b/gi) || []).length
+        if (preposicoes >= 4 && nome.length > 50) return false
         // Default: se tem conteúdo, aceitar como disciplina
         return true
       }
@@ -8173,6 +8557,11 @@ RETORNE APENAS JSON válido:
         if (linhaUpper.includes('CARGOS DE ENSINO') && linha.length < 100) continue
         // ✅ v55: Pular títulos de seção que não são disciplinas
         if (/^(CONTEÚDO PROGRAMÁTICO|CONTEUDO PROGRAMATICO|PROGRAMA DAS PROVAS|CONTEÚDOS PROGRAMÁTICOS)\s*$/i.test(linha)) continue
+        // ✅ v144: Pular cabeçalhos de cargo/grupo e "PROGRAMA:" (serão tratados no fallback)
+        if (/^CARGO\s+\d+\s*:/i.test(linha)) continue
+        if (/^GRUPO\s+\d+\s*[–\-]/i.test(linha)) continue
+        if (/^PROGRAMA\s*:\s*$/i.test(linha)) continue
+        if (/^NÍVEL\s+(TÉCNICO|SUPERIOR|MÉDIO)/i.test(linha) && linha.length < 80) continue
         
         // ✅ v62: Detectar "PARA O CARGO DE..." de outra área e PARAR extração
         if ((linhaUpper.includes('PARA O CARGO DE') || linhaUpper.includes('PARA OS CARGOS DE')) && 
@@ -8218,6 +8607,23 @@ RETORNE APENAS JSON válido:
           categoriaAtual = 'ESPECÍFICOS'
           pesoAtual = 2
           continue
+        }
+        
+        // ✅ v144: Detectar "CARGO N:" ou "Grupo N –" de OUTRO cargo → PARAR extração
+        if (jaPassouDoCargoAlvo || disciplinasRaw.length > 0) {
+          const matchOutroCargoNum = linhaUpper.match(/^CARGO\s+\d+\s*:/)
+          const matchOutroGrupo = linhaUpper.match(/^GRUPO\s+\d+\s*[–\-]/)
+          const matchNivel = linhaUpper.match(/^NÍVEL\s+(TÉCNICO|SUPERIOR|MÉDIO)/) && linha.length < 80
+          if (matchOutroCargoNum || matchOutroGrupo || matchNivel) {
+            // Verificar se NÃO é nosso cargo
+            const ehNossoCargo = variacoesCargo.some(v => linhaUpper.includes(v))
+            if (!ehNossoCargo) {
+              if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
+              disciplinaAtual = null
+              console.log(`   🛑 v144: Outro cargo/grupo detectado: "${linha.substring(0, 60)}" → PARANDO extração`)
+              break
+            }
+          }
         }
         
         // Caso: nome de cargo sozinho na linha (ex: "Enfermeiro")
@@ -8277,6 +8683,11 @@ RETORNE APENAS JSON válido:
         // Padrão 1: "NomeDisciplina: conteúdo..."
         const matchDisc = !dentroDeCargoEspecifico ? linha.match(/^([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú\s,\-–()\/e]+?):\s+(.+)/) : null
         
+        // ✅ v144: Padrão 1.5: "NOME_DISCIPLINA:" sozinha na linha (conteúdo na próxima linha)
+        // Formato EBSERH: "LÍNGUA PORTUGUESA:" \n "1) Compreensão..."
+        const matchDiscSemConteudo = !dentroDeCargoEspecifico && !matchDisc ? 
+          linha.match(/^([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú\s,\-–()\/e]+?)\s*:\s*$/) : null
+        
         // ✅ v53: Padrão 2: "N. NOME DA DISCIPLINA" ou "N) NOME" (sem conteúdo na mesma linha)
         // Ex: "1. LÍNGUA PORTUGUESA", "2. RACIOCÍNIO LÓGICO", "3. NOÇÕES DE INFORMÁTICA"
         const matchDiscNumerada = !dentroDeCargoEspecifico && !matchDisc ? 
@@ -8305,6 +8716,24 @@ RETORNE APENAS JSON válido:
             // É subtópico - agregar ao disciplina atual
             disciplinaAtual.textoCompleto += ' ' + linha
             console.log(`   📎 Subtópico agregado: "${nomeCand}" → "${disciplinaAtual.nome}"`)
+            continue
+          }
+        }
+        
+        // ✅ v144: Padrão 1.5 - "NOME_DISCIPLINA:" sozinha (conteúdo na próxima linha)
+        if (matchDiscSemConteudo) {
+          const nomeCand = matchDiscSemConteudo[1].trim()
+          const temTamanhoOk = nomeCand.length >= 4 && nomeCand.length <= 120
+          const ehReal = ehNomeDeDisciplina(nomeCand)
+          
+          // Verificar se próximas linhas têm conteúdo (numeração, tópicos, etc.)
+          const proxLinhas = linhasSecao.slice(i+1, i+5).join(' ')
+          const temConteudoAbaixo = proxLinhas.length > 20 && (/\d+[.)]\s/.test(proxLinhas) || /[a-zà-ú]/.test(proxLinhas))
+          
+          if (temTamanhoOk && ehReal && temConteudoAbaixo) {
+            if (disciplinaAtual) disciplinasRaw.push(disciplinaAtual)
+            disciplinaAtual = { nome: nomeCand, peso: pesoAtual, categoria: categoriaAtual, textoCompleto: '' }
+            console.log(`   📘 Disciplina (v144 nome:): "${nomeCand}" (${categoriaAtual}, peso ${pesoAtual})`)
             continue
           }
         }
@@ -8370,6 +8799,115 @@ RETORNE APENAS JSON válido:
       }
       
       console.log(`   Total disciplinas brutas: ${disciplinasRaw.filter(d => d).length}, após filtragem: ${disciplinasExtraidas.length}`)
+      
+      // ════════════════════════════════════════════════════════════════
+      // ✅ v144: FALLBACK PARA FORMATOS ALTERNATIVOS
+      // Quando a extração por "Nome: conteúdo" falha (0 disciplinas) mas há texto no cargo
+      // Suporta:
+      //   - "PROGRAMA: texto contínuo" (GHC, muitos editais)
+      //   - Numeração "1) tópico... 2) tópico..." direto no cargo (EBSERH)
+      //   - "PARTE 1: ..., PARTE 2: ..." (GHC)
+      //   - "Conhecimentos Específicos: texto..." (UNIRIO)
+      // ════════════════════════════════════════════════════════════════
+      if (disciplinasExtraidas.length === 0 && textoSecaoCargo.length > 100) {
+        console.log(`   📦 v144: Tentando extração por formatos alternativos (${textoSecaoCargo.length} chars)...`)
+        
+        // Tentar detectar "PROGRAMA:" ou "Conhecimentos Específicos:" como início de conteúdo
+        const secaoTexto = textoSecaoCargo
+        const secaoLower = secaoTexto.toLowerCase()
+        
+        // Detectar blocos separados por "PARTE N:" (formato GHC)
+        const partes = secaoTexto.split(/(?=PARTE\s+\d+\s*:)/i)
+        if (partes.length >= 2) {
+          console.log(`   📦 v144: Detectado formato PARTE N: (${partes.length} partes)`)
+          for (let p = 0; p < partes.length; p++) {
+            const parte = partes[p].trim()
+            if (parte.length < 30) continue
+            // Extrair nome da parte ou usar genérico
+            let nomeParte = `Conhecimentos Específicos - Parte ${p + 1}`
+            const matchParteNome = parte.match(/^PARTE\s+\d+\s*:\s*(.*?)(?:\.|$)/i)
+            if (matchParteNome && matchParteNome[1].length > 5 && matchParteNome[1].length < 100) {
+              nomeParte = matchParteNome[1].trim()
+            }
+            const topicos = extrairTopicosDeTexto(parte)
+            if (topicos.length > 0) {
+              disciplinasExtraidas.push({
+                nome: nomeParte,
+                peso: 2,
+                categoria: 'ESPECÍFICOS',
+                topicos
+              })
+              console.log(`   📘 v144 PARTE: "${nomeParte}" (${topicos.length} tópicos)`)
+            }
+          }
+        }
+        
+        // Se ainda 0, tentar "PROGRAMA:" como texto contínuo
+        if (disciplinasExtraidas.length === 0) {
+          const posPrograma = secaoLower.indexOf('programa:')
+          const posConhecEsp = secaoLower.indexOf('conhecimentos específicos:')
+          const posConhecEsp2 = secaoLower.indexOf('conhecimentos\nespecíficos:')
+          const posInicio = posPrograma !== -1 ? posPrograma : 
+                            posConhecEsp !== -1 ? posConhecEsp :
+                            posConhecEsp2 !== -1 ? posConhecEsp2 : -1
+          
+          if (posInicio !== -1) {
+            // O texto após "PROGRAMA:" é o conteúdo da disciplina
+            const conteudoDisc = secaoTexto.substring(posInicio).replace(/^(programa|conhecimentos\s*específicos)\s*:\s*/i, '').trim()
+            
+            if (conteudoDisc.length > 30) {
+              // Tentar extrair nome do cargo da primeira linha da seção
+              const primeiraLinha = secaoTexto.substring(0, posInicio).trim().split('\n').filter(l => l.trim().length > 3).pop()?.trim() || ''
+              let nomeDisciplina = `Conhecimentos Específicos – ${cargo || 'Geral'}`
+              if (primeiraLinha.length > 5 && primeiraLinha.length < 100 && /CARGO|GRUPO|FARMAC|ENFERM|MÉDIC|ADMIN|ODONTO|NUTRI|FISIO|PSICOL/i.test(primeiraLinha)) {
+                const cargoExtraido = primeiraLinha.replace(/^(CARGO\s+\d+\s*:\s*|GRUPO\s+\d+\s*[–\-]\s*)/i, '').trim()
+                if (cargoExtraido.length > 3) nomeDisciplina = `Conhecimentos Específicos – ${cargoExtraido}`
+              }
+              
+              const topicos = extrairTopicosDeTexto(conteudoDisc)
+              if (topicos.length > 0) {
+                disciplinasExtraidas.push({
+                  nome: nomeDisciplina,
+                  peso: 2,
+                  categoria: 'ESPECÍFICOS',
+                  topicos
+                })
+                console.log(`   📘 v144 PROGRAMA: "${nomeDisciplina}" (${topicos.length} tópicos)`)
+              }
+            }
+          }
+        }
+        
+        // Se ainda 0, tentar interpretar o texto inteiro da seção como uma disciplina com tópicos numerados
+        if (disciplinasExtraidas.length === 0 && secaoTexto.length > 50) {
+          // Verificar se há tópicos numerados (1) ..., 2) ..., etc.)
+          const temNumeracao = /\d+\)\s/.test(secaoTexto) || /\d+\.\s/.test(secaoTexto) || /\d+\.\d+\)/.test(secaoTexto)
+          if (temNumeracao) {
+            // Extrair nome do cargo/grupo da primeira linha
+            const linhasSecao = secaoTexto.split('\n').filter(l => l.trim().length > 3)
+            let nomeDisciplina = `Conhecimentos Específicos – ${cargo || 'Geral'}`
+            if (linhasSecao.length > 0) {
+              const primeira = linhasSecao[0].trim()
+              if (/^(CARGO|GRUPO)\s+\d+/i.test(primeira) || /^[A-ZÀ-Ú]/.test(primeira) && primeira.length < 100) {
+                const nome = primeira.replace(/^(CARGO\s+\d+\s*:\s*|GRUPO\s+\d+\s*[–\-]\s*)/i, '').trim()
+                if (nome.length > 3) nomeDisciplina = `Conhecimentos Específicos – ${nome}`
+              }
+            }
+            const topicos = extrairTopicosDeTexto(secaoTexto)
+            if (topicos.length > 2) {
+              disciplinasExtraidas.push({
+                nome: nomeDisciplina,
+                peso: 2,
+                categoria: 'ESPECÍFICOS',
+                topicos
+              })
+              console.log(`   📘 v144 NUMERAÇÃO: "${nomeDisciplina}" (${topicos.length} tópicos)`)
+            }
+          }
+        }
+        
+        console.log(`   📊 v144: Após extração alternativa: ${disciplinasExtraidas.length} disciplinas`)
+      }
     }
     
     // ════════════════════════════════════════════════════════════════

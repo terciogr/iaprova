@@ -1,6 +1,6 @@
-// IAprova Service Worker v6.3 - v143: fallback programatico para topicos em lista corrida (Farmaceutico etc) + filtro SUS generico melhorado
-const CACHE_NAME = 'iaprova-v141';
-const STATIC_CACHE = 'iaprova-static-v141';
+// IAprova Service Worker v6.5 - v145: HOTFIX SEGURANCA - webhook HMAC, auth obrigatoria, protecao contra elevacao de privilegio
+const CACHE_NAME = 'iaprova-v145';
+const STATIC_CACHE = 'iaprova-static-v145';
 const DYNAMIC_CACHE = 'iaprova-dynamic-v141';
 
 // Arquivos essenciais para cache offline
