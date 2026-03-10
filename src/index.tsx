@@ -2410,14 +2410,101 @@ app.post('/api/subscription/activate', async (c) => {
 
 // ============== MERCADO PAGO INTEGRATION ==============
 
+// ✅ SEGURANÇA v147: Cache de token em memória (por request no Workers, mas previne múltiplas chamadas dentro do mesmo request)
+let cachedMPToken: { token: string; expiresAt: number } | null = null
+
+// ✅ SEGURANÇA v147: Obter token MP válido - tenta usar o configurado, se falhar faz refresh via OAuth
+async function getValidMPToken(env: any): Promise<string> {
+  const { MP_ACCESS_TOKEN, MP_CLIENT_ID, MP_CLIENT_SECRET } = env as any
+  
+  // Se não temos credenciais OAuth, usar token direto
+  if (!MP_CLIENT_ID || !MP_CLIENT_SECRET) {
+    if (!MP_ACCESS_TOKEN) throw new Error('MP_ACCESS_TOKEN não configurado')
+    return MP_ACCESS_TOKEN
+  }
+  
+  // Se temos cache válido (com margem de 5 min), usar
+  if (cachedMPToken && cachedMPToken.expiresAt > Date.now() + 300000) {
+    return cachedMPToken.token
+  }
+  
+  // Testar se o token atual funciona
+  if (MP_ACCESS_TOKEN) {
+    try {
+      const testResponse = await fetch('https://api.mercadopago.com/v1/payment_methods', {
+        headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
+      })
+      if (testResponse.ok) {
+        console.log('✅ MP_ACCESS_TOKEN válido')
+        return MP_ACCESS_TOKEN
+      }
+      console.warn('⚠️ MP_ACCESS_TOKEN expirado ou inválido, tentando refresh...')
+    } catch (e) {
+      console.warn('⚠️ Erro ao testar MP_ACCESS_TOKEN, tentando refresh...')
+    }
+  }
+  
+  // Fazer refresh via OAuth client_credentials
+  try {
+    console.log('🔄 Renovando token MP via OAuth...')
+    const response = await fetch('https://api.mercadopago.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_type: 'client_credentials',
+        client_id: MP_CLIENT_ID,
+        client_secret: MP_CLIENT_SECRET
+      })
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('🚨 Falha ao renovar token MP:', response.status, errorText)
+      // Fallback para o token configurado
+      if (MP_ACCESS_TOKEN) return MP_ACCESS_TOKEN
+      throw new Error('Falha na renovação do token MP')
+    }
+    
+    const data = await response.json() as any
+    const newToken = data.access_token
+    
+    if (!newToken) {
+      console.error('🚨 Token renovado vazio')
+      if (MP_ACCESS_TOKEN) return MP_ACCESS_TOKEN
+      throw new Error('Token renovado vazio')
+    }
+    
+    // Cachear o novo token
+    cachedMPToken = {
+      token: newToken,
+      expiresAt: Date.now() + (data.expires_in || 21600) * 1000
+    }
+    
+    console.log(`✅ Token MP renovado com sucesso. Expira em ${data.expires_in || 21600}s`)
+    return newToken
+  } catch (error: any) {
+    console.error('🚨 Erro ao renovar token MP:', error.message)
+    // Último fallback
+    if (MP_ACCESS_TOKEN) {
+      console.warn('⚠️ Usando MP_ACCESS_TOKEN como fallback')
+      return MP_ACCESS_TOKEN
+    }
+    throw new Error('Não foi possível obter token MP válido')
+  }
+}
+
 // Criar preferência de pagamento no Mercado Pago
 app.post('/api/mercadopago/create-preference', async (c) => {
-  const { DB, MP_ACCESS_TOKEN, APP_URL } = c.env as any
-  const { user_id, plan } = await c.req.json()
+  const { DB, APP_URL } = c.env as any
   
-  if (!MP_ACCESS_TOKEN) {
+  // ✅ v147: Usar token com refresh automático
+  let MP_ACCESS_TOKEN: string
+  try {
+    MP_ACCESS_TOKEN = await getValidMPToken(c.env)
+  } catch {
     return c.json({ error: 'Mercado Pago não configurado' }, 500)
   }
+  const { user_id, plan } = await c.req.json()
   
   try {
     // Buscar usuário
@@ -2730,13 +2817,13 @@ async function ativarAssinaturaSegura(
 // Webhook para receber confirmação de pagamento do Mercado Pago
 // ✅ SEGURANÇA v145: Validação HMAC obrigatória + verificação completa
 app.post('/api/webhook/mercadopago', async (c) => {
-  const { DB, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET } = c.env as any
+  const { DB, MP_WEBHOOK_SECRET } = c.env as any
   
   try {
     const body = await c.req.json()
     console.log('📦 Webhook Mercado Pago recebido:', JSON.stringify(body).substring(0, 500))
     
-    // ✅ SEGURANÇA: Validar assinatura HMAC do webhook
+    // ✅ SEGURANÇA: Validar assinatura HMAC do webhook (se secret configurado)
     const signature = c.req.header('x-signature')
     const requestId = c.req.header('x-request-id')
     const dataId = body.data?.id?.toString() || ''
@@ -2781,9 +2868,12 @@ app.post('/api/webhook/mercadopago', async (c) => {
       return c.json({ received: true })
     }
     
-    // ✅ SEGURANÇA: Verificar que temos o token para consultar MP
-    if (!MP_ACCESS_TOKEN) {
-      console.error('🚨 MP_ACCESS_TOKEN não configurado!')
+    // ✅ SEGURANÇA v147: Obter token MP com refresh automático
+    let MP_ACCESS_TOKEN: string
+    try {
+      MP_ACCESS_TOKEN = await getValidMPToken(c.env)
+    } catch {
+      console.error('🚨 Não foi possível obter token MP válido!')
       return c.json({ error: 'Configuração incompleta' }, 500)
     }
     
@@ -2976,7 +3066,6 @@ app.get('/api/admin/payments', async (c) => {
 // Verificar status de pagamento
 // ✅ SEGURANÇA v145: Requer autenticação e MP_ACCESS_TOKEN
 app.get('/api/mercadopago/payment-status/:payment_id', async (c) => {
-  const { MP_ACCESS_TOKEN } = c.env as any
   const paymentId = c.req.param('payment_id')
   const requestUserId = c.req.header('X-User-ID')
   
@@ -2985,7 +3074,11 @@ app.get('/api/mercadopago/payment-status/:payment_id', async (c) => {
     return c.json({ error: 'Autenticação obrigatória' }, 401)
   }
   
-  if (!MP_ACCESS_TOKEN) {
+  // ✅ v147: Obter token com refresh automático
+  let MP_ACCESS_TOKEN: string
+  try {
+    MP_ACCESS_TOKEN = await getValidMPToken(c.env)
+  } catch {
     return c.json({ error: 'Serviço de pagamento não configurado' }, 500)
   }
   
@@ -3025,14 +3118,21 @@ app.get('/api/mercadopago/payment-status/:payment_id', async (c) => {
 // Callback de retorno após pagamento
 // ✅ SEGURANÇA v145: Validação completa via API do MP (não confiar em query params)
 app.get('/pagamento/sucesso', async (c) => {
-  const { DB, MP_ACCESS_TOKEN } = c.env as any
+  const { DB } = c.env as any
   const paymentId = c.req.query('payment_id')
   const status = c.req.query('status')
   const externalReference = c.req.query('external_reference')
   
   console.log(`💰 Retorno de pagamento: ${paymentId}, status: ${status}, ref: ${externalReference}`)
   
-  // ✅ SEGURANÇA: Ativar assinatura SOMENTE se podemos verificar via API do MP
+  // ✅ SEGURANÇA v147: Ativar assinatura SOMENTE se podemos verificar via API do MP
+  let MP_ACCESS_TOKEN: string | null = null
+  try {
+    MP_ACCESS_TOKEN = await getValidMPToken(c.env)
+  } catch {
+    console.warn('⚠️ Callback sem token MP - não pode verificar pagamento!')
+  }
+  
   if (paymentId && MP_ACCESS_TOKEN) {
     try {
       // SEMPRE consultar a API do MP para confirmar status real
@@ -3084,7 +3184,7 @@ app.get('/pagamento/sucesso', async (c) => {
       console.error('Erro ao ativar assinatura no callback:', error)
     }
   } else if (!MP_ACCESS_TOKEN) {
-    console.warn('⚠️ Callback sem MP_ACCESS_TOKEN - não pode verificar pagamento!')
+    console.warn('⚠️ Callback sem token MP válido - não pode verificar pagamento!')
   }
   
   // Redirecionar para o app com parâmetros
@@ -3093,7 +3193,7 @@ app.get('/pagamento/sucesso', async (c) => {
 
 // ✅ SEGURANÇA v145: Endpoint para verificar e ativar pagamento (com validação completa via API MP)
 app.post('/api/mercadopago/verify-and-activate/:payment_id', async (c) => {
-  const { DB, MP_ACCESS_TOKEN } = c.env as any
+  const { DB } = c.env as any
   const paymentId = c.req.param('payment_id')
   const requestUserId = c.req.header('X-User-ID')
   
@@ -3103,9 +3203,12 @@ app.post('/api/mercadopago/verify-and-activate/:payment_id', async (c) => {
     return c.json({ error: 'Autenticação obrigatória' }, 401)
   }
   
-  // ✅ SEGURANÇA: Requer token do MercadoPago configurado
-  if (!MP_ACCESS_TOKEN) {
-    console.error('🚨 MP_ACCESS_TOKEN não configurado!')
+  // ✅ SEGURANÇA v147: Obter token com refresh automático
+  let MP_ACCESS_TOKEN: string
+  try {
+    MP_ACCESS_TOKEN = await getValidMPToken(c.env)
+  } catch {
+    console.error('🚨 Não foi possível obter token MP válido!')
     return c.json({ error: 'Serviço de pagamento não configurado' }, 500)
   }
   
