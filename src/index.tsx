@@ -7252,7 +7252,7 @@ app.post('/api/editais/processar/:id', async (c) => {
             // Prompt otimizado para extração de disciplinas
             const cargoLower = cargoDesejado?.toLowerCase() || ''
             
-            // ✅ v151: Prompt reformulado para análise REAL do edital COM filtragem rigorosa por cargo
+            // ✅ v152: Prompt com hierarquia explícita para evitar confusão agrupamento vs disciplina
             const promptPDF = `VOCÊ É UM ESPECIALISTA EM ANÁLISE DE EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
 
 === SUA TAREFA ===
@@ -7261,47 +7261,53 @@ Analise ESTE DOCUMENTO PDF (edital de concurso) e extraia TODAS as disciplinas e
 === CARGO DO CANDIDATO ===
 ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo principal do edital)'}
 
-=== REGRA FUNDAMENTAL DE FILTRAGEM POR CARGO ===
-ATENÇÃO: Editais frequentemente contêm conteúdo programático para MÚLTIPLOS cargos. Você DEVE filtrar:
-1. DISCIPLINAS COMUNS/BÁSICAS (Módulo I, "Para todos os cargos") → INCLUIR (peso 1, categoria "BÁSICOS")
-2. DISCIPLINAS ESPECÍFICAS (Módulo II) → INCLUIR SOMENTE se forem do cargo "${cargoDesejado?.toUpperCase() || 'PRINCIPAL'}" (peso 2, categoria "ESPECÍFICOS")
-3. OUTROS CARGOS → IGNORAR COMPLETAMENTE
-4. Se o cargo tem área/especialidade (ex: "Analista - TI"), filtrar pelas disciplinas específicas dessa área
+=== HIERARQUIA OBRIGATÓRIA (REGRA MAIS IMPORTANTE) ===
+A estrutura de um edital segue esta hierarquia de 3 níveis:
 
-=== INSTRUÇÕES CRÍTICAS ===
-1. LEIA O DOCUMENTO COMPLETO - procure pela seção "CONTEÚDO PROGRAMÁTICO" ou "ANEXO"
-2. EXTRAIA OS NOMES EXATOS DAS DISCIPLINAS conforme aparecem no edital
-3. EXTRAIA TODOS OS TÓPICOS REAIS listados sob cada disciplina - transcreva literalmente
-4. NÃO INVENTE NADA - use APENAS o que está escrito no documento
-5. Se houver quadro de provas com nº de questões, use para definir o peso
+  NÍVEL 1 - AGRUPAMENTO (NÃO é disciplina!):
+    "Conhecimentos Básicos", "Conhecimentos Gerais", "Conhecimentos Específicos",
+    "Módulo I", "Módulo II", "Para todos os cargos"
+    → São APENAS rótulos/agrupamentos. NUNCA devem aparecer como "nome" de disciplina.
 
-=== ONDE PROCURAR ===
-- "ANEXO I", "ANEXO II", "ANEXO III" → "CONTEÚDO PROGRAMÁTICO"
-- "MÓDULO I", "MÓDULO II" → separando básicos de específicos
-- Títulos como "Língua Portuguesa:", "Direito Constitucional:", etc.
+  NÍVEL 2 - DISCIPLINA (o que vai no campo "nome"):
+    "Língua Portuguesa", "Raciocínio Lógico", "Informática", "Direito Constitucional", etc.
+    → Estas são as MATÉRIAS REAIS. Cada uma é uma disciplina separada.
+
+  NÍVEL 3 - TÓPICO (o que vai no array "topicos"):
+    "Interpretação de texto", "Ortografia", "Proposições lógicas", etc.
+    → São os CONTEÚDOS listados DENTRO de cada disciplina.
+
+❌ ERRADO: {"nome": "Conhecimentos Básicos", "topicos": ["Língua Portuguesa", "Raciocínio Lógico"]}
+✅ CORRETO: {"nome": "Língua Portuguesa", "topicos": ["Interpretação de texto", "Ortografia"]}
+
+=== FILTRAGEM POR CARGO ===
+1. Disciplinas dentro de "Conhecimentos Básicos/Gerais" → categoria "BÁSICOS", peso 1
+2. Disciplinas dentro de "Conhecimentos Específicos" do cargo → categoria "ESPECÍFICOS", peso 2
+3. Disciplinas de OUTROS cargos → IGNORAR COMPLETAMENTE
+
+=== INSTRUÇÕES ===
+1. Procure nos ANEXOS a seção "CONTEÚDO PROGRAMÁTICO"
+2. Extraia os nomes EXATOS das disciplinas e seus tópicos
+3. NÃO INVENTE nada - use APENAS o que está no documento
+4. Se houver quadro de provas com nº de questões, use para o peso
 
 === FORMATO DE RESPOSTA (APENAS JSON) ===
 {
   "cargo_detectado": "Nome exato do cargo encontrado no edital",
   "disciplinas": [
     {
-      "nome": "Nome EXATO da Disciplina como aparece no edital",
+      "nome": "Língua Portuguesa",
       "peso": 1,
       "categoria": "BÁSICOS",
-      "topicos": ["Tópico 1 exato do edital", "Tópico 2 exato", "..."]
+      "topicos": ["Interpretação de texto", "Ortografia oficial"]
     }
   ]
 }
 
-=== REGRAS DE PESO ===
-- peso: 1 → Conhecimentos Básicos/Gerais (Português, Raciocínio Lógico, Informática)
-- peso: 2 → Conhecimentos Específicos do cargo
-
 === IMPORTANTE ===
-- EXTRAIA TODAS AS DISCIPLINAS do cargo (geralmente 8 a 15 disciplinas)
-- Se o edital tem mais de 10 disciplinas, INCLUA TODAS
+- EXTRAIA TODAS AS DISCIPLINAS do cargo (geralmente 8 a 15)
 - Cada disciplina deve ter seus tópicos REAIS extraídos do documento
-- NÃO use disciplinas genéricas - use os nomes EXATOS do edital
+- NÃO use "Conhecimentos Básicos" ou "Conhecimentos Específicos" como nome de disciplina
 - Se não encontrar o cargo especificado, avise no campo cargo_detectado`
 
             // ✅ v137: Modelos atualizados com gemini-2.5-flash como primário
@@ -7765,34 +7771,55 @@ Analise ESTE DOCUMENTO PDF (edital de concurso) e extraia TODAS as disciplinas e
 === INFORMAÇÕES DO CANDIDATO ===
 Cargo: ${cargoFinal.toUpperCase()}${concursoHint}${bancaHint}
 
-=== REGRA FUNDAMENTAL DE FILTRAGEM POR CARGO ===
-ATENÇÃO: Editais frequentemente contêm conteúdo programático para MÚLTIPLOS cargos. Você DEVE filtrar corretamente:
+=== HIERARQUIA OBRIGATÓRIA (REGRA MAIS IMPORTANTE) ===
+A estrutura de um edital segue esta hierarquia de 3 níveis:
 
-1. IDENTIFICAR O CARGO: Procure no edital por "${cargoFinal.toUpperCase()}" ou variações (com/sem acento, abreviações, cargo + área/especialidade)
-2. DISCIPLINAS COMUNS/BÁSICAS: Seções como "Conhecimentos Básicos", "Conhecimentos Gerais", "Para todos os cargos", "Módulo I - Conhecimentos Básicos" → INCLUIR (peso 1, categoria "BÁSICOS")
-3. DISCIPLINAS ESPECÍFICAS: Seções como "Conhecimentos Específicos", "Módulo II" → INCLUIR SOMENTE se forem do cargo "${cargoFinal.toUpperCase()}" (peso 2, categoria "ESPECÍFICOS")
-4. OUTROS CARGOS: Se encontrar seções "PARA O CARGO DE X" onde X é DIFERENTE do cargo acima → IGNORAR COMPLETAMENTE
-5. NÍVEL DO CARGO: Se o edital separa por "Nível Superior" vs "Nível Médio", filtre pelo nível correto do cargo
-6. ÁREA/ESPECIALIDADE: Se o cargo tem área (ex: "Analista - TI"), filtre pelas disciplinas específicas dessa área
+  NÍVEL 1 - AGRUPAMENTO (NÃO é disciplina!):
+    "Conhecimentos Básicos", "Conhecimentos Gerais", "Conhecimentos Específicos",
+    "Módulo I", "Módulo II", "Para todos os cargos"
+    → Estes são APENAS rótulos de agrupamento. NUNCA devem aparecer como "nome" de disciplina.
 
-=== INSTRUÇÕES CRÍTICAS ===
-1. LEIA O DOCUMENTO COMPLETO - procure pelos ANEXOS (geralmente Anexo II ou III) com "CONTEÚDO PROGRAMÁTICO"
-2. EXTRAIA OS NOMES EXATOS DAS DISCIPLINAS conforme aparecem no edital
-3. EXTRAIA TODOS OS TÓPICOS REAIS listados sob cada disciplina - transcreva literalmente
-4. NÃO INVENTE NADA - use APENAS o que está escrito no documento
-5. Se o edital tem "MÓDULO I" (Básicos) e "MÓDULO II" (Específicos), respeite essa divisão
-6. Inclua TODAS as disciplinas do cargo (tipicamente entre 6 e 20)
-7. Cada disciplina deve ter TODOS os tópicos listados no edital (até 50 por disciplina)
-8. Se houver quadro de provas com nº de questões, use para definir o peso (mais questões = peso maior)
+  NÍVEL 2 - DISCIPLINA (o que vai no campo "nome"):
+    "Língua Portuguesa", "Raciocínio Lógico", "Informática", "Direito Constitucional",
+    "Direito Administrativo", "Legislação do SUS", "Enfermagem", etc.
+    → Estas são as MATÉRIAS REAIS. Cada uma é uma disciplina separada.
 
-=== ONDE PROCURAR ===
-- "ANEXO I", "ANEXO II", "ANEXO III" → "CONTEÚDO PROGRAMÁTICO"
-- "MÓDULO I", "MÓDULO II" → separando básicos de específicos
-- Títulos como "Língua Portuguesa:", "Direito Constitucional:", "Conhecimentos Específicos para o cargo de..."
-- Quadros com "Disciplina | Nº Questões | Peso"
+  NÍVEL 3 - TÓPICO (o que vai no array "topicos"):
+    "Interpretação de texto", "Ortografia", "Proposições lógicas", "Tabelas-verdade",
+    "Princípios da Administração Pública", etc.
+    → São os CONTEÚDOS DETALHADOS listados DENTRO de cada disciplina.
+
+EXEMPLO DE EDITAL:
+  CONHECIMENTOS BÁSICOS (← agrupamento, NÃO é disciplina)
+    Língua Portuguesa (← DISCIPLINA)
+      1. Interpretação de texto (← tópico)
+      2. Ortografia oficial (← tópico)
+    Raciocínio Lógico (← DISCIPLINA)
+      1. Proposições (← tópico)
+      2. Tabelas-verdade (← tópico)
+  CONHECIMENTOS ESPECÍFICOS (← agrupamento, NÃO é disciplina)
+    Direito Constitucional (← DISCIPLINA)
+      1. Direitos e garantias fundamentais (← tópico)
+
+❌ ERRADO: {"nome": "Conhecimentos Básicos", "topicos": ["Língua Portuguesa", "Raciocínio Lógico"]}
+✅ CORRETO: {"nome": "Língua Portuguesa", "topicos": ["Interpretação de texto", "Ortografia"]}
+✅ CORRETO: {"nome": "Raciocínio Lógico", "topicos": ["Proposições", "Tabelas-verdade"]}
+
+=== FILTRAGEM POR CARGO ===
+1. IDENTIFICAR O CARGO: Procure por "${cargoFinal.toUpperCase()}" ou variações
+2. Disciplinas dentro de "Conhecimentos Básicos/Gerais" → categoria "BÁSICOS", peso 1
+3. Disciplinas dentro de "Conhecimentos Específicos" do cargo "${cargoFinal.toUpperCase()}" → categoria "ESPECÍFICOS", peso 2
+4. Disciplinas de OUTROS cargos → IGNORAR COMPLETAMENTE
+
+=== INSTRUÇÕES ===
+1. Procure nos ANEXOS (Anexo II ou III) a seção "CONTEÚDO PROGRAMÁTICO"
+2. Cada matéria/disciplina REAL é um item separado no array "disciplinas"
+3. Transcreva os tópicos literalmente como aparecem no edital
+4. NÃO INVENTE nada - use APENAS o que está escrito no documento
+5. Se houver quadro de provas com nº de questões, inclua no campo "questoes"
 
 === FORMATO DE RESPOSTA (APENAS JSON, SEM MARKDOWN) ===
-{"cargo_detectado":"Nome exato do cargo encontrado no edital","nivel":"superior ou medio","disciplinas":[{"nome":"Nome EXATO da Disciplina","peso":1,"categoria":"BÁSICOS","questoes":10,"topicos":["Tópico 1 exato do edital","Tópico 2","Tópico 3"]}]}`
+{"cargo_detectado":"Nome exato do cargo","nivel":"superior ou medio","disciplinas":[{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","questoes":10,"topicos":["Interpretação de texto","Ortografia oficial"]},{"nome":"Direito Constitucional","peso":2,"categoria":"ESPECÍFICOS","questoes":5,"topicos":["Direitos fundamentais","Organização do Estado"]}]}`
     } else {
       // MODO TEXTO: transcrever conteúdo focando no conteúdo programático
       const cargoHint = cargoFinal ? `\n- PRIORIZE a seção de CONTEÚDO PROGRAMÁTICO do cargo "${cargoFinal.toUpperCase()}"` : ''
@@ -8192,19 +8219,23 @@ CONTEXTO (PROCESSO SELETIVO SIMPLIFICADO):
 - Cargo: ${cargo || 'Não especificado'}
 - Concurso/Órgão: ${concurso_nome || 'Não especificado'}
 - Área: ${area_geral || 'geral'}
-- NOTA: Este é um processo seletivo simplificado baseado em títulos/entrevista, mas o candidato deseja estudar conteúdos relevantes para o cargo
+- NOTA: Processo seletivo simplificado (títulos/entrevista), mas candidato quer estudar conteúdos relevantes
 
-TAREFA: Sugira as disciplinas e tópicos que seriam relevantes para um profissional deste cargo.
-Considere o que um profissional desta área deve conhecer para ter bom desempenho na função.
+TAREFA: Sugira as disciplinas e tópicos relevantes para este cargo.
+
+HIERARQUIA:
+- Cada disciplina = uma matéria real (ex: "Língua Portuguesa", "Legislação do SUS", "Saúde Pública")
+- NÃO use "Conhecimentos Básicos" ou "Conhecimentos Específicos" como nome de disciplina
+- Tópicos = conteúdos dentro de cada disciplina
 
 REGRAS:
-1. Inclua conhecimentos básicos relevantes (ex: Português, Informática)
-2. Inclua conhecimentos específicos da função/área
+1. Inclua disciplinas básicas (Português, Informática, etc.) - peso 1, categoria "BÁSICOS"
+2. Inclua disciplinas específicas da função/área - peso 2, categoria "ESPECÍFICOS"
 3. Cada disciplina deve ter 3-8 tópicos principais
 4. Retorne entre 6 e 12 disciplinas
 
 RETORNE APENAS JSON válido:
-{"disciplinas":[{"nome":"Nome","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}`
+{"disciplinas":[{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Interpretação de texto","Ortografia"]},{"nome":"Legislação do SUS","peso":2,"categoria":"ESPECÍFICOS","topicos":["Princípios do SUS","Lei 8080/90"]}]}`
 
           const sugestaoRes = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKeyPS}`,
@@ -9883,25 +9914,39 @@ RETORNE APENAS JSON válido:
       const promptIA = `TAREFA CRÍTICA: Extrair disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO abaixo.
 CARGO DO CANDIDATO: "${cargoUpper}"
 
-REGRA FUNDAMENTAL DE FILTRAGEM POR CARGO:
-- O edital pode conter disciplinas para VÁRIOS cargos diferentes
-- Você DEVE extrair APENAS as disciplinas que se aplicam ao cargo "${cargoUpper}"
-- Disciplinas de "Conhecimentos Básicos/Gerais" ou "Para todos os cargos" = INCLUIR (peso 1, categoria BÁSICOS)
-- Disciplinas de "Conhecimentos Específicos" = INCLUIR somente se forem do cargo "${cargoUpper}" (peso 2, categoria ESPECÍFICOS)
-- Se encontrar seções como "PARA O CARGO DE X" onde X é DIFERENTE de "${cargoUpper}", IGNORE completamente essas disciplinas
-- Se não encontrar seção específica para "${cargoUpper}", extraia as disciplinas gerais + específicas mais prováveis para esse cargo
+=== HIERARQUIA OBRIGATÓRIA ===
+Editais de concurso seguem esta hierarquia de 3 níveis:
 
-REGRAS ADICIONAIS:
+  NÍVEL 1 - AGRUPAMENTO (NÃO é disciplina!):
+    "Conhecimentos Básicos", "Conhecimentos Gerais", "Conhecimentos Específicos", "Módulo I", "Módulo II"
+    → São APENAS rótulos. NUNCA retorne estes como "nome" de disciplina.
+
+  NÍVEL 2 - DISCIPLINA (campo "nome" no JSON):
+    "Língua Portuguesa", "Raciocínio Lógico", "Informática", "Direito Constitucional", etc.
+    → As MATÉRIAS REAIS. Cada uma é um item separado no array "disciplinas".
+
+  NÍVEL 3 - TÓPICO (array "topicos"):
+    "Interpretação de texto", "Ortografia", "Proposições lógicas", etc.
+    → Os CONTEÚDOS listados DENTRO de cada disciplina.
+
+❌ ERRADO: {"nome": "Conhecimentos Básicos", "topicos": ["Língua Portuguesa", "Raciocínio Lógico"]}
+✅ CORRETO: {"nome": "Língua Portuguesa", "topicos": ["Interpretação de texto", "Ortografia"]}
+✅ CORRETO: {"nome": "Raciocínio Lógico", "topicos": ["Proposições", "Tabelas-verdade"]}
+
+FILTRAGEM POR CARGO:
+- Disciplinas dentro de "Conhecimentos Básicos/Gerais" ou "Para todos os cargos" = peso 1, categoria BÁSICOS
+- Disciplinas dentro de "Conhecimentos Específicos" do cargo "${cargoUpper}" = peso 2, categoria ESPECÍFICOS
+- Disciplinas de OUTROS cargos = IGNORAR
+
+REGRAS:
 1. EXTRAIA APENAS disciplinas e tópicos que EXISTEM LITERALMENTE no texto
-2. NÃO INVENTE, NÃO SUGIRA, NÃO ADICIONE nenhuma disciplina que não esteja ESCRITA no texto
-3. Cada matéria/disciplina listada (seguida de ":" ou em linha separada) = UMA disciplina
-4. Conteúdo após o nome = TÓPICOS da disciplina
-5. Retorne APENAS JSON válido, sem markdown, sem explicações
-6. Se uma disciplina aparece no texto mas sem tópicos detalhados, retorne com topicos vazio []
-7. Se o texto não contém conteúdo programático, retorne {"disciplinas":[]}
-8. PROIBIDO: Inventar disciplinas que NÃO ESTÃO no texto
+2. NÃO INVENTE nada que não esteja ESCRITO no texto
+3. Cada matéria listada (Língua Portuguesa, Direito, etc.) = UMA disciplina separada
+4. Conteúdo listado DENTRO dessa matéria = tópicos
+5. Retorne APENAS JSON válido, sem markdown
+6. PROIBIDO usar "Conhecimentos Básicos/Gerais/Específicos" como nome de disciplina
 
-FORMATO: {"disciplinas":[{"nome":"Nome Exato da Disciplina","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}
+FORMATO: {"disciplinas":[{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Interpretação de texto","Ortografia"]}]}
 
 TEXTO DO EDITAL:
 ${textoParaIA}`
@@ -10023,21 +10068,26 @@ ${textoParaIA}`
           const promptExtracaoFinal = `TAREFA: Extrair disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO deste edital de concurso.
 CARGO DO CANDIDATO: "${cargo || 'Não especificado'}"
 
-FILTRAGEM POR CARGO (REGRA PRINCIPAL):
-- O edital pode conter disciplinas para vários cargos
-- Extraia APENAS as disciplinas do cargo "${cargo || 'Não especificado'}"
-- Conhecimentos Básicos/Gerais ou "Para todos os cargos" = INCLUIR (peso 1, BÁSICOS)
-- Conhecimentos Específicos = INCLUIR somente se forem do cargo "${cargo || 'Não especificado'}" (peso 2, ESPECÍFICOS)
+=== HIERARQUIA OBRIGATÓRIA ===
+  AGRUPAMENTO (NÃO é disciplina!): "Conhecimentos Básicos", "Conhecimentos Específicos", "Módulo I/II"
+  DISCIPLINA (campo "nome"): "Língua Portuguesa", "Raciocínio Lógico", "Direito Constitucional", etc.
+  TÓPICO (array "topicos"): conteúdos listados DENTRO de cada disciplina
+
+❌ ERRADO: {"nome": "Conhecimentos Básicos", "topicos": ["Língua Portuguesa", "Raciocínio Lógico"]}
+✅ CORRETO: {"nome": "Língua Portuguesa", "topicos": ["Interpretação de texto", "Ortografia"]}
+
+FILTRAGEM POR CARGO:
+- Disciplinas dentro de "Conhecimentos Básicos/Gerais" = peso 1, BÁSICOS
+- Disciplinas dentro de "Conhecimentos Específicos" do cargo "${cargo || 'Não especificado'}" = peso 2, ESPECÍFICOS
 - IGNORE disciplinas de outros cargos
 
 REGRAS:
 1. EXTRAIA APENAS disciplinas que EXISTEM no texto
-2. NÃO INVENTE disciplinas que NÃO estejam no texto
-3. Procure seções como "CONTEÚDO PROGRAMÁTICO", "ANEXO II", "MÓDULO I/II"
+2. NÃO INVENTE disciplinas
+3. NUNCA use "Conhecimentos Básicos/Gerais/Específicos" como nome de disciplina
 4. Se o texto NÃO contiver conteúdo programático, retorne {"disciplinas":[]}
-5. peso 1 = Básicos/Gerais; peso 2 = Específicos
 
-FORMATO: {"disciplinas":[{"nome":"Nome Exato do Texto","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1","Tópico 2"]}]}
+FORMATO: {"disciplinas":[{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Interpretação de texto","Ortografia"]}]}
 
 TEXTO COMPLETO DO EDITAL:
 ${textoCompletoParaIA}`
@@ -10229,13 +10279,22 @@ ${textoCompletoParaIA}`
           const promptFallbackFiltro = `TAREFA: Extrair TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO deste edital.
 Cargo: "${cargo || 'Não especificado'}"
 
-REGRAS ABSOLUTAS:
-1. EXTRAIA APENAS disciplinas PRESENTES no texto abaixo
-2. NÃO INVENTE disciplinas - cada nome deve aparecer no texto
-3. Se o texto não contiver conteúdo programático, retorne {"disciplinas":[]}
-4. peso 1 = Básicos/Gerais; peso 2 = Específicos
+=== HIERARQUIA OBRIGATÓRIA ===
+  AGRUPAMENTO (NÃO é disciplina!): "Conhecimentos Básicos", "Conhecimentos Específicos", "Módulo I/II"
+  DISCIPLINA (campo "nome"): "Língua Portuguesa", "Raciocínio Lógico", "Direito Constitucional", etc.
+  TÓPICO (array "topicos"): conteúdos listados DENTRO de cada disciplina
 
-FORMATO: {"disciplinas":[{"nome":"Nome Exato","peso":1,"categoria":"BÁSICOS","topicos":["Tópico 1"]}]}
+❌ ERRADO: {"nome": "Conhecimentos Básicos", "topicos": ["Língua Portuguesa"]}
+✅ CORRETO: {"nome": "Língua Portuguesa", "topicos": ["Interpretação de texto"]}
+
+REGRAS ABSOLUTAS:
+1. EXTRAIA APENAS disciplinas PRESENTES no texto
+2. NÃO INVENTE disciplinas
+3. NUNCA use "Conhecimentos Básicos/Gerais/Específicos" como nome de disciplina
+4. Se o texto não contiver conteúdo programático, retorne {"disciplinas":[]}
+5. peso 1 = Básicos/Gerais; peso 2 = Específicos
+
+FORMATO: {"disciplinas":[{"nome":"Língua Portuguesa","peso":1,"categoria":"BÁSICOS","topicos":["Interpretação de texto"]}]}
 
 TEXTO:
 ${textoParaFallback}`
