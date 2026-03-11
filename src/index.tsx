@@ -6080,12 +6080,17 @@ app.get('/api/auth/google/callback', async (c) => {
       
       console.log(`✅ Usuário ${user.id} atualizado com Google OAuth`)
       
-      // ✅ SEGURANÇA v146: Se é o admin, garantir que auth_provider = 'google' e limpar force_logout
+      // ✅ v155 SEGURANÇA: Se é o admin, RESTAURAR todos os dados do Google (proteção contra alterações maliciosas)
       if (user.email === ADMIN_EMAIL || googleUser.email === ADMIN_EMAIL) {
         await DB.prepare(`
-          UPDATE users SET auth_provider = 'google', force_logout_at = NULL WHERE id = ?
-        `).bind(user.id).run()
-        console.log(`🔒 Admin ${user.id} autenticado via Google — auth_provider forçado para 'google'`)
+          UPDATE users SET 
+            auth_provider = 'google', 
+            force_logout_at = NULL,
+            name = ?,
+            google_picture = ?
+          WHERE id = ?
+        `).bind(googleUser.name || user.name, googleUser.picture || null, user.id).run()
+        console.log(`🔒 Admin ${user.id} autenticado via Google — dados restaurados, auth_provider = 'google'`)
       }
     } else {
       // Criar novo usuário
@@ -6166,6 +6171,12 @@ app.post('/api/auth/google/refresh', async (c) => {
   const { DB } = c.env
   const { user_id } = await c.req.json()
   
+  // ✅ v155 SEGURANÇA: Exigir autenticação e só permitir refresh do próprio token
+  const authenticatedUserId = await getAuthenticatedUserId(c)
+  if (!authenticatedUserId || authenticatedUserId.toString() !== user_id?.toString()) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
   const GOOGLE_CLIENT_ID = c.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID
   const GOOGLE_CLIENT_SECRET = c.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET
   
@@ -6215,10 +6226,16 @@ app.post('/api/auth/google/refresh', async (c) => {
   }
 })
 
-// Verificar status da conexão Google
+// ✅ v155 SEGURANÇA: Verificar status da conexão Google — requer autenticação
 app.get('/api/auth/google/status/:user_id', async (c) => {
   const { DB } = c.env
   const user_id = c.req.param('user_id')
+  
+  // ✅ v155: Exigir autenticação e só permitir para o próprio usuário
+  const authenticatedUserId = await getAuthenticatedUserId(c)
+  if (!authenticatedUserId || (authenticatedUserId.toString() !== user_id.toString() && !await isAdmin(c))) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
   
   try {
     // Primeiro, verificar se as colunas do Google existem
@@ -6281,13 +6298,24 @@ app.post('/api/auth/google/disconnect', async (c) => {
   const { DB } = c.env
   const { user_id } = await c.req.json()
   
+  // ✅ v155 SEGURANÇA: Exigir autenticação e só permitir para o próprio usuário
+  const authenticatedUserId = await getAuthenticatedUserId(c)
+  if (!authenticatedUserId || authenticatedUserId.toString() !== user_id?.toString()) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
   try {
     const user = await DB.prepare(
-      'SELECT auth_provider, password FROM users WHERE id = ?'
+      'SELECT email, auth_provider, password FROM users WHERE id = ?'
     ).bind(user_id).first() as any
     
     if (!user) {
       return c.json({ error: 'Usuário não encontrado' }, 404)
+    }
+    
+    // ✅ v155: Admin NUNCA pode desconectar Google (é a única forma de auth)
+    if (user.email === ADMIN_EMAIL) {
+      return c.json({ error: 'Conta admin não pode desconectar Google' }, 403)
     }
     
     // Se o usuário só tem Google (sem senha), não pode desconectar
@@ -6552,6 +6580,12 @@ app.post('/api/reset-password', async (c) => {
       }, 400)
     }
     
+    // ✅ v155 SEGURANÇA: Admin NUNCA pode resetar senha (Google Only)
+    if (user.email === ADMIN_EMAIL) {
+      console.warn(`🚨 SEGURANÇA v155: Tentativa de reset-password para conta admin — BLOQUEADO`)
+      return c.json({ error: 'Conta admin usa exclusivamente Google. Reset de senha não permitido.' }, 403)
+    }
+    
     // Atualizar senha e limpar token
     await DB.prepare(
       `UPDATE users 
@@ -6713,9 +6747,21 @@ app.get('/api/user-by-email', async (c) => {
 // [REMOVIDO - Definição duplicada de /api/verify-email/:token]
 // A definição principal está na linha ~2862
 
+// ✅ v155 SEGURANÇA: Buscar dados do usuário — REQUER autenticação
 app.get('/api/users/:id', async (c) => {
   const { DB } = c.env
   const id = c.req.param('id')
+
+  // ✅ v155: EXIGIR autenticação
+  const authenticatedUserId = await getAuthenticatedUserId(c)
+  if (!authenticatedUserId) {
+    return c.json({ error: 'Autenticação obrigatória' }, 401)
+  }
+
+  // Só pode ver seu próprio perfil, ou admin pode ver qualquer um
+  if (authenticatedUserId.toString() !== id.toString() && !await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
 
   const user = await DB.prepare(
     'SELECT id, name, email, created_at FROM users WHERE id = ?'
@@ -6730,13 +6776,28 @@ app.get('/api/users/:id', async (c) => {
 
 // Atualizar usuário
 // ⚠️ SEGURANÇA: Email NÃO pode ser alterado pelo usuário (apenas admin)
+// ✅ v155 SEGURANÇA: Atualizar perfil — REQUER token autenticado
+// O usuário só pode alterar SEU PRÓPRIO perfil, NUNCA o de outro
+// Conta admin é IMUTÁVEL por esta rota
 app.put('/api/users/:id', async (c) => {
   const { DB } = c.env
   const id = c.req.param('id')
-  const { name, email, password } = await c.req.json()
+
+  // ✅ v155: EXIGIR autenticação por token
+  const authenticatedUserId = await getAuthenticatedUserId(c)
+  if (!authenticatedUserId) {
+    return c.json({ error: 'Autenticação obrigatória' }, 401)
+  }
+
+  // ✅ v155: Só pode editar SEU PRÓPRIO perfil
+  if (authenticatedUserId.toString() !== id.toString()) {
+    console.warn(`🚨 SEGURANÇA v155: Usuário ${authenticatedUserId} tentou editar perfil do usuário ${id}`)
+    return c.json({ error: 'Acesso negado — você só pode editar seu próprio perfil' }, 403)
+  }
+
+  const { name, password } = await c.req.json()
 
   try {
-    // Verificar se usuário existe
     const user = await DB.prepare(
       'SELECT id, email FROM users WHERE id = ?'
     ).bind(id).first() as any
@@ -6745,31 +6806,27 @@ app.put('/api/users/:id', async (c) => {
       return c.json({ error: 'Usuário não encontrado' }, 404)
     }
 
-    // ⚠️ SEGURANÇA: Bloquear alteração de email
-    // Email só pode ser alterado pelo administrador via painel admin
-    if (email && email !== user.email) {
-      console.warn(`⚠️ Tentativa de alterar email bloqueada - user_id: ${id}, email atual: ${user.email}, tentativa: ${email}`)
-      return c.json({ 
-        error: 'Alteração de email não permitida por segurança. Entre em contato com o suporte se necessário.' 
-      }, 403)
+    // ✅ v155: Conta admin é IMUTÁVEL por esta rota
+    if (user.email === ADMIN_EMAIL) {
+      console.warn(`🚨 SEGURANÇA v155: Tentativa de alterar conta admin via PUT /api/users/${id} — BLOQUEADO`)
+      return c.json({ error: 'Conta de administrador não pode ser alterada por esta rota' }, 403)
     }
 
-    // Construir query de atualização (apenas name e password permitidos)
-    const updates = []
-    const params = []
+    // Apenas name e password — email NUNCA é alterável
+    const updates: string[] = []
+    const params: any[] = []
 
-    if (name) {
+    if (name && typeof name === 'string' && name.trim().length > 0 && name.trim().length <= 100) {
       updates.push('name = ?')
-      params.push(name)
+      params.push(name.trim())
     }
-    // Email removido das atualizações permitidas por segurança
-    if (password) {
+    if (password && typeof password === 'string' && password.length >= 4) {
       updates.push('password = ?')
       params.push(password)
     }
 
     if (updates.length === 0) {
-      return c.json({ error: 'Nenhum dado para atualizar' }, 400)
+      return c.json({ error: 'Nenhum dado válido para atualizar' }, 400)
     }
 
     params.push(id)
@@ -6778,7 +6835,6 @@ app.put('/api/users/:id', async (c) => {
       `UPDATE users SET ${updates.join(', ')} WHERE id = ?`
     ).bind(...params).run()
 
-    // Buscar usuário atualizado
     const updatedUser = await DB.prepare(
       'SELECT id, name, email, created_at FROM users WHERE id = ?'
     ).bind(id).first()
