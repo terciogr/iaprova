@@ -2422,25 +2422,28 @@ app.get('/api/subscription/details/:userId', async (c) => {
     const now = new Date()
     
     // ✅ v69: Buscar preços dos planos do banco de dados primeiro
+    // ✅ v162: Aplicar desconto nos preços exibidos
     let dbPlanPrices: Record<string, number> = {}
     try {
       const dbPlansAll = await DB.prepare(
-        'SELECT name, price, duration_days FROM payment_plans WHERE is_active = 1'
+        'SELECT name, price, duration_days, discount_percent FROM payment_plans WHERE is_active = 1'
       ).all() as any
       if (dbPlansAll?.results) {
         for (const dp of dbPlansAll.results) {
           const nl = (dp.name || '').toLowerCase()
+          const discount = dp.discount_percent || 0
+          const finalPrice = discount > 0 ? Math.round(dp.price * (1 - discount / 100) * 100) / 100 : dp.price
           if (nl.includes('mensal') || (dp.duration_days >= 28 && dp.duration_days <= 31)) {
-            dbPlanPrices['mensal'] = dp.price
+            dbPlanPrices['mensal'] = finalPrice
           } else if (nl.includes('trimestral') || (dp.duration_days >= 80 && dp.duration_days <= 100)) {
-            dbPlanPrices['trimestral'] = dp.price
+            dbPlanPrices['trimestral'] = finalPrice
           } else if (nl.includes('anual') || dp.duration_days >= 360) {
-            dbPlanPrices['anual'] = dp.price
+            dbPlanPrices['anual'] = finalPrice
           }
         }
       }
     } catch(e) { /* fallback */ }
-    const getPlanPrice = (plan: string) => dbPlanPrices[plan] || (plan === 'anual' ? 249.90 : 29.90)
+    const getPlanPrice = (plan: string) => dbPlanPrices[plan] || (plan === 'anual' ? 174.93 : 20.93)
     
     let planInfo: any = {
       status: 'free',
@@ -2607,12 +2610,19 @@ app.get('/api/subscription/payment-links', async (c) => {
         else if (nameLower.includes('anual') || p.duration_days >= 360) planId = 'anual'
         else planId = 'plano_' + p.id
         
+        // ✅ v162: Calcular preço final com desconto
+        const discount = p.discount_percent || 0
+        const finalPrice = discount > 0 
+          ? Math.round(p.price * (1 - discount / 100) * 100) / 100 
+          : p.price
+        
         return {
           id: planId,
           name: p.name,
           price: p.price,
+          final_price: finalPrice,
           duration: p.duration_days,
-          discount_percent: p.discount_percent || 0,
+          discount_percent: discount,
           is_featured: !!p.is_featured,
           features
         }
@@ -2624,8 +2634,8 @@ app.get('/api/subscription/payment-links', async (c) => {
   // Fallback
   return c.json({
     plans: [
-      { id: 'mensal', name: 'Premium Mensal', price: 29.90, duration: 30, features: [] },
-      { id: 'anual', name: 'Premium Anual', price: 249.90, duration: 365, features: [] }
+      { id: 'mensal', name: 'Premium Mensal', price: 29.90, final_price: 29.90, duration: 30, discount_percent: 0, features: [] },
+      { id: 'anual', name: 'Premium Anual', price: 249.90, final_price: 249.90, duration: 365, discount_percent: 0, features: [] }
     ]
   })
 })
@@ -2672,11 +2682,12 @@ app.post('/api/subscription/activate', async (c) => {
     const now = new Date()
     
     // ✅ v69: Buscar preço e duração do plano do banco de dados
+    // ✅ v162: Aplicar desconto no valor registrado
     let durationDays = plan === 'anual' ? 365 : (plan === 'trimestral' ? 90 : 30)
     let amount = plan === 'anual' ? 249.90 : (plan === 'trimestral' ? 79.90 : 29.90)
     try {
       const dbPlansActivate = await DB.prepare(
-        'SELECT name, price, duration_days FROM payment_plans WHERE is_active = 1'
+        'SELECT name, price, duration_days, discount_percent FROM payment_plans WHERE is_active = 1'
       ).all() as any
       if (dbPlansActivate?.results) {
         for (const dp of dbPlansActivate.results) {
@@ -2685,7 +2696,10 @@ app.post('/api/subscription/activate', async (c) => {
               (plan === 'trimestral' && (nl.includes('trimestral') || (dp.duration_days >= 80 && dp.duration_days <= 100))) ||
               (plan === 'anual' && (nl.includes('anual') || dp.duration_days >= 360))) {
             durationDays = dp.duration_days
-            amount = dp.price
+            const discount = dp.discount_percent || 0
+            amount = discount > 0 
+              ? Math.round(dp.price * (1 - discount / 100) * 100) / 100 
+              : dp.price
             break
           }
         }
@@ -2849,12 +2863,13 @@ app.post('/api/mercadopago/create-preference', async (c) => {
     }
     
     // ✅ v69: Buscar planos do banco de dados (dinâmico)
+    // ✅ v162: Incluir discount_percent para aplicar desconto no pagamento
     const dbPlans = await DB.prepare(
-      'SELECT id, name, price, duration_days FROM payment_plans WHERE is_active = 1 ORDER BY price ASC'
+      'SELECT id, name, price, duration_days, discount_percent FROM payment_plans WHERE is_active = 1 ORDER BY price ASC'
     ).all() as any
     
     // Mapear planos por tipo (mensal/anual/trimestral) baseado no nome ou duration_days
-    const plans: Record<string, { title: string; price: number; days: number }> = {}
+    const plans: Record<string, { title: string; price: number; originalPrice: number; discountPercent: number; days: number }> = {}
     
     if (dbPlans?.results?.length > 0) {
       for (const p of dbPlans.results) {
@@ -2868,15 +2883,25 @@ app.post('/api/mercadopago/create-preference', async (c) => {
           key = 'anual'
         }
         if (key && p.price > 0) {
-          plans[key] = { title: `IAprova ${p.name}`, price: p.price, days: p.duration_days }
+          const discount = p.discount_percent || 0
+          const finalPrice = discount > 0 
+            ? Math.round(p.price * (1 - discount / 100) * 100) / 100 
+            : p.price
+          plans[key] = { 
+            title: `IAprova ${p.name}`, 
+            price: finalPrice,
+            originalPrice: p.price,
+            discountPercent: discount,
+            days: p.duration_days 
+          }
         }
       }
     }
     
     // Fallback se banco vazio
     if (Object.keys(plans).length === 0) {
-      plans['mensal'] = { title: 'IAprova Premium Mensal', price: 29.90, days: 30 }
-      plans['anual'] = { title: 'IAprova Premium Anual', price: 249.90, days: 365 }
+      plans['mensal'] = { title: 'IAprova Premium Mensal', price: 29.90, originalPrice: 29.90, discountPercent: 0, days: 30 }
+      plans['anual'] = { title: 'IAprova Premium Anual', price: 249.90, originalPrice: 249.90, discountPercent: 0, days: 365 }
     }
     
     const selectedPlan = plans[plan]
@@ -2885,11 +2910,18 @@ app.post('/api/mercadopago/create-preference', async (c) => {
     }
     
     // Criar preferência no Mercado Pago
+    // ✅ v162: unit_price já inclui o desconto aplicado
+    const itemTitle = selectedPlan.discountPercent > 0
+      ? `${selectedPlan.title} (${selectedPlan.discountPercent}% OFF)`
+      : selectedPlan.title
+    
+    console.log(`💰 v162: Plano ${plan} — original: R$${selectedPlan.originalPrice}, desconto: ${selectedPlan.discountPercent}%, final: R$${selectedPlan.price}`)
+    
     const preference = {
       items: [{
         id: plan,
-        title: selectedPlan.title,
-        description: `Assinatura ${plan === 'anual' ? 'Anual' : 'Mensal'} do IAprova - Preparação Inteligente para Concursos`,
+        title: itemTitle,
+        description: `Assinatura ${plan === 'anual' ? 'Anual' : plan === 'trimestral' ? 'Trimestral' : 'Mensal'} do IAprova - Preparação Inteligente para Concursos`,
         quantity: 1,
         unit_price: selectedPlan.price,
         currency_id: 'BRL'
@@ -3777,19 +3809,20 @@ app.get('/obrigado-premium', async (c) => {
   const paymentId = c.req.query('payment_id') || ''
   const plan = c.req.query('plan') || 'premium'
   
-  // ✅ v69: Buscar preço real do plano do banco
+  // ✅ v162: Buscar preço real do plano COM desconto
   const { DB } = c.env as any
-  let planPrice = plan === 'anual' ? 249.90 : (plan === 'trimestral' ? 79.90 : 29.90)
+  let planPrice = plan === 'anual' ? 174.93 : (plan === 'trimestral' ? 55.93 : 20.93)
   let planName = plan === 'anual' ? 'Premium Anual' : (plan === 'trimestral' ? 'Premium Trimestral' : 'Premium Mensal')
   try {
-    const dbPlansConv = await DB.prepare('SELECT name, price, duration_days FROM payment_plans WHERE is_active = 1').all() as any
+    const dbPlansConv = await DB.prepare('SELECT name, price, duration_days, discount_percent FROM payment_plans WHERE is_active = 1').all() as any
     if (dbPlansConv?.results) {
       for (const dp of dbPlansConv.results) {
         const nl = (dp.name || '').toLowerCase()
         if ((plan === 'mensal' && (nl.includes('mensal') || (dp.duration_days >= 28 && dp.duration_days <= 31))) ||
             (plan === 'trimestral' && (nl.includes('trimestral') || (dp.duration_days >= 80 && dp.duration_days <= 100))) ||
             (plan === 'anual' && (nl.includes('anual') || dp.duration_days >= 360))) {
-          planPrice = dp.price
+          const discount = dp.discount_percent || 0
+          planPrice = discount > 0 ? Math.round(dp.price * (1 - discount / 100) * 100) / 100 : dp.price
           planName = dp.name
           break
         }
@@ -4235,16 +4268,18 @@ app.get('/api/admin/dashboard', async (c) => {
       const anualCount = await DB.prepare("SELECT COUNT(*) as count FROM users WHERE subscription_plan = 'anual' AND subscription_status = 'active'").first() as any
       const trimestralCount = await DB.prepare("SELECT COUNT(*) as count FROM users WHERE subscription_plan = 'trimestral' AND subscription_status = 'active'").first() as any
       
-      // ✅ v69: Buscar preços reais do banco
-      let precoMensal = 29.90, precoAnual = 249.90, precoTrimestral = 79.90
+      // ✅ v162: Buscar preços reais do banco COM desconto
+      let precoMensal = 20.93, precoAnual = 174.93, precoTrimestral = 55.93
       try {
-        const dbPrices = await DB.prepare('SELECT name, price, duration_days FROM payment_plans WHERE is_active = 1').all() as any
+        const dbPrices = await DB.prepare('SELECT name, price, duration_days, discount_percent FROM payment_plans WHERE is_active = 1').all() as any
         if (dbPrices?.results) {
           for (const dp of dbPrices.results) {
             const nl = (dp.name || '').toLowerCase()
-            if (nl.includes('mensal') || (dp.duration_days >= 28 && dp.duration_days <= 31)) precoMensal = dp.price
-            else if (nl.includes('trimestral') || (dp.duration_days >= 80 && dp.duration_days <= 100)) precoTrimestral = dp.price
-            else if (nl.includes('anual') || dp.duration_days >= 360) precoAnual = dp.price
+            const discount = dp.discount_percent || 0
+            const fp = discount > 0 ? Math.round(dp.price * (1 - discount / 100) * 100) / 100 : dp.price
+            if (nl.includes('mensal') || (dp.duration_days >= 28 && dp.duration_days <= 31)) precoMensal = fp
+            else if (nl.includes('trimestral') || (dp.duration_days >= 80 && dp.duration_days <= 100)) precoTrimestral = fp
+            else if (nl.includes('anual') || dp.duration_days >= 360) precoAnual = fp
           }
         }
       } catch(e) { /* fallback */ }
@@ -5083,16 +5118,18 @@ app.get('/api/admin/financeiro', async (c) => {
   }
   
   try {
-    // ✅ v69: Buscar preços reais do banco primeiro
-    let precoMensal = 29.90, precoAnual = 249.90, precoTrimestral = 79.90
+    // ✅ v162: Buscar preços reais do banco COM desconto
+    let precoMensal = 20.93, precoAnual = 174.93, precoTrimestral = 55.93
     try {
-      const dbPricesFinanceiro = await DB.prepare('SELECT name, price, duration_days FROM payment_plans WHERE is_active = 1').all() as any
+      const dbPricesFinanceiro = await DB.prepare('SELECT name, price, duration_days, discount_percent FROM payment_plans WHERE is_active = 1').all() as any
       if (dbPricesFinanceiro?.results) {
         for (const dp of dbPricesFinanceiro.results) {
           const nl = (dp.name || '').toLowerCase()
-          if (nl.includes('mensal') || (dp.duration_days >= 28 && dp.duration_days <= 31)) precoMensal = dp.price
-          else if (nl.includes('trimestral') || (dp.duration_days >= 80 && dp.duration_days <= 100)) precoTrimestral = dp.price
-          else if (nl.includes('anual') || dp.duration_days >= 360) precoAnual = dp.price
+          const discount = dp.discount_percent || 0
+          const fp = discount > 0 ? Math.round(dp.price * (1 - discount / 100) * 100) / 100 : dp.price
+          if (nl.includes('mensal') || (dp.duration_days >= 28 && dp.duration_days <= 31)) precoMensal = fp
+          else if (nl.includes('trimestral') || (dp.duration_days >= 80 && dp.duration_days <= 100)) precoTrimestral = fp
+          else if (nl.includes('anual') || dp.duration_days >= 360) precoAnual = fp
         }
       }
     } catch(e) { /* fallback */ }
