@@ -4014,6 +4014,7 @@ async function isAdmin(c: any): Promise<boolean> {
 // ════════════════════════════════════════════════════════════════════════
 
 // Listar sessões ativas de um usuário (admin vê todos, user vê só dele)
+// ✅ v164: Endpoint admin mostra APENAS dispositivos do admin
 app.get('/api/admin/sessions', async (c) => {
   if (!await isAdmin(c)) {
     return c.json({ error: 'Acesso negado' }, 403)
@@ -4021,7 +4022,6 @@ app.get('/api/admin/sessions', async (c) => {
 
   const { DB } = c.env
   try {
-    // Auto-criar tabela
     await DB.prepare(`CREATE TABLE IF NOT EXISTS active_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL, token_hash TEXT NOT NULL UNIQUE,
@@ -4031,14 +4031,16 @@ app.get('/api/admin/sessions', async (c) => {
       is_revoked INTEGER DEFAULT 0, revoked_at DATETIME, revoked_by TEXT
     )`).run()
 
-    // ✅ v163: Agrupar por dispositivo único (user_id + device_info)
-    // Mostra apenas 1 registro por dispositivo por usuário, com o acesso mais recente
+    // Buscar ID do admin
+    const adminUser = await DB.prepare('SELECT id FROM users WHERE email = ?').bind(ADMIN_EMAIL).first() as any
+    if (!adminUser) {
+      return c.json({ sessions: [], total: 0 })
+    }
+
     const sessions = await DB.prepare(`
       SELECT 
         MAX(s.id) as id,
         s.user_id, 
-        u.name as user_name, 
-        u.email as user_email,
         s.device_info, 
         s.ip_address,
         MIN(s.created_at) as first_seen_at,
@@ -4050,19 +4052,91 @@ app.get('/api/admin/sessions', async (c) => {
           ELSE 'revogado'
         END as status
       FROM active_sessions s
-      LEFT JOIN users u ON u.id = s.user_id
-      GROUP BY s.user_id, s.device_info
+      WHERE s.user_id = ?
+      GROUP BY s.device_info
       ORDER BY MAX(s.last_seen_at) DESC
-      LIMIT 200
-    `).all() as any
+    `).bind(adminUser.id).all() as any
 
     return c.json({
       sessions: sessions.results || [],
       total: sessions.results?.length || 0
     })
   } catch (error) {
-    console.error('Erro ao listar sessões:', error)
+    console.error('Erro ao listar sessões admin:', error)
     return c.json({ error: 'Erro ao listar sessões' }, 500)
+  }
+})
+
+// ✅ v164: Endpoint para qualquer usuário ver SEUS dispositivos
+app.get('/api/auth/my-sessions', async (c) => {
+  const { DB } = c.env
+  const userId = await getAuthenticatedUserId(c)
+  if (!userId) {
+    return c.json({ error: 'Autenticação obrigatória' }, 401)
+  }
+  
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS active_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL, token_hash TEXT NOT NULL UNIQUE,
+      device_info TEXT, ip_address TEXT, user_agent TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_revoked INTEGER DEFAULT 0, revoked_at DATETIME, revoked_by TEXT
+    )`).run()
+
+    const sessions = await DB.prepare(`
+      SELECT 
+        MAX(id) as id,
+        device_info, 
+        ip_address,
+        MIN(created_at) as first_seen_at,
+        MAX(last_seen_at) as last_seen_at,
+        COUNT(*) as total_sessions,
+        SUM(CASE WHEN is_revoked = 0 THEN 1 ELSE 0 END) as active_sessions,
+        CASE 
+          WHEN SUM(CASE WHEN is_revoked = 0 THEN 1 ELSE 0 END) > 0 THEN 'ativo'
+          ELSE 'revogado'
+        END as status
+      FROM active_sessions
+      WHERE user_id = ?
+      GROUP BY device_info
+      ORDER BY MAX(last_seen_at) DESC
+    `).bind(userId).all() as any
+
+    return c.json({
+      sessions: sessions.results || [],
+      total: sessions.results?.length || 0
+    })
+  } catch (error) {
+    console.error('Erro ao listar minhas sessões:', error)
+    return c.json({ error: 'Erro ao listar sessões' }, 500)
+  }
+})
+
+// ✅ v164: Endpoint para qualquer usuário revogar SEU próprio dispositivo
+app.post('/api/auth/my-sessions/revoke', async (c) => {
+  const { DB } = c.env
+  const userId = await getAuthenticatedUserId(c)
+  if (!userId) {
+    return c.json({ error: 'Autenticação obrigatória' }, 401)
+  }
+  
+  try {
+    const { device_info } = await c.req.json()
+    if (!device_info) {
+      return c.json({ error: 'device_info é obrigatório' }, 400)
+    }
+
+    await DB.prepare(`
+      UPDATE active_sessions SET is_revoked = 1, revoked_at = datetime('now'), revoked_by = 'user-self'
+      WHERE user_id = ? AND device_info = ? AND is_revoked = 0
+    `).bind(userId, device_info).run()
+
+    console.log(`🔒 v164: Usuário ${userId} revogou dispositivo "${device_info}"`)
+    return c.json({ success: true, message: `Dispositivo "${device_info}" desconectado` })
+  } catch (error) {
+    return c.json({ error: 'Erro ao revogar dispositivo' }, 500)
   }
 })
 

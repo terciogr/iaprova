@@ -17513,6 +17513,20 @@ window.abrirConfiguracoes = function() {
           '</div>' +
         '</button>' +
         
+        // Meus Dispositivos
+        '<button onclick="abrirMeusDispositivos()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
+          '<div class="flex items-start gap-4">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] flex items-center justify-center flex-shrink:0 group-hover:scale-110 transition">' +
+              '<i class="fas fa-laptop text-white text-lg"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+              '<h3 class="font-semibold ' + themes[currentTheme].text + ' mb-1">Meus Dispositivos</h3>' +
+              '<p class="text-sm ' + themes[currentTheme].textMuted + '">Gerencie os dispositivos conectados à sua conta</p>' +
+            '</div>' +
+            '<i class="fas fa-chevron-right ' + themes[currentTheme].textMuted + ' group-hover:translate-x-1 transition-transform"></i>' +
+          '</div>' +
+        '</button>' +
+        
         // Instalar App
         '<button onclick="showInstallInstructions()" class="' + themes[currentTheme].card + ' rounded-xl p-5 border ' + themes[currentTheme].border + ' hover:border-[#122D6A] hover:shadow-lg transition-all text-left group">' +
           '<div class="flex items-start gap-4">' +
@@ -18767,42 +18781,34 @@ window.abrirGerenciadorSessoes = async function() {
   var modal = document.createElement('div');
   modal.id = 'modal-sessoes-admin';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10002;padding:8px;';
-  // Fechar ao clicar no backdrop
   modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
   modal.innerHTML = 
-    '<div style="background:' + bgCard + ';max-width:800px;width:100%;max-height:94vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.25);">' +
-      // Header - mobile friendly com botão fechar visível
+    '<div style="background:' + bgCard + ';max-width:500px;width:100%;max-height:94vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.25);">' +
       '<div style="background:linear-gradient(135deg,#122D6A,#1A3A7F);padding:12px 16px;color:white;flex-shrink:0;">' +
-        // Linha 1: Título + Fechar
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
           '<div style="display:flex;align-items:center;gap:10px;">' +
             '<div style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
               '<i class="fas fa-laptop" style="font-size:16px;"></i>' +
             '</div>' +
             '<div>' +
-              '<h2 style="font-size:16px;font-weight:700;margin:0;line-height:1.2;">Dispositivos Conectados</h2>' +
-              '<p style="font-size:11px;opacity:0.7;margin:0;">Sessoes ativas de todos os usuarios</p>' +
+              '<h2 style="font-size:16px;font-weight:700;margin:0;line-height:1.2;">Meus Dispositivos (Admin)</h2>' +
+              '<p style="font-size:11px;opacity:0.7;margin:0;">Sessoes ativas da sua conta admin</p>' +
             '</div>' +
           '</div>' +
           '<button onclick="document.getElementById(\'modal-sessoes-admin\')?.remove()" style="width:36px;height:36px;background:rgba(255,255,255,0.2);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">' +
             '<i class="fas fa-times"></i>' +
           '</button>' +
         '</div>' +
-        // Linha 2: Botões de ação
         '<div style="display:flex;gap:8px;">' +
-          '<button onclick="revogarTodasSessoesGlobal()" style="flex:1;padding:8px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:8px;color:#FCA5A5;font-size:12px;cursor:pointer;font-weight:600;">' +
-            '<i class="fas fa-ban mr-1"></i>Revogar Todos' +
-          '</button>' +
           '<button onclick="carregarSessoesAdmin()" style="flex:1;padding:8px;background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:white;font-size:12px;cursor:pointer;font-weight:600;">' +
             '<i class="fas fa-sync mr-1"></i>Atualizar' +
           '</button>' +
         '</div>' +
       '</div>' +
-      // Content
       '<div id="sessoes-content" style="flex:1;overflow-y:auto;padding:12px;">' +
         '<div style="text-align:center;padding:32px 0;">' +
           '<i class="fas fa-spinner fa-spin" style="font-size:24px;color:#4A90D9;"></i>' +
-          '<p style="margin-top:8px;font-size:13px;color:' + textMuted + ';">Carregando sessoes...</p>' +
+          '<p style="margin-top:8px;font-size:13px;color:' + textMuted + ';">Carregando dispositivos...</p>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -18824,80 +18830,44 @@ window.carregarSessoesAdmin = async function() {
     var container = document.getElementById('sessoes-content');
     if (!container) return;
     
-    // ✅ v163: API já retorna agrupado por dispositivo único
     var ativos = devices.filter(function(d) { return d.status === 'ativo'; });
     var revogados = devices.filter(function(d) { return d.status === 'revogado'; });
     
-    // Agrupar ativos por usuario
-    var porUsuario = {};
-    ativos.forEach(function(d) {
-      var key = d.user_id;
-      if (!porUsuario[key]) porUsuario[key] = { name: d.user_name || 'Desconhecido', email: d.user_email || '', devices: [] };
-      porUsuario[key].devices.push(d);
-    });
-    
-    var totalDevices = ativos.length;
-    var totalUsers = Object.keys(porUsuario).length;
-    
     var html = '';
     
-    // Resumo
-    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">';
+    // Resumo simples: apenas admin
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">';
     html += '<div style="background:linear-gradient(135deg,#059669,#10B981);padding:16px;border-radius:12px;color:white;text-align:center;">';
-    html += '<div style="font-size:28px;font-weight:800;">' + totalDevices + '</div>';
+    html += '<div style="font-size:28px;font-weight:800;">' + ativos.length + '</div>';
     html += '<div style="font-size:11px;opacity:0.8;">Dispositivos Ativos</div></div>';
-    html += '<div style="background:linear-gradient(135deg,#2563EB,#3B82F6);padding:16px;border-radius:12px;color:white;text-align:center;">';
-    html += '<div style="font-size:28px;font-weight:800;">' + totalUsers + '</div>';
-    html += '<div style="font-size:11px;opacity:0.8;">Usuários Conectados</div></div>';
     html += '<div style="background:linear-gradient(135deg,#DC2626,#EF4444);padding:16px;border-radius:12px;color:white;text-align:center;">';
     html += '<div style="font-size:28px;font-weight:800;">' + revogados.length + '</div>';
-    html += '<div style="font-size:11px;opacity:0.8;">Dispositivos Revogados</div></div>';
+    html += '<div style="font-size:11px;opacity:0.8;">Revogados</div></div>';
     html += '</div>';
     
-    // Lista por usuario
-    var userKeys = Object.keys(porUsuario);
-    if (userKeys.length === 0) {
+    // Lista de dispositivos do admin
+    if (ativos.length === 0) {
       html += '<div style="text-align:center;padding:32px;color:' + textMuted + ';"><i class="fas fa-check-circle" style="font-size:32px;color:#10B981;margin-bottom:8px;display:block;"></i>Nenhum dispositivo ativo no momento.</div>';
     } else {
-      userKeys.forEach(function(uid) {
-        var u = porUsuario[uid];
-        var isAdmin = u.email === 'terciogomesrabelo@gmail.com';
-        html += '<div style="background:' + cardBg + ';border:1px solid ' + borderColor + ';border-radius:12px;padding:16px;margin-bottom:12px;">';
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
-        html += '<div>';
-        html += '<span style="font-weight:700;color:' + textColor + ';font-size:14px;">' + (u.name || 'Sem nome') + '</span>';
-        if (isAdmin) html += ' <span style="background:#122D6A;color:white;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;">ADMIN</span>';
-        html += '<br><span style="font-size:12px;color:' + textMuted + ';">' + u.email + ' — ' + u.devices.length + ' dispositivo(s)</span>';
-        html += '</div>';
-        if (!isAdmin) {
-          html += '<button onclick="revogarTodasSessoesUsuario(' + uid + ')" style="padding:4px 10px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:6px;font-size:11px;cursor:pointer;"><i class="fas fa-ban mr-1"></i>Revogar Todos</button>';
-        }
-        html += '</div>';
+      ativos.forEach(function(d) {
+        var icon = 'fa-desktop';
+        var devLower = (d.device_info || '').toLowerCase();
+        if (devLower.includes('android') || devLower.includes('ios')) icon = 'fa-mobile-alt';
+        else if (devLower.includes('mac')) icon = 'fa-laptop';
+        else if (devLower.includes('windows')) icon = 'fa-desktop';
+        else if (devLower.includes('linux')) icon = 'fa-terminal';
         
-        u.devices.forEach(function(d) {
-          var icon = 'fa-desktop';
-          var devLower = (d.device_info || '').toLowerCase();
-          if (devLower.includes('android') || devLower.includes('ios')) icon = 'fa-mobile-alt';
-          else if (devLower.includes('mac')) icon = 'fa-laptop';
-          else if (devLower.includes('windows')) icon = 'fa-desktop';
-          else if (devLower.includes('linux')) icon = 'fa-terminal';
-          
-          var lastSeen = d.last_seen_at ? new Date(d.last_seen_at + 'Z').toLocaleString('pt-BR') : 'Desconhecido';
-          var firstSeen = d.first_seen_at ? new Date(d.first_seen_at + 'Z').toLocaleString('pt-BR') : 'Desconhecido';
-          
-          html += '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:' + (isAdmin ? 'rgba(18,45,106,0.05)' : 'transparent') + ';border-radius:8px;margin-bottom:4px;border:1px solid ' + borderColor + ';">';
-          html += '<div style="width:36px;height:36px;background:#E8EDF5;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas ' + icon + '" style="color:#122D6A;font-size:14px;"></i></div>';
-          html += '<div style="flex:1;min-width:0;">';
-          html += '<div style="font-size:13px;font-weight:600;color:' + textColor + ';">' + (d.device_info || 'Desconhecido') + '</div>';
-          html += '<div style="font-size:11px;color:' + textMuted + ';"><i class="fas fa-clock mr-1"></i>Último acesso: ' + lastSeen + '</div>';
-          html += '<div style="font-size:10px;color:' + textMuted + ';">Primeiro acesso: ' + firstSeen + ' | ' + (d.total_sessions || 1) + ' sessão(ões)</div>';
-          html += '</div>';
-          if (!isAdmin) {
-            html += '<button onclick="revogarDispositivo(' + d.user_id + ',\'' + (d.device_info || '').replace(/'/g, "\\'") + '\')" style="padding:4px 8px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:6px;font-size:10px;cursor:pointer;flex-shrink:0;" title="Desconectar dispositivo"><i class="fas fa-times"></i></button>';
-          }
-          html += '</div>';
-        });
+        var lastSeen = d.last_seen_at ? new Date(d.last_seen_at + 'Z').toLocaleString('pt-BR') : 'Desconhecido';
+        var firstSeen = d.first_seen_at ? new Date(d.first_seen_at + 'Z').toLocaleString('pt-BR') : 'Desconhecido';
         
+        html += '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:' + cardBg + ';border-radius:10px;margin-bottom:8px;border:1px solid ' + borderColor + ';">';
+        html += '<div style="width:40px;height:40px;background:#E8EDF5;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas ' + icon + '" style="color:#122D6A;font-size:16px;"></i></div>';
+        html += '<div style="flex:1;min-width:0;">';
+        html += '<div style="font-size:13px;font-weight:600;color:' + textColor + ';">' + (d.device_info || 'Desconhecido') + '</div>';
+        html += '<div style="font-size:11px;color:' + textMuted + ';"><i class="fas fa-clock mr-1"></i>Último: ' + lastSeen + '</div>';
+        html += '<div style="font-size:10px;color:' + textMuted + ';">Primeiro: ' + firstSeen + ' | ' + (d.total_sessions || 1) + ' sessão(ões)</div>';
+        html += '</div>';
+        html += '<span style="padding:4px 10px;background:#D1FAE5;color:#059669;border-radius:12px;font-size:10px;font-weight:600;flex-shrink:0;"><i class="fas fa-check-circle mr-1"></i>Ativo</span>';
         html += '</div>';
       });
     }
@@ -18905,16 +18875,22 @@ window.carregarSessoesAdmin = async function() {
     // Dispositivos revogados
     if (revogados.length > 0) {
       html += '<details style="margin-top:16px;">';
-      html += '<summary style="cursor:pointer;font-weight:600;font-size:13px;color:' + textMuted + ';padding:8px 0;"><i class="fas fa-ban mr-1"></i>Dispositivos Revogados (' + revogados.length + ')</summary>';
+      html += '<summary style="cursor:pointer;font-weight:600;font-size:13px;color:' + textMuted + ';padding:8px 0;"><i class="fas fa-ban mr-1"></i>Revogados (' + revogados.length + ')</summary>';
       html += '<div style="padding:8px 0;">';
       revogados.slice(0, 10).forEach(function(d) {
         html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-left:3px solid #EF4444;margin-bottom:4px;opacity:0.6;">';
         html += '<i class="fas fa-ban" style="color:#EF4444;font-size:12px;"></i>';
-        html += '<div style="flex:1;font-size:11px;color:' + textMuted + ';">' + (d.user_name || '?') + ' - ' + (d.device_info || '?') + ' (' + (d.total_sessions || 0) + ' sessões)</div>';
+        html += '<div style="flex:1;font-size:11px;color:' + textMuted + ';">' + (d.device_info || '?') + ' (' + (d.total_sessions || 0) + ' sessões)</div>';
         html += '</div>';
       });
       html += '</div></details>';
     }
+    
+    // Nota informativa
+    html += '<div style="margin-top:16px;padding:12px;background:rgba(18,45,106,0.05);border:1px solid rgba(18,45,106,0.15);border-radius:10px;font-size:11px;color:' + textMuted + ';">';
+    html += '<i class="fas fa-info-circle mr-1" style="color:#122D6A;"></i>';
+    html += '<b>Nota:</b> Este painel mostra apenas os dispositivos da conta admin. Cada usuário pode gerenciar seus próprios dispositivos em <b>Configurações > Meus Dispositivos</b>.';
+    html += '</div>';
     
     container.innerHTML = html;
     
@@ -18967,6 +18943,143 @@ window.revogarTodasSessoesGlobal = async function() {
     await carregarSessoesAdmin();
   } catch (error) {
     showToast('Erro ao revogar sessoes globais: ' + (error.response?.data?.error || error.message), 'error');
+  }
+};
+
+// ============== MEUS DISPOSITIVOS (para qualquer usuário) ==============
+
+window.abrirMeusDispositivos = async function() {
+  var _d = currentTheme === 'dark';
+  var bgCard = _d ? '#1F2937' : '#FFFFFF';
+  var textMuted = _d ? '#9CA3AF' : '#6B7280';
+  
+  document.getElementById('modal-meus-dispositivos')?.remove();
+  
+  var modal = document.createElement('div');
+  modal.id = 'modal-meus-dispositivos';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10002;padding:8px;';
+  modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = 
+    '<div style="background:' + bgCard + ';max-width:500px;width:100%;max-height:94vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.25);">' +
+      '<div style="background:linear-gradient(135deg,#122D6A,#1A3A7F);padding:12px 16px;color:white;flex-shrink:0;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<div style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+              '<i class="fas fa-laptop" style="font-size:16px;"></i>' +
+            '</div>' +
+            '<div>' +
+              '<h2 style="font-size:16px;font-weight:700;margin:0;line-height:1.2;">Meus Dispositivos</h2>' +
+              '<p style="font-size:11px;opacity:0.7;margin:0;">Gerencie os dispositivos conectados</p>' +
+            '</div>' +
+          '</div>' +
+          '<button onclick="document.getElementById(\'modal-meus-dispositivos\')?.remove()" style="width:36px;height:36px;background:rgba(255,255,255,0.2);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">' +
+            '<i class="fas fa-times"></i>' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div id="meus-dispositivos-content" style="flex:1;overflow-y:auto;padding:12px;">' +
+        '<div style="text-align:center;padding:32px 0;">' +
+          '<i class="fas fa-spinner fa-spin" style="font-size:24px;color:#4A90D9;"></i>' +
+          '<p style="margin-top:8px;font-size:13px;color:' + textMuted + ';">Carregando...</p>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+  
+  await carregarMeusDispositivos();
+};
+
+window.carregarMeusDispositivos = async function() {
+  var _d = currentTheme === 'dark';
+  var textColor = _d ? '#F3F4F6' : '#1F2937';
+  var textMuted = _d ? '#9CA3AF' : '#6B7280';
+  var borderColor = _d ? '#374151' : '#E5E7EB';
+  var cardBg = _d ? '#111827' : '#F9FAFB';
+  
+  try {
+    var response = await axios.get('/api/auth/my-sessions');
+    var devices = response.data.sessions || [];
+    var container = document.getElementById('meus-dispositivos-content');
+    if (!container) return;
+    
+    var ativos = devices.filter(function(d) { return d.status === 'ativo'; });
+    var revogados = devices.filter(function(d) { return d.status === 'revogado'; });
+    
+    var html = '';
+    
+    // Resumo
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">';
+    html += '<div style="background:linear-gradient(135deg,#059669,#10B981);padding:14px;border-radius:12px;color:white;text-align:center;">';
+    html += '<div style="font-size:24px;font-weight:800;">' + ativos.length + '</div>';
+    html += '<div style="font-size:11px;opacity:0.8;">Ativos</div></div>';
+    html += '<div style="background:linear-gradient(135deg,#DC2626,#EF4444);padding:14px;border-radius:12px;color:white;text-align:center;">';
+    html += '<div style="font-size:24px;font-weight:800;">' + revogados.length + '</div>';
+    html += '<div style="font-size:11px;opacity:0.8;">Desconectados</div></div>';
+    html += '</div>';
+    
+    if (ativos.length === 0) {
+      html += '<div style="text-align:center;padding:32px;color:' + textMuted + ';"><i class="fas fa-laptop" style="font-size:32px;color:#10B981;margin-bottom:8px;display:block;"></i>Nenhum dispositivo ativo.</div>';
+    } else {
+      ativos.forEach(function(d) {
+        var icon = 'fa-desktop';
+        var devLower = (d.device_info || '').toLowerCase();
+        if (devLower.includes('android') || devLower.includes('ios')) icon = 'fa-mobile-alt';
+        else if (devLower.includes('mac')) icon = 'fa-laptop';
+        else if (devLower.includes('windows')) icon = 'fa-desktop';
+        else if (devLower.includes('linux')) icon = 'fa-terminal';
+        
+        var lastSeen = d.last_seen_at ? new Date(d.last_seen_at + 'Z').toLocaleString('pt-BR') : 'Desconhecido';
+        var firstSeen = d.first_seen_at ? new Date(d.first_seen_at + 'Z').toLocaleString('pt-BR') : 'Desconhecido';
+        
+        html += '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:' + cardBg + ';border-radius:10px;margin-bottom:8px;border:1px solid ' + borderColor + ';">';
+        html += '<div style="width:40px;height:40px;background:#E8EDF5;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas ' + icon + '" style="color:#122D6A;font-size:16px;"></i></div>';
+        html += '<div style="flex:1;min-width:0;">';
+        html += '<div style="font-size:13px;font-weight:600;color:' + textColor + ';">' + (d.device_info || 'Desconhecido') + '</div>';
+        html += '<div style="font-size:11px;color:' + textMuted + ';"><i class="fas fa-clock mr-1"></i>Último: ' + lastSeen + '</div>';
+        html += '<div style="font-size:10px;color:' + textMuted + ';">Primeiro: ' + firstSeen + '</div>';
+        html += '</div>';
+        html += '<button onclick="revogarMeuDispositivo(\'' + (d.device_info || '').replace(/'/g, "\\'") + '\')" style="padding:6px 10px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:8px;font-size:11px;cursor:pointer;flex-shrink:0;font-weight:600;" title="Desconectar este dispositivo"><i class="fas fa-sign-out-alt mr-1"></i>Sair</button>';
+        html += '</div>';
+      });
+    }
+    
+    // Revogados
+    if (revogados.length > 0) {
+      html += '<details style="margin-top:16px;">';
+      html += '<summary style="cursor:pointer;font-weight:600;font-size:13px;color:' + textMuted + ';padding:8px 0;"><i class="fas fa-ban mr-1"></i>Desconectados (' + revogados.length + ')</summary>';
+      html += '<div style="padding:8px 0;">';
+      revogados.slice(0, 10).forEach(function(d) {
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-left:3px solid #EF4444;margin-bottom:4px;opacity:0.6;">';
+        html += '<i class="fas fa-ban" style="color:#EF4444;font-size:12px;"></i>';
+        html += '<div style="flex:1;font-size:11px;color:' + textMuted + ';">' + (d.device_info || '?') + '</div>';
+        html += '</div>';
+      });
+      html += '</div></details>';
+    }
+    
+    // Dica
+    html += '<div style="margin-top:16px;padding:12px;background:rgba(18,45,106,0.05);border:1px solid rgba(18,45,106,0.15);border-radius:10px;font-size:11px;color:' + textMuted + ';">';
+    html += '<i class="fas fa-info-circle mr-1" style="color:#122D6A;"></i>';
+    html += 'Se você desconectar um dispositivo, precisará fazer login novamente nele.';
+    html += '</div>';
+    
+    container.innerHTML = html;
+    
+  } catch (error) {
+    console.error('Erro ao carregar meus dispositivos:', error);
+    var container = document.getElementById('meus-dispositivos-content');
+    if (container) container.innerHTML = '<div style="text-align:center;padding:32px;color:#EF4444;"><i class="fas fa-exclamation-triangle" style="font-size:24px;margin-bottom:8px;display:block;"></i>Erro ao carregar dispositivos</div>';
+  }
+};
+
+window.revogarMeuDispositivo = async function(deviceInfo) {
+  if (!confirm('Desconectar o dispositivo "' + deviceInfo + '"? Você precisará fazer login novamente nele.')) return;
+  try {
+    await axios.post('/api/auth/my-sessions/revoke', { device_info: deviceInfo });
+    showToast('Dispositivo desconectado com sucesso', 'success');
+    await carregarMeusDispositivos();
+  } catch (error) {
+    showToast('Erro ao desconectar: ' + (error.response?.data?.error || error.message), 'error');
   }
 };
 
