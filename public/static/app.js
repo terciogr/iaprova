@@ -1261,7 +1261,7 @@ function createUnifiedFAB() {
             <i class="fas fa-comments" style="font-size: 13px; color: ${iconColor};"></i>
             <span id="sidebar-chat-badge" style="display:none; position:absolute; top:-6px; right:-6px; min-width:18px; height:18px; background:#EF4444; color:white; font-size:10px; font-weight:700; border-radius:999px; display:none; align-items:center; justify-content:center; padding:0 4px; line-height:18px; box-shadow:0 1px 3px rgba(0,0,0,0.3);"></span>
           </div>
-          <span style="flex:1;text-align:left;">Chat com Alunos</span>
+          <span style="flex:1;text-align:left;">Chat com Usuarios</span>
           <i id="sidebar-chat-notif-icon" class="fas fa-bell" style="display:none; font-size:14px; color:#EF4444; animation: bellShake 0.5s ease-in-out infinite;"></i>
         </button>
       </div>
@@ -1340,20 +1340,10 @@ function createUnifiedFAB() {
     document.head.appendChild(styles);
   }
   
-  // Mostrar botão de Painel Admin apenas para o administrador
+  // ✅ v158 SEGURANÇA: Mostrar botão admin apenas após confirmação do servidor
+  // O setTimeout aguarda a validação da sessão completar (pode levar ~500ms)
   setTimeout(() => {
-    const adminPanelBtn = document.getElementById('fab-admin-panel');
-    const adminChatBtn = document.getElementById('fab-admin-chat');
-    if (currentUser?.email === 'terciogomesrabelo@gmail.com') {
-      if (adminPanelBtn) adminPanelBtn.style.display = 'block';
-      if (adminChatBtn) adminChatBtn.style.display = 'block';
-      // Verificar mensagens não lidas do admin
-      checkAdminUnreadMessages();
-      // Verificar periodicamente (a cada 30s)
-      if (!window._adminUnreadInterval) {
-        window._adminUnreadInterval = setInterval(checkAdminUnreadMessages, 30000);
-      }
-    }
+    window._atualizarBotoesAdmin();
     
     // Ocultar botão de instalação se já está instalado como PWA
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
@@ -1361,8 +1351,28 @@ function createUnifiedFAB() {
     if (installBtn && isStandalone) {
       installBtn.style.display = 'none';
     }
-  }, 100);
+  }, 1500);
 }
+
+// ✅ v158: Função para atualizar visibilidade dos botões admin
+// Chamada após validação da sessão e no timeout inicial
+window._atualizarBotoesAdmin = function() {
+  const adminPanelBtn = document.getElementById('fab-admin-panel');
+  const adminChatBtn = document.getElementById('fab-admin-chat');
+  
+  if (window._serverConfirmedAdmin === true && currentUser?.email === 'terciogomesrabelo@gmail.com') {
+    if (adminPanelBtn) adminPanelBtn.style.display = 'block';
+    if (adminChatBtn) adminChatBtn.style.display = 'block';
+    // Verificar mensagens não lidas do admin
+    checkAdminUnreadMessages();
+    if (!window._adminUnreadInterval) {
+      window._adminUnreadInterval = setInterval(checkAdminUnreadMessages, 30000);
+    }
+  } else {
+    if (adminPanelBtn) adminPanelBtn.style.display = 'none';
+    if (adminChatBtn) adminChatBtn.style.display = 'none';
+  }
+};
 
 // Verificar mensagens não lidas para o admin (sidebar badge)
 async function checkAdminUnreadMessages() {
@@ -1473,9 +1483,15 @@ function checkUser() {
       
       showToast('🎉 Login com Google realizado com sucesso!', 'success');
       
+      // ✅ v158: Se é admin (Google), confirmar flag para mostrar botões admin
+      if (user.email === 'terciogomesrabelo@gmail.com') {
+        window._serverConfirmedAdmin = true;
+        if (window._atualizarBotoesAdmin) window._atualizarBotoesAdmin();
+      }
+      
       // Verificar entrevista e ir para dashboard/entrevista
       console.log('🚀 Redirecionando após login Google...');
-      verificarEntrevista();
+      validarSessaoEContinuar();
       return;
     } catch (e) {
       console.error('Erro ao processar dados do Google:', e);
@@ -1539,7 +1555,7 @@ async function validarSessaoEContinuar() {
     const response = await axios.get('/api/auth/validate-session', {});
     
     if (response.data.force_logout) {
-      console.warn('🔒 Sessão invalidada pelo servidor:', response.data.reason);
+      console.warn('🔒 Sessao invalidada pelo servidor:', response.data.reason);
       
       // Se é Google Only, mostrar mensagem específica
       if (response.data.googleOnly) {
@@ -1553,11 +1569,22 @@ async function validarSessaoEContinuar() {
       return;
     }
     
+    // ✅ v158 SEGURANÇA: Atualizar flag de admin com base no servidor (não localStorage)
+    // Isso impede que alguém manipule localStorage para se passar por admin
+    window._serverConfirmedAdmin = response.data.isAdmin === true;
+    
+    // Se o servidor diz que NÃO é admin, mas localStorage diz que é → corrigir
+    if (!window._serverConfirmedAdmin && currentUser?.email === ADMIN_EMAIL) {
+      console.warn('🚨 v158: localStorage diz admin mas servidor negou. Corrigindo.');
+    }
+    
     // Sessão válida — continuar normalmente
+    if (window._atualizarBotoesAdmin) window._atualizarBotoesAdmin();
     verificarEntrevista();
   } catch (error) {
     console.warn('⚠️ Erro ao validar sessão, continuando normalmente:', error);
-    // Em caso de erro de rede, não bloquear o usuário
+    window._serverConfirmedAdmin = false;
+    if (window._atualizarBotoesAdmin) window._atualizarBotoesAdmin();
     verificarEntrevista();
   }
 }
@@ -3711,6 +3738,7 @@ window.voltarAoLogin = async function() {
       localStorage.removeItem('userPicture');
       localStorage.removeItem('authProvider');
       localStorage.removeItem('userCreatedAt');
+      window._serverConfirmedAdmin = false;
       currentUser = null;
       
       // Redirecionar para a landing page
@@ -3722,6 +3750,7 @@ window.voltarAoLogin = async function() {
     localStorage.removeItem('sessionToken');
     localStorage.removeItem('userId');
     localStorage.removeItem('userEmail');
+    window._serverConfirmedAdmin = false;
     currentUser = null;
     window.location.href = '/home';
   }
@@ -17112,6 +17141,11 @@ function logout() {
   localStorage.removeItem('userName');
   localStorage.removeItem('userPicture');
   localStorage.removeItem('authProvider');
+  localStorage.removeItem('sessionToken');
+  localStorage.removeItem('userCreatedAt');
+  
+  // ✅ v158: Limpar flag admin do servidor
+  window._serverConfirmedAdmin = false;
   
   // Limpar objeto global
   currentUser = null;
@@ -18037,8 +18071,9 @@ window.abrirImportarExportar = window.abrirAdministracao;
 const ADMIN_EMAIL = 'terciogomesrabelo@gmail.com';
 
 // Verificar se usuário atual é admin
+// ✅ v158 SEGURANÇA: isAdmin exige confirmação do servidor (não apenas localStorage)
 window.isCurrentUserAdmin = function() {
-  return currentUser?.email === ADMIN_EMAIL;
+  return currentUser?.email === ADMIN_EMAIL && window._serverConfirmedAdmin === true;
 };
 
 // Abrir painel do administrador
@@ -18480,49 +18515,52 @@ window.abrirGerenciadorSessoes = async function() {
   
   var _d = currentTheme === 'dark';
   var bgCard = _d ? '#1F2937' : '#FFFFFF';
-  var textColor = _d ? '#F3F4F6' : '#1F2937';
   var textMuted = _d ? '#9CA3AF' : '#6B7280';
-  var borderColor = _d ? '#374151' : '#E5E7EB';
   
   document.getElementById('modal-sessoes-admin')?.remove();
   
   var modal = document.createElement('div');
   modal.id = 'modal-sessoes-admin';
-  modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10002] p-4';
-  modal.innerHTML = `
-    <div style="background:${bgCard};max-width:800px;width:100%;max-height:92vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.25);">
-      <div style="background:linear-gradient(135deg,#122D6A,#1A3A7F);padding:20px 24px;color:white;flex-shrink:0;">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:44px;height:44px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;">
-              <i class="fas fa-laptop text-xl"></i>
-            </div>
-            <div>
-              <h2 style="font-size:18px;font-weight:700;margin:0;">Dispositivos Conectados</h2>
-              <p style="font-size:12px;opacity:0.7;margin:0;">Gerencie sessoes ativas de todos os usuarios</p>
-            </div>
-          </div>
-          <div style="display:flex;gap:8px;">
-            <button onclick="revogarTodasSessoesGlobal()" style="padding:6px 12px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:8px;color:#FCA5A5;font-size:11px;cursor:pointer;" title="Desconectar todos (exceto voce)">
-              <i class="fas fa-ban mr-1"></i>Revogar Todos
-            </button>
-            <button onclick="carregarSessoesAdmin()" style="padding:6px 12px;background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:white;font-size:11px;cursor:pointer;">
-              <i class="fas fa-sync mr-1"></i>Atualizar
-            </button>
-            <button onclick="document.getElementById('modal-sessoes-admin')?.remove()" style="width:32px;height:32px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-      <div id="sessoes-content" style="flex:1;overflow-y:auto;padding:16px;">
-        <div style="text-align:center;padding:32px 0;">
-          <i class="fas fa-spinner fa-spin" style="font-size:24px;color:#4A90D9;"></i>
-          <p style="margin-top:8px;font-size:13px;color:${textMuted};">Carregando sessoes...</p>
-        </div>
-      </div>
-    </div>
-  `;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10002;padding:8px;';
+  // Fechar ao clicar no backdrop
+  modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = 
+    '<div style="background:' + bgCard + ';max-width:800px;width:100%;max-height:94vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.25);">' +
+      // Header - mobile friendly com botão fechar visível
+      '<div style="background:linear-gradient(135deg,#122D6A,#1A3A7F);padding:12px 16px;color:white;flex-shrink:0;">' +
+        // Linha 1: Título + Fechar
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<div style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+              '<i class="fas fa-laptop" style="font-size:16px;"></i>' +
+            '</div>' +
+            '<div>' +
+              '<h2 style="font-size:16px;font-weight:700;margin:0;line-height:1.2;">Dispositivos Conectados</h2>' +
+              '<p style="font-size:11px;opacity:0.7;margin:0;">Sessoes ativas de todos os usuarios</p>' +
+            '</div>' +
+          '</div>' +
+          '<button onclick="document.getElementById(\'modal-sessoes-admin\')?.remove()" style="width:36px;height:36px;background:rgba(255,255,255,0.2);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">' +
+            '<i class="fas fa-times"></i>' +
+          '</button>' +
+        '</div>' +
+        // Linha 2: Botões de ação
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="revogarTodasSessoesGlobal()" style="flex:1;padding:8px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:8px;color:#FCA5A5;font-size:12px;cursor:pointer;font-weight:600;">' +
+            '<i class="fas fa-ban mr-1"></i>Revogar Todos' +
+          '</button>' +
+          '<button onclick="carregarSessoesAdmin()" style="flex:1;padding:8px;background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:white;font-size:12px;cursor:pointer;font-weight:600;">' +
+            '<i class="fas fa-sync mr-1"></i>Atualizar' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+      // Content
+      '<div id="sessoes-content" style="flex:1;overflow-y:auto;padding:12px;">' +
+        '<div style="text-align:center;padding:32px 0;">' +
+          '<i class="fas fa-spinner fa-spin" style="font-size:24px;color:#4A90D9;"></i>' +
+          '<p style="margin-top:8px;font-size:13px;color:' + textMuted + ';">Carregando sessoes...</p>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
   document.body.appendChild(modal);
   
   await carregarSessoesAdmin();

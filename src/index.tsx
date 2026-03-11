@@ -719,6 +719,8 @@ const PUBLIC_ROUTES: Array<{ method?: string, path: string | RegExp }> = [
   { method: 'POST', path: '/api/reset-password' },
   { method: 'POST', path: '/api/resend-verification' },
   { method: 'GET',  path: '/api/check-email-verified' },
+  // Validação de sessão (processa o token internamente, não depende do middleware)
+  { method: 'GET',  path: '/api/auth/validate-session' },
   // ✅ v157: user-by-email REMOVIDO da lista pública — agora requer autenticação
   // Webhook (validado por HMAC, não por token de sessão)
   { method: 'GET',  path: '/api/webhook/mercadopago' },
@@ -5984,10 +5986,14 @@ app.get('/api/auth/validate-session', async (c) => {
       return c.json({ valid: false, force_logout: true, reason: 'Sessão invalidada pelo administrador' })
     }
     
-    return c.json({ valid: true, force_logout: false })
+    // ✅ v158: Retornar flag isAdmin para o frontend poder verificar corretamente
+    const isUserAdmin = user.email === ADMIN_EMAIL && 
+      (user.auth_provider === 'google' || user.auth_provider === 'both')
+    
+    return c.json({ valid: true, force_logout: false, isAdmin: isUserAdmin })
   } catch (error: any) {
     console.error('Erro ao validar sessão:', error)
-    return c.json({ valid: true, force_logout: false }) // Em caso de erro, não deslogar
+    return c.json({ valid: true, force_logout: false, isAdmin: false }) // Em caso de erro, não deslogar
   }
 })
 
