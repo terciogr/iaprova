@@ -1459,6 +1459,15 @@ function checkUser() {
       const user = JSON.parse(decodeURIComponent(userData));
       console.log('✅ Login Google bem sucedido:', user);
       
+      // ✅ v160: Interceptar 2FA pendente para admin
+      const requires2FA = urlParams.get('requires2FA');
+      if (requires2FA === 'true' && user.pending2FA) {
+        console.log('🔐 v160: 2FA necessário para admin — exibindo tela de verificação');
+        window.history.replaceState({}, document.title, '/home');
+        renderTela2FA(user);
+        return;
+      }
+      
       currentUser = {
         id: user.id,
         email: user.email,
@@ -3284,6 +3293,181 @@ window.verificarEmailJaValidado = async function(email) {
     showToast('Erro ao verificar status do email', 'error');
   }
 };
+
+// ============== TELA DE 2FA ADMIN (v160) ==============
+function renderTela2FA(user) {
+  console.log('🔐 v160: Renderizando tela de 2FA para admin');
+  
+  const app = document.getElementById('app');
+  if (!app) return;
+  
+  app.innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0F172A 0%,#1E293B 50%,#0F172A 100%);padding:20px;">
+      <div style="background:white;border-radius:20px;padding:40px;max-width:420px;width:100%;box-shadow:0 25px 50px rgba(0,0,0,0.25);text-align:center;">
+        <div style="width:72px;height:72px;background:linear-gradient(135deg,#122D6A,#2A4A9F);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
+          <span style="font-size:32px;">🔐</span>
+        </div>
+        <h2 style="color:#1E293B;font-size:22px;font-weight:700;margin:0 0 8px;">Verificação de Segurança</h2>
+        <p style="color:#64748B;font-size:14px;margin:0 0 24px;line-height:1.5;">
+          Um código de 6 dígitos foi enviado para<br>
+          <strong style="color:#122D6A;">${user.email}</strong>
+        </p>
+        
+        <div id="2fa-inputs" style="display:flex;gap:8px;justify-content:center;margin:0 0 24px;">
+          <input type="text" maxlength="1" class="2fa-digit" data-index="0" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;border:2px solid #E2E8F0;border-radius:12px;outline:none;color:#1E293B;transition:border-color 0.2s;" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code">
+          <input type="text" maxlength="1" class="2fa-digit" data-index="1" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;border:2px solid #E2E8F0;border-radius:12px;outline:none;color:#1E293B;transition:border-color 0.2s;" inputmode="numeric" pattern="[0-9]">
+          <input type="text" maxlength="1" class="2fa-digit" data-index="2" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;border:2px solid #E2E8F0;border-radius:12px;outline:none;color:#1E293B;transition:border-color 0.2s;" inputmode="numeric" pattern="[0-9]">
+          <div style="width:12px;display:flex;align-items:center;justify-content:center;color:#CBD5E1;font-size:20px;">-</div>
+          <input type="text" maxlength="1" class="2fa-digit" data-index="3" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;border:2px solid #E2E8F0;border-radius:12px;outline:none;color:#1E293B;transition:border-color 0.2s;" inputmode="numeric" pattern="[0-9]">
+          <input type="text" maxlength="1" class="2fa-digit" data-index="4" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;border:2px solid #E2E8F0;border-radius:12px;outline:none;color:#1E293B;transition:border-color 0.2s;" inputmode="numeric" pattern="[0-9]">
+          <input type="text" maxlength="1" class="2fa-digit" data-index="5" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;border:2px solid #E2E8F0;border-radius:12px;outline:none;color:#1E293B;transition:border-color 0.2s;" inputmode="numeric" pattern="[0-9]">
+        </div>
+        
+        <div id="2fa-error" style="color:#EF4444;font-size:13px;margin:0 0 16px;display:none;"></div>
+        
+        <button id="btn-verificar-2fa" onclick="verificar2FA()" style="width:100%;padding:14px;background:linear-gradient(135deg,#122D6A,#1A3A7F);color:white;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;transition:opacity 0.2s;margin:0 0 16px;">
+          Verificar Código
+        </button>
+        
+        <button onclick="cancelar2FA()" style="width:100%;padding:12px;background:transparent;color:#64748B;border:1px solid #E2E8F0;border-radius:12px;font-size:14px;cursor:pointer;transition:background 0.2s;">
+          Cancelar e voltar ao login
+        </button>
+        
+        <p style="color:#94A3B8;font-size:12px;margin:16px 0 0;line-height:1.5;">
+          Não recebeu o código? Verifique sua pasta de spam.<br>
+          O código expira em 10 minutos.
+        </p>
+      </div>
+    </div>
+  `;
+  
+  // Guardar dados do user para uso na verificação
+  window._pending2FAUser = user;
+  
+  // Configurar inputs de 2FA
+  const inputs = document.querySelectorAll('.2fa-digit');
+  inputs.forEach((input, index) => {
+    // Focus no primeiro
+    if (index === 0) input.focus();
+    
+    // Estilo de foco
+    input.addEventListener('focus', () => { input.style.borderColor = '#122D6A'; });
+    input.addEventListener('blur', () => { input.style.borderColor = '#E2E8F0'; });
+    
+    // Auto-avançar ao digitar
+    input.addEventListener('input', (e) => {
+      const val = e.target.value.replace(/[^0-9]/g, '');
+      e.target.value = val;
+      if (val && index < 5) {
+        inputs[index + 1].focus();
+      }
+      // Auto-submit quando todos preenchidos
+      const allFilled = Array.from(inputs).every(i => i.value.length === 1);
+      if (allFilled) {
+        verificar2FA();
+      }
+    });
+    
+    // Backspace para voltar
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !e.target.value && index > 0) {
+        inputs[index - 1].focus();
+        inputs[index - 1].value = '';
+      }
+      if (e.key === 'Enter') {
+        verificar2FA();
+      }
+    });
+    
+    // Suportar colar código completo
+    input.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+      if (pasted.length >= 6) {
+        for (let i = 0; i < 6; i++) {
+          inputs[i].value = pasted[i] || '';
+        }
+        inputs[5].focus();
+        setTimeout(() => verificar2FA(), 200);
+      }
+    });
+  });
+}
+
+async function verificar2FA() {
+  const user = window._pending2FAUser;
+  if (!user) {
+    showToast('Erro: dados de login não encontrados', 'error');
+    renderLogin();
+    return;
+  }
+  
+  const inputs = document.querySelectorAll('.2fa-digit');
+  const code = Array.from(inputs).map(i => i.value).join('');
+  
+  if (code.length !== 6) {
+    const errDiv = document.getElementById('2fa-error');
+    if (errDiv) { errDiv.textContent = 'Digite o código completo de 6 dígitos'; errDiv.style.display = 'block'; }
+    return;
+  }
+  
+  const btn = document.getElementById('btn-verificar-2fa');
+  if (btn) { btn.disabled = true; btn.textContent = 'Verificando...'; btn.style.opacity = '0.7'; }
+  
+  try {
+    const response = await axios.post('/api/auth/verify-2fa', {
+      code: code,
+      token: user.token
+    });
+    
+    if (response.data.success) {
+      console.log('✅ v160: 2FA validado com sucesso');
+      
+      // Agora sim, completar o login
+      currentUser = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+        authProvider: 'google'
+      };
+      
+      localStorage.setItem('sessionToken', user.token);
+      localStorage.setItem('userId', String(user.id));
+      localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('userName', user.name || '');
+      localStorage.setItem('userPicture', user.picture || '');
+      localStorage.setItem('authProvider', 'google');
+      
+      window._serverConfirmedAdmin = true;
+      window._pending2FAUser = null;
+      
+      showToast('🔐 Autenticação admin confirmada!', 'success');
+      
+      if (window._atualizarBotoesAdmin) window._atualizarBotoesAdmin();
+      validarSessaoEContinuar();
+    } else {
+      throw new Error(response.data.error || 'Erro desconhecido');
+    }
+  } catch (error) {
+    console.error('❌ v160: Erro na verificação 2FA:', error);
+    const errMsg = error.response?.data?.error || error.message || 'Erro ao verificar código';
+    const errDiv = document.getElementById('2fa-error');
+    if (errDiv) { errDiv.textContent = errMsg; errDiv.style.display = 'block'; }
+    
+    // Limpar inputs
+    inputs.forEach(i => { i.value = ''; });
+    inputs[0].focus();
+    
+    if (btn) { btn.disabled = false; btn.textContent = 'Verificar Código'; btn.style.opacity = '1'; }
+  }
+}
+
+function cancelar2FA() {
+  window._pending2FAUser = null;
+  showToast('Login cancelado', 'info');
+  renderLogin();
+}
 
 // ============== TELA DE LOGIN ==============
 function renderLogin() {

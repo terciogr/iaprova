@@ -721,6 +721,8 @@ const PUBLIC_ROUTES: Array<{ method?: string, path: string | RegExp }> = [
   { method: 'GET',  path: '/api/check-email-verified' },
   // Validação de sessão (processa o token internamente, não depende do middleware)
   { method: 'GET',  path: '/api/auth/validate-session' },
+  // ✅ v160: 2FA admin (precisa validar token + código, não depende do middleware)
+  { method: 'POST', path: '/api/auth/verify-2fa' },
   // ✅ v157: user-by-email REMOVIDO da lista pública — agora requer autenticação
   // Webhook (validado por HMAC, não por token de sessão)
   { method: 'GET',  path: '/api/webhook/mercadopago' },
@@ -1624,6 +1626,76 @@ async function sendWelcomeEmail(email: string, name: string, env?: any): Promise
     }
     
     return false;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// ✅ v159: AUTENTICAÇÃO DE DOIS FATORES (2FA) POR EMAIL PARA ADMIN
+// Após login Google, um código de 6 dígitos é enviado ao email do admin
+// O admin deve inserir esse código para concluir a autenticação
+// ════════════════════════════════════════════════════════════════════════
+
+function generate2FACode(): string {
+  const array = new Uint32Array(1)
+  crypto.getRandomValues(array)
+  return String(array[0] % 1000000).padStart(6, '0')
+}
+
+async function send2FAEmail(email: string, code: string, env?: any): Promise<boolean> {
+  const RESEND_API_KEY = env?.RESEND_API_KEY || 'seu_resend_api_key_aqui'
+  const FROM_EMAIL = env?.FROM_EMAIL || 'IAprova - Preparação para Concursos <noreply@iaprova.app>'
+
+  console.log(`🔐 v159: Enviando código 2FA para ${email}`)
+
+  if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
+    console.log(`⚠️ MODO DEV: Código 2FA não enviado. Código: ${code}`)
+    return false
+  }
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [email],
+        subject: '🔐 Código de Verificação - IAprova Admin',
+        html: `
+          <!DOCTYPE html>
+          <html lang="pt-BR">
+          <head><meta charset="utf-8"></head>
+          <body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#F1F5F9;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:40px auto;">
+              <tr><td style="background:linear-gradient(135deg,#122D6A,#1A3A7F);padding:32px;text-align:center;border-radius:16px 16px 0 0;">
+                <h1 style="color:white;margin:0;font-size:22px;">🔐 Verificação de Segurança</h1>
+                <p style="color:#B8C9E4;margin:8px 0 0;font-size:14px;">IAprova — Área Administrativa</p>
+              </td></tr>
+              <tr><td style="background:white;padding:32px;text-align:center;">
+                <p style="color:#374151;font-size:15px;margin:0 0 24px;">Um login na conta admin foi detectado. Use o código abaixo para confirmar:</p>
+                <div style="background:#F0F4FF;border:2px dashed #122D6A;border-radius:12px;padding:24px;margin:0 auto;display:inline-block;">
+                  <span style="font-size:36px;font-weight:800;letter-spacing:8px;color:#122D6A;font-family:monospace;">${code}</span>
+                </div>
+                <p style="color:#6B7280;font-size:13px;margin:24px 0 0;">Este código expira em <strong>10 minutos</strong>.</p>
+                <p style="color:#9CA3AF;font-size:12px;margin:16px 0 0;">Se você não fez este login, ignore este email. Sua conta permanece segura.</p>
+              </td></tr>
+              <tr><td style="background:#F8FAFC;padding:16px;text-align:center;border-radius:0 0 16px 16px;border-top:1px solid #E5E7EB;">
+                <p style="color:#9CA3AF;font-size:11px;margin:0;">IAprova © ${new Date().getFullYear()} — Segurança em primeiro lugar</p>
+              </td></tr>
+            </table>
+          </body>
+          </html>
+        `,
+      }),
+    })
+
+    console.log(`🔐 v159: Resposta Resend (2FA): ${response.status} ${response.statusText}`)
+    return response.ok
+  } catch (error) {
+    console.error('❌ Erro ao enviar 2FA:', error)
+    return false
   }
 }
 
@@ -5942,9 +6014,8 @@ app.get('/api/admin/check', async (c) => {
 // O frontend chama isso ao iniciar para verificar se o token é válido
 app.get('/api/auth/validate-session', async (c) => {
   const { DB } = c.env
-  // ✅ v154: Validar via token assinado
+  // ✅ v159: Validar via token assinado (não depende de headers extras)
   const userId = await getAuthenticatedUserId(c)
-  const authProvider = c.req.header('X-Auth-Provider') || ''
   
   if (!userId) {
     return c.json({ valid: false, force_logout: true, reason: 'Token inválido ou expirado' })
@@ -5967,21 +6038,24 @@ app.get('/api/auth/validate-session', async (c) => {
       return c.json({ valid: false, force_logout: true, reason: 'Usuário não encontrado' })
     }
     
-    // ✅ SEGURANÇA: Admin DEVE estar autenticado via Google
-    if (user.email === ADMIN_EMAIL && authProvider !== 'google') {
-      console.warn(`🚨 SEGURANÇA: Admin sessão inválida - auth_provider=${authProvider}, forçando logout`)
-      return c.json({ 
-        valid: false, 
-        force_logout: true, 
-        reason: 'Sessão administrativa requer autenticação via Google',
-        googleOnly: true
-      })
+    // ✅ v159 SEGURANÇA: Admin DEVE ter auth_provider 'google' ou 'both' NO BANCO
+    // NÃO depender do header X-Auth-Provider (pode ser forjado ou ausente)
+    if (user.email === ADMIN_EMAIL) {
+      const dbProvider = (user.auth_provider || '').toLowerCase()
+      if (dbProvider !== 'google' && dbProvider !== 'both') {
+        console.warn(`🚨 SEGURANÇA v159: Admin auth_provider no banco = '${dbProvider}', forçando logout`)
+        return c.json({ 
+          valid: false, 
+          force_logout: true, 
+          reason: 'Sessão administrativa requer autenticação via Google',
+          googleOnly: true
+        })
+      }
     }
     
     // ✅ Verificar force_logout_at (se definido, a sessão foi invalidada pelo admin)
     if (user.force_logout_at) {
       console.log(`🔒 Force logout ativo para usuário ${userId} desde ${user.force_logout_at}`)
-      // Limpar o flag após enviar o force_logout
       await DB.prepare('UPDATE users SET force_logout_at = NULL WHERE id = ?').bind(userId).run()
       return c.json({ valid: false, force_logout: true, reason: 'Sessão invalidada pelo administrador' })
     }
@@ -6456,11 +6530,56 @@ app.get('/api/auth/google/callback', async (c) => {
       }
     }
     
-    // ✅ v154 SEGURANÇA: Gerar token assinado para sessão Google
+    // ✅ v159 SEGURANÇA: Gerar token assinado para sessão Google
     const secret = getAuthSecret(c.env)
     const sessionToken = await generateSessionToken(user.id, secret)
     
-    // ✅ v156: Registrar sessão/dispositivo
+    // ✅ v159: 2FA para conta admin — enviar código por email antes de ativar sessão
+    const userEmail = user.email || googleUser.email
+    if (userEmail === ADMIN_EMAIL) {
+      console.log('🔐 v159: Admin detectado no Google callback — iniciando 2FA')
+      
+      // Gerar código 2FA e salvar no banco
+      const code2fa = generate2FACode()
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutos
+      
+      // Auto-criar tabela se necessário
+      await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_2fa (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        code TEXT NOT NULL,
+        token_hash TEXT NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`).run()
+      
+      // Salvar código (hasheado com o token para vincular)
+      const tokenHash = await hashToken(sessionToken)
+      await DB.prepare(
+        'INSERT INTO admin_2fa (user_id, code, token_hash, expires_at) VALUES (?, ?, ?, ?)'
+      ).bind(user.id, code2fa, tokenHash, expiresAt).run()
+      
+      // Enviar email com código
+      const emailSent = await send2FAEmail(ADMIN_EMAIL, code2fa, c.env)
+      console.log(`🔐 v159: Código 2FA ${emailSent ? 'enviado' : 'NÃO enviado (modo dev)'} para ${ADMIN_EMAIL}`)
+      
+      // NÃO registrar sessão ainda — só após validação do 2FA
+      // Redirecionar para tela de 2FA (token é enviado mas sessão não é ativada)
+      const userData = encodeURIComponent(JSON.stringify({
+        id: user.id,
+        name: user.name || googleUser.name,
+        email: userEmail,
+        picture: googleUser.picture,
+        authProvider: 'google',
+        token: sessionToken,
+        pending2FA: true
+      }))
+      
+      return c.redirect(`${APP_URL}/home?googleAuth=success&user=${userData}&requires2FA=true`)
+    }
+    
+    // ✅ v156: Registrar sessão/dispositivo (para NÃO-admin, sessão ativa imediata)
     await registerSession(DB, user.id, sessionToken, c)
     
     // Redirecionar com dados do usuário + token para /home
@@ -6479,6 +6598,92 @@ app.get('/api/auth/google/callback', async (c) => {
   } catch (error) {
     console.error('Erro no callback Google:', error)
     return c.redirect(`${APP_URL}?error=google_auth_failed`)
+  }
+})
+
+// ✅ v160: Endpoint para verificar código 2FA do admin
+app.post('/api/auth/verify-2fa', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    const { code, token } = await c.req.json()
+    
+    if (!code || !token) {
+      return c.json({ error: 'Código e token são obrigatórios' }, 400)
+    }
+    
+    console.log(`🔐 v160: Tentativa de verificação 2FA com código ${code.substring(0, 2)}****`)
+    
+    // Validar o token (assinatura válida?)
+    const secret = getAuthSecret(c.env)
+    const userId = await validateSessionToken(token, secret)
+    
+    if (!userId) {
+      console.warn('🚨 v160: Token inválido na verificação 2FA')
+      return c.json({ error: 'Token inválido ou expirado' }, 401)
+    }
+    
+    // Verificar se o usuário é realmente o admin
+    const user = await DB.prepare('SELECT id, email FROM users WHERE id = ?').bind(userId).first() as any
+    if (!user || user.email !== ADMIN_EMAIL) {
+      console.warn(`🚨 v160: Tentativa de 2FA por não-admin userId=${userId}`)
+      return c.json({ error: 'Acesso negado' }, 403)
+    }
+    
+    // Auto-criar tabela se necessário
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_2fa (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      code TEXT NOT NULL,
+      token_hash TEXT NOT NULL,
+      expires_at DATETIME NOT NULL,
+      used INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`).run()
+    
+    // Buscar código 2FA válido para este token
+    const tokenHash = await hashToken(token)
+    const record = await DB.prepare(
+      `SELECT id, code, expires_at, used FROM admin_2fa 
+       WHERE token_hash = ? AND used = 0 
+       ORDER BY created_at DESC LIMIT 1`
+    ).bind(tokenHash).first() as any
+    
+    if (!record) {
+      console.warn('🚨 v160: Nenhum código 2FA encontrado para este token')
+      return c.json({ error: 'Código expirado ou já utilizado. Faça login novamente.' }, 400)
+    }
+    
+    // Verificar expiração
+    const expiresAt = new Date(record.expires_at)
+    if (expiresAt < new Date()) {
+      console.warn(`🚨 v160: Código 2FA expirado (expirou em ${record.expires_at})`)
+      return c.json({ error: 'Código expirado. Faça login novamente.' }, 400)
+    }
+    
+    // Verificar código (comparação segura)
+    const providedCode = code.trim()
+    if (providedCode !== record.code) {
+      console.warn(`🚨 v160: Código 2FA incorreto para admin`)
+      return c.json({ error: 'Código incorreto. Tente novamente.' }, 400)
+    }
+    
+    // ✅ Código correto! Marcar como usado
+    await DB.prepare('UPDATE admin_2fa SET used = 1 WHERE id = ?').bind(record.id).run()
+    
+    // ✅ Registrar sessão (agora sim, 2FA validado)
+    await registerSession(DB, user.id, token, c)
+    
+    console.log(`✅ v160: 2FA validado com sucesso para admin ${user.id}`)
+    
+    return c.json({ 
+      success: true, 
+      message: 'Autenticação em duas etapas concluída com sucesso',
+      isAdmin: true
+    })
+  } catch (error: any) {
+    console.error('❌ v160: Erro na verificação 2FA:', error)
+    return c.json({ error: 'Erro ao verificar código' }, 500)
   }
 })
 
