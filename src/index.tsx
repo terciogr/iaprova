@@ -723,6 +723,7 @@ const PUBLIC_ROUTES: Array<{ method?: string, path: string | RegExp }> = [
   { method: 'GET',  path: '/api/auth/validate-session' },
   // ✅ v160: 2FA admin (precisa validar token + código, não depende do middleware)
   { method: 'POST', path: '/api/auth/verify-2fa' },
+  { method: 'GET',  path: '/api/auth/2fa-info' },
   // ✅ v157: user-by-email REMOVIDO da lista pública — agora requer autenticação
   // Webhook (validado por HMAC, não por token de sessão)
   { method: 'GET',  path: '/api/webhook/mercadopago' },
@@ -6534,49 +6535,68 @@ app.get('/api/auth/google/callback', async (c) => {
     const secret = getAuthSecret(c.env)
     const sessionToken = await generateSessionToken(user.id, secret)
     
-    // ✅ v159: 2FA para conta admin — enviar código por email antes de ativar sessão
+    // ✅ v161 SEGURANÇA: 2FA para conta admin — token NUNCA vai na URL
     const userEmail = user.email || googleUser.email
     if (userEmail === ADMIN_EMAIL) {
-      console.log('🔐 v159: Admin detectado no Google callback — iniciando 2FA')
+      console.log('🔐 v161: Admin detectado no Google callback — iniciando 2FA')
       
-      // Gerar código 2FA e salvar no banco
+      // Gerar código 2FA de 6 dígitos
       const code2fa = generate2FACode()
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutos
       
-      // Auto-criar tabela se necessário
+      // Gerar authCode curto para identificar esta sessão pendente (NÃO é o token!)
+      const authCodeArray = new Uint8Array(16)
+      crypto.getRandomValues(authCodeArray)
+      const authCode = Array.from(authCodeArray).map(b => b.toString(16).padStart(2, '0')).join('')
+      
+      // Auto-criar tabela com colunas extras para sessão pendente
       await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_2fa (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         code TEXT NOT NULL,
         token_hash TEXT NOT NULL,
+        auth_code TEXT,
+        session_token TEXT,
+        user_name TEXT,
+        user_picture TEXT,
         expires_at DATETIME NOT NULL,
         used INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`).run()
       
-      // Salvar código (hasheado com o token para vincular)
+      // Garantir colunas extras existem (migração segura)
+      try { await DB.prepare('SELECT auth_code FROM admin_2fa LIMIT 1').first() } catch {
+        try { await DB.prepare('ALTER TABLE admin_2fa ADD COLUMN auth_code TEXT').run() } catch {}
+      }
+      try { await DB.prepare('SELECT session_token FROM admin_2fa LIMIT 1').first() } catch {
+        try { await DB.prepare('ALTER TABLE admin_2fa ADD COLUMN session_token TEXT').run() } catch {}
+      }
+      try { await DB.prepare('SELECT user_name FROM admin_2fa LIMIT 1').first() } catch {
+        try { await DB.prepare('ALTER TABLE admin_2fa ADD COLUMN user_name TEXT').run() } catch {}
+      }
+      try { await DB.prepare('SELECT user_picture FROM admin_2fa LIMIT 1').first() } catch {
+        try { await DB.prepare('ALTER TABLE admin_2fa ADD COLUMN user_picture TEXT').run() } catch {}
+      }
+      
+      // Salvar tudo vinculado ao authCode (token fica NO BANCO, não na URL)
       const tokenHash = await hashToken(sessionToken)
       await DB.prepare(
-        'INSERT INTO admin_2fa (user_id, code, token_hash, expires_at) VALUES (?, ?, ?, ?)'
-      ).bind(user.id, code2fa, tokenHash, expiresAt).run()
+        `INSERT INTO admin_2fa (user_id, code, token_hash, auth_code, session_token, user_name, user_picture, expires_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        user.id, code2fa, tokenHash, authCode, sessionToken,
+        user.name || googleUser.name || 'Admin',
+        googleUser.picture || '',
+        expiresAt
+      ).run()
       
-      // Enviar email com código
+      // Enviar email com código 2FA
       const emailSent = await send2FAEmail(ADMIN_EMAIL, code2fa, c.env)
-      console.log(`🔐 v159: Código 2FA ${emailSent ? 'enviado' : 'NÃO enviado (modo dev)'} para ${ADMIN_EMAIL}`)
+      console.log(`🔐 v161: Código 2FA ${emailSent ? 'enviado' : 'NÃO enviado (modo dev)'} para ${ADMIN_EMAIL}`)
       
-      // NÃO registrar sessão ainda — só após validação do 2FA
-      // Redirecionar para tela de 2FA (token é enviado mas sessão não é ativada)
-      const userData = encodeURIComponent(JSON.stringify({
-        id: user.id,
-        name: user.name || googleUser.name,
-        email: userEmail,
-        picture: googleUser.picture,
-        authProvider: 'google',
-        token: sessionToken,
-        pending2FA: true
-      }))
-      
-      return c.redirect(`${APP_URL}/home?googleAuth=success&user=${userData}&requires2FA=true`)
+      // ✅ v161 SEGURANÇA: Redirect SEM token — apenas authCode curto
+      // O token fica guardado no banco e só é revelado após 2FA válido
+      return c.redirect(`${APP_URL}/home?requires2FA=true&authCode=${authCode}`)
     }
     
     // ✅ v156: Registrar sessão/dispositivo (para NÃO-admin, sessão ativa imediata)
@@ -6601,34 +6621,70 @@ app.get('/api/auth/google/callback', async (c) => {
   }
 })
 
-// ✅ v160: Endpoint para verificar código 2FA do admin
+// ✅ v161: Endpoint para buscar info da sessão 2FA pendente (sem expor token)
+app.get('/api/auth/2fa-info', async (c) => {
+  const { DB } = c.env
+  const authCode = c.req.query('authCode')
+  
+  if (!authCode) {
+    return c.json({ error: 'authCode é obrigatório' }, 400)
+  }
+  
+  try {
+    // Auto-criar tabela se necessário
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_2fa (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      code TEXT NOT NULL,
+      token_hash TEXT NOT NULL,
+      auth_code TEXT,
+      session_token TEXT,
+      user_name TEXT,
+      user_picture TEXT,
+      expires_at DATETIME NOT NULL,
+      used INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`).run()
+    
+    const record = await DB.prepare(
+      `SELECT user_id, user_name, user_picture, expires_at, used FROM admin_2fa 
+       WHERE auth_code = ? AND used = 0 
+       ORDER BY created_at DESC LIMIT 1`
+    ).bind(authCode).first() as any
+    
+    if (!record) {
+      return c.json({ error: 'Sessão 2FA não encontrada ou expirada' }, 404)
+    }
+    
+    // Verificar expiração
+    if (new Date(record.expires_at) < new Date()) {
+      return c.json({ error: 'Sessão 2FA expirada. Faça login novamente.' }, 400)
+    }
+    
+    // Retornar apenas dados públicos — SEM token
+    return c.json({
+      email: ADMIN_EMAIL,
+      name: record.user_name || 'Admin',
+      picture: record.user_picture || ''
+    })
+  } catch (error: any) {
+    console.error('❌ v161: Erro ao buscar info 2FA:', error)
+    return c.json({ error: 'Erro interno' }, 500)
+  }
+})
+
+// ✅ v161: Endpoint para verificar código 2FA do admin (usa authCode, não token)
 app.post('/api/auth/verify-2fa', async (c) => {
   const { DB } = c.env
   
   try {
-    const { code, token } = await c.req.json()
+    const { code, authCode } = await c.req.json()
     
-    if (!code || !token) {
-      return c.json({ error: 'Código e token são obrigatórios' }, 400)
+    if (!code || !authCode) {
+      return c.json({ error: 'Código e authCode são obrigatórios' }, 400)
     }
     
-    console.log(`🔐 v160: Tentativa de verificação 2FA com código ${code.substring(0, 2)}****`)
-    
-    // Validar o token (assinatura válida?)
-    const secret = getAuthSecret(c.env)
-    const userId = await validateSessionToken(token, secret)
-    
-    if (!userId) {
-      console.warn('🚨 v160: Token inválido na verificação 2FA')
-      return c.json({ error: 'Token inválido ou expirado' }, 401)
-    }
-    
-    // Verificar se o usuário é realmente o admin
-    const user = await DB.prepare('SELECT id, email FROM users WHERE id = ?').bind(userId).first() as any
-    if (!user || user.email !== ADMIN_EMAIL) {
-      console.warn(`🚨 v160: Tentativa de 2FA por não-admin userId=${userId}`)
-      return c.json({ error: 'Acesso negado' }, 403)
-    }
+    console.log(`🔐 v161: Tentativa de verificação 2FA com código ${code.substring(0, 2)}****`)
     
     // Auto-criar tabela se necessário
     await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_2fa (
@@ -6636,49 +6692,72 @@ app.post('/api/auth/verify-2fa', async (c) => {
       user_id INTEGER NOT NULL,
       code TEXT NOT NULL,
       token_hash TEXT NOT NULL,
+      auth_code TEXT,
+      session_token TEXT,
+      user_name TEXT,
+      user_picture TEXT,
       expires_at DATETIME NOT NULL,
       used INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`).run()
     
-    // Buscar código 2FA válido para este token
-    const tokenHash = await hashToken(token)
+    // Buscar sessão 2FA pendente por authCode
     const record = await DB.prepare(
-      `SELECT id, code, expires_at, used FROM admin_2fa 
-       WHERE token_hash = ? AND used = 0 
+      `SELECT id, user_id, code, session_token, expires_at, used FROM admin_2fa 
+       WHERE auth_code = ? AND used = 0 
        ORDER BY created_at DESC LIMIT 1`
-    ).bind(tokenHash).first() as any
+    ).bind(authCode).first() as any
     
     if (!record) {
-      console.warn('🚨 v160: Nenhum código 2FA encontrado para este token')
-      return c.json({ error: 'Código expirado ou já utilizado. Faça login novamente.' }, 400)
+      console.warn('🚨 v161: Nenhum código 2FA encontrado para authCode')
+      return c.json({ error: 'Sessão expirada ou já utilizada. Faça login novamente.' }, 400)
     }
     
     // Verificar expiração
-    const expiresAt = new Date(record.expires_at)
-    if (expiresAt < new Date()) {
-      console.warn(`🚨 v160: Código 2FA expirado (expirou em ${record.expires_at})`)
+    if (new Date(record.expires_at) < new Date()) {
+      console.warn(`🚨 v161: Código 2FA expirado`)
       return c.json({ error: 'Código expirado. Faça login novamente.' }, 400)
     }
     
     // Verificar código (comparação segura)
     const providedCode = code.trim()
     if (providedCode !== record.code) {
-      console.warn(`🚨 v160: Código 2FA incorreto para admin`)
+      console.warn('🚨 v161: Código 2FA incorreto para admin')
       return c.json({ error: 'Código incorreto. Tente novamente.' }, 400)
     }
     
     // ✅ Código correto! Marcar como usado
     await DB.prepare('UPDATE admin_2fa SET used = 1 WHERE id = ?').bind(record.id).run()
     
+    // Recuperar token da sessão pendente
+    const sessionToken = record.session_token
+    if (!sessionToken) {
+      console.error('🚨 v161: Token da sessão não encontrado no registro 2FA')
+      return c.json({ error: 'Erro interno. Faça login novamente.' }, 500)
+    }
+    
+    // Verificar se o usuário é o admin
+    const user = await DB.prepare('SELECT id, email, name FROM users WHERE id = ?').bind(record.user_id).first() as any
+    if (!user || user.email !== ADMIN_EMAIL) {
+      console.warn(`🚨 v161: Tentativa de 2FA por não-admin userId=${record.user_id}`)
+      return c.json({ error: 'Acesso negado' }, 403)
+    }
+    
     // ✅ Registrar sessão (agora sim, 2FA validado)
-    await registerSession(DB, user.id, token, c)
+    await registerSession(DB, user.id, sessionToken, c)
     
-    console.log(`✅ v160: 2FA validado com sucesso para admin ${user.id}`)
+    console.log(`✅ v161: 2FA validado com sucesso para admin ${user.id}`)
     
+    // ✅ v161 SEGURANÇA: Token só é revelado APÓS 2FA validado
     return c.json({ 
       success: true, 
       message: 'Autenticação em duas etapas concluída com sucesso',
+      token: sessionToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      },
       isAdmin: true
     })
   } catch (error: any) {
