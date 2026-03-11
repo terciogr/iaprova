@@ -3238,42 +3238,17 @@ window.reenviarEmailVerificacao = async function(email) {
   }
 };
 
-// Verificar se o email já foi validado
+// ✅ v157 SEGURANÇA: Verificar se email já foi validado — NÃO gera token aqui
+// Após verificação, redireciona ao login com senha ou Google
 window.verificarEmailJaValidado = async function(email) {
   try {
     showToast('🔍 Verificando...', 'info');
     const response = await axios.get('/api/check-email-verified?email=' + encodeURIComponent(email));
     
     if (response.data.verified) {
-      // Email verificado! Fazer login automático
-      showToast('✅ Email verificado! Entrando...', 'success');
-      
-      // Buscar dados do usuário (com token assinado)
-      const userResponse = await axios.get('/api/user-by-email?email=' + encodeURIComponent(email));
-      if (userResponse.data.user) {
-        const user = userResponse.data.user;
-        
-        // ✅ v154 SEGURANÇA: Salvar token assinado
-        if (userResponse.data.token) {
-          localStorage.setItem('sessionToken', userResponse.data.token);
-          console.log('🔐 Token de sessão salvo (verificação email)');
-        }
-        localStorage.setItem('userId', user.id);
-        localStorage.setItem('userEmail', user.email);
-        localStorage.setItem('userName', user.name || '');
-        localStorage.setItem('userCreatedAt', user.created_at || '');
-        localStorage.setItem('authProvider', 'email');
-        
-        currentUser = {
-          id: user.id,
-          email: user.email,
-          name: user.name || '',
-          created_at: user.created_at,
-          authProvider: 'email'
-        };
-        
-        setTimeout(() => verificarEntrevista(), 500);
-      }
+      showToast('✅ Email verificado! Faça login para continuar.', 'success');
+      // Redirecionar ao login — token só é gerado com credenciais válidas
+      setTimeout(() => renderLogin(), 1000);
     } else {
       showToast('⚠️ Email ainda não verificado. Por favor, clique no link enviado para seu email.', 'warning');
     }
@@ -18457,6 +18432,10 @@ window.abrirPainelAdmin = async function() {
                 <i class="fas fa-comments text-[#1A3A7F] text-xl mb-1"></i>
                 <p class="text-xs ${themes[currentTheme].text} font-medium">Chat Usuários</p>
               </button>
+              <button onclick="abrirGerenciadorSessoes()" class="p-3 rounded-lg border ${themes[currentTheme].border} hover:bg-[#E8EDF5] dark:hover:bg-[#1A3A7F]/20 transition text-center relative">
+                <i class="fas fa-laptop text-[#1A3A7F] text-xl mb-1"></i>
+                <p class="text-xs ${themes[currentTheme].text} font-medium">Dispositivos</p>
+              </button>
             </div>
           </div>
         </div>
@@ -18492,6 +18471,204 @@ window.fecharPainelAdmin = function() {
 window.atualizarDashboardAdmin = function() {
   fecharPainelAdmin();
   abrirPainelAdmin();
+};
+
+// ============== GERENCIADOR DE SESSÕES / DISPOSITIVOS CONECTADOS (v157) ==============
+
+window.abrirGerenciadorSessoes = async function() {
+  if (!isCurrentUserAdmin()) { showToast('Acesso negado', 'error'); return; }
+  
+  var _d = currentTheme === 'dark';
+  var bgCard = _d ? '#1F2937' : '#FFFFFF';
+  var textColor = _d ? '#F3F4F6' : '#1F2937';
+  var textMuted = _d ? '#9CA3AF' : '#6B7280';
+  var borderColor = _d ? '#374151' : '#E5E7EB';
+  
+  document.getElementById('modal-sessoes-admin')?.remove();
+  
+  var modal = document.createElement('div');
+  modal.id = 'modal-sessoes-admin';
+  modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10002] p-4';
+  modal.innerHTML = `
+    <div style="background:${bgCard};max-width:800px;width:100%;max-height:92vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.25);">
+      <div style="background:linear-gradient(135deg,#122D6A,#1A3A7F);padding:20px 24px;color:white;flex-shrink:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:44px;height:44px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;">
+              <i class="fas fa-laptop text-xl"></i>
+            </div>
+            <div>
+              <h2 style="font-size:18px;font-weight:700;margin:0;">Dispositivos Conectados</h2>
+              <p style="font-size:12px;opacity:0.7;margin:0;">Gerencie sessoes ativas de todos os usuarios</p>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="revogarTodasSessoesGlobal()" style="padding:6px 12px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:8px;color:#FCA5A5;font-size:11px;cursor:pointer;" title="Desconectar todos (exceto voce)">
+              <i class="fas fa-ban mr-1"></i>Revogar Todos
+            </button>
+            <button onclick="carregarSessoesAdmin()" style="padding:6px 12px;background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:white;font-size:11px;cursor:pointer;">
+              <i class="fas fa-sync mr-1"></i>Atualizar
+            </button>
+            <button onclick="document.getElementById('modal-sessoes-admin')?.remove()" style="width:32px;height:32px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="sessoes-content" style="flex:1;overflow-y:auto;padding:16px;">
+        <div style="text-align:center;padding:32px 0;">
+          <i class="fas fa-spinner fa-spin" style="font-size:24px;color:#4A90D9;"></i>
+          <p style="margin-top:8px;font-size:13px;color:${textMuted};">Carregando sessoes...</p>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  await carregarSessoesAdmin();
+};
+
+window.carregarSessoesAdmin = async function() {
+  var _d = currentTheme === 'dark';
+  var textColor = _d ? '#F3F4F6' : '#1F2937';
+  var textMuted = _d ? '#9CA3AF' : '#6B7280';
+  var borderColor = _d ? '#374151' : '#E5E7EB';
+  var cardBg = _d ? '#111827' : '#F9FAFB';
+  
+  try {
+    var response = await axios.get('/api/admin/sessions');
+    var sessions = response.data.sessions || [];
+    var container = document.getElementById('sessoes-content');
+    if (!container) return;
+    
+    // Separar por status
+    var ativas = sessions.filter(function(s) { return s.status === 'ativa'; });
+    var revogadas = sessions.filter(function(s) { return s.status === 'revogada'; });
+    var expiradas = sessions.filter(function(s) { return s.status === 'expirada'; });
+    
+    // Agrupar ativas por usuario
+    var porUsuario = {};
+    ativas.forEach(function(s) {
+      var key = s.user_id;
+      if (!porUsuario[key]) porUsuario[key] = { name: s.user_name || 'Desconhecido', email: s.user_email || '', sessions: [] };
+      porUsuario[key].sessions.push(s);
+    });
+    
+    var html = '';
+    
+    // Resumo
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">';
+    html += '<div style="background:linear-gradient(135deg,#059669,#10B981);padding:16px;border-radius:12px;color:white;text-align:center;">';
+    html += '<div style="font-size:28px;font-weight:800;">' + ativas.length + '</div>';
+    html += '<div style="font-size:11px;opacity:0.8;">Sessoes Ativas</div></div>';
+    html += '<div style="background:linear-gradient(135deg,#DC2626,#EF4444);padding:16px;border-radius:12px;color:white;text-align:center;">';
+    html += '<div style="font-size:28px;font-weight:800;">' + revogadas.length + '</div>';
+    html += '<div style="font-size:11px;opacity:0.8;">Revogadas</div></div>';
+    html += '<div style="background:linear-gradient(135deg,#6B7280,#9CA3AF);padding:16px;border-radius:12px;color:white;text-align:center;">';
+    html += '<div style="font-size:28px;font-weight:800;">' + expiradas.length + '</div>';
+    html += '<div style="font-size:11px;opacity:0.8;">Expiradas</div></div>';
+    html += '</div>';
+    
+    // Lista por usuario
+    var userKeys = Object.keys(porUsuario);
+    if (userKeys.length === 0) {
+      html += '<div style="text-align:center;padding:32px;color:' + textMuted + ';"><i class="fas fa-check-circle" style="font-size:32px;color:#10B981;margin-bottom:8px;display:block;"></i>Nenhuma sessao ativa no momento.</div>';
+    } else {
+      userKeys.forEach(function(uid) {
+        var u = porUsuario[uid];
+        var isAdmin = u.email === 'terciogomesrabelo@gmail.com';
+        html += '<div style="background:' + cardBg + ';border:1px solid ' + borderColor + ';border-radius:12px;padding:16px;margin-bottom:12px;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+        html += '<div>';
+        html += '<span style="font-weight:700;color:' + textColor + ';font-size:14px;">' + (u.name || 'Sem nome') + '</span>';
+        if (isAdmin) html += ' <span style="background:#122D6A;color:white;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;">ADMIN</span>';
+        html += '<br><span style="font-size:12px;color:' + textMuted + ';">' + u.email + '</span>';
+        html += '</div>';
+        if (!isAdmin) {
+          html += '<button onclick="revogarTodasSessoesUsuario(' + uid + ')" style="padding:4px 10px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:6px;font-size:11px;cursor:pointer;"><i class="fas fa-ban mr-1"></i>Revogar Todas</button>';
+        }
+        html += '</div>';
+        
+        u.sessions.forEach(function(s) {
+          var icon = 'fa-desktop';
+          var devLower = (s.device_info || '').toLowerCase();
+          if (devLower.includes('android') || devLower.includes('ios')) icon = 'fa-mobile-alt';
+          else if (devLower.includes('mac')) icon = 'fa-laptop';
+          else if (devLower.includes('windows')) icon = 'fa-desktop';
+          else if (devLower.includes('linux')) icon = 'fa-terminal';
+          
+          var lastSeen = s.last_seen_at ? new Date(s.last_seen_at + 'Z').toLocaleString('pt-BR') : 'Desconhecido';
+          var createdAt = s.created_at ? new Date(s.created_at + 'Z').toLocaleString('pt-BR') : 'Desconhecido';
+          
+          html += '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:' + (isAdmin ? 'rgba(18,45,106,0.05)' : 'transparent') + ';border-radius:8px;margin-bottom:4px;border:1px solid ' + borderColor + ';">';
+          html += '<div style="width:36px;height:36px;background:#E8EDF5;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas ' + icon + '" style="color:#122D6A;font-size:14px;"></i></div>';
+          html += '<div style="flex:1;min-width:0;">';
+          html += '<div style="font-size:13px;font-weight:600;color:' + textColor + ';">' + (s.device_info || 'Desconhecido') + '</div>';
+          html += '<div style="font-size:11px;color:' + textMuted + ';"><i class="fas fa-map-marker-alt mr-1"></i>IP: ' + (s.ip_address || '?') + ' | <i class="fas fa-clock mr-1"></i>Visto: ' + lastSeen + '</div>';
+          html += '<div style="font-size:10px;color:' + textMuted + ';">Criada: ' + createdAt + '</div>';
+          html += '</div>';
+          html += '<button onclick="revogarSessaoUnica(' + s.id + ')" style="padding:4px 8px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:6px;font-size:10px;cursor:pointer;flex-shrink:0;" title="Desconectar este dispositivo"><i class="fas fa-times"></i></button>';
+          html += '</div>';
+        });
+        
+        html += '</div>';
+      });
+    }
+    
+    // Sessoes revogadas recentes (ultimas 10)
+    if (revogadas.length > 0) {
+      html += '<details style="margin-top:16px;">';
+      html += '<summary style="cursor:pointer;font-weight:600;font-size:13px;color:' + textMuted + ';padding:8px 0;"><i class="fas fa-ban mr-1"></i>Sessoes Revogadas (' + revogadas.length + ')</summary>';
+      html += '<div style="padding:8px 0;">';
+      revogadas.slice(0, 10).forEach(function(s) {
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-left:3px solid #EF4444;margin-bottom:4px;opacity:0.6;">';
+        html += '<i class="fas fa-ban" style="color:#EF4444;font-size:12px;"></i>';
+        html += '<div style="flex:1;font-size:11px;color:' + textMuted + ';">' + (s.user_name || '?') + ' - ' + (s.device_info || '?') + ' (revogada ' + (s.revoked_at ? new Date(s.revoked_at + 'Z').toLocaleString('pt-BR') : '?') + ' por ' + (s.revoked_by || '?') + ')</div>';
+        html += '</div>';
+      });
+      html += '</div></details>';
+    }
+    
+    container.innerHTML = html;
+    
+  } catch (error) {
+    console.error('Erro ao carregar sessoes:', error);
+    var container = document.getElementById('sessoes-content');
+    if (container) container.innerHTML = '<div style="text-align:center;padding:32px;color:#EF4444;"><i class="fas fa-exclamation-triangle" style="font-size:24px;margin-bottom:8px;display:block;"></i>Erro ao carregar sessoes</div>';
+  }
+};
+
+window.revogarSessaoUnica = async function(sessionId) {
+  if (!confirm('Desconectar este dispositivo?')) return;
+  try {
+    await axios.post('/api/admin/sessions/revoke/' + sessionId);
+    showToast('Dispositivo desconectado com sucesso', 'success');
+    await carregarSessoesAdmin();
+  } catch (error) {
+    showToast('Erro ao revogar sessao: ' + (error.response?.data?.error || error.message), 'error');
+  }
+};
+
+window.revogarTodasSessoesUsuario = async function(userId) {
+  if (!confirm('Desconectar TODOS os dispositivos deste usuario?')) return;
+  try {
+    var response = await axios.post('/api/admin/sessions/revoke-all/' + userId);
+    showToast('Todas as sessoes do usuario revogadas (' + (response.data.count || 0) + ' dispositivos)', 'success');
+    await carregarSessoesAdmin();
+  } catch (error) {
+    showToast('Erro ao revogar sessoes: ' + (error.response?.data?.error || error.message), 'error');
+  }
+};
+
+window.revogarTodasSessoesGlobal = async function() {
+  if (!confirm('ATENÇÃO: Isso vai desconectar TODOS os usuarios de TODOS os dispositivos (exceto voce). Continuar?')) return;
+  try {
+    var response = await axios.post('/api/admin/sessions/revoke-all-users');
+    showToast('Todas as sessoes revogadas (' + (response.data.count || 0) + ' dispositivos desconectados)', 'success');
+    await carregarSessoesAdmin();
+  } catch (error) {
+    showToast('Erro ao revogar sessoes globais: ' + (error.response?.data?.error || error.message), 'error');
+  }
 };
 
 // ============== CHAT ADMIN <-> USUÁRIO ==============

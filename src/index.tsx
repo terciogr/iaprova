@@ -76,25 +76,110 @@ async function validateSessionToken(token: string, secret: string): Promise<stri
 
 // Obter o segredo para HMAC (de env ou fallback seguro)
 function getAuthSecret(env: any): string {
-  // Usar MP_WEBHOOK_SECRET como chave de assinatura (já é um segredo configurado)
-  // Em produção, idealmente seria um segredo dedicado AUTH_SECRET
   return env.AUTH_SECRET || env.MP_WEBHOOK_SECRET || 'iaprova-default-secret-change-me'
 }
 
-// ✅ v154 SEGURANÇA: Extrair e validar userId EXCLUSIVAMENTE a partir do token Authorization
-// ❌ X-User-ID NÃO É MAIS ACEITO — qualquer um podia forjar esse header
+// ✅ v156: Hash do token para armazenar na tabela de sessões (não armazena token completo)
+async function hashToken(token: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const hash = await crypto.subtle.digest('SHA-256', encoder.encode(token))
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+// ✅ v156: Registrar sessão ao fazer login
+async function registerSession(DB: any, userId: number | string, token: string, c: any): Promise<void> {
+  try {
+    // Auto-criar tabela se não existir
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS active_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      device_info TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_revoked INTEGER DEFAULT 0,
+      revoked_at DATETIME,
+      revoked_by TEXT
+    )`).run()
+
+    const tokenHash = await hashToken(token)
+    const userAgent = c.req.header('User-Agent') || 'Desconhecido'
+    const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'Desconhecido'
+    
+    // Extrair info do dispositivo do User-Agent
+    let deviceInfo = 'Desconhecido'
+    if (/iPhone|iPad/i.test(userAgent)) deviceInfo = 'iOS - Safari'
+    else if (/Android/i.test(userAgent)) deviceInfo = 'Android'
+    else if (/Windows/i.test(userAgent)) deviceInfo = 'Windows'
+    else if (/Mac/i.test(userAgent)) deviceInfo = 'MacOS'
+    else if (/Linux/i.test(userAgent)) deviceInfo = 'Linux'
+    
+    if (/Chrome/i.test(userAgent) && !/Edge/i.test(userAgent)) deviceInfo += ' - Chrome'
+    else if (/Firefox/i.test(userAgent)) deviceInfo += ' - Firefox'
+    else if (/Safari/i.test(userAgent) && !/Chrome/i.test(userAgent)) deviceInfo += ' - Safari'
+    else if (/Edge/i.test(userAgent)) deviceInfo += ' - Edge'
+
+    await DB.prepare(`
+      INSERT OR REPLACE INTO active_sessions (user_id, token_hash, device_info, ip_address, user_agent, created_at, last_seen_at, is_revoked)
+      VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'), 0)
+    `).bind(userId, tokenHash, deviceInfo, ip, userAgent.substring(0, 500)).run()
+    
+    console.log(`📱 v156: Sessão registrada para userId=${userId} | ${deviceInfo} | IP=${ip}`)
+  } catch (e) {
+    console.error('⚠️ Erro ao registrar sessão (não crítico):', e)
+  }
+}
+
+// ✅ v156: Verificar se sessão foi revogada
+async function isSessionRevoked(DB: any, token: string): Promise<boolean> {
+  try {
+    const tokenHash = await hashToken(token)
+    const session = await DB.prepare(
+      'SELECT is_revoked FROM active_sessions WHERE token_hash = ?'
+    ).bind(tokenHash).first() as any
+    // Se sessão não existe na tabela, permitir (token válido por assinatura)
+    if (!session) return false
+    return session.is_revoked === 1
+  } catch {
+    return false // Em caso de erro, não bloquear (tabela pode não existir ainda)
+  }
+}
+
+// ✅ v156: Atualizar last_seen da sessão
+async function touchSession(DB: any, token: string): Promise<void> {
+  try {
+    const tokenHash = await hashToken(token)
+    await DB.prepare(
+      'UPDATE active_sessions SET last_seen_at = datetime(\'now\') WHERE token_hash = ? AND is_revoked = 0'
+    ).bind(tokenHash).run()
+  } catch { /* não crítico */ }
+}
+
+// ✅ v156 SEGURANÇA: Extrair e validar userId — verifica assinatura E revogação
 async function getAuthenticatedUserId(c: any): Promise<string | null> {
   const authHeader = c.req.header('Authorization') || ''
   const secret = getAuthSecret(c.env)
   
-  // ÚNICA forma de autenticação: Token Bearer assinado pelo servidor
   if (authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7)
     const userId = await validateSessionToken(token, secret)
-    if (userId) return userId
+    if (!userId) return null
+    
+    // Verificar se sessão foi revogada pelo admin
+    const { DB } = c.env
+    if (DB && await isSessionRevoked(DB, token)) {
+      console.warn(`🚨 v156: Token revogado usado por userId=${userId}`)
+      return null
+    }
+    
+    // Atualizar last_seen (background, não bloqueia)
+    if (DB) touchSession(DB, token)
+    
+    return userId
   }
   
-  // Sem token válido = não autenticado
   return null
 }
 
@@ -615,6 +700,67 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 // Middleware
 app.use('/api/*', cors())
+
+// ════════════════════════════════════════════════════════════════════════
+// ✅ v156 SEGURANÇA: MIDDLEWARE GLOBAL DE AUTENTICAÇÃO
+// Todas as rotas /api/* EXIGEM token Bearer, exceto as públicas listadas abaixo.
+// Isso impede que qualquer endpoint esquecido fique exposto.
+// ════════════════════════════════════════════════════════════════════════
+const PUBLIC_ROUTES: Array<{ method?: string, path: string | RegExp }> = [
+  // Auth
+  { method: 'POST', path: '/api/login' },
+  { method: 'POST', path: '/api/register' },
+  { method: 'POST', path: '/api/users' },
+  { method: 'GET',  path: '/api/auth/google' },
+  { method: 'GET',  path: /^\/api\/auth\/google\/callback/ },
+  { method: 'GET',  path: /^\/api\/verify-email\// },
+  { method: 'POST', path: '/api/forgot-password' },
+  { method: 'GET',  path: /^\/api\/reset-password\/validate\// },
+  { method: 'POST', path: '/api/reset-password' },
+  { method: 'POST', path: '/api/resend-verification' },
+  { method: 'GET',  path: '/api/check-email-verified' },
+  // ✅ v157: user-by-email REMOVIDO da lista pública — agora requer autenticação
+  // Webhook (validado por HMAC, não por token de sessão)
+  { method: 'GET',  path: '/api/webhook/mercadopago' },
+  { method: 'POST', path: '/api/webhook/mercadopago' },
+  // Público
+  { method: 'POST', path: '/api/visits/track' },
+  { method: 'POST', path: '/api/feedbacks' },
+  { method: 'GET',  path: '/api/plans/public' },
+  // ✅ v157: editais/pdf-para-texto e processar-texto removidos da lista pública
+  // Usam Gemini API (custo), devem exigir autenticação
+  { method: 'GET',  path: /^\/api\/concursos/ },
+  { method: 'GET',  path: '/api/bancas' },
+  { method: 'GET',  path: /^\/api\/bancas\// },
+  { method: 'POST', path: '/api/feedback/reengajamento' },
+]
+
+app.use('/api/*', async (c, next) => {
+  const method = c.req.method
+  const path = c.req.path
+
+  // Verificar se é rota pública
+  const isPublic = PUBLIC_ROUTES.some(route => {
+    if (route.method && route.method !== method) return false
+    if (route.path instanceof RegExp) return route.path.test(path)
+    return path === route.path
+  })
+
+  if (isPublic) {
+    return next()
+  }
+
+  // Exigir token Bearer para todas as outras rotas
+  const userId = await getAuthenticatedUserId(c)
+  if (!userId) {
+    console.warn(`🚨 v156: Acesso não autenticado BLOQUEADO: ${method} ${path}`)
+    return c.json({ error: 'Autenticação obrigatória' }, 401)
+  }
+
+  // Salvar userId no contexto para uso pelos endpoints
+  c.set('authenticatedUserId', userId)
+  return next()
+})
 
 // Servir imagem Open Graph (para WhatsApp, Facebook, Twitter)
 // IMPORTANTE: Esta rota garante que a imagem seja servida corretamente para crawlers
@@ -1781,6 +1927,9 @@ app.post('/api/register', async (c) => {
         const secret = getAuthSecret(c.env)
         const sessionToken = await generateSessionToken(user.id, secret)
         
+        // ✅ v156: Registrar sessão/dispositivo
+        await registerSession(DB, user.id, sessionToken, c)
+        
         return c.json({ 
           user,
           token: sessionToken,
@@ -1992,6 +2141,9 @@ app.post('/api/login', async (c) => {
     // ✅ v153: Gerar token de sessão assinado
     const secret = getAuthSecret(c.env)
     const sessionToken = await generateSessionToken(user.id, secret)
+
+    // ✅ v156: Registrar sessão/dispositivo
+    await registerSession(DB, user.id, sessionToken, c)
 
     // Retornar usuário com token
     return c.json({ 
@@ -3746,6 +3898,161 @@ app.get('/obrigado-premium', async (c) => {
 async function isAdmin(c: any): Promise<boolean> {
   return isAdminAuthenticated(c)
 }
+
+// ════════════════════════════════════════════════════════════════════════
+// ✅ v156: GERENCIAMENTO DE SESSÕES / DISPOSITIVOS CONECTADOS
+// ════════════════════════════════════════════════════════════════════════
+
+// Listar sessões ativas de um usuário (admin vê todos, user vê só dele)
+app.get('/api/admin/sessions', async (c) => {
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+
+  const { DB } = c.env
+  try {
+    // Auto-criar tabela
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS active_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL, token_hash TEXT NOT NULL UNIQUE,
+      device_info TEXT, ip_address TEXT, user_agent TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_revoked INTEGER DEFAULT 0, revoked_at DATETIME, revoked_by TEXT
+    )`).run()
+
+    const sessions = await DB.prepare(`
+      SELECT s.id, s.user_id, u.name as user_name, u.email as user_email,
+             s.device_info, s.ip_address, s.created_at, s.last_seen_at,
+             s.is_revoked, s.revoked_at, s.revoked_by,
+             CASE WHEN s.is_revoked = 1 THEN 'revogada'
+                  WHEN datetime('now', '-30 days') > s.created_at THEN 'expirada'
+                  ELSE 'ativa' END as status
+      FROM active_sessions s
+      LEFT JOIN users u ON u.id = s.user_id
+      ORDER BY s.last_seen_at DESC
+      LIMIT 200
+    `).all() as any
+
+    return c.json({
+      sessions: sessions.results || [],
+      total: sessions.results?.length || 0
+    })
+  } catch (error) {
+    console.error('Erro ao listar sessões:', error)
+    return c.json({ error: 'Erro ao listar sessões' }, 500)
+  }
+})
+
+// Listar sessões de um usuário específico
+app.get('/api/admin/sessions/user/:user_id', async (c) => {
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+
+  const { DB } = c.env
+  const userId = c.req.param('user_id')
+  try {
+    const sessions = await DB.prepare(`
+      SELECT id, device_info, ip_address, created_at, last_seen_at, is_revoked, revoked_at,
+             CASE WHEN is_revoked = 1 THEN 'revogada'
+                  WHEN datetime('now', '-30 days') > created_at THEN 'expirada'
+                  ELSE 'ativa' END as status
+      FROM active_sessions
+      WHERE user_id = ?
+      ORDER BY last_seen_at DESC
+    `).bind(userId).all() as any
+
+    return c.json({ sessions: sessions.results || [] })
+  } catch (error) {
+    return c.json({ error: 'Erro ao listar sessões do usuário' }, 500)
+  }
+})
+
+// Revogar uma sessão específica (desconectar dispositivo)
+app.post('/api/admin/sessions/revoke/:session_id', async (c) => {
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+
+  const { DB } = c.env
+  const sessionId = c.req.param('session_id')
+  try {
+    const session = await DB.prepare(
+      'SELECT id, user_id, device_info FROM active_sessions WHERE id = ?'
+    ).bind(sessionId).first() as any
+
+    if (!session) {
+      return c.json({ error: 'Sessão não encontrada' }, 404)
+    }
+
+    await DB.prepare(`
+      UPDATE active_sessions SET is_revoked = 1, revoked_at = datetime('now'), revoked_by = 'admin'
+      WHERE id = ?
+    `).bind(sessionId).run()
+
+    console.log(`🔒 v156: Sessão ${sessionId} revogada pelo admin (userId=${session.user_id}, device=${session.device_info})`)
+    return c.json({ success: true, message: `Sessão ${sessionId} revogada com sucesso` })
+  } catch (error) {
+    return c.json({ error: 'Erro ao revogar sessão' }, 500)
+  }
+})
+
+// Revogar TODAS as sessões de um usuário (forçar logout de todos os dispositivos)
+app.post('/api/admin/sessions/revoke-all/:user_id', async (c) => {
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+
+  const { DB } = c.env
+  const userId = c.req.param('user_id')
+  try {
+    const result = await DB.prepare(`
+      UPDATE active_sessions SET is_revoked = 1, revoked_at = datetime('now'), revoked_by = 'admin'
+      WHERE user_id = ? AND is_revoked = 0
+    `).bind(userId).run()
+
+    console.log(`🔒 v156: TODAS as sessões do userId=${userId} revogadas pelo admin`)
+    return c.json({
+      success: true,
+      message: `Todas as sessões do usuário ${userId} foram revogadas`,
+      count: result.meta?.changes || 0
+    })
+  } catch (error) {
+    return c.json({ error: 'Erro ao revogar sessões' }, 500)
+  }
+})
+
+// Revogar TODAS as sessões de TODOS os usuários (exceto admin atual)
+app.post('/api/admin/sessions/revoke-all-users', async (c) => {
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+
+  const { DB } = c.env
+  const adminId = await getAuthenticatedUserId(c)
+  
+  try {
+    // Obter hash do token atual do admin para não revogar a si mesmo
+    const authHeader = c.req.header('Authorization') || ''
+    const currentToken = authHeader.substring(7)
+    const currentHash = await hashToken(currentToken)
+
+    const result = await DB.prepare(`
+      UPDATE active_sessions SET is_revoked = 1, revoked_at = datetime('now'), revoked_by = 'admin-global'
+      WHERE is_revoked = 0 AND token_hash != ?
+    `).bind(currentHash).run()
+
+    console.log(`🔒 v156: TODAS as sessões revogadas pelo admin (exceto a própria), count=${result.meta?.changes}`)
+    return c.json({
+      success: true,
+      message: 'Todas as sessões de todos os usuários foram revogadas (exceto a sua atual)',
+      count: result.meta?.changes || 0
+    })
+  } catch (error) {
+    return c.json({ error: 'Erro ao revogar sessões' }, 500)
+  }
+})
 
 // Registrar log de email enviado
 // Dashboard Admin - Estatísticas gerais
@@ -6147,6 +6454,9 @@ app.get('/api/auth/google/callback', async (c) => {
     const secret = getAuthSecret(c.env)
     const sessionToken = await generateSessionToken(user.id, secret)
     
+    // ✅ v156: Registrar sessão/dispositivo
+    await registerSession(DB, user.id, sessionToken, c)
+    
     // Redirecionar com dados do usuário + token para /home
     const userData = encodeURIComponent(JSON.stringify({
       id: user.id,
@@ -6356,16 +6666,7 @@ app.get('/api/verify-email/:token', async (c) => {
     return c.json({ error: 'Token inválido' }, 400)
   }
   
-  // Token de teste para desenvolvimento
-  if (token === 'TestToken123ABC456DEF789GHI012JKL') {
-    console.log('🧪 Token de teste detectado!')
-    return c.json({ 
-      message: '🧪 Token de teste reconhecido! Este é um token especial para testes. Em produção, seria validado no banco de dados.',
-      success: true,
-      testMode: true,
-      email: 'terciogomesrabelo@gmail.com'
-    })
-  }
+  // ✅ v157 SEGURANÇA: Removido token de teste hardcoded — era uma vulnerabilidade
   
   try {
     // Buscar usuário pelo token (sem verificar expiração em SQL para evitar problemas de timezone)
@@ -6426,11 +6727,19 @@ app.get('/api/verify-email/:token', async (c) => {
       console.log('⚠️ Erro ao enviar email de boas-vindas (não crítico):', welcomeError)
     }
     
+    // ✅ v157: Gerar token de sessão no verify-email (usuário provou posse do email via link)
+    // Isso é seguro porque o token de verificação é single-use e foi enviado ao email do usuário
+    const secret = getAuthSecret(c.env)
+    const sessionToken = await generateSessionToken(user.id, secret)
+    await registerSession(DB, user.id, sessionToken, c)
+    
     return c.json({ 
       message: 'Email verificado com sucesso! Agora você pode fazer login.',
       email: user.email,
       success: true,
-      verified: true
+      verified: true,
+      token: sessionToken,
+      user: { id: user.id, email: user.email, name: user.name }
     })
   } catch (error) {
     console.error('❌ Erro ao verificar email:', error)
@@ -6712,7 +7021,8 @@ app.get('/api/check-email-verified', async (c) => {
   }
 })
 
-// ✅ CORREÇÃO v12: Endpoint para buscar usuário por email
+// ✅ v157 SEGURANÇA: Endpoint para buscar usuário por email — REQUER autenticação
+// Nunca gera token — apenas retorna dados básicos
 app.get('/api/user-by-email', async (c) => {
   const { DB } = c.env
   const email = c.req.query('email')?.toLowerCase()?.trim()
@@ -6721,7 +7031,21 @@ app.get('/api/user-by-email', async (c) => {
     return c.json({ error: 'Email não fornecido' }, 400)
   }
   
+  // ✅ v157: Exigir autenticação
+  const authenticatedUserId = await getAuthenticatedUserId(c)
+  if (!authenticatedUserId) {
+    return c.json({ error: 'Autenticação obrigatória' }, 401)
+  }
+  
   try {
+    // Verificar se o solicitante é o dono do email ou admin
+    const requestingUser = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(authenticatedUserId).first() as any
+    const isAdminUser = requestingUser?.email === ADMIN_EMAIL
+    
+    if (!isAdminUser && requestingUser?.email !== email) {
+      return c.json({ error: 'Acesso negado — só pode consultar seu próprio email' }, 403)
+    }
+    
     const user = await DB.prepare(
       'SELECT id, email, name, created_at, email_verified FROM users WHERE email = ?'
     ).bind(email).first() as any
@@ -6730,14 +7054,9 @@ app.get('/api/user-by-email', async (c) => {
       return c.json({ error: 'Usuário não encontrado' }, 404)
     }
     
-    // ✅ v154 SEGURANÇA: Gerar token se email verificado (para auto-login pós-verificação)
-    let token = null
-    if (user.email_verified) {
-      const secret = getAuthSecret(c.env)
-      token = await generateSessionToken(user.id, secret)
-    }
-    
-    return c.json({ user, token })
+    return c.json({ 
+      user: { id: user.id, email: user.email, name: user.name, email_verified: user.email_verified }
+    })
   } catch (error) {
     console.error('Erro ao buscar usuário:', error)
     return c.json({ error: 'Erro ao buscar usuário' }, 500)
