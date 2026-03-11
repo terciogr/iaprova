@@ -1,6 +1,39 @@
 // Verificação inicial
 console.log('🚀 IAprova - Iniciando aplicação...');
 
+// ✅ v154 SEGURANÇA: Interceptor axios global — envia token assinado em vez de X-User-ID
+// O token é gerado pelo servidor (HMAC-SHA256) e não pode ser forjado
+axios.interceptors.request.use(function(config) {
+  const token = localStorage.getItem('sessionToken');
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers['Authorization'] = 'Bearer ' + token;
+  }
+  return config;
+});
+
+// ✅ v154: Interceptor de resposta — se 401, token expirou, fazer logout
+axios.interceptors.response.use(
+  function(response) { return response; },
+  function(error) {
+    if (error.response && error.response.status === 401 && currentUser) {
+      // Token expirado ou inválido — fazer logout
+      console.warn('🔒 Token expirado ou inválido, fazendo logout...');
+      localStorage.removeItem('sessionToken');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userPicture');
+      localStorage.removeItem('authProvider');
+      localStorage.removeItem('userCreatedAt');
+      currentUser = null;
+      showToast('⚠️ Sua sessão expirou. Faça login novamente.', 'warning', 4000);
+      setTimeout(() => { window.location.href = '/home'; }, 2000);
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Estado da aplicação
 let currentUser = null;
 let currentStep = 'login';
@@ -1334,9 +1367,7 @@ function createUnifiedFAB() {
 // Verificar mensagens não lidas para o admin (sidebar badge)
 async function checkAdminUnreadMessages() {
   try {
-    const res = await axios.get('/api/admin/messages/unread-total', {
-      headers: { 'X-User-ID': currentUser?.id }
-    });
+    const res = await axios.get('/api/admin/messages/unread-total', {});
     const total = res.data?.total || 0;
     const badge = document.getElementById('sidebar-chat-badge');
     const notifIcon = document.getElementById('sidebar-chat-notif-icon');
@@ -1426,7 +1457,11 @@ function checkUser() {
         authProvider: 'google'
       };
       
-      // Salvar dados da sessão
+      // ✅ v154 SEGURANÇA: Salvar token assinado + dados da sessão
+      if (user.token) {
+        localStorage.setItem('sessionToken', user.token);
+        console.log('🔐 Token de sessão Google salvo');
+      }
       localStorage.setItem('userId', String(user.id));
       localStorage.setItem('userEmail', user.email);
       localStorage.setItem('userName', user.name || '');
@@ -1501,12 +1536,7 @@ function checkUser() {
 // ✅ SEGURANÇA v146: Validar sessão no servidor antes de permitir acesso
 async function validarSessaoEContinuar() {
   try {
-    const response = await axios.get('/api/auth/validate-session', {
-      headers: { 
-        'X-User-ID': currentUser.id,
-        'X-Auth-Provider': currentUser.authProvider || 'email'
-      }
-    });
+    const response = await axios.get('/api/auth/validate-session', {});
     
     if (response.data.force_logout) {
       console.warn('🔒 Sessão invalidada pelo servidor:', response.data.reason);
@@ -3047,6 +3077,11 @@ window.handleLandingSignup = async function(event) {
       }
       
       // Se já está verificado (login de usuário existente), permitir acesso
+      // ✅ v154 SEGURANÇA: Salvar token assinado
+      if (response.data.token) {
+        localStorage.setItem('sessionToken', response.data.token);
+        console.log('🔐 Token de sessão salvo (register/auto-login)');
+      }
       localStorage.setItem('userId', user.id);
       localStorage.setItem('userEmail', user.email);
       localStorage.setItem('userName', user.name || '');
@@ -3075,16 +3110,14 @@ window.handleLandingSignup = async function(event) {
       try {
         const loginResponse = await axios.post('/api/login', { email, password });
         
-        if (loginResponse.data && loginResponse.data.user) {
-          const user = loginResponse.data.user;
+        if (loginResponse.data && loginResponse.data.id) {
+          const user = loginResponse.data;
           
-          // ✅ CORREÇÃO v12: Verificar email_verified no login também
-          if (!user.email_verified) {
-            // Email não verificado - mostrar tela de verificação
-            mostrarTelaVerificacaoEmail(email, user.name || '');
-            return;
+          // ✅ v154 SEGURANÇA: Salvar token assinado
+          if (user.token) {
+            localStorage.setItem('sessionToken', user.token);
+            console.log('🔐 Token de sessão salvo (login fallback)');
           }
-          
           localStorage.setItem('userId', user.id);
           localStorage.setItem('userEmail', user.email);
           localStorage.setItem('userName', user.name || '');
@@ -3215,11 +3248,16 @@ window.verificarEmailJaValidado = async function(email) {
       // Email verificado! Fazer login automático
       showToast('✅ Email verificado! Entrando...', 'success');
       
-      // Buscar dados do usuário
+      // Buscar dados do usuário (com token assinado)
       const userResponse = await axios.get('/api/user-by-email?email=' + encodeURIComponent(email));
       if (userResponse.data.user) {
         const user = userResponse.data.user;
         
+        // ✅ v154 SEGURANÇA: Salvar token assinado
+        if (userResponse.data.token) {
+          localStorage.setItem('sessionToken', userResponse.data.token);
+          console.log('🔐 Token de sessão salvo (verificação email)');
+        }
         localStorage.setItem('userId', user.id);
         localStorage.setItem('userEmail', user.email);
         localStorage.setItem('userName', user.name || '');
@@ -3389,7 +3427,11 @@ function renderLogin() {
           console.log('✅ Login bem sucedido:', response.data);
           currentUser = response.data;
           
-          // Salvar dados da sessão
+          // ✅ v154 SEGURANÇA: Salvar token assinado + dados da sessão
+          if (currentUser.token) {
+            localStorage.setItem('sessionToken', currentUser.token);
+            console.log('🔐 Token de sessão salvo');
+          }
           localStorage.setItem('userId', currentUser.id);
           localStorage.setItem('userEmail', email);
           localStorage.setItem('userName', currentUser.name || '');
@@ -3686,7 +3728,8 @@ window.voltarAoLogin = async function() {
       document.getElementById('unified-fab-container')?.remove();
       document.getElementById('fab-overlay')?.remove();
       
-      // Limpar dados do usuário
+      // ✅ v154 SEGURANÇA: Limpar token + dados do usuário
+      localStorage.removeItem('sessionToken');
       localStorage.removeItem('userId');
       localStorage.removeItem('userEmail');
       localStorage.removeItem('userName');
@@ -3701,6 +3744,7 @@ window.voltarAoLogin = async function() {
   } catch (error) {
     console.error('Erro ao fazer logout:', error);
     // Fallback: redirecionar direto
+    localStorage.removeItem('sessionToken');
     localStorage.removeItem('userId');
     localStorage.removeItem('userEmail');
     currentUser = null;
@@ -9228,7 +9272,7 @@ window.verificarPagamento = async function() {
         const activateResp = await axios.post(
           `/api/mercadopago/verify-and-activate/${storedPaymentId}`,
           {},
-          { headers: { 'X-User-ID': String(currentUser.id) } }
+          {}
         );
         if (activateResp.data.success) {
           // Atualizar dados locais
@@ -12109,9 +12153,7 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
       config_ia: iaConfig,
       subtipo_resumo: tipo === 'resumo' ? 'esquematizado' : undefined
     }, {
-      headers: {
-        'X-User-ID': currentUser?.id || 1
-      },
+      headers: {},
       timeout: 180000 // 3 minutos - geração pode demorar
     });
     
@@ -13067,8 +13109,7 @@ window.regenerarConteudoComFeedback = async function() {
       }
     }, {
       headers: {
-        'X-User-ID': currentUser.id
-      },
+},
       timeout: 120000 // 2 minutos para geração de conteúdo
     });
     
@@ -17276,9 +17317,7 @@ window.abrirConfiguracoes = function() {
 // Verificar se usuário é admin para mostrar seção admin nas configurações
 async function verificarAdminParaConfiguracoes() {
   try {
-    const response = await axios.get('/api/admin/check', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/check', {});
     if (response.data.isAdmin) {
       const adminSection = document.getElementById('admin-section-config');
       if (adminSection) adminSection.classList.remove('hidden');
@@ -18047,9 +18086,7 @@ window.abrirPainelAdmin = async function() {
   document.body.appendChild(loadingModal);
   
   try {
-    const response = await axios.get('/api/admin/dashboard', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/dashboard', {});
     const stats = response.data;
     
     document.getElementById('admin-loading')?.remove();
@@ -18490,9 +18527,10 @@ window.abrirChatAdmin = async function() {
     var results = await Promise.allSettled([
       axios.get('/api/admin/messages/conversations', { 
         params: { admin_id: currentUser.id },
-        headers: { 'X-User-ID': currentUser.id }
+        headers: {
+}
       }),
-      axios.get('/api/admin/chat-users', { headers: { 'X-User-ID': currentUser.id } })
+      axios.get('/api/admin/chat-users', {})
     ]);
     var conversations = results[0].status === 'fulfilled' ? (results[0].value.data.conversations || []) : [];
     var allUsers = results[1].status === 'fulfilled' ? (results[1].value.data.users || []) : [];
@@ -18751,7 +18789,8 @@ window.abrirChatComUsuarioId = async function(userId, userName) {
   try {
     var res = await axios.get('/api/admin/messages/' + userId, { 
       params: { admin_id: currentUser.id },
-      headers: { 'X-User-ID': currentUser.id }
+      headers: {
+}
     });
     var messages = res.data.messages || [];
     
@@ -18800,9 +18839,7 @@ window.abrirChatComUsuarioId = async function(userId, userName) {
     // Marcar como lidas mensagens do admin que foram respondidas
     // (admin está vendo, marcar respostas do user como lidas)
     try {
-      await axios.post('/api/admin/messages/mark-read', { user_id: userId }, {
-        headers: { 'X-User-ID': currentUser.id }
-      });
+      await axios.post('/api/admin/messages/mark-read', { user_id: userId }, {});
       // Atualizar badge da sidebar
       checkAdminUnreadMessages();
       // Atualizar contagem local na lista de conversas
@@ -18833,9 +18870,7 @@ window.enviarMensagemAdmin = async function(userId) {
       admin_id: currentUser.id,
       user_id: userId,
       message: msg
-    }, {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    }, {});
     showToast('Mensagem enviada!', 'success');
     // Recarregar conversa
     var userName = document.querySelector('#chat-admin-content .font-bold')?.textContent || '';
@@ -18904,9 +18939,7 @@ window.abrirChatUsuario = async function() {
   if (notif) notif.remove();
   
   try {
-    var res = await axios.get('/api/messages/history/' + currentUser.id, {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    var res = await axios.get('/api/messages/history/' + currentUser.id, {});
     var messages = res.data.messages || [];
     
     var modal = document.createElement('div');
@@ -19071,9 +19104,7 @@ window.abrirAnalyticsAdmin = async function() {
   document.body.appendChild(loadingEl);
   
   try {
-    const response = await axios.get('/api/admin/analytics', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/analytics', {});
     const data = response.data;
     
     document.getElementById('analytics-loading')?.remove();
@@ -19610,9 +19641,7 @@ window.verRelatorioFinanceiro = async function(periodo = '30') {
   try {
     showToast('📊 Carregando relatório financeiro...', 'info');
     
-    const response = await axios.get(`/api/admin/financeiro?periodo=${periodo}`, {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get(`/api/admin/financeiro?periodo=${periodo}`, {});
     const data = response.data;
     
     const modal = document.createElement('div');
@@ -19905,9 +19934,7 @@ window.verRelatorioFinanceiro = async function(periodo = '30') {
 // Exportar relatório financeiro para CSV
 window.exportarRelatorioFinanceiro = async function() {
   try {
-    const response = await axios.get('/api/admin/financeiro?periodo=all', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/financeiro?periodo=all', {});
     const data = response.data;
     
     // Criar CSV
@@ -19941,9 +19968,7 @@ window.exportarRelatorioFinanceiro = async function() {
 // Ver lista de usuários
 window.verListaUsuarios = async function() {
   try {
-    const response = await axios.get('/api/admin/users?limit=100', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/users?limit=100', {});
     const { users, pagination } = response.data;
     
     const modal = document.createElement('div');
@@ -20122,7 +20147,7 @@ window.togglePremiumAdmin = async function(userId, setPremium) {
     await axios.put(`/api/admin/users/${userId}`, {
       is_premium: setPremium,
       premium_days: days
-    }, { headers: { 'X-User-ID': currentUser.id } });
+    }, {});
     
     // Atualizar UI
     const statusCell = document.getElementById(`premium-status-${userId}`);
@@ -20242,7 +20267,7 @@ window.ativarAssinaturaAdmin = async function(userId) {
       plan: plano,
       paymentId: 'admin_manual_' + Date.now(),
       activatedBy: currentUser.id
-    }, { headers: { 'X-User-ID': currentUser.id } });
+    }, {});
     
     showToast(`✅ Assinatura ${plano} ativada com sucesso!`, 'success');
     document.getElementById('modal-edit-user')?.remove();
@@ -20273,7 +20298,7 @@ window.salvarUsuarioAdmin = async function(userId) {
       is_premium: isPremium,
       premium_days: days,
       plan_id: planId || null
-    }, { headers: { 'X-User-ID': currentUser.id } });
+    }, {});
     
     document.getElementById('modal-edit-user')?.remove();
     showToast('✅ Usuário atualizado com sucesso!', 'success');
@@ -20305,9 +20330,7 @@ window.deletarUsuarioAdmin = async function(userId, email, emailVerified) {
   if (!confirmed) return;
   
   try {
-    await axios.delete(`/api/admin/users/${userId}`, {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    await axios.delete(`/api/admin/users/${userId}`, {});
     
     // Remover da tabela
     document.getElementById(`user-row-${userId}`)?.remove();
@@ -20337,7 +20360,7 @@ window.enviarEmailIndividual = async function(userId, email) {
     showToast('📤 Enviando email...', 'info');
     const response = await axios.post('/api/admin/reengajamento/enviar-individual', 
       { user_id: userId },
-      { headers: { 'X-User-ID': currentUser.id } }
+      {}
     );
     
     if (response.data.success) {
@@ -20363,9 +20386,7 @@ window.enviarEmailIndividual = async function(userId, email) {
 // Ver histórico de emails - PADRONIZADO v96
 window.verHistoricoEmails = async function() {
   try {
-    const response = await axios.get('/api/admin/emails?limit=200', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/emails?limit=200', {});
     const { emails, pagination } = response.data;
     
     const modal = document.createElement('div');
@@ -20510,9 +20531,7 @@ window.filterAdminEmails = function() {
 // ✅ CORREÇÃO v96: Ver feedbacks dos usuários (admin) - PADRONIZADO
 window.verFeedbacksAdmin = async function() {
   try {
-    const response = await axios.get('/api/admin/feedbacks?limit=100', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/feedbacks?limit=100', {});
     const { feedbacks, unread_count, stats, pagination } = response.data;
     
     const tipoLabels = {
@@ -20647,9 +20666,7 @@ window.filterAdminFeedbacks = function() {
 // Marcar feedback como lido
 window.marcarFeedbackLido = async function(feedbackId) {
   try {
-    await axios.put(`/api/admin/feedbacks/${feedbackId}`, { is_read: true }, {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    await axios.put(`/api/admin/feedbacks/${feedbackId}`, { is_read: true }, {});
     showToast('✅ Feedback marcado como lido', 'success');
     // Recarregar lista
     document.getElementById('modal-admin-feedbacks')?.remove();
@@ -20667,9 +20684,7 @@ window.gerenciarChavesAPI = async function() {
   try {
     showToast('🔑 Carregando configurações de API...', 'info');
     
-    const response = await axios.get('/api/admin/api-keys', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/api-keys', {});
     const { configs } = response.data;
     
     // Ordem dos providers para exibição
@@ -20863,9 +20878,7 @@ window.salvarChaveAPI = async function(provider) {
     await axios.post('/api/admin/api-keys', {
       provider,
       api_key: apiKey
-    }, {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    }, {});
     
     document.getElementById('modal-edit-api-key')?.remove();
     showToast('✅ Chave salva com sucesso!', 'success');
@@ -20886,9 +20899,7 @@ window.testarChaveAPI = async function(provider) {
     
     const response = await axios.post('/api/admin/api-keys/test', {
       provider
-    }, {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    }, {});
     
     if (response.data.success) {
       showToast(`✅ ${response.data.message} (${response.data.latency}ms)`, 'success');
@@ -20907,9 +20918,7 @@ window.toggleAPIKey = async function(provider, active) {
     await axios.post('/api/admin/api-keys', {
       provider,
       is_active: active
-    }, {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    }, {});
     
     showToast(`✅ ${provider} ${active ? 'ativada' : 'desativada'}`, 'success');
     
@@ -20925,9 +20934,7 @@ window.toggleAPIKey = async function(provider, active) {
 window.moverAPIKey = async function(provider, direction) {
   try {
     // Pegar lista atual
-    const response = await axios.get('/api/admin/api-keys', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/api-keys', {});
     
     const configs = response.data.configs || [];
     const currentIndex = configs.findIndex(c => c.provider === provider);
@@ -20944,9 +20951,7 @@ window.moverAPIKey = async function(provider, direction) {
     // Enviar nova ordem
     await axios.post('/api/admin/api-keys/reorder', {
       order: newOrder
-    }, {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    }, {});
     
     showToast('✅ Ordem atualizada', 'success');
     
@@ -20961,9 +20966,7 @@ window.moverAPIKey = async function(provider, direction) {
 // ✅ NOVO: Ver visitas detalhadas (admin)
 window.verVisitasDetalhadas = async function() {
   try {
-    const response = await axios.get('/api/admin/visits?days=7', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/visits?days=7', {});
     const { daily_stats, top_pages, top_ips, recent_visits, pagination } = response.data;
     
     const modal = document.createElement('div');
@@ -21080,9 +21083,7 @@ window.verVisitasDetalhadas = async function() {
 // Ver feedbacks de conteúdo (admin) - PADRONIZADO v96
 window.verFeedbacksConteudo = async function() {
   try {
-    const response = await axios.get('/api/admin/feedbacks?limit=100', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/feedbacks?limit=100', {});
     const { feedbacks, pagination } = response.data;
     
     const modal = document.createElement('div');
@@ -21177,9 +21178,7 @@ window.abrirReengajamento = async function() {
   try {
     showToast('📧 Carregando dados de reengajamento...', 'info');
     
-    const response = await axios.get('/api/admin/reengajamento/preview', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/reengajamento/preview', {});
     const data = response.data;
     
     const modal = document.createElement('div');
@@ -21297,7 +21296,7 @@ window.enviarReengajamentoTeste = async function() {
     
     const response = await axios.post('/api/admin/reengajamento/enviar', 
       { email_teste: 'terciogomesrabelo@gmail.com' },
-      { headers: { 'X-User-ID': currentUser.id } }
+      {}
     );
     
     const result = response.data;
@@ -21332,7 +21331,7 @@ window.enviarReengajamentoTodos = async function() {
     
     const response = await axios.post('/api/admin/reengajamento/enviar', 
       { enviar_para_todos: true },
-      { headers: { 'X-User-ID': currentUser.id } }
+      {}
     );
     
     const result = response.data;
@@ -21529,9 +21528,7 @@ window.enviarFeedbackReengajamento = async function(userId) {
 // Ver planos disponíveis - CRUD COMPLETO v96
 window.verPlanosDisponiveis = async function() {
   try {
-    const response = await axios.get('/api/admin/plans', {
-      headers: { 'X-User-ID': currentUser.id }
-    });
+    const response = await axios.get('/api/admin/plans', {});
     const { plans } = response.data;
     
     const modal = document.createElement('div');
@@ -21760,10 +21757,10 @@ window.salvarPlanoAdmin = async function(planId) {
     const payload = { name, description, price, discount_percent: discount, duration_days: duration, features, is_active: isActive, is_featured: isFeatured, display_order: order };
     
     if (planId) {
-      await axios.put('/api/admin/plans/' + planId, payload, { headers: { 'X-User-ID': currentUser.id } });
+      await axios.put('/api/admin/plans/' + planId, payload, {});
       showToast('✅ Plano atualizado!', 'success');
     } else {
-      await axios.post('/api/admin/plans', payload, { headers: { 'X-User-ID': currentUser.id } });
+      await axios.post('/api/admin/plans', payload, {});
       showToast('✅ Plano criado!', 'success');
     }
     
@@ -21778,7 +21775,7 @@ window.salvarPlanoAdmin = async function(planId) {
 // Editar plano existente
 window.editarPlanoAdmin = async function(planId) {
   try {
-    const response = await axios.get('/api/admin/plans', { headers: { 'X-User-ID': currentUser.id } });
+    const response = await axios.get('/api/admin/plans', {});
     const plan = response.data.plans.find(p => p.id === planId);
     if (!plan) { showToast('Plano não encontrado', 'error'); return; }
     
@@ -21812,7 +21809,7 @@ window.editarPlanoAdmin = async function(planId) {
 // Toggle ativar/desativar plano
 window.togglePlanoAtivo = async function(planId, setActive) {
   try {
-    const response = await axios.get('/api/admin/plans', { headers: { 'X-User-ID': currentUser.id } });
+    const response = await axios.get('/api/admin/plans', {});
     const plan = response.data.plans.find(p => p.id === planId);
     if (!plan) return;
     
@@ -21821,7 +21818,7 @@ window.togglePlanoAtivo = async function(planId, setActive) {
     
     await axios.put('/api/admin/plans/' + planId, {
       ...plan, features, is_active: setActive, discount_percent: plan.discount_percent || 0, is_featured: plan.is_featured || 0, display_order: plan.display_order || 0
-    }, { headers: { 'X-User-ID': currentUser.id } });
+    }, {});
     
     showToast(setActive ? '✅ Plano ativado!' : '✅ Plano desativado!', 'success');
     document.getElementById('modal-admin-plans')?.remove();
@@ -21836,7 +21833,7 @@ window.excluirPlanoAdmin = async function(planId, planName) {
   if (!confirm('Tem certeza que deseja excluir o plano "' + planName + '"? Esta ação não pode ser desfeita.')) return;
   
   try {
-    await axios.delete('/api/admin/plans/' + planId, { headers: { 'X-User-ID': currentUser.id } });
+    await axios.delete('/api/admin/plans/' + planId, {});
     showToast('✅ Plano excluído!', 'success');
     document.getElementById('modal-admin-plans')?.remove();
     verPlanosDisponiveis();
@@ -22557,9 +22554,7 @@ window.verificarRetornoPagamento = async function() {
     
     try {
       // Chamar endpoint para verificar e ativar
-      const response = await axios.post(`/api/mercadopago/verify-and-activate/${paymentId}`, {}, {
-        headers: { 'X-User-ID': currentUser?.id || '' }
-      });
+      const response = await axios.post(`/api/mercadopago/verify-and-activate/${paymentId}`, {}, {});
       
       console.log('✅ Pagamento verificado:', response.data);
       
@@ -23616,7 +23611,7 @@ window.marcarBotaoConteudoDisponivel = marcarBotaoConteudoDisponivel;
 async function atualizarIconesConteudoMeta(metaId) {
   try {
     const response = await axios.get(`/api/conteudos/meta/${metaId}`, {
-      headers: { 'X-User-ID': currentUser?.id || localStorage.getItem('userId') },
+      headers: {},
       timeout: 10000
     });
     const data = response.data;
@@ -23938,8 +23933,7 @@ async function processarResumoPersonalizado(metaId) {
       timeout: 120000, // v134: 120s timeout para PDF grande (Gemini pode demorar)
       headers: {
         'Content-Type': 'multipart/form-data',
-        'X-User-ID': currentUser.id
-      },
+},
       onUploadProgress: (progressEvent) => {
         const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
         const uploadProgress = Math.round(percentCompleted * 0.3); // Upload é 30% do total
@@ -24090,7 +24084,7 @@ window.verConteudoGerado = async function(metaId, tipo) {
     // 1. Tentar buscar pelo meta_id na API
     try {
       const response = await axios.get(`/api/conteudos/meta/${metaId}`, {
-        headers: { 'X-User-ID': currentUser?.id || localStorage.getItem('userId') },
+        headers: {},
         timeout: 15000
       });
       const data = response.data;

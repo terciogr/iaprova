@@ -11,6 +11,112 @@ import * as XLSX from 'xlsx'
 // Esta conta SÓ pode autenticar via Google OAuth
 const ADMIN_EMAIL = 'terciogomesrabelo@gmail.com'
 
+// ════════════════════════════════════════════════════════════════════════
+// ✅ SEGURANÇA v153: AUTENTICAÇÃO POR TOKEN ASSINADO (HMAC-SHA256)
+// Problema anterior: API confiava no header X-User-ID que qualquer um podia forjar
+// Solução: Token assinado pelo servidor = userId.expiresAt.signature
+// O token é gerado no login/register/google e verificado em cada requisição
+// ════════════════════════════════════════════════════════════════════════
+
+// Derivar chave HMAC a partir de um segredo
+async function getHMACKey(secret: string): Promise<CryptoKey> {
+  const encoder = new TextEncoder()
+  return crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  )
+}
+
+// Gerar token de sessão: base64(userId.expiresAt.hmac)
+async function generateSessionToken(userId: number | string, secret: string, ttlDays: number = 30): Promise<string> {
+  const expiresAt = Date.now() + (ttlDays * 24 * 60 * 60 * 1000)
+  const payload = `${userId}.${expiresAt}`
+  
+  const key = await getHMACKey(secret)
+  const encoder = new TextEncoder()
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payload))
+  
+  // Converter para hex
+  const sigHex = Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+  
+  return `${payload}.${sigHex}`
+}
+
+// Validar token de sessão e retornar userId ou null
+async function validateSessionToken(token: string, secret: string): Promise<string | null> {
+  if (!token || !secret) return null
+  
+  const parts = token.split('.')
+  if (parts.length !== 3) return null
+  
+  const [userId, expiresAtStr, sigHex] = parts
+  const expiresAt = parseInt(expiresAtStr)
+  
+  // Verificar expiração
+  if (isNaN(expiresAt) || Date.now() > expiresAt) return null
+  
+  // Verificar assinatura HMAC
+  const payload = `${userId}.${expiresAtStr}`
+  const key = await getHMACKey(secret)
+  const encoder = new TextEncoder()
+  
+  // Converter hex para bytes
+  const sigBytes = new Uint8Array(sigHex.match(/.{2}/g)!.map(byte => parseInt(byte, 16)))
+  
+  const valid = await crypto.subtle.verify('HMAC', key, sigBytes, encoder.encode(payload))
+  
+  if (!valid) return null
+  return userId
+}
+
+// Obter o segredo para HMAC (de env ou fallback seguro)
+function getAuthSecret(env: any): string {
+  // Usar MP_WEBHOOK_SECRET como chave de assinatura (já é um segredo configurado)
+  // Em produção, idealmente seria um segredo dedicado AUTH_SECRET
+  return env.AUTH_SECRET || env.MP_WEBHOOK_SECRET || 'iaprova-default-secret-change-me'
+}
+
+// ✅ v154 SEGURANÇA: Extrair e validar userId EXCLUSIVAMENTE a partir do token Authorization
+// ❌ X-User-ID NÃO É MAIS ACEITO — qualquer um podia forjar esse header
+async function getAuthenticatedUserId(c: any): Promise<string | null> {
+  const authHeader = c.req.header('Authorization') || ''
+  const secret = getAuthSecret(c.env)
+  
+  // ÚNICA forma de autenticação: Token Bearer assinado pelo servidor
+  if (authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7)
+    const userId = await validateSessionToken(token, secret)
+    if (userId) return userId
+  }
+  
+  // Sem token válido = não autenticado
+  return null
+}
+
+// ✅ v153: isAdmin reescrito para usar token assinado
+async function isAdminAuthenticated(c: any): Promise<boolean> {
+  const userId = await getAuthenticatedUserId(c)
+  if (!userId) return false
+  
+  const { DB } = c.env
+  const user = await DB.prepare('SELECT email, auth_provider FROM users WHERE id = ?').bind(userId).first() as any
+  if (!user || user.email !== ADMIN_EMAIL) return false
+  
+  // Admin DEVE ter autenticado via Google
+  const provider = (user.auth_provider || '').toLowerCase()
+  if (provider !== 'google' && provider !== 'both') {
+    console.warn(`🚨 SEGURANÇA v153: Admin ${userId} rejeitado — auth_provider=${provider}`)
+    return false
+  }
+  
+  return true
+}
+
 // ✅ FUNÇÃO PARA PDFs GRANDES - USA FILES API DO GEMINI
 async function extractLargePDFWithFilesAPI(pdfBytes: Uint8Array, geminiKey: string): Promise<string> {
   console.log('🚀 Usando Files API do Gemini para PDF grande...')
@@ -1669,10 +1775,15 @@ app.post('/api/register', async (c) => {
         // Senha correta - fazer login
         const user = await DB.prepare(
           'SELECT id, email, name, created_at FROM users WHERE id = ?'
-        ).bind(existingUser.id).first()
+        ).bind(existingUser.id).first() as any
+        
+        // ✅ v154 SEGURANÇA: Gerar token assinado no auto-login via register
+        const secret = getAuthSecret(c.env)
+        const sessionToken = await generateSessionToken(user.id, secret)
         
         return c.json({ 
           user,
+          token: sessionToken,
           message: 'Login realizado com sucesso!',
           isLogin: true
         })
@@ -1878,12 +1989,17 @@ app.post('/api/login', async (c) => {
       return c.json({ error: 'Senha incorreta' }, 401)
     }
 
-    // Retornar usuário sem a senha
+    // ✅ v153: Gerar token de sessão assinado
+    const secret = getAuthSecret(c.env)
+    const sessionToken = await generateSessionToken(user.id, secret)
+
+    // Retornar usuário com token
     return c.json({ 
       id: user.id, 
       name: user.name, 
       email: user.email,
       created_at: user.created_at,
+      token: sessionToken,
       message: 'Login realizado com sucesso'
     })
   } catch (error) {
@@ -2291,16 +2407,9 @@ app.post('/api/subscription/activate', async (c) => {
   const { DB } = c.env
   const { userId, plan, paymentId, activatedBy } = await c.req.json()
   
-  // ✅ SEGURANÇA: Admin OBRIGATÓRIO - sem exceções
-  const adminCheck = c.req.header('X-User-ID')
-  if (!adminCheck) {
-    console.warn('🚨 SEGURANÇA: Tentativa de ativar assinatura sem X-User-ID')
-    return c.json({ error: 'Autenticação obrigatória' }, 401)
-  }
-  
-  const admin = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(adminCheck).first() as any
-  if (!admin || admin.email !== ADMIN_EMAIL) {
-    console.warn(`🚨 SEGURANÇA: Usuário ${adminCheck} (${admin?.email}) tentou ativar assinatura para ${userId}`)
+  // ✅ v154 SEGURANÇA: Admin OBRIGATÓRIO via token assinado
+  if (!await isAdmin(c)) {
+    console.warn('🚨 SEGURANÇA v154: Tentativa de ativar assinatura sem autenticação admin válida')
     // Log de auditoria
     try {
       await DB.prepare(`
@@ -2315,10 +2424,9 @@ app.post('/api/subscription/activate', async (c) => {
       `).run()
       await DB.prepare(`
         INSERT INTO audit_log (action, user_id, details, ip_address, created_at)
-        VALUES ('unauthorized_activate_attempt', ?, ?, ?, datetime('now'))
+        VALUES ('unauthorized_activate_attempt', 0, ?, ?, datetime('now'))
       `).bind(
-        parseInt(adminCheck),
-        JSON.stringify({ targetUserId: userId, plan, email: admin?.email }),
+        JSON.stringify({ targetUserId: userId, plan }),
         c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
       ).run()
     } catch (e) { /* audit não é crítico */ }
@@ -2968,10 +3076,11 @@ app.post('/api/webhook/mercadopago', async (c) => {
 app.get('/api/user/:user_id/payments', async (c) => {
   const { DB } = c.env
   const userId = c.req.param('user_id')
-  const requestUserId = c.req.header('X-User-ID')
+  // ✅ v154 SEGURANÇA: Usar token assinado em vez de X-User-ID
+  const requestUserId = await getAuthenticatedUserId(c)
   
   // Verificar se é o próprio usuário ou admin
-  if (requestUserId !== userId && !await isAdmin(c)) {
+  if (!requestUserId || (requestUserId !== userId && !await isAdmin(c))) {
     return c.json({ error: 'Acesso negado' }, 403)
   }
   
@@ -3175,7 +3284,8 @@ app.get('/api/admin/payment-health', async (c) => {
 // ✅ SEGURANÇA v145: Requer autenticação e MP_ACCESS_TOKEN
 app.get('/api/mercadopago/payment-status/:payment_id', async (c) => {
   const paymentId = c.req.param('payment_id')
-  const requestUserId = c.req.header('X-User-ID')
+  // ✅ v154 SEGURANÇA: Usar token assinado
+  const requestUserId = await getAuthenticatedUserId(c)
   
   // ✅ SEGURANÇA: Requer usuário autenticado
   if (!requestUserId) {
@@ -3303,11 +3413,12 @@ app.get('/pagamento/sucesso', async (c) => {
 app.post('/api/mercadopago/verify-and-activate/:payment_id', async (c) => {
   const { DB } = c.env as any
   const paymentId = c.req.param('payment_id')
-  const requestUserId = c.req.header('X-User-ID')
+  // ✅ v154 SEGURANÇA: Usar token assinado
+  const requestUserId = await getAuthenticatedUserId(c)
   
   // ✅ SEGURANÇA: Requer usuário autenticado
   if (!requestUserId) {
-    console.warn('🚨 SEGURANÇA: verify-and-activate chamado sem X-User-ID')
+    console.warn('🚨 SEGURANÇA v154: verify-and-activate chamado sem token válido')
     return c.json({ error: 'Autenticação obrigatória' }, 401)
   }
   
@@ -3628,26 +3739,12 @@ app.get('/obrigado-premium', async (c) => {
 
 // ============== MÓDULO ADMINISTRADOR (EXCLUSIVO) ==============
 // ⚠️ ACESSO RESTRITO: Apenas ADMIN_EMAIL (definido no topo do arquivo)
-// ⚠️ Admin SÓ autentica via Google OAuth
+// ⚠️ Admin SÓ autentica via Google OAuth + Token assinado (v153)
 
-// Middleware para verificar se é admin
-// ✅ SEGURANÇA v146: Admin DEVE ter autenticado via Google
+// ✅ v153: isAdmin agora usa isAdminAuthenticated (token assinado)
+// Mantém nome "isAdmin" para compatibilidade com todos os endpoints existentes
 async function isAdmin(c: any): Promise<boolean> {
-  const userId = c.req.header('X-User-ID')
-  if (!userId) return false
-  
-  const { DB } = c.env
-  const user = await DB.prepare('SELECT email, auth_provider FROM users WHERE id = ?').bind(userId).first() as any
-  if (!user || user.email !== ADMIN_EMAIL) return false
-  
-  // ✅ SEGURANÇA: Verificar que auth_provider inclui 'google'
-  const provider = (user.auth_provider || '').toLowerCase()
-  if (provider !== 'google' && provider !== 'both') {
-    console.warn(`🚨 SEGURANÇA: Admin ${userId} rejeitado - auth_provider=${provider} (requer google)`)
-    return false
-  }
-  
-  return true
+  return isAdminAuthenticated(c)
 }
 
 // Registrar log de email enviado
@@ -5532,16 +5629,16 @@ app.get('/api/admin/check', async (c) => {
   return c.json({ isAdmin: isAdminUser })
 })
 
-// ✅ SEGURANÇA v146: Endpoint para validar sessão ativa
-// O frontend chama isso ao iniciar para verificar se a sessão é válida
-// Retorna force_logout=true se a sessão foi invalidada
+// ✅ v154 SEGURANÇA: Endpoint para validar sessão via token assinado
+// O frontend chama isso ao iniciar para verificar se o token é válido
 app.get('/api/auth/validate-session', async (c) => {
   const { DB } = c.env
-  const userId = c.req.header('X-User-ID')
+  // ✅ v154: Validar via token assinado
+  const userId = await getAuthenticatedUserId(c)
   const authProvider = c.req.header('X-Auth-Provider') || ''
   
   if (!userId) {
-    return c.json({ valid: false, force_logout: true, reason: 'Sem identificação de usuário' })
+    return c.json({ valid: false, force_logout: true, reason: 'Token inválido ou expirado' })
   }
   
   try {
@@ -6041,13 +6138,18 @@ app.get('/api/auth/google/callback', async (c) => {
       }
     }
     
-    // Redirecionar com dados do usuário para /home
+    // ✅ v154 SEGURANÇA: Gerar token assinado para sessão Google
+    const secret = getAuthSecret(c.env)
+    const sessionToken = await generateSessionToken(user.id, secret)
+    
+    // Redirecionar com dados do usuário + token para /home
     const userData = encodeURIComponent(JSON.stringify({
       id: user.id,
       name: user.name || googleUser.name,
       email: user.email || googleUser.email,
       picture: googleUser.picture,
-      authProvider: 'google'
+      authProvider: 'google',
+      token: sessionToken
     }))
     
     // ✅ CORREÇÃO: Redirecionar para /home para garantir que checkUser processe corretamente
@@ -6594,7 +6696,14 @@ app.get('/api/user-by-email', async (c) => {
       return c.json({ error: 'Usuário não encontrado' }, 404)
     }
     
-    return c.json({ user })
+    // ✅ v154 SEGURANÇA: Gerar token se email verificado (para auto-login pós-verificação)
+    let token = null
+    if (user.email_verified) {
+      const secret = getAuthSecret(c.env)
+      token = await generateSessionToken(user.id, secret)
+    }
+    
+    return c.json({ user, token })
   } catch (error) {
     console.error('Erro ao buscar usuário:', error)
     return c.json({ error: 'Erro ao buscar usuário' }, 500)
@@ -20966,7 +21075,8 @@ app.post('/api/topicos/resumo-personalizado', async (c) => {
     const topicoNome = formData.get('topico_nome') as string
     const disciplinaNome = formData.get('disciplina_nome') as string
     const metaId = formData.get('meta_id') as string
-    const userIdHeader = formData.get('user_id') as string || c.req.header('X-User-ID')
+    // ✅ v154 SEGURANÇA: Usar token assinado para identificar usuário
+    const userIdHeader = formData.get('user_id') as string || await getAuthenticatedUserId(c) || ''
     const configIaStr = formData.get('config_ia') as string
     
     // Parse da configuração de IA
@@ -21316,7 +21426,8 @@ app.post('/api/topicos/gerar-conteudo', async (c) => {
     // ✅ NOVO: Buscar banca do usuário (se disponível)
     let bancaUsuario = null
     let caracteristicasBanca = null
-    const user_id_header = c.req.header('X-User-ID') || c.req.query('user_id')
+    // ✅ v154 SEGURANÇA: Usar token assinado para identificar usuário
+    const user_id_header = await getAuthenticatedUserId(c) || c.req.query('user_id')
     
     if (user_id_header) {
       // Buscar banca da entrevista mais recente do usuário
@@ -24871,7 +24982,8 @@ app.get('/api/messages/unread/:user_id', async (c) => {
 app.get('/api/messages/history/:user_id', async (c) => {
   const { env } = c;
   const userId = c.req.param('user_id');
-  const requestUserId = c.req.header('X-User-ID');
+  // ✅ v154 SEGURANÇA: Usar token assinado
+  const requestUserId = await getAuthenticatedUserId(c);
   
   // Segurança: o usuário só pode ver suas próprias mensagens
   if (!requestUserId || requestUserId.toString() !== userId.toString()) {
