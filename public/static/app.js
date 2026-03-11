@@ -4129,10 +4129,10 @@ CONHECIMENTOS ESPECÍFICOS
     // PDF: converter para texto via pdf.js no browser → processarTextoEditalColado (1 request)
     // XLSX: upload normal (processamento inline no backend)
     if (editaisFiles.length > 0) {
-      // Validar tamanho de PDFs (máx 5MB)
+      // ✅ v151: Validar tamanho de PDFs (máx 15MB - Gemini suporta até 20MB)
       for (const f of Array.from(editaisFiles)) {
-        if (f.name.toLowerCase().endsWith('.pdf') && f.size > 5 * 1024 * 1024) {
-          showToast(`PDF "${f.name}" é muito grande (${(f.size/1024/1024).toFixed(1)}MB). Máximo: 5MB. Converta para TXT.`, 'error');
+        if (f.name.toLowerCase().endsWith('.pdf') && f.size > 15 * 1024 * 1024) {
+          showToast(`PDF "${f.name}" é muito grande (${(f.size/1024/1024).toFixed(1)}MB). Máximo: 15MB. Converta para TXT.`, 'error');
           return;
         }
       }
@@ -4188,32 +4188,33 @@ CONHECIMENTOS ESPECÍFICOS
   });
 }
 
-// ✅ v140: DEFINITIVO - Converter PDF para texto e processar como TXT
-// Fluxo: PDF → pdf.js (browser) → texto → /api/editais/processar-texto
-// Fallback: Se pdf.js falhar → envia PDF ao servidor → Gemini converte → texto → processar-texto
+// ✅ v151: DEFINITIVO - Enviar PDF diretamente ao Gemini para extrair disciplinas+tópicos
+// Fluxo: PDF → Gemini (modo disciplinas) → disciplinas estruturadas → salvar
+// Fallback: Se modo disciplinas falha → Gemini (modo texto) → processar-texto
+// pdf.js NÃO é mais usado como primeira opção (Gemini lê PDF nativamente com muito mais qualidade)
 async function converterPDFParaTextoEProcessar(editaisFiles) {
   const arquivos = Array.from(editaisFiles);
   const pdfFiles = arquivos.filter(f => f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf');
   const outrosFiles = arquivos.filter(f => !f.name.toLowerCase().endsWith('.pdf') && f.type !== 'application/pdf');
   
-  console.log('📄 v140: Iniciando fluxo PDF→TXT definitivo');
-  console.log(`📄 ${pdfFiles.length} PDF(s), ${outrosFiles.length} outro(s) arquivo(s)`);
+  console.log('📄 v151: Iniciando fluxo PDF→Gemini direto');
+  console.log('📄 ' + pdfFiles.length + ' PDF(s), ' + outrosFiles.length + ' outro(s) arquivo(s)');
   
   // ═══════════════════════════════════════════════════════════════
   // UI DE PROGRESSO COM ETAPAS CLARAS
   // ═══════════════════════════════════════════════════════════════
   function renderProgressUI(etapaAtual, mensagem, detalhes) {
-    const etapas = [
-      { num: 1, titulo: 'Converter PDF em texto', icone: 'fa-file-alt' },
-      { num: 2, titulo: 'Enviar texto ao servidor', icone: 'fa-cloud-upload-alt' },
-      { num: 3, titulo: 'IA processa o edital', icone: 'fa-robot' },
+    var etapas = [
+      { num: 1, titulo: 'Enviando PDF para IA', icone: 'fa-cloud-upload-alt' },
+      { num: 2, titulo: 'IA analisa o edital', icone: 'fa-robot' },
+      { num: 3, titulo: 'Extraindo disciplinas do cargo', icone: 'fa-list-check' },
       { num: 4, titulo: 'Importar disciplinas', icone: 'fa-check-circle' }
     ];
     
-    const etapasHTML = etapas.map(e => {
-      let statusClass = '';
-      let iconClass = '';
-      let textClass = '';
+    var etapasHTML = etapas.map(function(e) {
+      var statusClass = '';
+      var iconClass = '';
+      var textClass = '';
       if (e.num < etapaAtual) {
         statusClass = 'bg-green-50 border-green-200';
         iconClass = 'fas fa-check-circle text-green-500';
@@ -4227,84 +4228,173 @@ async function converterPDFParaTextoEProcessar(editaisFiles) {
         iconClass = 'far fa-circle text-gray-400';
         textClass = 'text-gray-500';
       }
-      return `<div class="flex items-center gap-3 p-3 rounded-lg border ${statusClass}">
-        <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center">
-          <i class="${e.num < etapaAtual ? iconClass : (e.num === etapaAtual ? iconClass : iconClass)}"></i>
-        </div>
-        <div class="flex-1">
-          <span class="text-sm ${textClass}">${e.num}. ${e.titulo}</span>
-        </div>
-        ${e.num < etapaAtual ? '<i class="fas fa-check text-green-400 text-xs"></i>' : ''}
-      </div>`;
+      return '<div class="flex items-center gap-3 p-3 rounded-lg border ' + statusClass + '">' +
+        '<div class="flex-shrink-0 w-8 h-8 flex items-center justify-center">' +
+          '<i class="' + iconClass + '"></i>' +
+        '</div>' +
+        '<div class="flex-1">' +
+          '<span class="text-sm ' + textClass + '">' + e.num + '. ' + e.titulo + '</span>' +
+        '</div>' +
+        (e.num < etapaAtual ? '<i class="fas fa-check text-green-400 text-xs"></i>' : '') +
+      '</div>';
     }).join('');
     
-    document.getElementById('app').innerHTML = `
-      <div class="min-h-screen ${themes[currentTheme].bg} flex items-center justify-center p-4">
-        <div class="${themes[currentTheme].card} rounded-xl p-6 max-w-lg w-full mx-4 shadow-xl">
-          <div class="text-center mb-5">
-            <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-              <i class="fas fa-file-pdf text-white text-2xl"></i>
-            </div>
-            <h3 class="text-lg font-bold ${themes[currentTheme].text}">Processando Edital PDF</h3>
-            <p class="text-gray-500 text-sm mt-1">${mensagem}</p>
-          </div>
-          
-          <div class="space-y-2 mb-4">${etapasHTML}</div>
-          
-          ${detalhes ? `<div class="bg-gray-50 rounded-lg p-3 mt-3">
-            <p class="text-xs text-gray-600" id="pdf-detalhe">${detalhes}</p>
-          </div>` : ''}
-          
-          <div class="flex items-center justify-center gap-2 mt-4 text-xs text-gray-400">
-            <i class="fas fa-info-circle"></i>
-            <span>Isso pode levar de 30s a 2 minutos</span>
-          </div>
-          
-          <button onclick="cancelarCountdownENavegar('step1')" 
-            class="mt-4 w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition border border-gray-200 rounded-lg">
-            <i class="fas fa-times mr-1"></i> Cancelar
-          </button>
-        </div>
-      </div>
-    `;
+    document.getElementById('app').innerHTML = 
+      '<div class="min-h-screen ' + themes[currentTheme].bg + ' flex items-center justify-center p-4">' +
+        '<div class="' + themes[currentTheme].card + ' rounded-xl p-6 max-w-lg w-full mx-4 shadow-xl">' +
+          '<div class="text-center mb-5">' +
+            '<div class="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">' +
+              '<i class="fas fa-file-pdf text-white text-2xl"></i>' +
+            '</div>' +
+            '<h3 class="text-lg font-bold ' + themes[currentTheme].text + '">Processando Edital PDF</h3>' +
+            '<p class="text-gray-500 text-sm mt-1">' + mensagem + '</p>' +
+          '</div>' +
+          '<div class="space-y-2 mb-4">' + etapasHTML + '</div>' +
+          (detalhes ? '<div class="bg-gray-50 rounded-lg p-3 mt-3"><p class="text-xs text-gray-600" id="pdf-detalhe">' + detalhes + '</p></div>' : '') +
+          '<div class="flex items-center justify-center gap-2 mt-4 text-xs text-gray-400">' +
+            '<i class="fas fa-info-circle"></i>' +
+            '<span>A IA esta lendo o PDF diretamente - isso leva de 30s a 2 minutos</span>' +
+          '</div>' +
+          '<button onclick="cancelarCountdownENavegar(\'step1\')" ' +
+            'class="mt-4 w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition border border-gray-200 rounded-lg">' +
+            '<i class="fas fa-times mr-1"></i> Cancelar' +
+          '</button>' +
+        '</div>' +
+      '</div>';
   }
   
   function updateDetalhe(msg) {
-    const el = document.getElementById('pdf-detalhe');
+    var el = document.getElementById('pdf-detalhe');
     if (el) el.textContent = msg;
   }
   
   // ═══════════════════════════════════════════════════════════════
-  // ETAPA 1: CONVERTER PDF → TEXTO
+  // ETAPA 1: ENVIAR PDF AO GEMINI (MODO DISCIPLINAS)
   // ═══════════════════════════════════════════════════════════════
-  renderProgressUI(1, 'Convertendo PDF para texto...', 'Preparando o conversor...');
+  var cargoAtual = interviewData?.cargo || '';
+  var concursoAtual = interviewData?.concurso_nome || '';
+  var bancaAtual = interviewData?.banca_organizadora || '';
   
-  let textoCompleto = '';
-  let usouFallbackServidor = false;
+  renderProgressUI(1, 'Enviando PDF para a IA analisar...', 
+    cargoAtual ? 'Filtrando disciplinas para o cargo: ' + cargoAtual : 'Preparando analise...');
+  
+  var disciplinasDoGemini = null;
+  var textoCompleto = '';
+  
+  // ✅ v151: ESTRATÉGIA: Gemini primeiro (lê PDF nativo, melhor qualidade)
+  // 1. Enviar PDF ao Gemini no modo "disciplinas" (extrai disciplinas+tópicos diretamente)
+  // 2. Se modo disciplinas falha, enviar no modo "texto" como fallback
+  // 3. pdf.js como último recurso (apenas se servidor estiver fora)
   
   try {
-    // Tentar converter no browser com pdf.js
-    textoCompleto = await _extrairTextoPDFNoBrowser(pdfFiles, updateDetalhe);
-    console.log(`✅ v140: pdf.js extraiu ${textoCompleto.length} chars no browser`);
-  } catch (browserErr) {
-    console.warn('⚠️ v140: pdf.js falhou no browser:', browserErr.message);
-    
-    // FALLBACK: Enviar PDF ao servidor para conversão via Gemini
-    updateDetalhe('Conversor local indisponivel. Enviando PDF ao servidor...');
-    try {
-      textoCompleto = await _extrairTextoPDFNoServidor(pdfFiles[0], updateDetalhe);
-      usouFallbackServidor = true;
-      console.log(`✅ v140: Servidor extraiu ${textoCompleto.length} chars via Gemini`);
-    } catch (serverErr) {
-      console.error('❌ v140: Servidor tambem falhou:', serverErr.message);
-      // Mostrar tela de erro final
-      _mostrarErroPDFConversao(serverErr.message || browserErr.message);
-      return;
+    // ✅ TENTATIVA 1: Gemini modo disciplinas (melhor resultado)
+    if (cargoAtual) {
+      renderProgressUI(2, 'IA esta analisando o edital e extraindo disciplinas...', 
+        'Buscando conteudo programatico para: ' + cargoAtual);
+      
+      try {
+        disciplinasDoGemini = await _extrairDisciplinasPDFNoServidor(pdfFiles[0], cargoAtual, updateDetalhe);
+        if (disciplinasDoGemini && disciplinasDoGemini.disciplinas && disciplinasDoGemini.disciplinas.length > 0) {
+          console.log('✅ v151: Gemini extraiu ' + disciplinasDoGemini.disciplinas.length + ' disciplinas + salvou no banco!');
+        } else if (disciplinasDoGemini && Array.isArray(disciplinasDoGemini) && disciplinasDoGemini.length > 0) {
+          // Compatibilidade: resposta antiga sem wrapper
+          console.log('✅ v151: Gemini extraiu ' + disciplinasDoGemini.length + ' disciplinas (formato legado)');
+        } else {
+          disciplinasDoGemini = null;
+        }
+      } catch (discErr) {
+        console.warn('⚠️ v151: Modo disciplinas falhou:', discErr.message);
+        disciplinasDoGemini = null;
+      }
     }
+    
+    // ✅ TENTATIVA 2: Se disciplinas não foram extraídas, usar modo texto
+    if (!disciplinasDoGemini) {
+      renderProgressUI(2, 'Convertendo PDF para texto via IA...', 'Extraindo texto do documento...');
+      try {
+        textoCompleto = await _extrairTextoPDFNoServidor(pdfFiles[0], updateDetalhe);
+        console.log('✅ v151: Servidor extraiu ' + textoCompleto.length + ' chars via Gemini (modo texto)');
+      } catch (serverErr) {
+        console.warn('⚠️ v151: Modo texto servidor falhou:', serverErr.message);
+        
+        // ✅ TENTATIVA 3: Último recurso - pdf.js no browser
+        renderProgressUI(2, 'Tentando conversor local...', 'Usando conversor de backup...');
+        try {
+          textoCompleto = await _extrairTextoPDFNoBrowser(pdfFiles, updateDetalhe);
+          console.log('✅ v151: pdf.js extraiu ' + textoCompleto.length + ' chars (fallback)');
+        } catch (browserErr) {
+          console.error('❌ v151: Todos os metodos falharam');
+          _mostrarErroPDFConversao(serverErr.message || browserErr.message);
+          return;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('❌ v151: Erro inesperado:', err);
+    _mostrarErroPDFConversao(err.message);
+    return;
   }
   
+  // ═══════════════════════════════════════════════════════════════
+  // ETAPA 3-4: PROCESSAR RESULTADO
+  // ═══════════════════════════════════════════════════════════════
+  
+  // ✅ v151: Se obteve disciplinas diretamente do Gemini COM IDs do banco, usar diretamente
+  if (disciplinasDoGemini) {
+    var discs = disciplinasDoGemini.disciplinas || disciplinasDoGemini;
+    var editalId = disciplinasDoGemini.edital_id || null;
+    
+    renderProgressUI(4, 'Disciplinas extraidas com sucesso!', discs.length + ' disciplinas para o cargo');
+    
+    console.log('✅ v151: Usando disciplinas do Gemini direto (sem duplo processamento)');
+    
+    // Mapear para formato do interviewData
+    var disciplinasComIds = (Array.isArray(discs) ? discs : []).map(function(d) {
+      return {
+        id: d.id || 0,
+        disciplina_id_real: d.disciplina_id_real || d.id || 0,
+        nome: d.nome,
+        peso: d.peso || 1,
+        categoria: d.categoria || (d.peso >= 2 ? 'ESPECÍFICOS' : 'BÁSICOS'),
+        tipo: d.tipo || 'geral',
+        questoes: d.questoes || 0,
+        total_topicos: d.total_topicos || (d.topicos || []).length,
+        topicos: (d.topicos || []).map(function(t) {
+          return { id: t.id || 0, nome: typeof t === 'string' ? t : t.nome };
+        })
+      };
+    });
+    
+    interviewData.edital_id = editalId;
+    interviewData.disciplinas_do_edital = disciplinasComIds;
+    interviewData.disciplinas_extraidas = discs;
+    interviewData.area_detectada = disciplinasDoGemini.area_detectada || '';
+    interviewData.concurso_detectado = disciplinasDoGemini.cargo_detectado || concursoAtual;
+    interviewData.via_texto_colado = false;
+    interviewData.via_pdf_gemini = true;
+    
+    console.log('📋 v151: ' + disciplinasComIds.length + ' disciplinas prontas: ' + disciplinasComIds.map(function(d) { return d.nome + ' (peso ' + d.peso + ')'; }).join(', '));
+    
+    isProcessingEdital = false;
+    
+    // Mostrar modal de revisão
+    if (disciplinasComIds.length > 0) {
+      try {
+        await mostrarModalRevisaoDisciplinas({ disciplinas: discs, edital_id: editalId }, editalId);
+        console.log('✅ v151: Modal de revisao confirmado');
+      } catch (modalErr) {
+        console.warn('⚠️ v151: Modal fechado/cancelado');
+      }
+    }
+    
+    renderEntrevistaStep2();
+    return;
+  }
+  
+  // ✅ FALLBACK: Se obteve texto (não disciplinas), processar normalmente
   // Adicionar texto de outros arquivos TXT
-  for (const f of outrosFiles) {
+  for (var fi = 0; fi < outrosFiles.length; fi++) {
+    var f = outrosFiles[fi];
     if (f.name.toLowerCase().endsWith('.txt') || f.type === 'text/plain') {
       textoCompleto += '\n\n' + (await f.text());
     }
@@ -4312,28 +4402,25 @@ async function converterPDFParaTextoEProcessar(editaisFiles) {
   
   // Validar texto extraido
   if (textoCompleto.trim().length < 100) {
-    console.warn('⚠️ v140: Texto extraido muito curto:', textoCompleto.length);
+    console.warn('⚠️ v151: Texto extraido muito curto:', textoCompleto.length);
     _mostrarErroPDFSemTexto();
     return;
   }
   
-  console.log(`✅ v140: Texto total do PDF: ${textoCompleto.trim().length} chars. Seguindo fluxo TXT...`);
+  console.log('✅ v151: Texto total: ' + textoCompleto.trim().length + ' chars. Enviando para processar-texto...');
   
   // ═══════════════════════════════════════════════════════════════
-  // ETAPA 2: ENVIAR TEXTO AO SERVIDOR
+  // ETAPA 3: ENVIAR TEXTO AO SERVIDOR
   // ═══════════════════════════════════════════════════════════════
-  renderProgressUI(2, 'Enviando texto extraido para o servidor...', `${textoCompleto.trim().length} caracteres prontos para analise`);
-  await new Promise(r => setTimeout(r, 400)); // pequeno delay visual
+  renderProgressUI(3, 'Enviando texto extraido para analise...', textoCompleto.trim().length + ' caracteres prontos');
+  await new Promise(function(r) { setTimeout(r, 400); });
   
   // ═══════════════════════════════════════════════════════════════
-  // ETAPA 3 e 4: IA PROCESSA → IMPORTA (via processarTextoEditalColado)
+  // ETAPA 4: IA PROCESSA → IMPORTA (via processarTextoEditalColado)
   // ═══════════════════════════════════════════════════════════════
-  renderProgressUI(3, 'IA esta analisando o conteudo do edital...', 'Extraindo disciplinas e topicos...');
+  renderProgressUI(4, 'IA esta analisando o conteudo do edital...', 'Extraindo disciplinas e topicos para ' + (cargoAtual || 'o cargo') + '...');
   
-  // Resetar flag para que processarTextoEditalColado nao seja bloqueado
   isProcessingEdital = false;
-  
-  // Chamar o fluxo natural de processamento de texto (igual TXT)
   await processarTextoEditalColado(textoCompleto.trim());
 }
 
@@ -4469,6 +4556,57 @@ async function _extrairTextoPDFNoServidor(pdfFile, updateDetalhe) {
   }
   
   throw new Error(response.data?.error || 'Servidor nao conseguiu extrair texto do PDF');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ✅ v151: Enviar PDF ao servidor para extrair disciplinas via Gemini
+// O Gemini lê o PDF nativamente e extrai disciplinas+tópicos de uma só vez,
+// filtrado pelo cargo. O backend agora salva no banco e retorna IDs reais.
+// ═══════════════════════════════════════════════════════════════
+async function _extrairDisciplinasPDFNoServidor(pdfFile, cargo, updateDetalhe) {
+  updateDetalhe('Enviando PDF para IA analisar disciplinas do cargo "' + cargo + '"...');
+  
+  var formData = new FormData();
+  formData.append('arquivo', pdfFile);
+  formData.append('user_id', currentUser?.id || '');
+  formData.append('cargo', cargo);
+  formData.append('concurso_nome', interviewData?.concurso_nome || '');
+  formData.append('banca', interviewData?.banca_organizadora || '');
+  formData.append('modo', 'disciplinas');
+  
+  var response = await axios.post('/api/editais/pdf-para-texto', formData, {
+    timeout: 180000, // 3 minutos (PDFs grandes demoram mais)
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: function(p) {
+      if (p.total) {
+        var pct = Math.round((p.loaded / p.total) * 100);
+        updateDetalhe('Enviando PDF... ' + pct + '%');
+      }
+    }
+  });
+  
+  // ✅ v151: Backend agora retorna disciplinas COM IDs do banco
+  if (response.data && response.data.modo === 'disciplinas' && response.data.disciplinas && response.data.disciplinas.length > 0) {
+    updateDetalhe('IA extraiu ' + response.data.disciplinas.length + ' disciplinas para o cargo!');
+    console.log('✅ v151: Gemini modo disciplinas retornou:', response.data.disciplinas.length, 'disciplinas');
+    console.log('✅ v151: edital_id:', response.data.edital_id, '| cargo_detectado:', response.data.cargo_detectado);
+    // Retornar objeto completo com edital_id e disciplinas com IDs
+    return {
+      disciplinas: response.data.disciplinas,
+      edital_id: response.data.edital_id || null,
+      cargo_detectado: response.data.cargo_detectado || cargo,
+      nivel: response.data.nivel || '',
+      total: response.data.total
+    };
+  }
+  
+  // Se retornou texto mas não disciplinas, não é erro - mas retorna null para tentar outro caminho
+  if (response.data && response.data.texto) {
+    console.log('⚠️ v151: Gemini retornou texto puro no modo disciplinas, fallback para processamento normal');
+    return null;
+  }
+  
+  throw new Error(response.data?.error || 'IA nao conseguiu extrair disciplinas do PDF');
 }
 
 // ═══════════════════════════════════════════════════════════════

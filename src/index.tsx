@@ -6758,9 +6758,9 @@ app.post('/api/editais/upload', async (c) => {
         
         console.log(`📄 PDF detectado no upload: ${file.name} (${fileSizeMB.toFixed(2)} MB) - v140: apenas armazenamento`)
         
-        if (fileSizeMB > 5) {
+        if (fileSizeMB > 15) {
           return c.json({
-            error: `PDF muito grande (${fileSizeMB.toFixed(1)}MB). Máximo: 5MB. Converta para TXT.`,
+            error: `PDF muito grande (${fileSizeMB.toFixed(1)}MB). Máximo: 15MB. Converta para TXT.`,
             errorType: 'FILE_TOO_LARGE',
             suggestion: 'Use https://smallpdf.com/pdf-to-text para converter',
             fileName: file.name,
@@ -7252,37 +7252,42 @@ app.post('/api/editais/processar/:id', async (c) => {
             // Prompt otimizado para extração de disciplinas
             const cargoLower = cargoDesejado?.toLowerCase() || ''
             
-            // ✅ CORREÇÃO v23: Prompt completamente reformulado para análise REAL do edital
-            // Não usar mais área pré-detectada, deixar a IA ler o edital completo
+            // ✅ v151: Prompt reformulado para análise REAL do edital COM filtragem rigorosa por cargo
             const promptPDF = `VOCÊ É UM ESPECIALISTA EM ANÁLISE DE EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
 
 === SUA TAREFA ===
 Analise ESTE DOCUMENTO PDF (edital de concurso) e extraia TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO.
 
-=== CARGO INFORMADO PELO CANDIDATO ===
+=== CARGO DO CANDIDATO ===
 ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo principal do edital)'}
 
-=== INSTRUÇÕES CRÍTICAS ===
-1. LEIA O DOCUMENTO COMPLETO - procure pela seção "CONTEÚDO PROGRAMÁTICO" ou "ANEXO" com o programa de disciplinas
-2. IDENTIFIQUE O CARGO CORRETO - se houver múltiplos cargos, extraia APENAS as disciplinas do cargo especificado acima
-3. DIFERENCIE "CONHECIMENTOS BÁSICOS/GERAIS" de "CONHECIMENTOS ESPECÍFICOS"
-4. EXTRAIA OS NOMES EXATOS DAS DISCIPLINAS conforme aparecem no edital
-5. EXTRAIA OS TÓPICOS REAIS listados sob cada disciplina
-6. NÃO INVENTE NADA - use APENAS o que está escrito no documento
+=== REGRA FUNDAMENTAL DE FILTRAGEM POR CARGO ===
+ATENÇÃO: Editais frequentemente contêm conteúdo programático para MÚLTIPLOS cargos. Você DEVE filtrar:
+1. DISCIPLINAS COMUNS/BÁSICAS (Módulo I, "Para todos os cargos") → INCLUIR (peso 1, categoria "BÁSICOS")
+2. DISCIPLINAS ESPECÍFICAS (Módulo II) → INCLUIR SOMENTE se forem do cargo "${cargoDesejado?.toUpperCase() || 'PRINCIPAL'}" (peso 2, categoria "ESPECÍFICOS")
+3. OUTROS CARGOS → IGNORAR COMPLETAMENTE
+4. Se o cargo tem área/especialidade (ex: "Analista - TI"), filtrar pelas disciplinas específicas dessa área
 
-=== COMO ENCONTRAR AS DISCIPLINAS ===
-- Procure por "ANEXO I", "ANEXO II" ou "ANEXO III" - geralmente tem "CONTEÚDO PROGRAMÁTICO"
-- Procure por "MÓDULO I", "MÓDULO II" - separando conhecimentos básicos de específicos
-- Procure por títulos como "Língua Portuguesa:", "Direito Constitucional:", etc.
+=== INSTRUÇÕES CRÍTICAS ===
+1. LEIA O DOCUMENTO COMPLETO - procure pela seção "CONTEÚDO PROGRAMÁTICO" ou "ANEXO"
+2. EXTRAIA OS NOMES EXATOS DAS DISCIPLINAS conforme aparecem no edital
+3. EXTRAIA TODOS OS TÓPICOS REAIS listados sob cada disciplina - transcreva literalmente
+4. NÃO INVENTE NADA - use APENAS o que está escrito no documento
+5. Se houver quadro de provas com nº de questões, use para definir o peso
+
+=== ONDE PROCURAR ===
+- "ANEXO I", "ANEXO II", "ANEXO III" → "CONTEÚDO PROGRAMÁTICO"
+- "MÓDULO I", "MÓDULO II" → separando básicos de específicos
+- Títulos como "Língua Portuguesa:", "Direito Constitucional:", etc.
 
 === FORMATO DE RESPOSTA (APENAS JSON) ===
 {
-  "cargo_detectado": "Nome do cargo que você identificou no edital",
+  "cargo_detectado": "Nome exato do cargo encontrado no edital",
   "disciplinas": [
     {
       "nome": "Nome EXATO da Disciplina como aparece no edital",
       "peso": 1,
-      "categoria": "CONHECIMENTOS BÁSICOS ou CONHECIMENTOS ESPECÍFICOS",
+      "categoria": "BÁSICOS",
       "topicos": ["Tópico 1 exato do edital", "Tópico 2 exato", "..."]
     }
   ]
@@ -7681,24 +7686,48 @@ ${cargoDesejado?.toUpperCase() || 'NÃO ESPECIFICADO (analise para o cargo princ
 
 // ════════════════════════════════════════════════════════════════════════
 // ✅ v140: ENDPOINT FALLBACK - Converter PDF para texto puro via Gemini
-// Usado quando pdf.js falha no browser (Safari/iOS/PWA)
+// ✅ v151: PDF→Gemini direto - Extrai disciplinas+tópicos OU texto puro
+// pdf.js NÃO é mais usado como primeira opção - Gemini lê PDF nativamente
 // ════════════════════════════════════════════════════════════════════════
 app.post('/api/editais/pdf-para-texto', async (c) => {
   try {
     const formData = await c.req.parseBody()
     const arquivo = formData['arquivo'] as File
+    const cargo = (formData['cargo'] as string || '').trim()
+    const userId = (formData['user_id'] as string || '').trim()
+    const concursoNome = (formData['concurso_nome'] as string || '').trim()
+    const banca = (formData['banca'] as string || '').trim()
+    // ✅ v151: modo padrão agora é 'disciplinas' (Gemini extrai tudo de uma vez)
+    const modo = (formData['modo'] as string || 'disciplinas').trim()
     
     if (!arquivo || !(arquivo instanceof File)) {
       return c.json({ error: 'Nenhum arquivo PDF recebido' }, 400)
     }
     
     console.log('═'.repeat(60))
-    console.log('📄 v140: FALLBACK PDF→TEXTO via Gemini')
+    console.log(`📄 v151: PDF→${modo === 'disciplinas' ? 'DISCIPLINAS' : 'TEXTO'} via Gemini (direto)`)
     console.log('═'.repeat(60))
     console.log(`📄 Arquivo: ${arquivo.name} (${(arquivo.size / 1024 / 1024).toFixed(2)} MB)`)
+    console.log(`👤 Cargo: ${cargo || 'Não informado'}`)
+    console.log(`🏢 Concurso: ${concursoNome || 'Não informado'}`)
     
-    if (arquivo.size > 5 * 1024 * 1024) {
-      return c.json({ error: 'PDF muito grande (max 5MB)' }, 413)
+    // ✅ v151: Limite aumentado para 15MB (Gemini suporta até 20MB inline)
+    if (arquivo.size > 15 * 1024 * 1024) {
+      return c.json({ error: 'PDF muito grande (max 15MB). Converta para TXT em smallpdf.com/pdf-to-text' }, 413)
+    }
+    
+    // ✅ v150: Se tem userId e cargo não foi informado, buscar da entrevista
+    let cargoFinal = cargo
+    if (!cargoFinal && userId) {
+      try {
+        const entrevista = await c.env.DB.prepare(
+          'SELECT cargo, concurso_nome, area_geral FROM interviews WHERE user_id = ? ORDER BY id DESC LIMIT 1'
+        ).bind(userId).first() as any
+        if (entrevista?.cargo) {
+          cargoFinal = entrevista.cargo
+          console.log(`👤 v150: Cargo recuperado da entrevista: "${cargoFinal}"`)
+        }
+      } catch (e) { /* ignore */ }
     }
     
     // Obter API key do Gemini
@@ -7721,8 +7750,64 @@ app.post('/api/editais/pdf-para-texto', async (c) => {
     const base64PDF = btoa(binary)
     console.log(`📄 PDF base64: ${base64PDF.length} chars`)
     
-    // Prompt simples: apenas transcrever texto
-    const promptTexto = 'TRANSCREVA O CONTEUDO COMPLETO deste documento PDF para texto puro.\n\nINSTRUCOES:\n- TRANSCREVA literalmente TODO o conteudo do documento\n- PRIORIZE as secoes de CONTEUDO PROGRAMATICO, ANEXOS e QUADRO DE PROVAS se existirem\n- Mantenha a estrutura (titulos, subtitulos, listas, numeracao)\n- NAO resuma, NAO comente, NAO interprete\n- NAO adicione formatacao markdown\n- Apenas transcreva o texto como esta no documento\n\nINICIE A TRANSCRICAO:'
+    // ✅ v151: Prompt inteligente baseado no modo - melhorado para alinhar ao cargo
+    let promptTexto: string
+    const concursoHint = concursoNome ? `\nConcurso/Órgão: ${concursoNome}` : ''
+    const bancaHint = banca ? `\nBanca Organizadora: ${banca}` : ''
+    
+    if (modo === 'disciplinas' && cargoFinal) {
+      // MODO DISCIPLINAS: Extrair disciplinas e tópicos diretamente do PDF filtrando por cargo
+      promptTexto = `VOCÊ É UM ESPECIALISTA EM ANÁLISE DE EDITAIS DE CONCURSOS PÚBLICOS BRASILEIROS.
+
+=== SUA TAREFA ===
+Analise ESTE DOCUMENTO PDF (edital de concurso) e extraia TODAS as disciplinas e tópicos do CONTEÚDO PROGRAMÁTICO especificamente para o cargo informado.
+
+=== INFORMAÇÕES DO CANDIDATO ===
+Cargo: ${cargoFinal.toUpperCase()}${concursoHint}${bancaHint}
+
+=== REGRA FUNDAMENTAL DE FILTRAGEM POR CARGO ===
+ATENÇÃO: Editais frequentemente contêm conteúdo programático para MÚLTIPLOS cargos. Você DEVE filtrar corretamente:
+
+1. IDENTIFICAR O CARGO: Procure no edital por "${cargoFinal.toUpperCase()}" ou variações (com/sem acento, abreviações, cargo + área/especialidade)
+2. DISCIPLINAS COMUNS/BÁSICAS: Seções como "Conhecimentos Básicos", "Conhecimentos Gerais", "Para todos os cargos", "Módulo I - Conhecimentos Básicos" → INCLUIR (peso 1, categoria "BÁSICOS")
+3. DISCIPLINAS ESPECÍFICAS: Seções como "Conhecimentos Específicos", "Módulo II" → INCLUIR SOMENTE se forem do cargo "${cargoFinal.toUpperCase()}" (peso 2, categoria "ESPECÍFICOS")
+4. OUTROS CARGOS: Se encontrar seções "PARA O CARGO DE X" onde X é DIFERENTE do cargo acima → IGNORAR COMPLETAMENTE
+5. NÍVEL DO CARGO: Se o edital separa por "Nível Superior" vs "Nível Médio", filtre pelo nível correto do cargo
+6. ÁREA/ESPECIALIDADE: Se o cargo tem área (ex: "Analista - TI"), filtre pelas disciplinas específicas dessa área
+
+=== INSTRUÇÕES CRÍTICAS ===
+1. LEIA O DOCUMENTO COMPLETO - procure pelos ANEXOS (geralmente Anexo II ou III) com "CONTEÚDO PROGRAMÁTICO"
+2. EXTRAIA OS NOMES EXATOS DAS DISCIPLINAS conforme aparecem no edital
+3. EXTRAIA TODOS OS TÓPICOS REAIS listados sob cada disciplina - transcreva literalmente
+4. NÃO INVENTE NADA - use APENAS o que está escrito no documento
+5. Se o edital tem "MÓDULO I" (Básicos) e "MÓDULO II" (Específicos), respeite essa divisão
+6. Inclua TODAS as disciplinas do cargo (tipicamente entre 6 e 20)
+7. Cada disciplina deve ter TODOS os tópicos listados no edital (até 50 por disciplina)
+8. Se houver quadro de provas com nº de questões, use para definir o peso (mais questões = peso maior)
+
+=== ONDE PROCURAR ===
+- "ANEXO I", "ANEXO II", "ANEXO III" → "CONTEÚDO PROGRAMÁTICO"
+- "MÓDULO I", "MÓDULO II" → separando básicos de específicos
+- Títulos como "Língua Portuguesa:", "Direito Constitucional:", "Conhecimentos Específicos para o cargo de..."
+- Quadros com "Disciplina | Nº Questões | Peso"
+
+=== FORMATO DE RESPOSTA (APENAS JSON, SEM MARKDOWN) ===
+{"cargo_detectado":"Nome exato do cargo encontrado no edital","nivel":"superior ou medio","disciplinas":[{"nome":"Nome EXATO da Disciplina","peso":1,"categoria":"BÁSICOS","questoes":10,"topicos":["Tópico 1 exato do edital","Tópico 2","Tópico 3"]}]}`
+    } else {
+      // MODO TEXTO: transcrever conteúdo focando no conteúdo programático
+      const cargoHint = cargoFinal ? `\n- PRIORIZE a seção de CONTEÚDO PROGRAMÁTICO do cargo "${cargoFinal.toUpperCase()}"` : ''
+      promptTexto = `TRANSCREVA O CONTEUDO COMPLETO deste documento PDF para texto puro.
+
+INSTRUCOES:
+- TRANSCREVA literalmente TODO o conteudo do documento${cargoHint}
+- PRIORIZE as secoes de CONTEUDO PROGRAMATICO, ANEXOS e QUADRO DE PROVAS se existirem
+- Mantenha a estrutura (titulos, subtitulos, listas, numeracao)
+- NAO resuma, NAO comente, NAO interprete
+- NAO adicione formatacao markdown
+- Apenas transcreva o texto como esta no documento
+
+INICIE A TRANSCRICAO:`
+    }
     
     const sleepMs = (ms: number) => new Promise(r => setTimeout(r, ms))
     const modelos = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
@@ -7730,9 +7815,9 @@ app.post('/api/editais/pdf-para-texto', async (c) => {
     
     for (const modelo of modelos) {
       try {
-        console.log('🚀 Convertendo PDF→texto com ' + modelo + '...')
+        console.log(`🚀 Processando PDF (${modo}) com ${modelo}...`)
         const resp = await fetch(
-          'https://generativelanguage.googleapis.com/v1beta/models/' + modelo + ':generateContent?key=' + geminiKey,
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${geminiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -7743,13 +7828,16 @@ app.post('/api/editais/pdf-para-texto', async (c) => {
                   { inline_data: { mime_type: 'application/pdf', data: base64PDF } }
                 ]
               }],
-              generationConfig: { temperature: 0.05, maxOutputTokens: 65536 }
+              generationConfig: { 
+                temperature: modo === 'disciplinas' ? 0.1 : 0.05, 
+                maxOutputTokens: 65536 
+              }
             })
           }
         )
         
         if (resp.status === 429) {
-          console.log('⚠️ ' + modelo + ': Rate limit, aguardando 5s...')
+          console.log(`⚠️ ${modelo}: Rate limit, aguardando 5s...`)
           await sleepMs(5000)
           continue
         }
@@ -7759,14 +7847,14 @@ app.post('/api/editais/pdf-para-texto', async (c) => {
           const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
           if (txt.length > 200) {
             textoExtraido = txt
-            console.log('✅ PDF→texto com ' + modelo + ': ' + txt.length + ' chars')
+            console.log(`✅ PDF→${modo} com ${modelo}: ${txt.length} chars`)
             break
           }
         } else {
-          console.log('⚠️ ' + modelo + ': HTTP ' + resp.status)
+          console.log(`⚠️ ${modelo}: HTTP ${resp.status}`)
         }
       } catch (err: any) {
-        console.error('❌ ' + modelo + ' erro:', err.message)
+        console.error(`❌ ${modelo} erro:`, err.message)
       }
     }
     
@@ -7777,7 +7865,146 @@ app.post('/api/editais/pdf-para-texto', async (c) => {
       }, 422)
     }
     
-    console.log('✅ v140: PDF convertido para texto: ' + textoExtraido.length + ' chars')
+    // ✅ v151: Se modo=disciplinas, parsear JSON, salvar no banco e retornar estruturado
+    // Isso EVITA o duplo processamento (não precisa chamar processar-texto depois)
+    if (modo === 'disciplinas') {
+      try {
+        const jsonStr = textoExtraido.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim()
+        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          const resultado = JSON.parse(jsonMatch[0].replace(/[\x00-\x1F\x7F]/g, ' ').replace(/,\s*([}\]])/g, '$1'))
+          if (resultado?.disciplinas?.length > 0) {
+            console.log(`✅ v151: Gemini extraiu ${resultado.disciplinas.length} disciplinas diretamente do PDF para cargo "${cargoFinal}"`)
+            
+            // ✅ v151: Salvar edital e disciplinas no banco (evita duplo processamento)
+            let editalId: number | null = null
+            const disciplinasComIds: any[] = []
+            
+            try {
+              // Criar edital no banco
+              const editalResult = await c.env.DB.prepare(`
+                INSERT INTO editais (user_id, nome_concurso, texto_completo, status) 
+                VALUES (?, ?, ?, 'ativo')
+              `).bind(
+                userId || '1',
+                concursoNome || resultado.cargo_detectado || cargoFinal || 'Não especificado',
+                textoExtraido.substring(0, 50000)
+              ).run()
+              
+              editalId = editalResult.meta?.last_row_id as number
+              console.log(`✅ v151: Edital criado ID ${editalId}`)
+              
+              // Processar disciplinas em lotes
+              for (let i = 0; i < resultado.disciplinas.length; i++) {
+                const d = resultado.disciplinas[i]
+                const nome = (d.nome || '').trim()
+                if (!nome) continue
+                
+                const peso = d.peso || (d.categoria === 'ESPECÍFICOS' ? 2 : 1)
+                const categoria = d.categoria || (peso >= 2 ? 'ESPECÍFICOS' : 'BÁSICOS')
+                
+                // Buscar ou criar disciplina
+                let discId: number
+                const existente = await c.env.DB.prepare(
+                  'SELECT id FROM disciplinas WHERE UPPER(nome) = UPPER(?)'
+                ).bind(nome).first() as any
+                
+                if (existente) {
+                  discId = existente.id
+                } else {
+                  const ins = await c.env.DB.prepare(
+                    'INSERT INTO disciplinas (nome, area, tipo) VALUES (?, ?, ?)'
+                  ).bind(nome, categoria === 'ESPECÍFICOS' ? 'especifica' : 'geral', 'geral').run()
+                  discId = ins.meta?.last_row_id as number
+                }
+                
+                // Criar vínculo edital_disciplinas
+                const edResult = await c.env.DB.prepare(
+                  'INSERT INTO edital_disciplinas (edital_id, disciplina_id, peso, questoes) VALUES (?, ?, ?, ?)'
+                ).bind(editalId, discId, peso, d.questoes || 0).run()
+                const edDiscId = edResult.meta?.last_row_id as number
+                
+                // Inserir tópicos
+                const topicos = (d.topicos || []).slice(0, 50)
+                const topicosComIds: any[] = []
+                
+                for (const t of topicos) {
+                  const topicoNome = typeof t === 'string' ? t : t.nome || ''
+                  if (!topicoNome.trim()) continue
+                  try {
+                    const tRes = await c.env.DB.prepare(
+                      'INSERT INTO topicos (disciplina_id, nome) VALUES (?, ?)'
+                    ).bind(discId, topicoNome.trim()).run()
+                    topicosComIds.push({ id: tRes.meta?.last_row_id, nome: topicoNome.trim() })
+                  } catch (topErr: any) {
+                    // Tópico já existe, buscar ID
+                    const existing = await c.env.DB.prepare(
+                      'SELECT id FROM topicos WHERE disciplina_id = ? AND UPPER(nome) = UPPER(?)'
+                    ).bind(discId, topicoNome.trim()).first() as any
+                    if (existing) {
+                      topicosComIds.push({ id: existing.id, nome: topicoNome.trim() })
+                    }
+                  }
+                }
+                
+                disciplinasComIds.push({
+                  id: edDiscId,
+                  disciplina_id_real: discId,
+                  nome: nome,
+                  peso: peso,
+                  categoria: categoria,
+                  questoes: d.questoes || 0,
+                  total_topicos: topicosComIds.length,
+                  topicos: topicosComIds
+                })
+              }
+              
+              console.log(`✅ v151: ${disciplinasComIds.length} disciplinas salvas no banco para edital ${editalId}`)
+              
+            } catch (dbErr: any) {
+              console.error('⚠️ v151: Erro ao salvar no banco (retornando disciplinas sem IDs):', dbErr.message)
+              // Retornar disciplinas sem IDs de banco, frontend vai lidar
+              return c.json({
+                success: true,
+                modo: 'disciplinas',
+                disciplinas: resultado.disciplinas.map((d: any, i: number) => ({
+                  id: -(i + 1),
+                  disciplina_id_real: -(i + 1),
+                  nome: d.nome,
+                  peso: d.peso || 1,
+                  categoria: d.categoria || 'BÁSICOS',
+                  questoes: d.questoes || 0,
+                  total_topicos: d.topicos?.length || 0,
+                  topicos: (d.topicos || []).map((t: any) => ({ nome: typeof t === 'string' ? t : t.nome }))
+                })),
+                cargo_detectado: resultado.cargo_detectado || cargoFinal,
+                nivel: resultado.nivel || '',
+                total: resultado.disciplinas.length,
+                caracteres: textoExtraido.length,
+                fonte: 'gemini_pdf_direto_v151'
+              })
+            }
+            
+            return c.json({
+              success: true,
+              modo: 'disciplinas',
+              edital_id: editalId,
+              disciplinas: disciplinasComIds,
+              cargo_detectado: resultado.cargo_detectado || cargoFinal,
+              nivel: resultado.nivel || '',
+              total: disciplinasComIds.length,
+              caracteres: textoExtraido.length,
+              fonte: 'gemini_pdf_direto_v151'
+            })
+          }
+        }
+      } catch (parseErr: any) {
+        console.warn('⚠️ v151: JSON parse falhou no modo disciplinas, retornando texto puro:', parseErr.message)
+      }
+      // Fallback: retornar texto puro mesmo no modo disciplinas
+    }
+    
+    console.log(`✅ v151: PDF convertido para texto: ${textoExtraido.length} chars`)
     return c.json({ 
       success: true, 
       texto: textoExtraido,
@@ -7785,7 +8012,7 @@ app.post('/api/editais/pdf-para-texto', async (c) => {
     })
     
   } catch (err: any) {
-    console.error('❌ Erro no fallback PDF→texto:', err)
+    console.error('❌ Erro no PDF→Gemini:', err)
     return c.json({ error: err.message || 'Erro ao processar PDF' }, 500)
   }
 })
