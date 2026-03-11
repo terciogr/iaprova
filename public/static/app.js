@@ -3337,6 +3337,25 @@ async function iniciar2FA(authCode) {
   // Guardar authCode para uso na verificação
   window._pending2FA_authCode = authCode;
   
+  // ✅ v163: Mostrar loading IMEDIATO (síncrono) antes do fetch
+  const app = document.getElementById('app');
+  if (app) {
+    app.innerHTML = `
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0F172A 0%,#1E293B 50%,#0F172A 100%);padding:20px;">
+        <div style="background:white;border-radius:20px;padding:40px 32px;max-width:420px;width:100%;box-shadow:0 25px 50px rgba(0,0,0,0.25);text-align:center;">
+          <div style="width:72px;height:72px;background:linear-gradient(135deg,#122D6A,#2A4A9F);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
+            <span style="font-size:32px;">🔐</span>
+          </div>
+          <h2 style="color:#1E293B;font-size:22px;font-weight:700;margin:0 0 16px;">Verificação de Segurança</h2>
+          <div style="display:flex;align-items:center;justify-content:center;gap:10px;">
+            <div style="width:24px;height:24px;border:3px solid #122D6A;border-top-color:transparent;border-radius:50%;animation:spin2fa 0.8s linear infinite;"></div>
+            <p style="color:#64748B;font-size:14px;margin:0;">Preparando verificação...</p>
+          </div>
+          <style>@keyframes spin2fa { to { transform: rotate(360deg); } }</style>
+        </div>
+      </div>`;
+  }
+  
   try {
     // Buscar info do user (sem token!) via endpoint seguro
     const response = await axios.get('/api/auth/2fa-info?authCode=' + authCode);
@@ -18801,42 +18820,44 @@ window.carregarSessoesAdmin = async function() {
   
   try {
     var response = await axios.get('/api/admin/sessions');
-    var sessions = response.data.sessions || [];
+    var devices = response.data.sessions || [];
     var container = document.getElementById('sessoes-content');
     if (!container) return;
     
-    // Separar por status
-    var ativas = sessions.filter(function(s) { return s.status === 'ativa'; });
-    var revogadas = sessions.filter(function(s) { return s.status === 'revogada'; });
-    var expiradas = sessions.filter(function(s) { return s.status === 'expirada'; });
+    // ✅ v163: API já retorna agrupado por dispositivo único
+    var ativos = devices.filter(function(d) { return d.status === 'ativo'; });
+    var revogados = devices.filter(function(d) { return d.status === 'revogado'; });
     
-    // Agrupar ativas por usuario
+    // Agrupar ativos por usuario
     var porUsuario = {};
-    ativas.forEach(function(s) {
-      var key = s.user_id;
-      if (!porUsuario[key]) porUsuario[key] = { name: s.user_name || 'Desconhecido', email: s.user_email || '', sessions: [] };
-      porUsuario[key].sessions.push(s);
+    ativos.forEach(function(d) {
+      var key = d.user_id;
+      if (!porUsuario[key]) porUsuario[key] = { name: d.user_name || 'Desconhecido', email: d.user_email || '', devices: [] };
+      porUsuario[key].devices.push(d);
     });
+    
+    var totalDevices = ativos.length;
+    var totalUsers = Object.keys(porUsuario).length;
     
     var html = '';
     
     // Resumo
     html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">';
     html += '<div style="background:linear-gradient(135deg,#059669,#10B981);padding:16px;border-radius:12px;color:white;text-align:center;">';
-    html += '<div style="font-size:28px;font-weight:800;">' + ativas.length + '</div>';
-    html += '<div style="font-size:11px;opacity:0.8;">Sessoes Ativas</div></div>';
+    html += '<div style="font-size:28px;font-weight:800;">' + totalDevices + '</div>';
+    html += '<div style="font-size:11px;opacity:0.8;">Dispositivos Ativos</div></div>';
+    html += '<div style="background:linear-gradient(135deg,#2563EB,#3B82F6);padding:16px;border-radius:12px;color:white;text-align:center;">';
+    html += '<div style="font-size:28px;font-weight:800;">' + totalUsers + '</div>';
+    html += '<div style="font-size:11px;opacity:0.8;">Usuários Conectados</div></div>';
     html += '<div style="background:linear-gradient(135deg,#DC2626,#EF4444);padding:16px;border-radius:12px;color:white;text-align:center;">';
-    html += '<div style="font-size:28px;font-weight:800;">' + revogadas.length + '</div>';
-    html += '<div style="font-size:11px;opacity:0.8;">Revogadas</div></div>';
-    html += '<div style="background:linear-gradient(135deg,#6B7280,#9CA3AF);padding:16px;border-radius:12px;color:white;text-align:center;">';
-    html += '<div style="font-size:28px;font-weight:800;">' + expiradas.length + '</div>';
-    html += '<div style="font-size:11px;opacity:0.8;">Expiradas</div></div>';
+    html += '<div style="font-size:28px;font-weight:800;">' + revogados.length + '</div>';
+    html += '<div style="font-size:11px;opacity:0.8;">Dispositivos Revogados</div></div>';
     html += '</div>';
     
     // Lista por usuario
     var userKeys = Object.keys(porUsuario);
     if (userKeys.length === 0) {
-      html += '<div style="text-align:center;padding:32px;color:' + textMuted + ';"><i class="fas fa-check-circle" style="font-size:32px;color:#10B981;margin-bottom:8px;display:block;"></i>Nenhuma sessao ativa no momento.</div>';
+      html += '<div style="text-align:center;padding:32px;color:' + textMuted + ';"><i class="fas fa-check-circle" style="font-size:32px;color:#10B981;margin-bottom:8px;display:block;"></i>Nenhum dispositivo ativo no momento.</div>';
     } else {
       userKeys.forEach(function(uid) {
         var u = porUsuario[uid];
@@ -18846,32 +18867,34 @@ window.carregarSessoesAdmin = async function() {
         html += '<div>';
         html += '<span style="font-weight:700;color:' + textColor + ';font-size:14px;">' + (u.name || 'Sem nome') + '</span>';
         if (isAdmin) html += ' <span style="background:#122D6A;color:white;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;">ADMIN</span>';
-        html += '<br><span style="font-size:12px;color:' + textMuted + ';">' + u.email + '</span>';
+        html += '<br><span style="font-size:12px;color:' + textMuted + ';">' + u.email + ' — ' + u.devices.length + ' dispositivo(s)</span>';
         html += '</div>';
         if (!isAdmin) {
-          html += '<button onclick="revogarTodasSessoesUsuario(' + uid + ')" style="padding:4px 10px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:6px;font-size:11px;cursor:pointer;"><i class="fas fa-ban mr-1"></i>Revogar Todas</button>';
+          html += '<button onclick="revogarTodasSessoesUsuario(' + uid + ')" style="padding:4px 10px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:6px;font-size:11px;cursor:pointer;"><i class="fas fa-ban mr-1"></i>Revogar Todos</button>';
         }
         html += '</div>';
         
-        u.sessions.forEach(function(s) {
+        u.devices.forEach(function(d) {
           var icon = 'fa-desktop';
-          var devLower = (s.device_info || '').toLowerCase();
+          var devLower = (d.device_info || '').toLowerCase();
           if (devLower.includes('android') || devLower.includes('ios')) icon = 'fa-mobile-alt';
           else if (devLower.includes('mac')) icon = 'fa-laptop';
           else if (devLower.includes('windows')) icon = 'fa-desktop';
           else if (devLower.includes('linux')) icon = 'fa-terminal';
           
-          var lastSeen = s.last_seen_at ? new Date(s.last_seen_at + 'Z').toLocaleString('pt-BR') : 'Desconhecido';
-          var createdAt = s.created_at ? new Date(s.created_at + 'Z').toLocaleString('pt-BR') : 'Desconhecido';
+          var lastSeen = d.last_seen_at ? new Date(d.last_seen_at + 'Z').toLocaleString('pt-BR') : 'Desconhecido';
+          var firstSeen = d.first_seen_at ? new Date(d.first_seen_at + 'Z').toLocaleString('pt-BR') : 'Desconhecido';
           
           html += '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:' + (isAdmin ? 'rgba(18,45,106,0.05)' : 'transparent') + ';border-radius:8px;margin-bottom:4px;border:1px solid ' + borderColor + ';">';
           html += '<div style="width:36px;height:36px;background:#E8EDF5;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas ' + icon + '" style="color:#122D6A;font-size:14px;"></i></div>';
           html += '<div style="flex:1;min-width:0;">';
-          html += '<div style="font-size:13px;font-weight:600;color:' + textColor + ';">' + (s.device_info || 'Desconhecido') + '</div>';
-          html += '<div style="font-size:11px;color:' + textMuted + ';"><i class="fas fa-map-marker-alt mr-1"></i>IP: ' + (s.ip_address || '?') + ' | <i class="fas fa-clock mr-1"></i>Visto: ' + lastSeen + '</div>';
-          html += '<div style="font-size:10px;color:' + textMuted + ';">Criada: ' + createdAt + '</div>';
+          html += '<div style="font-size:13px;font-weight:600;color:' + textColor + ';">' + (d.device_info || 'Desconhecido') + '</div>';
+          html += '<div style="font-size:11px;color:' + textMuted + ';"><i class="fas fa-clock mr-1"></i>Último acesso: ' + lastSeen + '</div>';
+          html += '<div style="font-size:10px;color:' + textMuted + ';">Primeiro acesso: ' + firstSeen + ' | ' + (d.total_sessions || 1) + ' sessão(ões)</div>';
           html += '</div>';
-          html += '<button onclick="revogarSessaoUnica(' + s.id + ')" style="padding:4px 8px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:6px;font-size:10px;cursor:pointer;flex-shrink:0;" title="Desconectar este dispositivo"><i class="fas fa-times"></i></button>';
+          if (!isAdmin) {
+            html += '<button onclick="revogarDispositivo(' + d.user_id + ',\'' + (d.device_info || '').replace(/'/g, "\\'") + '\')" style="padding:4px 8px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:6px;font-size:10px;cursor:pointer;flex-shrink:0;" title="Desconectar dispositivo"><i class="fas fa-times"></i></button>';
+          }
           html += '</div>';
         });
         
@@ -18879,15 +18902,15 @@ window.carregarSessoesAdmin = async function() {
       });
     }
     
-    // Sessoes revogadas recentes (ultimas 10)
-    if (revogadas.length > 0) {
+    // Dispositivos revogados
+    if (revogados.length > 0) {
       html += '<details style="margin-top:16px;">';
-      html += '<summary style="cursor:pointer;font-weight:600;font-size:13px;color:' + textMuted + ';padding:8px 0;"><i class="fas fa-ban mr-1"></i>Sessoes Revogadas (' + revogadas.length + ')</summary>';
+      html += '<summary style="cursor:pointer;font-weight:600;font-size:13px;color:' + textMuted + ';padding:8px 0;"><i class="fas fa-ban mr-1"></i>Dispositivos Revogados (' + revogados.length + ')</summary>';
       html += '<div style="padding:8px 0;">';
-      revogadas.slice(0, 10).forEach(function(s) {
+      revogados.slice(0, 10).forEach(function(d) {
         html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-left:3px solid #EF4444;margin-bottom:4px;opacity:0.6;">';
         html += '<i class="fas fa-ban" style="color:#EF4444;font-size:12px;"></i>';
-        html += '<div style="flex:1;font-size:11px;color:' + textMuted + ';">' + (s.user_name || '?') + ' - ' + (s.device_info || '?') + ' (revogada ' + (s.revoked_at ? new Date(s.revoked_at + 'Z').toLocaleString('pt-BR') : '?') + ' por ' + (s.revoked_by || '?') + ')</div>';
+        html += '<div style="flex:1;font-size:11px;color:' + textMuted + ';">' + (d.user_name || '?') + ' - ' + (d.device_info || '?') + ' (' + (d.total_sessions || 0) + ' sessões)</div>';
         html += '</div>';
       });
       html += '</div></details>';
@@ -18896,9 +18919,21 @@ window.carregarSessoesAdmin = async function() {
     container.innerHTML = html;
     
   } catch (error) {
-    console.error('Erro ao carregar sessoes:', error);
+    console.error('Erro ao carregar dispositivos:', error);
     var container = document.getElementById('sessoes-content');
-    if (container) container.innerHTML = '<div style="text-align:center;padding:32px;color:#EF4444;"><i class="fas fa-exclamation-triangle" style="font-size:24px;margin-bottom:8px;display:block;"></i>Erro ao carregar sessoes</div>';
+    if (container) container.innerHTML = '<div style="text-align:center;padding:32px;color:#EF4444;"><i class="fas fa-exclamation-triangle" style="font-size:24px;margin-bottom:8px;display:block;"></i>Erro ao carregar dispositivos</div>';
+  }
+};
+
+// ✅ v163: Revogar dispositivo (todas as sessões de um device_info)
+window.revogarDispositivo = async function(userId, deviceInfo) {
+  if (!confirm('Desconectar dispositivo "' + deviceInfo + '"?')) return;
+  try {
+    await axios.post('/api/admin/sessions/revoke-device', { user_id: userId, device_info: deviceInfo });
+    showToast('Dispositivo desconectado com sucesso', 'success');
+    await carregarSessoesAdmin();
+  } catch (error) {
+    showToast('Erro ao revogar dispositivo: ' + (error.response?.data?.error || error.message), 'error');
   }
 };
 
@@ -20406,16 +20441,33 @@ window.exportarRelatorioFinanceiro = async function() {
   }
 };
 
-// Ver lista de usuários
-window.verListaUsuarios = async function() {
+// Ver lista de usuários — ✅ v163: busca server-side + paginação real
+window._adminUsersPage = 1;
+window._adminUsersSearch = '';
+window._adminUsersFilter = 'all';
+
+window.verListaUsuarios = async function(page, search, filter) {
+  page = page || window._adminUsersPage || 1;
+  search = (typeof search === 'string') ? search : (window._adminUsersSearch || '');
+  filter = filter || window._adminUsersFilter || 'all';
+  window._adminUsersPage = page;
+  window._adminUsersSearch = search;
+  window._adminUsersFilter = filter;
+
   try {
-    const response = await axios.get('/api/admin/users?limit=100', {});
-    const { users, pagination } = response.data;
+    let url = `/api/admin/users?limit=50&page=${page}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    const response = await axios.get(url, {});
+    let { users, pagination } = response.data;
     
-    const modal = document.createElement('div');
-    modal.id = 'modal-admin-users';
-    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
-    
+    // Filtro local para status (premium/free/verified)
+    if (filter === 'premium') users = users.filter(u => u.is_premium_real || u.is_premium);
+    else if (filter === 'free') users = users.filter(u => !(u.is_premium_real || u.is_premium));
+    else if (filter === 'verified') users = users.filter(u => u.email_verified);
+    else if (filter === 'unverified') users = users.filter(u => !u.email_verified);
+
+    window._adminUsers = users;
+
     const renderUserRows = (filteredUsers) => {
       return filteredUsers.map(u => {
         const totalAcessos = u.total_acessos || 0;
@@ -20423,6 +20475,7 @@ window.verListaUsuarios = async function() {
         const cadastroDate = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '-';
         const diasCadastro = u.created_at ? Math.floor((Date.now() - new Date(u.created_at).getTime()) / (1000*60*60*24)) : 0;
         const isPremium = u.is_premium_real || u.is_premium;
+        const paidViaMP = !!(u.payment_id && !String(u.payment_id).startsWith('manual_'));
         
         let trialLabel = '', trialClass = '';
         if (isPremium) {
@@ -20442,23 +20495,58 @@ window.verListaUsuarios = async function() {
         const emailIcon = jaRecebeuEmail ? 'fa-check text-green-500' : 'fa-paper-plane text-orange-500';
         const emailTitle = jaRecebeuEmail ? 'Já recebeu email' : 'Enviar email';
         
+        // ✅ v163: Botão de remover premium - só aparece se admin concedeu (não pagou via MP)
+        let premiumBtn = '';
+        if (isPremium && paidViaMP) {
+          premiumBtn = '<button class="p-1 text-gray-300 cursor-not-allowed rounded" title="Premium pago via MercadoPago — não pode remover"><i class="fas fa-crown text-xs"></i><i class="fas fa-lock text-[8px] ml-0.5"></i></button>';
+        } else {
+          premiumBtn = '<button onclick="togglePremiumAdmin(' + u.id + ',' + (isPremium ? 0 : 1) + ')" class="p-1 ' + (isPremium ? 'text-gray-400' : 'text-yellow-500') + ' hover:bg-yellow-50 rounded" title="' + (isPremium ? 'Remover Premium (concedido por admin)' : 'Dar Premium') + '"><i class="fas fa-crown text-xs"></i></button>';
+        }
+        
         return '<tr class="border-b border-gray-200 hover:bg-blue-50/50" id="user-row-' + u.id + '">' +
           '<td class="p-2 text-gray-500 text-xs">' + u.id + '</td>' +
           '<td class="p-2 text-gray-900 font-medium text-xs">' + (u.name || '-') + '</td>' +
           '<td class="p-2 text-gray-600 text-xs">' + u.email + '</td>' +
           '<td class="p-2 text-center">' + (u.email_verified ? '<i class="fas fa-check-circle text-green-500"></i>' : '<i class="fas fa-times-circle text-red-400"></i>') + '</td>' +
-          '<td class="p-2 text-center" id="premium-status-' + u.id + '">' + (isPremium ? '<span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-[10px] font-bold">PRO</span>' : '<span class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px]">Free</span>') + '</td>' +
+          '<td class="p-2 text-center" id="premium-status-' + u.id + '">' + (isPremium ? '<span class="px-2 py-0.5 ' + (paidViaMP ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700') + ' rounded-full text-[10px] font-bold">' + (paidViaMP ? 'PRO 💳' : 'PRO 🎁') + '</span>' : '<span class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px]">Free</span>') + '</td>' +
           '<td class="p-2 text-center text-xs text-gray-500"><div>' + cadastroDate + '</div><div class="text-[10px] opacity-60">' + diasCadastro + 'd</div></td>' +
           '<td class="p-2 text-center"><span class="px-2 py-0.5 ' + trialClass + ' rounded-full text-[10px] font-medium">' + trialLabel + '</span></td>' +
           '<td class="p-2 text-center"><span class="px-2 py-0.5 ' + acessosClass + ' rounded-full text-[10px] font-medium">' + totalAcessos + '</span></td>' +
           '<td class="p-2 text-center"><div class="flex items-center justify-center gap-1">' +
             '<button onclick="editarUsuarioAdmin(' + u.id + ',\'' + (u.name || '').replace(/'/g, "\\'") + '\',\'' + u.email + '\',' + (isPremium ? 1 : 0) + ')" class="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Editar"><i class="fas fa-edit text-xs"></i></button>' +
-            '<button onclick="togglePremiumAdmin(' + u.id + ',' + (isPremium ? 0 : 1) + ')" class="p-1 ' + (isPremium ? 'text-gray-400' : 'text-yellow-500') + ' hover:bg-yellow-50 rounded" title="' + (isPremium ? 'Remover' : 'Dar') + ' Premium"><i class="fas fa-crown text-xs"></i></button>' +
+            premiumBtn +
             (!isPremium ? '<button onclick="enviarEmailIndividual(' + u.id + ',\'' + u.email.replace(/'/g, '') + '\')" class="p-1 text-orange-500 hover:bg-orange-50 rounded" title="' + emailTitle + '"><i class="fas ' + emailIcon + ' text-xs"></i></button>' : '') +
             (u.email !== 'terciogomesrabelo@gmail.com' && !u.email_verified ? '<button onclick="deletarUsuarioAdmin(' + u.id + ',\'' + u.email + '\',false)" class="p-1 text-red-500 hover:bg-red-50 rounded" title="Deletar"><i class="fas fa-trash text-xs"></i></button>' : '') +
           '</div></td></tr>';
       }).join('');
     };
+    window._renderUserRows = renderUserRows;
+
+    // Paginação
+    const totalPages = pagination.pages || 1;
+    let pagBtns = '';
+    if (totalPages > 1) {
+      pagBtns += '<button ' + (page <= 1 ? 'disabled class="px-2 py-1 text-gray-300 text-xs"' : 'onclick="verListaUsuarios(' + (page-1) + ')" class="px-2 py-1 text-[#122D6A] hover:bg-blue-50 rounded text-xs cursor-pointer"') + '>‹ Ant</button>';
+      const startP = Math.max(1, page - 2), endP = Math.min(totalPages, page + 2);
+      for (let i = startP; i <= endP; i++) {
+        pagBtns += '<button onclick="verListaUsuarios(' + i + ')" class="px-2 py-1 rounded text-xs ' + (i === page ? 'bg-[#122D6A] text-white font-bold' : 'text-[#122D6A] hover:bg-blue-50 cursor-pointer') + '">' + i + '</button>';
+      }
+      pagBtns += '<button ' + (page >= totalPages ? 'disabled class="px-2 py-1 text-gray-300 text-xs"' : 'onclick="verListaUsuarios(' + (page+1) + ')" class="px-2 py-1 text-[#122D6A] hover:bg-blue-50 rounded text-xs cursor-pointer"') + '>Prox ›</button>';
+    }
+
+    // Se modal já existe, atualizar conteúdo
+    const existingModal = document.getElementById('modal-admin-users');
+    if (existingModal) {
+      const tbody = document.getElementById('users-tbody');
+      if (tbody) tbody.innerHTML = renderUserRows(users);
+      const pag = document.getElementById('users-pagination');
+      if (pag) pag.innerHTML = '<span class="text-[11px] text-gray-500">Pág ' + page + '/' + totalPages + ' (' + pagination.total + ' usuários)</span><div class="flex items-center gap-1">' + pagBtns + '</div>';
+      return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.id = 'modal-admin-users';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000] p-4';
     
     modal.innerHTML = `
       <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -20475,16 +20563,15 @@ window.verListaUsuarios = async function() {
           <div class="flex gap-2">
             <div class="flex-1 relative">
               <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-              <input type="text" id="search-users" placeholder="Buscar por nome ou email..." 
-                class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none"
-                oninput="filterAdminUsers()">
+              <input type="text" id="search-users" placeholder="Buscar por nome ou email..." value="${search}"
+                class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none">
             </div>
-            <select id="filter-users-status" onchange="filterAdminUsers()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
-              <option value="all">Todos</option>
-              <option value="premium">Premium</option>
-              <option value="free">Free</option>
-              <option value="verified">Verificados</option>
-              <option value="unverified">Não verificados</option>
+            <select id="filter-users-status" onchange="window._adminUsersFilter=this.value;verListaUsuarios(1)" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+              <option value="all" ${filter==='all'?'selected':''}>Todos</option>
+              <option value="premium" ${filter==='premium'?'selected':''}>Premium</option>
+              <option value="free" ${filter==='free'?'selected':''}>Free</option>
+              <option value="verified" ${filter==='verified'?'selected':''}>Verificados</option>
+              <option value="unverified" ${filter==='unverified'?'selected':''}>Não verificados</option>
             </select>
             <button onclick="exportarUsuariosCSV()" class="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 transition flex items-center gap-1.5 flex-shrink-0" title="Exportar CSV">
               <i class="fas fa-download text-xs"></i>
@@ -20512,20 +20599,32 @@ window.verListaUsuarios = async function() {
             </tbody>
           </table>
         </div>
-        <div class="p-2.5 border-t border-gray-200 flex-shrink-0 bg-gray-50 text-center">
+        <div id="users-pagination" class="p-2.5 border-t border-gray-200 flex-shrink-0 bg-gray-50 flex items-center justify-between">
+          <span class="text-[11px] text-gray-500">Pág ${page}/${totalPages} (${pagination.total} usuários)</span>
+          <div class="flex items-center gap-1">${pagBtns}</div>
+        </div>
+        <div class="px-2.5 pb-2 bg-gray-50 text-center">
           <p class="text-[10px] text-gray-500">
-            <i class="fas fa-paper-plane text-orange-400 mr-1"></i>= Email reengajamento | 
-            <i class="fas fa-check text-green-400 mr-1"></i>= Já recebeu | 
-            <span class="text-red-500"><i class="fas fa-trash mr-1"></i>= Excluir (só não-verificados)</span>
+            💳 PRO = pagou MercadoPago | 🎁 PRO = concedido admin | 
+            <i class="fas fa-lock text-gray-300 mr-0.5"></i>= não pode remover
           </p>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
-    
-    // Salvar dados para filtro
-    window._adminUsers = users;
-    window._renderUserRows = renderUserRows;
+
+    // Debounce na busca para buscar no server
+    let searchTimer;
+    const searchInput = document.getElementById('search-users');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          window._adminUsersSearch = searchInput.value;
+          verListaUsuarios(1, searchInput.value);
+        }, 400);
+      });
+    }
   } catch (error) {
     showToast('Erro ao carregar usuários', 'error');
   }
@@ -20564,26 +20663,28 @@ window.exportarUsuariosCSV = function() {
   URL.revokeObjectURL(url);
   showToast('✅ Arquivo CSV exportado com sucesso!', 'success');
 };
+// ✅ v163: Filtro agora usa verListaUsuarios com busca server-side
 window.filterAdminUsers = function() {
-  const search = (document.getElementById('search-users')?.value || '').toLowerCase();
+  const search = (document.getElementById('search-users')?.value || '');
   const status = document.getElementById('filter-users-status')?.value || 'all';
-  
-  let filtered = window._adminUsers || [];
-  if (search) {
-    filtered = filtered.filter(u => (u.name || '').toLowerCase().includes(search) || u.email.toLowerCase().includes(search));
-  }
-  if (status === 'premium') filtered = filtered.filter(u => u.is_premium_real || u.is_premium);
-  else if (status === 'free') filtered = filtered.filter(u => !(u.is_premium_real || u.is_premium));
-  else if (status === 'verified') filtered = filtered.filter(u => u.email_verified);
-  else if (status === 'unverified') filtered = filtered.filter(u => !u.email_verified);
-  
-  const tbody = document.getElementById('users-tbody');
-  if (tbody && window._renderUserRows) tbody.innerHTML = window._renderUserRows(filtered);
+  window._adminUsersSearch = search;
+  window._adminUsersFilter = status;
+  verListaUsuarios(1, search, status);
 };
 
 // Toggle Premium para usuário (admin)
+// ✅ v163: Bloqueia remoção se pagou via MercadoPago
 window.togglePremiumAdmin = async function(userId, setPremium) {
   try {
+    // Se está removendo, verificar se pagou via MP
+    if (!setPremium) {
+      const checkResp = await axios.get(`/api/admin/users/${userId}`, {});
+      const userData = checkResp.data?.user;
+      if (userData && userData.payment_id && !String(userData.payment_id).startsWith('manual_')) {
+        showToast('❌ Este usuário pagou via MercadoPago — não é possível remover o Premium manualmente.', 'error', 5000);
+        return;
+      }
+    }
     const days = setPremium ? 30 : 0;
     await axios.put(`/api/admin/users/${userId}`, {
       is_premium: setPremium,

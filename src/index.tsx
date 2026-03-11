@@ -4031,16 +4031,28 @@ app.get('/api/admin/sessions', async (c) => {
       is_revoked INTEGER DEFAULT 0, revoked_at DATETIME, revoked_by TEXT
     )`).run()
 
+    // ✅ v163: Agrupar por dispositivo único (user_id + device_info)
+    // Mostra apenas 1 registro por dispositivo por usuário, com o acesso mais recente
     const sessions = await DB.prepare(`
-      SELECT s.id, s.user_id, u.name as user_name, u.email as user_email,
-             s.device_info, s.ip_address, s.created_at, s.last_seen_at,
-             s.is_revoked, s.revoked_at, s.revoked_by,
-             CASE WHEN s.is_revoked = 1 THEN 'revogada'
-                  WHEN datetime('now', '-30 days') > s.created_at THEN 'expirada'
-                  ELSE 'ativa' END as status
+      SELECT 
+        MAX(s.id) as id,
+        s.user_id, 
+        u.name as user_name, 
+        u.email as user_email,
+        s.device_info, 
+        s.ip_address,
+        MIN(s.created_at) as first_seen_at,
+        MAX(s.last_seen_at) as last_seen_at,
+        COUNT(*) as total_sessions,
+        SUM(CASE WHEN s.is_revoked = 0 THEN 1 ELSE 0 END) as active_sessions,
+        CASE 
+          WHEN SUM(CASE WHEN s.is_revoked = 0 THEN 1 ELSE 0 END) > 0 THEN 'ativo'
+          ELSE 'revogado'
+        END as status
       FROM active_sessions s
       LEFT JOIN users u ON u.id = s.user_id
-      ORDER BY s.last_seen_at DESC
+      GROUP BY s.user_id, s.device_info
+      ORDER BY MAX(s.last_seen_at) DESC
       LIMIT 200
     `).all() as any
 
@@ -4105,6 +4117,31 @@ app.post('/api/admin/sessions/revoke/:session_id', async (c) => {
     return c.json({ success: true, message: `Sessão ${sessionId} revogada com sucesso` })
   } catch (error) {
     return c.json({ error: 'Erro ao revogar sessão' }, 500)
+  }
+})
+
+// ✅ v163: Revogar todas as sessões de um dispositivo específico
+app.post('/api/admin/sessions/revoke-device', async (c) => {
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+
+  const { DB } = c.env
+  try {
+    const { user_id, device_info } = await c.req.json()
+    if (!user_id || !device_info) {
+      return c.json({ error: 'user_id e device_info são obrigatórios' }, 400)
+    }
+
+    const result = await DB.prepare(`
+      UPDATE active_sessions SET is_revoked = 1, revoked_at = datetime('now'), revoked_by = 'admin-device'
+      WHERE user_id = ? AND device_info = ? AND is_revoked = 0
+    `).bind(user_id, device_info).run()
+
+    console.log(`🔒 v163: Dispositivo "${device_info}" revogado para userId=${user_id}`)
+    return c.json({ success: true, message: `Dispositivo "${device_info}" desconectado` })
+  } catch (error) {
+    return c.json({ error: 'Erro ao revogar dispositivo' }, 500)
   }
 })
 
@@ -6215,6 +6252,15 @@ app.put('/api/admin/users/:id', async (c) => {
     const userId = c.req.param('id')
     const { is_premium, premium_days, plan_id } = await c.req.json()
     
+    // ✅ v163: Bloquear remoção de premium se usuário pagou via MercadoPago
+    if (typeof is_premium !== 'undefined' && !is_premium) {
+      const userCheck = await DB.prepare('SELECT payment_id FROM users WHERE id = ?').bind(userId).first() as any
+      if (userCheck?.payment_id && !String(userCheck.payment_id).startsWith('manual_')) {
+        console.warn(`🚨 v163: Tentativa de remover premium de usuário ${userId} que pagou via MP (payment_id=${userCheck.payment_id})`)
+        return c.json({ error: 'Não é possível remover Premium de usuário que pagou via MercadoPago' }, 400)
+      }
+    }
+    
     // Atualizar premium do usuário
     if (typeof is_premium !== 'undefined') {
       if (is_premium && premium_days) {
@@ -6577,7 +6623,76 @@ app.get('/api/auth/google/callback', async (c) => {
     // ✅ v161 SEGURANÇA: 2FA para conta admin — token NUNCA vai na URL
     const userEmail = user.email || googleUser.email
     if (userEmail === ADMIN_EMAIL) {
-      console.log('🔐 v161: Admin detectado no Google callback — iniciando 2FA')
+      console.log('🔐 v161: Admin detectado no Google callback — verificando dispositivo confiável')
+      
+      // ✅ v163: Verificar se dispositivo é confiável (já fez 2FA antes)
+      const adminUA = c.req.header('User-Agent') || ''
+      const adminIP = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || ''
+      let adminDeviceInfo = 'Desconhecido'
+      if (/iPhone|iPad/i.test(adminUA)) adminDeviceInfo = 'iOS - Safari'
+      else if (/Android/i.test(adminUA)) adminDeviceInfo = 'Android'
+      else if (/Windows/i.test(adminUA)) adminDeviceInfo = 'Windows'
+      else if (/Mac/i.test(adminUA)) adminDeviceInfo = 'MacOS'
+      else if (/Linux/i.test(adminUA)) adminDeviceInfo = 'Linux'
+      if (/Chrome/i.test(adminUA) && !/Edge/i.test(adminUA)) adminDeviceInfo += ' - Chrome'
+      else if (/Firefox/i.test(adminUA)) adminDeviceInfo += ' - Firefox'
+      else if (/Safari/i.test(adminUA) && !/Chrome/i.test(adminUA)) adminDeviceInfo += ' - Safari'
+      else if (/Edge/i.test(adminUA)) adminDeviceInfo += ' - Edge'
+      
+      // Criar tabela de dispositivos confiáveis
+      await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_trusted_devices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        device_info TEXT NOT NULL,
+        ip_address TEXT,
+        user_agent_hash TEXT,
+        trusted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        is_active INTEGER DEFAULT 1
+      )`).run()
+      
+      // Gerar hash do user-agent para comparação
+      const uaHashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(adminUA))
+      const uaHash = Array.from(new Uint8Array(uaHashBuf)).map(b => b.toString(16).padStart(2, '0')).join('')
+      
+      // Verificar se este dispositivo já é confiável (mesmo user_agent_hash)
+      const trustedDevice = await DB.prepare(
+        `SELECT id FROM admin_trusted_devices WHERE user_id = ? AND user_agent_hash = ? AND is_active = 1`
+      ).bind(user.id, uaHash).first() as any
+      
+      if (trustedDevice) {
+        console.log(`🔐 v163: Dispositivo confiável encontrado (id=${trustedDevice.id}) — dispensando 2FA`)
+        await DB.prepare('UPDATE admin_trusted_devices SET last_used_at = datetime(\'now\') WHERE id = ?').bind(trustedDevice.id).run()
+        
+        // Registrar sessão e fazer login direto
+        await registerSession(DB, user.id, sessionToken, c)
+        
+        // Usar loginCode seguro (sem token na URL)
+        const loginCodeArray = new Uint8Array(16)
+        crypto.getRandomValues(loginCodeArray)
+        const loginCode = Array.from(loginCodeArray).map(b => b.toString(16).padStart(2, '0')).join('')
+        
+        await DB.prepare(`CREATE TABLE IF NOT EXISTS pending_logins (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          login_code TEXT NOT NULL UNIQUE,
+          user_id INTEGER NOT NULL,
+          session_token TEXT NOT NULL,
+          user_name TEXT, user_email TEXT, user_picture TEXT,
+          expires_at DATETIME NOT NULL,
+          used INTEGER DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`).run()
+        
+        await DB.prepare(
+          `INSERT INTO pending_logins (login_code, user_id, session_token, user_name, user_email, user_picture, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).bind(loginCode, user.id, sessionToken, user.name || googleUser.name, userEmail, googleUser.picture || '', new Date(Date.now() + 5 * 60 * 1000).toISOString()).run()
+        
+        return c.redirect(`${APP_URL}/home?googleAuth=success&loginCode=${loginCode}`)
+      }
+      
+      console.log('🔐 v163: Dispositivo novo — iniciando 2FA')
+      // Salvar uaHash temporariamente para marcar confiável após 2FA
       
       // Gerar código 2FA de 6 dígitos
       const code2fa = generate2FACode()
@@ -6616,16 +6731,24 @@ app.get('/api/auth/google/callback', async (c) => {
       try { await DB.prepare('SELECT user_picture FROM admin_2fa LIMIT 1').first() } catch {
         try { await DB.prepare('ALTER TABLE admin_2fa ADD COLUMN user_picture TEXT').run() } catch {}
       }
+      // ✅ v163: Coluna para identificar dispositivo após 2FA
+      try { await DB.prepare('SELECT ua_hash FROM admin_2fa LIMIT 1').first() } catch {
+        try { await DB.prepare('ALTER TABLE admin_2fa ADD COLUMN ua_hash TEXT').run() } catch {}
+      }
+      try { await DB.prepare('SELECT device_info FROM admin_2fa LIMIT 1').first() } catch {
+        try { await DB.prepare('ALTER TABLE admin_2fa ADD COLUMN device_info TEXT').run() } catch {}
+      }
       
       // Salvar tudo vinculado ao authCode (token fica NO BANCO, não na URL)
       const tokenHash = await hashToken(sessionToken)
       await DB.prepare(
-        `INSERT INTO admin_2fa (user_id, code, token_hash, auth_code, session_token, user_name, user_picture, expires_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO admin_2fa (user_id, code, token_hash, auth_code, session_token, user_name, user_picture, ua_hash, device_info, expires_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         user.id, code2fa, tokenHash, authCode, sessionToken,
         user.name || googleUser.name || 'Admin',
         googleUser.picture || '',
+        uaHash, adminDeviceInfo,
         expiresAt
       ).run()
       
@@ -6869,6 +6992,42 @@ app.post('/api/auth/verify-2fa', async (c) => {
     
     // ✅ Registrar sessão (agora sim, 2FA validado)
     await registerSession(DB, user.id, sessionToken, c)
+    
+    // ✅ v163: Marcar dispositivo como confiável após 2FA bem-sucedido
+    try {
+      const record2fa = await DB.prepare(
+        `SELECT ua_hash, device_info FROM admin_2fa WHERE auth_code = ? ORDER BY created_at DESC LIMIT 1`
+      ).bind(authCode).first() as any
+      
+      if (record2fa?.ua_hash) {
+        await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_trusted_devices (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          device_info TEXT NOT NULL,
+          ip_address TEXT,
+          user_agent_hash TEXT,
+          trusted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          is_active INTEGER DEFAULT 1
+        )`).run()
+        
+        // Verificar se já não existe
+        const existing = await DB.prepare(
+          'SELECT id FROM admin_trusted_devices WHERE user_id = ? AND user_agent_hash = ?'
+        ).bind(user.id, record2fa.ua_hash).first()
+        
+        if (!existing) {
+          const verifyIP = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || ''
+          await DB.prepare(
+            `INSERT INTO admin_trusted_devices (user_id, device_info, ip_address, user_agent_hash)
+             VALUES (?, ?, ?, ?)`
+          ).bind(user.id, record2fa.device_info || 'Desconhecido', verifyIP, record2fa.ua_hash).run()
+          console.log(`🔐 v163: Dispositivo "${record2fa.device_info}" marcado como confiável para admin`)
+        }
+      }
+    } catch (e) {
+      console.log('⚠️ v163: Erro ao marcar dispositivo confiável (não crítico):', e)
+    }
     
     console.log(`✅ v161: 2FA validado com sucesso para admin ${user.id}`)
     
