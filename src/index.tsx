@@ -724,6 +724,8 @@ const PUBLIC_ROUTES: Array<{ method?: string, path: string | RegExp }> = [
   // ✅ v160: 2FA admin (precisa validar token + código, não depende do middleware)
   { method: 'POST', path: '/api/auth/verify-2fa' },
   { method: 'GET',  path: '/api/auth/2fa-info' },
+  // ✅ v161: Troca de loginCode por token (Google login seguro)
+  { method: 'POST', path: '/api/auth/exchange-login-code' },
   // ✅ v157: user-by-email REMOVIDO da lista pública — agora requer autenticação
   // Webhook (validado por HMAC, não por token de sessão)
   { method: 'GET',  path: '/api/webhook/mercadopago' },
@@ -6602,22 +6604,107 @@ app.get('/api/auth/google/callback', async (c) => {
     // ✅ v156: Registrar sessão/dispositivo (para NÃO-admin, sessão ativa imediata)
     await registerSession(DB, user.id, sessionToken, c)
     
-    // Redirecionar com dados do usuário + token para /home
-    const userData = encodeURIComponent(JSON.stringify({
-      id: user.id,
-      name: user.name || googleUser.name,
-      email: user.email || googleUser.email,
-      picture: googleUser.picture,
-      authProvider: 'google',
-      token: sessionToken
-    }))
+    // ✅ v161 SEGURANÇA: Token NUNCA vai na URL — usar código temporário
+    // Gerar loginCode curto para troca segura
+    const loginCodeArray = new Uint8Array(16)
+    crypto.getRandomValues(loginCodeArray)
+    const loginCode = Array.from(loginCodeArray).map(b => b.toString(16).padStart(2, '0')).join('')
     
-    // ✅ CORREÇÃO: Redirecionar para /home para garantir que checkUser processe corretamente
-    return c.redirect(`${APP_URL}/home?googleAuth=success&user=${userData}`)
+    // Salvar na tabela temporária (reutilizar admin_2fa com flag diferente)
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS pending_logins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      login_code TEXT NOT NULL UNIQUE,
+      user_id INTEGER NOT NULL,
+      session_token TEXT NOT NULL,
+      user_name TEXT,
+      user_email TEXT,
+      user_picture TEXT,
+      auth_provider TEXT DEFAULT 'google',
+      expires_at DATETIME NOT NULL,
+      used INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`).run()
+    
+    const loginExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 min
+    await DB.prepare(
+      `INSERT INTO pending_logins (login_code, user_id, session_token, user_name, user_email, user_picture, expires_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      loginCode, user.id, sessionToken,
+      user.name || googleUser.name || '',
+      user.email || googleUser.email,
+      googleUser.picture || '',
+      loginExpiresAt
+    ).run()
+    
+    // ✅ Redirect SEM token — apenas loginCode
+    return c.redirect(`${APP_URL}/home?googleAuth=success&loginCode=${loginCode}`)
     
   } catch (error) {
     console.error('Erro no callback Google:', error)
     return c.redirect(`${APP_URL}?error=google_auth_failed`)
+  }
+})
+
+// ✅ v161 SEGURANÇA: Trocar loginCode por token (para login Google de usuários normais)
+// O token nunca vai na URL — este endpoint faz a troca segura
+app.post('/api/auth/exchange-login-code', async (c) => {
+  const { DB } = c.env
+  
+  try {
+    const { loginCode } = await c.req.json()
+    
+    if (!loginCode) {
+      return c.json({ error: 'loginCode é obrigatório' }, 400)
+    }
+    
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS pending_logins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      login_code TEXT NOT NULL UNIQUE,
+      user_id INTEGER NOT NULL,
+      session_token TEXT NOT NULL,
+      user_name TEXT,
+      user_email TEXT,
+      user_picture TEXT,
+      auth_provider TEXT DEFAULT 'google',
+      expires_at DATETIME NOT NULL,
+      used INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`).run()
+    
+    const record = await DB.prepare(
+      `SELECT id, user_id, session_token, user_name, user_email, user_picture, auth_provider, expires_at, used 
+       FROM pending_logins WHERE login_code = ? AND used = 0 
+       ORDER BY created_at DESC LIMIT 1`
+    ).bind(loginCode).first() as any
+    
+    if (!record) {
+      return c.json({ error: 'Código de login inválido ou expirado' }, 400)
+    }
+    
+    if (new Date(record.expires_at) < new Date()) {
+      return c.json({ error: 'Código de login expirado. Faça login novamente.' }, 400)
+    }
+    
+    // Marcar como usado (single-use)
+    await DB.prepare('UPDATE pending_logins SET used = 1 WHERE id = ?').bind(record.id).run()
+    
+    console.log(`✅ v161: LoginCode trocado com sucesso para userId=${record.user_id}`)
+    
+    return c.json({
+      success: true,
+      token: record.session_token,
+      user: {
+        id: record.user_id,
+        email: record.user_email,
+        name: record.user_name,
+        picture: record.user_picture,
+        authProvider: record.auth_provider || 'google'
+      }
+    })
+  } catch (error: any) {
+    console.error('❌ v161: Erro ao trocar loginCode:', error)
+    return c.json({ error: 'Erro interno' }, 500)
   }
 })
 

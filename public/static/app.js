@@ -1464,11 +1464,20 @@ function checkUser() {
     return;
   }
   
-  // Tratar sucesso do Google OAuth
+  // ✅ v161 SEGURANÇA: Login Google via loginCode (token NUNCA na URL)
+  const loginCode = urlParams.get('loginCode');
+  if (googleAuth === 'success' && loginCode) {
+    console.log('🔐 v161: Trocando loginCode por token...');
+    window.history.replaceState({}, document.title, '/home');
+    trocarLoginCode(loginCode);
+    return;
+  }
+  
+  // Fallback: se veio googleAuth=success sem loginCode (compatibilidade)
   if (googleAuth === 'success' && userData) {
     try {
       const user = JSON.parse(decodeURIComponent(userData));
-      console.log('✅ Login Google bem sucedido:', user);
+      console.log('✅ Login Google (fallback):', user);
       
       currentUser = {
         id: user.id,
@@ -1478,10 +1487,8 @@ function checkUser() {
         authProvider: 'google'
       };
       
-      // ✅ v154 SEGURANÇA: Salvar token assinado + dados da sessão
       if (user.token) {
         localStorage.setItem('sessionToken', user.token);
-        console.log('🔐 Token de sessão Google salvo');
       }
       localStorage.setItem('userId', String(user.id));
       localStorage.setItem('userEmail', user.email);
@@ -1489,19 +1496,8 @@ function checkUser() {
       localStorage.setItem('userPicture', user.picture || '');
       localStorage.setItem('authProvider', 'google');
       
-      // Limpar parâmetros da URL DEPOIS de processar
       window.history.replaceState({}, document.title, '/home');
-      
       showToast('🎉 Login com Google realizado com sucesso!', 'success');
-      
-      // ✅ v158: Se é admin (Google), confirmar flag para mostrar botões admin
-      if (user.email === 'terciogomesrabelo@gmail.com') {
-        window._serverConfirmedAdmin = true;
-        if (window._atualizarBotoesAdmin) window._atualizarBotoesAdmin();
-      }
-      
-      // Verificar entrevista e ir para dashboard/entrevista
-      console.log('🚀 Redirecionando após login Google...');
       validarSessaoEContinuar();
       return;
     } catch (e) {
@@ -3295,6 +3291,45 @@ window.verificarEmailJaValidado = async function(email) {
     showToast('Erro ao verificar status do email', 'error');
   }
 };
+
+// ============== TROCA DE LOGIN CODE (v161) ==============
+// Para login Google de usuários normais: troca loginCode por token via API segura
+async function trocarLoginCode(loginCode) {
+  try {
+    const response = await axios.post('/api/auth/exchange-login-code', { loginCode });
+    
+    if (response.data.success) {
+      const user = response.data.user;
+      const token = response.data.token;
+      
+      console.log('✅ v161: LoginCode trocado com sucesso');
+      
+      currentUser = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+        authProvider: user.authProvider || 'google'
+      };
+      
+      localStorage.setItem('sessionToken', token);
+      localStorage.setItem('userId', String(user.id));
+      localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('userName', user.name || '');
+      localStorage.setItem('userPicture', user.picture || '');
+      localStorage.setItem('authProvider', user.authProvider || 'google');
+      
+      showToast('🎉 Login com Google realizado com sucesso!', 'success');
+      validarSessaoEContinuar();
+    } else {
+      throw new Error(response.data.error || 'Erro desconhecido');
+    }
+  } catch (error) {
+    console.error('❌ v161: Erro ao trocar loginCode:', error);
+    showToast('Erro ao completar login. Tente novamente.', 'error');
+    renderLogin();
+  }
+}
 
 // ============== TELA DE 2FA ADMIN (v161) ==============
 // Busca info do servidor e renderiza a tela
