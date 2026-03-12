@@ -1983,6 +1983,7 @@ function renderLandingPage() {
             <button onclick="scrollToSection('features')" class="hover:text-[#122D6A] transition">Recursos</button>
             <button onclick="scrollToSection('pricing')" class="hover:text-[#122D6A] transition">Planos</button>
             <button onclick="scrollToSection('faq')" class="hover:text-[#122D6A] transition">FAQ</button>
+            <button onclick="scrollToSection('quem-somos')" class="hover:text-[#122D6A] transition">Quem Somos</button>
           </div>
           <div class="flex items-center gap-2">
             <button onclick="goToLogin()" class="px-4 py-2 text-[#122D6A] font-semibold hover:bg-gray-50 rounded-lg transition text-sm">
@@ -2934,6 +2935,152 @@ function renderLandingPage() {
         </div>
       </section>
       
+      <!-- ====== QUEM SOMOS ====== -->
+      <section id="quem-somos" class="py-16 md:py-24 px-4 bg-white">
+        <div class="max-w-5xl mx-auto">
+          
+          <!-- Header -->
+          <div class="text-center mb-12 md:mb-16">
+            <span class="inline-block px-3 py-1 bg-[#122D6A]/10 text-[#122D6A] text-xs font-bold uppercase tracking-wider rounded-full mb-4">Quem Somos</span>
+            <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900">
+              Quem está por trás do <span class="text-[#122D6A]">IAprova</span>
+            </h2>
+            <p class="text-gray-500 mt-3 max-w-2xl mx-auto">Um produto criado por quem conhece a realidade dos concursos públicos por dentro.</p>
+          </div>
+          
+          <!-- Fundador Card -->
+          <div class="max-w-4xl mx-auto">
+            <div class="bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+              <div class="md:flex">
+                
+                <!-- Foto/Avatar + Credenciais -->
+                <div class="md:w-2/5 bg-gradient-to-br from-[#0D1F4D] to-[#1A3A7F] p-8 md:p-10 flex flex-col items-center justify-center text-center">
+                  <div class="w-28 h-28 md:w-32 md:h-32 rounded-full bg-white/15 border-4 border-white/20 flex items-center justify-center mb-5">
+                    <span class="text-4xl md:text-5xl font-extrabold text-white">TG</span>
+                  </div>
+                  <h3 class="text-xl md:text-2xl font-bold text-white mb-1">Tércio Gomes Rabelo</h3>
+                  <p class="text-blue-200/80 text-sm font-medium mb-5">Fundador do IAprova</p>
+                  
+                  <!-- Credenciais Badge -->
+                  <div class="space-y-2.5 w-full">
+                    <div class="flex items-center gap-2.5 px-4 py-2.5 bg-white/10 rounded-lg">
+                      <i class="fas fa-landmark text-emerald-400 text-sm flex-shrink-0"></i>
+                      <span class="text-blue-100 text-xs text-left leading-snug">Auditor de Controle Externo — TCE-PI</span>
+                    </div>
+                    <div class="flex items-center gap-2.5 px-4 py-2.5 bg-white/10 rounded-lg">
+                      <i class="fas fa-graduation-cap text-emerald-400 text-sm flex-shrink-0"></i>
+                      <span class="text-blue-100 text-xs text-left leading-snug">Bacharel em Direito — UFPI</span>
+                    </div>
+                    <div class="flex items-center gap-2.5 px-4 py-2.5 bg-white/10 rounded-lg">
+                      <i class="fas fa-certificate text-emerald-400 text-sm flex-shrink-0"></i>
+                      <span class="text-blue-100 text-xs text-left leading-snug">Especialista em Tecnologias de Gestão Pública e Responsabilidade Fiscal</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Texto / História -->
+                <div class="md:w-3/5 p-8 md:p-10">
+                  <div class="space-y-4 text-gray-600 text-sm leading-relaxed">
+                    <p>
+                      O IAprova nasceu de um <strong class="text-gray-900">problema real</strong>: estudar para concurso público exige organização, planejamento e muito tempo para preparar materiais. A maioria das pessoas perde horas montando resumos, planejamentos e simulados em vez de focar no que realmente importa — <strong class="text-gray-900">aprender e evoluir no conteúdo</strong>.
+                    </p>
+                    <p>
+                      Ao longo da minha trajetória profissional, sempre estive ligado a gestão pública, análise de dados, tecnologia e melhoria de processos. Antes de atuar no Tribunal de Contas, trabalhei na <strong class="text-gray-900">Caixa Econômica Federal</strong> e na <strong class="text-gray-900">Secretaria de Planejamento do Estado do Piauí</strong> — experiências que reforçaram minha visão sobre eficiência, organização e uso de tecnologia para resolver problemas reais.
+                    </p>
+                    <p>
+                      Foi justamente essa combinação de <strong class="text-gray-900">experiência prática, tecnologia e estudo para concursos</strong> que motivou a criação do IAprova.
+                    </p>
+                  </div>
+                  
+                  <!-- Trajetória compacta -->
+                  <div class="mt-6 pt-6 border-t border-gray-100">
+                    <p class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">Trajetória profissional</p>
+                    <div class="flex flex-wrap gap-2">
+                      <span class="px-3 py-1.5 bg-[#122D6A]/5 rounded-full text-[#122D6A] text-xs font-medium">TCE-PI</span>
+                      <span class="px-3 py-1.5 bg-[#122D6A]/5 rounded-full text-[#122D6A] text-xs font-medium">Caixa Econômica Federal</span>
+                      <span class="px-3 py-1.5 bg-[#122D6A]/5 rounded-full text-[#122D6A] text-xs font-medium">SEPLAN-PI</span>
+                      <span class="px-3 py-1.5 bg-[#122D6A]/5 rounded-full text-[#122D6A] text-xs font-medium">UFPI — Direito</span>
+                    </div>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+          </div>
+          
+          <!-- Missão -->
+          <div class="max-w-4xl mx-auto mt-12">
+            <div class="bg-gradient-to-br from-[#0D1F4D] to-[#122D6A] rounded-2xl p-8 md:p-10 relative overflow-hidden">
+              <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-5">
+                  <div class="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-bullseye text-emerald-400"></i>
+                  </div>
+                  <h3 class="text-xl font-bold text-white">A missão do IAprova</h3>
+                </div>
+                <p class="text-lg md:text-xl font-semibold text-white mb-6 leading-relaxed">
+                  Democratizar o acesso a ferramentas inteligentes de estudo para concursos públicos.
+                </p>
+                <div class="grid sm:grid-cols-2 gap-4">
+                  <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <i class="fas fa-robot text-emerald-400 text-xs"></i>
+                    </div>
+                    <div>
+                      <p class="text-white font-semibold text-sm">Automatizar o planejamento</p>
+                      <p class="text-blue-200/70 text-xs leading-relaxed mt-0.5">A IA organiza cronograma, metas e prioridades para você.</p>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <i class="fas fa-user-cog text-emerald-400 text-xs"></i>
+                    </div>
+                    <div>
+                      <p class="text-white font-semibold text-sm">Conteúdo personalizado</p>
+                      <p class="text-blue-200/70 text-xs leading-relaxed mt-0.5">Material gerado sob medida para o seu edital e banca.</p>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <i class="fas fa-clock text-emerald-400 text-xs"></i>
+                    </div>
+                    <div>
+                      <p class="text-white font-semibold text-sm">Menos tempo organizando</p>
+                      <p class="text-blue-200/70 text-xs leading-relaxed mt-0.5">Gaste menos tempo planejando e mais tempo estudando.</p>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <i class="fas fa-hand-holding-usd text-emerald-400 text-xs"></i>
+                    </div>
+                    <div>
+                      <p class="text-white font-semibold text-sm">Custo acessível</p>
+                      <p class="text-blue-200/70 text-xs leading-relaxed mt-0.5">Ferramenta profissional a um preço que cabe no bolso de qualquer estudante.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Evolução contínua -->
+          <div class="max-w-4xl mx-auto mt-8">
+            <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 md:p-8 flex flex-col sm:flex-row items-start gap-4">
+              <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-sync-alt text-emerald-600"></i>
+              </div>
+              <div>
+                <h4 class="font-bold text-gray-900 mb-1">Produto em constante evolução</h4>
+                <p class="text-gray-600 text-sm leading-relaxed">
+                  O IAprova é continuamente aprimorado com novas funcionalidades, melhorias e ajustes, sempre com foco em oferecer uma experiência de estudo cada vez mais eficiente, prática e acessível. A sua opinião faz parte dessa evolução.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      </section>
+
       <!-- ====== CTA FINAL ====== -->
       <section class="py-16 md:py-24 px-4 bg-gradient-to-b from-[#0D1F4D] to-[#122D6A] relative overflow-hidden">
         <div class="max-w-3xl mx-auto text-center relative z-10">
@@ -2971,6 +3118,11 @@ function renderLandingPage() {
               &copy; 2025–2026 IAprova. Todos os direitos reservados.
             </p>
             <div class="flex items-center gap-3">
+              <button onclick="scrollToSection('quem-somos')"
+                class="flex items-center gap-2 px-3.5 py-2 bg-white/5 rounded-lg text-blue-200/60 hover:text-white hover:bg-white/10 transition text-sm">
+                <i class="fas fa-user-tie"></i>
+                <span>Quem Somos</span>
+              </button>
               <a href="https://www.instagram.com/iaprova.app" target="_blank" rel="noopener noreferrer" 
                 class="flex items-center gap-2 px-3.5 py-2 bg-white/5 rounded-lg text-blue-200/60 hover:text-white hover:bg-white/10 transition text-sm">
                 <i class="fab fa-instagram text-base"></i>
