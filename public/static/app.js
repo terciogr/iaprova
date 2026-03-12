@@ -10023,8 +10023,8 @@ async function renderDashboardUI(plano, metas, desempenho, historico, stats, ent
               
               <!-- Avatar -->
               <div class="relative">
-                <button onclick="toggleUserMenu()" class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 hover:scale-105 transition-all">
-                  ${currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                <button onclick="toggleUserMenu()" class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold text-xs hover:bg-white/30 hover:scale-105 transition-all overflow-hidden">
+                  ${currentUser.picture ? '<img src="' + currentUser.picture + '" class="w-full h-full object-cover rounded-lg" referrerpolicy="no-referrer" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" alt=""><span style="display:none" class="w-full h-full items-center justify-center">' + (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U') + '</span>' : (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U')}
                 </button>
                 <!-- User Dropdown Moderno -->
                 <div id="userMenu" class="hidden absolute right-0 mt-2 w-52 rounded-xl shadow-2xl z-50 overflow-hidden" style="background:${currentTheme === 'dark' ? '#1f2937' : '#ffffff'};border:1px solid ${currentTheme === 'dark' ? '#374151' : '#e5e7eb'};">
@@ -17569,6 +17569,7 @@ window.abrirConfiguracoes = function() {
   const userName = currentUser.name || 'Usuário';
   const userEmail = currentUser.email || '';
   const userInitial = userName.charAt(0).toUpperCase();
+  const userPicture = currentUser.picture || localStorage.getItem('userPicture') || '';
   
   app.innerHTML = '<div class="min-h-screen ' + themes[currentTheme].bg + '">' +
     // Header
@@ -17591,8 +17592,8 @@ window.abrirConfiguracoes = function() {
       // User Profile Card
       '<div class="' + themes[currentTheme].card + ' rounded-2xl shadow-lg p-6 mb-6 border ' + themes[currentTheme].border + '">' +
         '<div class="flex items-center gap-3 sm:gap-4">' +
-          '<div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center text-white text-xl sm:text-2xl font-bold flex-shrink-0">' +
-            userInitial +
+          '<div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center text-white text-xl sm:text-2xl font-bold flex-shrink-0 overflow-hidden">' +
+            (userPicture ? '<img src="' + userPicture + '" class="w-full h-full object-cover rounded-full" referrerpolicy="no-referrer" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" alt=""><span style="display:none" class="w-full h-full items-center justify-center">' + userInitial + '</span>' : userInitial) +
           '</div>' +
           '<div class="flex-1 min-w-0">' +
             '<h2 class="text-lg sm:text-xl font-bold ' + themes[currentTheme].text + ' truncate">' + userName + '</h2>' +

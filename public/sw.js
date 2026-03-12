@@ -1,11 +1,10 @@
-// IAprova Service Worker v6.6 - v146: Admin Google Only + force logout + bloqueio completo endpoints admin
-const CACHE_NAME = 'iaprova-v146';
-const STATIC_CACHE = 'iaprova-static-v146';
-const DYNAMIC_CACHE = 'iaprova-dynamic-v141';
+// IAprova Service Worker v7.0 - v167: Correção de redirect mode para navegação
+const CACHE_NAME = 'iaprova-v167';
+const STATIC_CACHE = 'iaprova-static-v167';
+const DYNAMIC_CACHE = 'iaprova-dynamic-v167';
 
 // Arquivos essenciais para cache offline
 const STATIC_ASSETS = [
-  '/',
   '/static/app.js',
   '/static/style.css',
   '/manifest.json',
@@ -14,24 +13,18 @@ const STATIC_ASSETS = [
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
   '/icons/apple-touch-icon.png',
-  '/icons/favicon.png',
-  'https://cdn.tailwindcss.com',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-  'https://cdn.jsdelivr.net/npm/chart.js',
-  'https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+  '/icons/favicon.png'
 ];
 
 // Instalação do Service Worker
 self.addEventListener('install', (event) => {
-  console.log('🚀 IAprova SW: Instalando...');
+  console.log('🚀 IAprova SW v7.0: Instalando...');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
         console.log('📦 IAprova SW: Cacheando arquivos estáticos');
-        return cache.addAll(STATIC_ASSETS.filter(url => !url.startsWith('http')));
+        return cache.addAll(STATIC_ASSETS);
       })
       .then(() => self.skipWaiting())
       .catch((err) => console.log('⚠️ Erro no cache:', err))
@@ -40,7 +33,7 @@ self.addEventListener('install', (event) => {
 
 // Ativação do Service Worker
 self.addEventListener('activate', (event) => {
-  console.log('✅ IAprova SW: Ativado');
+  console.log('✅ IAprova SW v7.0: Ativado');
   
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -61,12 +54,22 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   
-  // ✅ Ignorar requisições que não são GET (POST, PUT, DELETE não podem ser cacheadas)
+  // ✅ Ignorar requisições que não são GET
   if (request.method !== 'GET') {
     return;
   }
   
-  // Ignorar requisições de API (sempre buscar da rede)
+  // ✅ v167 CORREÇÃO CRÍTICA: NÃO interceptar requisições de navegação (páginas HTML)
+  // Motivo: O servidor retorna 302 redirect (/ → /home ou /login).
+  // Quando o SW responde com event.respondWith() usando uma resposta de redirect,
+  // o navegador rejeita com: "a redirected response was used for a request whose
+  // redirect mode is not 'follow'". Isso causa ERR_FAILED em algumas redes/navegadores.
+  // Solução: Deixar o navegador lidar com navegação diretamente.
+  if (request.mode === 'navigate') {
+    return;
+  }
+  
+  // ✅ Ignorar requisições de API (sempre buscar da rede)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request)
@@ -83,7 +86,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // ✅ v118: NETWORK FIRST para app.js E style.css (sempre buscar a versão mais recente)
+  // ✅ Ignorar URLs externas (CDN) — deixar o browser resolver
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+  
+  // ✅ NETWORK FIRST para app.js e style.css (sempre buscar a versão mais recente)
   if (url.pathname === '/static/app.js' || url.pathname === '/static/style.css') {
     event.respondWith(
       fetch(request)
@@ -98,19 +106,17 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           return caches.match(request).then((cachedResponse) => {
-            return cachedResponse || new Response('// app.js offline', { headers: { 'Content-Type': 'application/javascript' } });
+            return cachedResponse || new Response('// offline', { headers: { 'Content-Type': 'application/javascript' } });
           });
         })
     );
     return;
   }
   
-  // Estratégia: Cache First para assets estáticos (exceto app.js)
-  if (request.destination === 'style' || 
-      request.destination === 'script' || 
-      request.destination === 'image' ||
-      url.pathname.startsWith('/static/') ||
-      url.pathname.startsWith('/icons/')) {
+  // Estratégia: Cache First para assets estáticos (ícones, imagens, etc.)
+  if (url.pathname.startsWith('/static/') ||
+      url.pathname.startsWith('/icons/') ||
+      url.pathname === '/manifest.json') {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
         if (cachedResponse) {
@@ -130,11 +136,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Estratégia: Network First para páginas HTML
+  // Qualquer outra requisição: Network First com fallback para cache
   event.respondWith(
     fetch(request)
       .then((response) => {
-        if (response.ok) {
+        // ✅ v167: NÃO cachear respostas de redirect (status 3xx)
+        if (response.ok && !response.redirected) {
           const responseClone = response.clone();
           caches.open(DYNAMIC_CACHE).then((cache) => {
             cache.put(request, responseClone);
@@ -144,13 +151,7 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => {
         return caches.match(request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Página offline fallback
-          if (request.mode === 'navigate') {
-            return caches.match('/');
-          }
+          return cachedResponse || new Response('Offline', { status: 503 });
         });
       })
   );
@@ -190,4 +191,4 @@ self.addEventListener('notificationclick', (event) => {
   }
 });
 
-console.log('📱 IAprova Service Worker carregado!');
+console.log('📱 IAprova Service Worker v7.0 carregado!');
