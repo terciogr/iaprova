@@ -26876,11 +26876,11 @@ window.abrirModalConcursos = async function() {
 
 async function carregarConcursosTodos() {
   try {
-    const response = await axios.get('/api/concursos', { timeout: 30000 });
+    const response = await axios.get('/api/concursos', { timeout: 45000 });
     const data = response.data;
     
     if (data.success && data.estados) {
-      // v93: Não resetar cache - mesclar dados novos
+      // v168: Não resetar cache - mesclar dados novos
       let comDados = 0;
       data.estados.forEach(estado => {
         if (estado.uf) {
@@ -26902,9 +26902,57 @@ async function carregarConcursosTodos() {
     }
     
     renderizarConcursosContent();
+    
+    // v168: Buscar UFs que vieram vazias individualmente (em background)
+    preencherUFsVazias();
   } catch (error) {
     console.error('Erro ao carregar concursos:', error);
     // Mesmo com erro, renderizar com o que temos no cache
+    renderizarConcursosContent();
+  }
+}
+
+// v168: Buscar UFs que ficaram sem dados individualmente com retry
+async function preencherUFsVazias() {
+  const todasUFs = Object.keys(UFS_INFO);
+  const ufsVazias = todasUFs.filter(uf => {
+    const cached = concursosCache[uf];
+    return !cached || ((cached.concursos_abertos || []).length === 0 && (cached.concursos_previstos || []).length === 0);
+  });
+  
+  if (ufsVazias.length === 0) return;
+  console.log('v168: Preenchendo ' + ufsVazias.length + ' UFs vazias:', ufsVazias.map(u => u.toUpperCase()).join(', '));
+  
+  let preenchidas = 0;
+  // Buscar em lotes de 5 para não sobrecarregar
+  for (let i = 0; i < ufsVazias.length; i += 5) {
+    const batch = ufsVazias.slice(i, i + 5);
+    const results = await Promise.allSettled(
+      batch.map(async (uf) => {
+        // Tentar até 3 vezes com delay
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            const resp = await axios.get('/api/concursos/' + uf, { timeout: 12000 });
+            const d = resp.data;
+            const ab = d.concursos_abertos || [];
+            const pr = d.concursos_previstos || [];
+            if (ab.length > 0 || pr.length > 0) {
+              concursosCache[uf] = { ...d, concursos_abertos: ab, concursos_previstos: pr };
+              return true;
+            }
+            if (attempt < 3) await new Promise(r => setTimeout(r, 400 * attempt));
+          } catch (e) {
+            if (attempt < 3) await new Promise(r => setTimeout(r, 600 * attempt));
+          }
+        }
+        return false;
+      })
+    );
+    results.forEach(r => { if (r.status === 'fulfilled' && r.value) preenchidas++; });
+  }
+  
+  if (preenchidas > 0) {
+    console.log('v168: Preenchidas ' + preenchidas + ' UFs adicionais');
     renderizarConcursosContent();
   }
 }
@@ -27060,11 +27108,11 @@ window.atualizarDadosConcursos = async function() {
   if (icon) icon.classList.add('fa-spin');
   if (btn) btn.disabled = true;
   
-  // v93: Preservar cache anterior para fallback
+  // v168: Preservar cache anterior para fallback
   const cacheAnterior = JSON.parse(JSON.stringify(concursosCache));
   
   try {
-    const response = await axios.get('/api/concursos?force=1', { timeout: 30000 });
+    const response = await axios.get('/api/concursos?force=1', { timeout: 45000 });
     const data = response.data;
     if (data.success && data.estados) {
       const novosCache = {};
@@ -27083,39 +27131,28 @@ window.atualizarDadosConcursos = async function() {
         }
       });
       
-      // v93: Só substituir cache se novos dados são melhores ou iguais
-      const comDadosAnteriores = Object.values(cacheAnterior).filter((v) => 
-        (v.concursos_abertos?.length > 0 || v.concursos_previstos?.length > 0)
-      ).length;
-      
-      if (comDadosNovos >= comDadosAnteriores || comDadosNovos >= 5) {
-        // Mesclar: novos dados + dados anteriores que não vieram
-        concursosCache = {};
-        // Primeiro, adicionar dados anteriores como base
-        Object.keys(cacheAnterior).forEach(uf => {
-          concursosCache[uf] = cacheAnterior[uf];
-        });
-        // Depois, sobrescrever com novos dados (que podem ser mais atuais)
-        Object.keys(novosCache).forEach(uf => {
-          const novo = novosCache[uf];
-          const antigo = cacheAnterior[uf];
-          // Só sobrescrever se novo tem dados OU antigo não tinha
-          if ((novo.concursos_abertos?.length > 0 || novo.concursos_previstos?.length > 0) || !antigo) {
-            concursosCache[uf] = novo;
-          }
-        });
-        showToast('Dados atualizados com sucesso!', 'success');
-      } else {
-        // Novos dados piores - manter cache anterior
-        console.warn('v93: Novos dados (' + comDadosNovos + ' UFs) piores que anteriores (' + comDadosAnteriores + ' UFs), mantendo cache');
-        concursosCache = cacheAnterior;
-        showToast('Dados mantidos (atualização parcial)', 'info');
-      }
+      // v168: Mesclar - sempre manter os melhores dados
+      concursosCache = {};
+      // Base: dados anteriores
+      Object.keys(cacheAnterior).forEach(uf => {
+        concursosCache[uf] = cacheAnterior[uf];
+      });
+      // Sobrescrever com novos dados (se têm dados ou não existia antes)
+      Object.keys(novosCache).forEach(uf => {
+        const novo = novosCache[uf];
+        const antigo = cacheAnterior[uf];
+        if ((novo.concursos_abertos?.length > 0 || novo.concursos_previstos?.length > 0) || !antigo) {
+          concursosCache[uf] = novo;
+        }
+      });
+      showToast('Dados atualizados com sucesso!', 'success');
     }
     renderizarConcursosContent();
+    
+    // v168: Preencher UFs vazias em background
+    preencherUFsVazias();
   } catch(e) {
     console.error('Erro ao atualizar concursos:', e);
-    // Restaurar cache anterior em caso de erro
     concursosCache = cacheAnterior;
     showToast('Erro ao atualizar. Dados anteriores mantidos.', 'warning');
     renderizarConcursosContent();

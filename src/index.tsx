@@ -25768,44 +25768,91 @@ app.get('/api/concursos', async (c) => {
     const hoje = new Date().toISOString().split('T')[0]
     const forceRefresh = c.req.query('force') === '1'
     
-    // 1. Verificar cache D1 do dia (se não forçar refresh)
-    if (!forceRefresh) {
+    // 1. Carregar cache D1 existente (sempre, para usar como fallback/merge)
+    let cachedData: any[] | null = null
+    let cachedTotals = { abertos: 0, previstos: 0 }
+    try {
       const cached = await c.env.DB.prepare(
         'SELECT data_json, total_abertos, total_previstos, total_ufs FROM concursos_cache WHERE cache_date = ?'
       ).bind(hoje).first() as any
-      
       if (cached) {
-        const estados = JSON.parse(cached.data_json)
-        return c.json({
-          success: true,
-          total_ufs: cached.total_ufs || estados.length,
-          cached: true,
-          cache_date: hoje,
-          estados
-        })
+        cachedData = JSON.parse(cached.data_json)
+        cachedTotals = { abertos: cached.total_abertos || 0, previstos: cached.total_previstos || 0 }
+      }
+    } catch (e) { /* ignore */ }
+    
+    // 2. Se não forçar refresh e cache existe, retornar cache
+    if (!forceRefresh && cachedData) {
+      return c.json({
+        success: true,
+        total_ufs: cachedData.length,
+        cached: true,
+        cache_date: hoje,
+        estados: cachedData
+      })
+    }
+    
+    // 3. Helper: buscar uma UF com retry automático
+    async function fetchUFComRetry(uf: string, maxRetries = 3): Promise<any> {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 10000)
+          const response = await fetch(`https://concursos-api.deno.dev/${uf}`, {
+            headers: { 'Accept': 'application/json' },
+            signal: controller.signal
+          })
+          clearTimeout(timeoutId)
+          const data = await response.json() as any
+          const ab = (data.concursos_abertos || []).length
+          const pr = (data.concursos_previstos || []).length
+          // Se retornou dados, sucesso
+          if (ab > 0 || pr > 0) {
+            return { ...data, uf: data.uf || uf }
+          }
+          // Retornou vazio - tentar novamente (pode ser cold start da API)
+          if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 300 * attempt))
+          }
+        } catch (e) {
+          if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 500 * attempt))
+          }
+        }
+      }
+      // Todas as tentativas falharam
+      return { uf, estado: uf.toUpperCase(), concursos_abertos: [], concursos_previstos: [] }
+    }
+    
+    // 4. Buscar em lotes de 9 para não sobrecarregar a API
+    const batchSize = 9
+    const allResults: any[] = []
+    for (let i = 0; i < UFS_BRASIL.length; i += batchSize) {
+      const batch = UFS_BRASIL.slice(i, i + batchSize)
+      const batchResults = await Promise.all(batch.map(uf => fetchUFComRetry(uf)))
+      allResults.push(...batchResults)
+    }
+    
+    // 5. Mesclar com cache anterior: se uma UF veio vazia agora mas tinha dados no cache, manter o cache
+    if (cachedData && cachedData.length > 0) {
+      const cacheMap = new Map<string, any>()
+      cachedData.forEach((e: any) => { if (e.uf) cacheMap.set(e.uf.toLowerCase(), e) })
+      
+      for (let i = 0; i < allResults.length; i++) {
+        const r = allResults[i]
+        const uf = (r.uf || '').toLowerCase()
+        const ab = (r.concursos_abertos || []).length
+        const pr = (r.concursos_previstos || []).length
+        if (ab === 0 && pr === 0 && cacheMap.has(uf)) {
+          const cached = cacheMap.get(uf)
+          if ((cached.concursos_abertos || []).length > 0 || (cached.concursos_previstos || []).length > 0) {
+            allResults[i] = cached // preservar dados do cache
+          }
+        }
       }
     }
     
-    // 2. Buscar da API externa (todas as UFs em paralelo)
-    const promises = UFS_BRASIL.map(async (uf) => {
-      try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 6000)
-        const response = await fetch(`https://concursos-api.deno.dev/${uf}`, {
-          headers: { 'Accept': 'application/json' },
-          signal: controller.signal
-        })
-        clearTimeout(timeoutId)
-        const data = await response.json() as any
-        return { ...data, uf: data.uf || uf }
-      } catch (e) {
-        return { uf, estado: uf.toUpperCase(), concursos_abertos: [], concursos_previstos: [] }
-      }
-    })
-    
-    const allResults = await Promise.all(promises)
-    
-    // 3. Calcular totais e qualidade dos dados
+    // 6. Calcular totais
     let totalAbertos = 0, totalPrevistos = 0, ufsComDados = 0
     allResults.forEach((e: any) => {
       const ab = (e.concursos_abertos || []).length
@@ -25815,9 +25862,10 @@ app.get('/api/concursos', async (c) => {
       if (ab > 0 || pr > 0) ufsComDados++
     })
     
-    // 4. Só salvar no cache se dados são bons (>50% das UFs com dados)
-    const qualidadeBoa = ufsComDados >= 14 // pelo menos metade das 27 UFs
-    if (qualidadeBoa) {
+    // 7. Salvar no cache se dados são melhores que o cache existente ou bons o suficiente
+    const qualidadeBoa = ufsComDados >= 14
+    const melhorQueCache = totalAbertos + totalPrevistos >= cachedTotals.abertos + cachedTotals.previstos
+    if (qualidadeBoa || melhorQueCache) {
       try {
         await c.env.DB.prepare(
           'INSERT OR REPLACE INTO concursos_cache (cache_date, data_json, total_abertos, total_previstos, total_ufs) VALUES (?, ?, ?, ?, ?)'
