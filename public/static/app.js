@@ -1989,18 +1989,14 @@ function renderLandingPage() {
               Entrar
             </button>
             <button onclick="goToLogin()" class="px-5 py-2.5 bg-[#122D6A] text-white font-semibold rounded-lg hover:bg-[#0D1F4D] transition text-sm shadow-md shadow-[#122D6A]/20">
-              Criar Conta Gratis
+              Criar Conta Grátis
             </button>
           </div>
         </div>
       </nav>
       
       <!-- ====== HERO SECTION ====== -->
-      <section class="pt-20 md:pt-24 pb-12 md:pb-20 px-4 bg-gradient-to-br from-[#0A1839] via-[#122D6A] to-[#1A3A7F] relative overflow-hidden">
-        <div class="absolute inset-0 opacity-[0.07]">
-          <div class="absolute top-10 left-[10%] w-72 h-72 bg-emerald-400 rounded-full blur-[100px]"></div>
-          <div class="absolute bottom-10 right-[10%] w-96 h-96 bg-blue-400 rounded-full blur-[120px]"></div>
-        </div>
+      <section class="pt-20 md:pt-24 pb-12 md:pb-20 px-4 bg-gradient-to-b from-[#0D1F4D] to-[#122D6A] relative overflow-hidden">
         <div class="max-w-6xl mx-auto relative z-10">
           <div class="text-center max-w-4xl mx-auto">
             
@@ -2011,15 +2007,15 @@ function renderLandingPage() {
                 <span class="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border-2 border-white/30 flex items-center justify-center text-[8px] text-white font-bold">M</span>
                 <span class="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 border-2 border-white/30 flex items-center justify-center text-[8px] text-white font-bold">A</span>
               </span>
-              <span id="lp-user-count">Candidatos ja estao estudando com IA</span>
+              <span id="lp-user-count">Candidatos já estão estudando com IA</span>
             </div>
             
             <h1 class="text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold text-white mb-6 leading-[1.1] tracking-tight">
               Pare de estudar no escuro.<br>
-              <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300">
+              <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-emerald-400">
                 A IA que organiza, cria e acelera
               </span><br>
-              sua aprovacao em concursos.
+              sua aprovação em concursos.
             </h1>
             
             <p class="text-lg md:text-xl text-blue-200/90 mb-8 max-w-2xl mx-auto leading-relaxed">
@@ -2031,17 +2027,17 @@ function renderLandingPage() {
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
               <button onclick="goToLogin()" 
                 class="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-lg font-bold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all transform hover:scale-[1.03] shadow-xl shadow-emerald-500/30 flex items-center justify-center gap-2">
-                <i class="fas fa-rocket"></i>Comecar Gratis — 14 dias
+                <i class="fas fa-rocket"></i>Começar Grátis — 14 dias
               </button>
               <button onclick="scrollToSection('como-funciona')" 
-                class="w-full sm:w-auto px-6 py-4 bg-white/10 backdrop-blur-sm text-white font-semibold rounded-xl hover:bg-white/20 transition-all border border-white/20 flex items-center justify-center gap-2">
+                class="w-full sm:w-auto px-6 py-4 bg-white/10 text-white font-semibold rounded-xl hover:bg-white/20 transition-all border border-white/20 flex items-center justify-center gap-2">
                 <i class="fas fa-play-circle"></i>Ver como funciona
               </button>
             </div>
             
             <!-- Trust badges -->
             <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 text-blue-200/80 text-sm">
-              <span class="flex items-center gap-1.5"><i class="fas fa-check-circle text-emerald-400 text-xs"></i> Sem cartao de credito</span>
+              <span class="flex items-center gap-1.5"><i class="fas fa-check-circle text-emerald-400 text-xs"></i> Sem cartão de crédito</span>
               <span class="flex items-center gap-1.5"><i class="fas fa-check-circle text-emerald-400 text-xs"></i> Cancele quando quiser</span>
               <span class="flex items-center gap-1.5"><i class="fas fa-check-circle text-emerald-400 text-xs"></i> 15 bancas suportadas</span>
             </div>
@@ -2052,7 +2048,7 @@ function renderLandingPage() {
       <!-- ====== BARRA DE BANCAS (Social Proof) ====== -->
       <section class="py-6 px-4 bg-gray-50 border-b border-gray-100">
         <div class="max-w-6xl mx-auto">
-          <p class="text-center text-xs text-gray-400 font-semibold uppercase tracking-widest mb-4">Questoes e simulados adaptados para as principais bancas</p>
+          <p class="text-center text-xs text-gray-400 font-semibold uppercase tracking-widest mb-4">Questões e simulados adaptados para as principais bancas</p>
           <div class="flex flex-wrap justify-center gap-3">
             ${['CEBRASPE', 'FCC', 'FGV', 'VUNESP', 'CESGRANRIO', 'IDECAN', 'AOCP', 'QUADRIX', 'CONSULPLAN', 'IBFC', 'IADES', 'FUNCAB', 'COPS-UEL', 'UFPR', 'Outras'].map(b => 
               '<span class="px-3.5 py-1.5 bg-white rounded-full text-gray-600 text-xs font-semibold shadow-sm border border-gray-100">' + b + '</span>'
@@ -2067,8 +2063,8 @@ function renderLandingPage() {
           <div class="text-center mb-12 md:mb-16">
             <span class="inline-block px-3 py-1 bg-red-50 text-red-600 text-xs font-bold uppercase tracking-wider rounded-full mb-4">O problema</span>
             <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
-              Estudar para concurso nao deveria ser<br class="hidden md:block"> 
-              <span class="text-red-500">tao desgastante</span>
+              Estudar para concurso não deveria ser<br class="hidden md:block"> 
+              <span class="text-red-500">tão desgastante</span>
             </h2>
           </div>
           
@@ -2077,29 +2073,29 @@ function renderLandingPage() {
               <div class="w-11 h-11 bg-red-100 rounded-xl flex items-center justify-center mb-3">
                 <i class="fas fa-dizzy text-red-500 text-lg"></i>
               </div>
-              <h3 class="font-bold text-gray-900 mb-1.5 text-sm">Edital gigante, sem saber por onde comecar</h3>
-              <p class="text-gray-500 text-sm leading-relaxed">Dezenas de disciplinas e centenas de topicos. Voce abre o edital e trava.</p>
+              <h3 class="font-bold text-gray-900 mb-1.5 text-sm">Edital gigante, sem saber por onde começar</h3>
+              <p class="text-gray-500 text-sm leading-relaxed">Dezenas de disciplinas e centenas de tópicos. Você abre o edital e trava.</p>
             </div>
             <div class="p-5 rounded-2xl bg-orange-50/60 border border-orange-100">
               <div class="w-11 h-11 bg-orange-100 rounded-xl flex items-center justify-center mb-3">
                 <i class="fas fa-clock text-orange-500 text-lg"></i>
               </div>
               <h3 class="font-bold text-gray-900 mb-1.5 text-sm">Horas de estudo sem sentir progresso</h3>
-              <p class="text-gray-500 text-sm leading-relaxed">Estuda muito, mas nao sabe se esta realmente avancando nas materias certas.</p>
+              <p class="text-gray-500 text-sm leading-relaxed">Estuda muito, mas não sabe se está realmente avançando nas matérias certas.</p>
             </div>
             <div class="p-5 rounded-2xl bg-amber-50/60 border border-amber-100">
               <div class="w-11 h-11 bg-amber-100 rounded-xl flex items-center justify-center mb-3">
                 <i class="fas fa-random text-amber-600 text-lg"></i>
               </div>
-              <h3 class="font-bold text-gray-900 mb-1.5 text-sm">Material generico que nao foca na sua prova</h3>
-              <p class="text-gray-500 text-sm leading-relaxed">Cursinhos e apostilas genericas que nao consideram sua banca nem seu edital.</p>
+              <h3 class="font-bold text-gray-900 mb-1.5 text-sm">Material genérico que não foca na sua prova</h3>
+              <p class="text-gray-500 text-sm leading-relaxed">Cursinhos e apostilas genéricas que não consideram sua banca nem seu edital.</p>
             </div>
             <div class="p-5 rounded-2xl bg-rose-50/60 border border-rose-100">
               <div class="w-11 h-11 bg-rose-100 rounded-xl flex items-center justify-center mb-3">
                 <i class="fas fa-wallet text-rose-500 text-lg"></i>
               </div>
               <h3 class="font-bold text-gray-900 mb-1.5 text-sm">Cursinhos caros que pesam no bolso</h3>
-              <p class="text-gray-500 text-sm leading-relaxed">Preparatorios tradicionais custam R$ 100-300/mes e nem sempre geram resultado.</p>
+              <p class="text-gray-500 text-sm leading-relaxed">Preparatórios tradicionais custam R$ 100–300/mês e nem sempre geram resultado.</p>
             </div>
           </div>
         </div>
@@ -2109,11 +2105,11 @@ function renderLandingPage() {
       <section id="como-funciona" class="py-16 md:py-24 px-4 bg-gray-50">
         <div class="max-w-5xl mx-auto">
           <div class="text-center mb-12 md:mb-16">
-            <span class="inline-block px-3 py-1 bg-[#122D6A]/10 text-[#122D6A] text-xs font-bold uppercase tracking-wider rounded-full mb-4">Simples e rapido</span>
+            <span class="inline-block px-3 py-1 bg-[#122D6A]/10 text-[#122D6A] text-xs font-bold uppercase tracking-wider rounded-full mb-4">Simples e rápido</span>
             <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900">
               Comece a estudar em <span class="text-[#122D6A]">3 minutos</span>
             </h2>
-            <p class="text-gray-500 mt-3 max-w-lg mx-auto">Nada de configuracoes complicadas. A IA faz o trabalho pesado por voce.</p>
+            <p class="text-gray-500 mt-3 max-w-lg mx-auto">Nada de configurações complicadas. A IA faz o trabalho pesado por você.</p>
           </div>
           
           <div class="grid md:grid-cols-3 gap-8 md:gap-6">
@@ -2124,7 +2120,7 @@ function renderLandingPage() {
               </div>
               <div class="hidden md:block absolute top-8 left-[60%] w-[80%] h-0.5 bg-gradient-to-r from-[#122D6A]/30 to-transparent"></div>
               <h3 class="text-lg font-bold text-gray-900 mb-2">Envie seu edital</h3>
-              <p class="text-gray-500 text-sm leading-relaxed">Faca upload do PDF do edital ou digite o nome do concurso. A IA extrai disciplinas, topicos e pesos automaticamente.</p>
+              <p class="text-gray-500 text-sm leading-relaxed">Faça upload do PDF do edital ou digite o nome do concurso. A IA extrai disciplinas, tópicos e pesos automaticamente.</p>
             </div>
             <!-- Passo 2 -->
             <div class="relative text-center">
@@ -2133,7 +2129,7 @@ function renderLandingPage() {
               </div>
               <div class="hidden md:block absolute top-8 left-[60%] w-[80%] h-0.5 bg-gradient-to-r from-[#122D6A]/30 to-transparent"></div>
               <h3 class="text-lg font-bold text-gray-900 mb-2">Receba seu plano</h3>
-              <p class="text-gray-500 text-sm leading-relaxed">Em segundos, a IA cria cronograma, metas diarias, simulados e conteudo personalizado para sua banca.</p>
+              <p class="text-gray-500 text-sm leading-relaxed">Em segundos, a IA cria cronograma, metas diárias, simulados e conteúdo personalizado para sua banca.</p>
             </div>
             <!-- Passo 3 -->
             <div class="text-center">
@@ -2141,13 +2137,13 @@ function renderLandingPage() {
                 <span class="text-white text-2xl font-extrabold">3</span>
               </div>
               <h3 class="text-lg font-bold text-gray-900 mb-2">Estude e acompanhe</h3>
-              <p class="text-gray-500 text-sm leading-relaxed">Estude com material focado, resolva questoes no estilo da banca e veja seu progresso no dashboard inteligente.</p>
+              <p class="text-gray-500 text-sm leading-relaxed">Estude com material focado, resolva questões no estilo da banca e veja seu progresso no dashboard inteligente.</p>
             </div>
           </div>
           
           <div class="text-center mt-12">
             <button onclick="goToLogin()" class="px-8 py-4 bg-[#122D6A] text-white font-bold rounded-xl hover:bg-[#0D1F4D] transition shadow-lg shadow-[#122D6A]/20 text-base">
-              <i class="fas fa-rocket mr-2"></i>Criar Meu Plano Gratis
+              <i class="fas fa-rocket mr-2"></i>Criar Meu Plano Grátis
             </button>
           </div>
         </div>
@@ -2159,9 +2155,9 @@ function renderLandingPage() {
           <div class="text-center mb-12 md:mb-16">
             <span class="inline-block px-3 py-1 bg-[#122D6A]/10 text-[#122D6A] text-xs font-bold uppercase tracking-wider rounded-full mb-4">Recursos</span>
             <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900">
-              Tudo que voce precisa para <span class="text-[#122D6A]">ser aprovado</span>
+              Tudo que você precisa para <span class="text-[#122D6A]">ser aprovado</span>
             </h2>
-            <p class="text-gray-500 mt-3 max-w-xl mx-auto">Funcionalidades que cobrem todo o ciclo de estudo, da organizacao a revisao final.</p>
+            <p class="text-gray-500 mt-3 max-w-xl mx-auto">Funcionalidades que cobrem todo o ciclo de estudo, da organização à revisão final.</p>
           </div>
           
           <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -2169,9 +2165,9 @@ function renderLandingPage() {
               <div class="w-12 h-12 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
                 <i class="fas fa-file-alt text-white text-lg"></i>
               </div>
-              <h3 class="text-lg font-bold text-gray-900 mb-2">Analise de Edital com IA</h3>
+              <h3 class="text-lg font-bold text-gray-900 mb-2">Análise de Edital com IA</h3>
               <p class="text-gray-500 text-sm leading-relaxed">
-                Envie o PDF e a IA extrai disciplinas, topicos e pesos para criar seu plano 100% personalizado.
+                Envie o PDF e a IA extrai disciplinas, tópicos e pesos para criar seu plano 100% personalizado.
               </p>
             </div>
             <div class="p-6 rounded-2xl border border-gray-100 hover:border-[#122D6A]/20 hover:shadow-xl transition-all group bg-white">
@@ -2180,7 +2176,7 @@ function renderLandingPage() {
               </div>
               <h3 class="text-lg font-bold text-gray-900 mb-2">Plano de Estudos Inteligente</h3>
               <p class="text-gray-500 text-sm leading-relaxed">
-                Cronograma semanal adaptado ao seu tempo, com metas diarias e tracking de progresso em tempo real.
+                Cronograma semanal adaptado ao seu tempo, com metas diárias e acompanhamento de progresso em tempo real.
               </p>
             </div>
             <div class="p-6 rounded-2xl border border-gray-100 hover:border-[#122D6A]/20 hover:shadow-xl transition-all group bg-white">
@@ -2189,16 +2185,16 @@ function renderLandingPage() {
               </div>
               <h3 class="text-lg font-bold text-gray-900 mb-2">Simulados da sua Banca</h3>
               <p class="text-gray-500 text-sm leading-relaxed">
-                Questoes geradas no formato exato da sua prova: CEBRASPE, FCC, FGV, VUNESP e mais 11 bancas.
+                Questões geradas no formato exato da sua prova: CEBRASPE, FCC, FGV, VUNESP e mais 11 bancas.
               </p>
             </div>
             <div class="p-6 rounded-2xl border border-gray-100 hover:border-[#122D6A]/20 hover:shadow-xl transition-all group bg-white">
               <div class="w-12 h-12 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
                 <i class="fas fa-brain text-white text-lg"></i>
               </div>
-              <h3 class="text-lg font-bold text-gray-900 mb-2">Conteudo Gerado por IA</h3>
+              <h3 class="text-lg font-bold text-gray-900 mb-2">Conteúdo Gerado por IA</h3>
               <p class="text-gray-500 text-sm leading-relaxed">
-                Teoria, resumos e exercicios criados sob medida para cada topico do seu edital.
+                Teoria, resumos e exercícios criados sob medida para cada tópico do seu edital.
               </p>
             </div>
             <div class="p-6 rounded-2xl border border-gray-100 hover:border-[#122D6A]/20 hover:shadow-xl transition-all group bg-white">
@@ -2207,7 +2203,7 @@ function renderLandingPage() {
               </div>
               <h3 class="text-lg font-bold text-gray-900 mb-2">Flashcards Inteligentes</h3>
               <p class="text-gray-500 text-sm leading-relaxed">
-                Sistema de repeticao espacada com cards gerados pela IA para fixar o conteudo de forma eficiente.
+                Sistema de repetição espaçada com cards gerados pela IA para fixar o conteúdo de forma eficiente.
               </p>
             </div>
             <div class="p-6 rounded-2xl border border-gray-100 hover:border-[#122D6A]/20 hover:shadow-xl transition-all group bg-white">
@@ -2216,7 +2212,7 @@ function renderLandingPage() {
               </div>
               <h3 class="text-lg font-bold text-gray-900 mb-2">Dashboard de Progresso</h3>
               <p class="text-gray-500 text-sm leading-relaxed">
-                Graficos, estatisticas e metricas que mostram exatamente onde voce esta e para onde precisa ir.
+                Gráficos, estatísticas e métricas que mostram exatamente onde você está e para onde precisa ir.
               </p>
             </div>
           </div>
@@ -2224,15 +2220,12 @@ function renderLandingPage() {
       </section>
       
       <!-- ====== COMPARACAO: Tradicional vs IAprova ====== -->
-      <section class="py-16 md:py-24 px-4 bg-gradient-to-br from-[#0A1839] via-[#122D6A] to-[#1A3A7F] relative overflow-hidden">
-        <div class="absolute inset-0 opacity-[0.06]">
-          <div class="absolute top-20 right-[20%] w-72 h-72 bg-emerald-400 rounded-full blur-[100px]"></div>
-        </div>
+      <section class="py-16 md:py-24 px-4 bg-gradient-to-b from-[#0D1F4D] to-[#122D6A] relative overflow-hidden">
         <div class="max-w-5xl mx-auto relative z-10">
           <div class="text-center mb-12 md:mb-16">
-            <span class="inline-block px-3 py-1 bg-white/10 text-blue-200 text-xs font-bold uppercase tracking-wider rounded-full mb-4">Comparacao</span>
+            <span class="inline-block px-3 py-1 bg-white/10 text-blue-200 text-xs font-bold uppercase tracking-wider rounded-full mb-4">Comparação</span>
             <h2 class="text-3xl md:text-4xl font-extrabold text-white">
-              Por que o IAprova e <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300">diferente</span>?
+              Por que o IAprova é <span class="text-emerald-400">diferente</span>?
             </h2>
           </div>
           
@@ -2243,14 +2236,14 @@ function renderLandingPage() {
                 <div class="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center">
                   <i class="fas fa-times text-red-400"></i>
                 </div>
-                <h3 class="text-lg font-bold text-white">Metodo Tradicional</h3>
+                <h3 class="text-lg font-bold text-white">Método Tradicional</h3>
               </div>
               <ul class="space-y-4">
-                <li class="flex items-start gap-3 text-blue-200/80 text-sm"><i class="fas fa-times-circle text-red-400/70 mt-0.5 flex-shrink-0"></i> Material generico para todos os editais</li>
-                <li class="flex items-start gap-3 text-blue-200/80 text-sm"><i class="fas fa-times-circle text-red-400/70 mt-0.5 flex-shrink-0"></i> Cronograma fixo que nao se adapta a voce</li>
-                <li class="flex items-start gap-3 text-blue-200/80 text-sm"><i class="fas fa-times-circle text-red-400/70 mt-0.5 flex-shrink-0"></i> Questoes de bancos genericos</li>
-                <li class="flex items-start gap-3 text-blue-200/80 text-sm"><i class="fas fa-times-circle text-red-400/70 mt-0.5 flex-shrink-0"></i> Nenhum tracking real de progresso</li>
-                <li class="flex items-start gap-3 text-blue-200/80 text-sm"><i class="fas fa-times-circle text-red-400/70 mt-0.5 flex-shrink-0"></i> R$ 100-300/mes com resultado incerto</li>
+                <li class="flex items-start gap-3 text-blue-200/80 text-sm"><i class="fas fa-times-circle text-red-400/70 mt-0.5 flex-shrink-0"></i> Material genérico para todos os editais</li>
+                <li class="flex items-start gap-3 text-blue-200/80 text-sm"><i class="fas fa-times-circle text-red-400/70 mt-0.5 flex-shrink-0"></i> Cronograma fixo que não se adapta a você</li>
+                <li class="flex items-start gap-3 text-blue-200/80 text-sm"><i class="fas fa-times-circle text-red-400/70 mt-0.5 flex-shrink-0"></i> Questões de bancos genéricos</li>
+                <li class="flex items-start gap-3 text-blue-200/80 text-sm"><i class="fas fa-times-circle text-red-400/70 mt-0.5 flex-shrink-0"></i> Nenhum acompanhamento real de progresso</li>
+                <li class="flex items-start gap-3 text-blue-200/80 text-sm"><i class="fas fa-times-circle text-red-400/70 mt-0.5 flex-shrink-0"></i> R$ 100–300/mês com resultado incerto</li>
               </ul>
             </div>
             <!-- IAprova -->
@@ -2263,11 +2256,11 @@ function renderLandingPage() {
                 <h3 class="text-lg font-bold text-white">Com o IAprova</h3>
               </div>
               <ul class="space-y-4">
-                <li class="flex items-start gap-3 text-emerald-100 text-sm"><i class="fas fa-check-circle text-emerald-400 mt-0.5 flex-shrink-0"></i> Conteudo gerado especificamente pro seu edital</li>
+                <li class="flex items-start gap-3 text-emerald-100 text-sm"><i class="fas fa-check-circle text-emerald-400 mt-0.5 flex-shrink-0"></i> Conteúdo gerado especificamente para o seu edital</li>
                 <li class="flex items-start gap-3 text-emerald-100 text-sm"><i class="fas fa-check-circle text-emerald-400 mt-0.5 flex-shrink-0"></i> Plano que se adapta ao seu tempo e rotina</li>
                 <li class="flex items-start gap-3 text-emerald-100 text-sm"><i class="fas fa-check-circle text-emerald-400 mt-0.5 flex-shrink-0"></i> Simulados no formato exato da sua banca</li>
-                <li class="flex items-start gap-3 text-emerald-100 text-sm"><i class="fas fa-check-circle text-emerald-400 mt-0.5 flex-shrink-0"></i> Dashboard com metricas reais de evolucao</li>
-                <li class="flex items-start gap-3 text-emerald-100 text-sm"><i class="fas fa-check-circle text-emerald-400 mt-0.5 flex-shrink-0"></i> A partir de R$ 0,69/dia com 14 dias gratis</li>
+                <li class="flex items-start gap-3 text-emerald-100 text-sm"><i class="fas fa-check-circle text-emerald-400 mt-0.5 flex-shrink-0"></i> Dashboard com métricas reais de evolução</li>
+                <li class="flex items-start gap-3 text-emerald-100 text-sm"><i class="fas fa-check-circle text-emerald-400 mt-0.5 flex-shrink-0"></i> A partir de R$ 0,69/dia com 14 dias grátis</li>
               </ul>
             </div>
           </div>
@@ -2275,12 +2268,7 @@ function renderLandingPage() {
       </section>
 
       <!-- ====== SHOWCASE: VEJA O SISTEMA POR DENTRO ====== -->
-      <section class="py-20 px-4 bg-gradient-to-br from-[#0A1839] via-[#122D6A] to-[#1A3A7F] relative overflow-hidden">
-        <!-- Background decorativo -->
-        <div class="absolute inset-0 opacity-10">
-          <div class="absolute top-20 left-10 w-72 h-72 bg-blue-400 rounded-full blur-3xl"></div>
-          <div class="absolute bottom-20 right-10 w-96 h-96 bg-emerald-400 rounded-full blur-3xl"></div>
-        </div>
+      <section class="py-20 px-4 bg-gradient-to-b from-[#0D1F4D] to-[#122D6A] relative overflow-hidden">
         
         <div class="max-w-7xl mx-auto relative z-10">
           <div class="text-center mb-12">
@@ -2288,7 +2276,7 @@ function renderLandingPage() {
               <i class="fas fa-eye mr-2"></i>Veja com seus próprios olhos
             </span>
             <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
-              Conheça o sistema <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-blue-300">por dentro</span>
+              Conheça o sistema <span class="text-emerald-400">por dentro</span>
             </h2>
             <p class="text-lg text-blue-200 max-w-2xl mx-auto">
               Não é só promessa. Veja como cada ferramenta funciona na prática e por que nossos alunos estudam com mais confiança.
@@ -2814,66 +2802,21 @@ function renderLandingPage() {
         </div>
       </section>
       
-      <!-- How it Works -->
-      <section class="py-20 px-4 bg-gray-50">
-        <div class="max-w-7xl mx-auto">
-          <div class="text-center mb-16">
-            <span class="text-[#122D6A] font-semibold text-sm uppercase tracking-wider">Como funciona</span>
-            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mt-4">
-              3 passos para sua <span class="text-[#122D6A]">aprovação</span>
-            </h2>
-          </div>
-          
-          <div class="grid md:grid-cols-3 gap-8">
-            <div class="text-center">
-              <div class="w-20 h-20 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#122D6A]/30">
-                <span class="text-3xl font-bold text-white">1</span>
-              </div>
-              <h3 class="text-xl font-bold text-gray-900 mb-3">Envie seu edital</h3>
-              <p class="text-gray-600">
-                Faça upload do PDF do edital e deixe nossa IA analisar 
-                todas as disciplinas e conteúdos.
-              </p>
-            </div>
-            
-            <div class="text-center">
-              <div class="w-20 h-20 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#122D6A]/30">
-                <span class="text-3xl font-bold text-white">2</span>
-              </div>
-              <h3 class="text-xl font-bold text-gray-900 mb-3">Receba seu plano</h3>
-              <p class="text-gray-600">
-                Em segundos, você terá um cronograma de estudos 
-                personalizado para seu tempo e objetivo.
-              </p>
-            </div>
-            
-            <div class="text-center">
-              <div class="w-20 h-20 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#122D6A]/30">
-                <span class="text-3xl font-bold text-white">3</span>
-              </div>
-              <h3 class="text-xl font-bold text-gray-900 mb-3">Estude e aprove</h3>
-              <p class="text-gray-600">
-                Acesse teoria, exercícios e flashcards gerados especialmente 
-                para sua prova. É só estudar!
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <!-- How it Works - REMOVIDA (duplicava como-funciona) -->
       
       <!-- Pricing Section - DINÂMICO v96 -->
-      <!-- ====== PROVA SOCIAL (Numeros) ====== -->
+      <!-- ====== PROVA SOCIAL (Números) ====== -->
       <section class="py-16 md:py-20 px-4 bg-gray-50">
         <div class="max-w-5xl mx-auto">
           <div class="text-center mb-12">
             <span class="inline-block px-3 py-1 bg-[#122D6A]/10 text-[#122D6A] text-xs font-bold uppercase tracking-wider rounded-full mb-4">Resultados reais</span>
             <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900">
-              Numeros que falam por si
+              Números que falam por si
             </h2>
           </div>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
             <div class="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
-              <div class="text-3xl md:text-4xl font-extrabold text-[#122D6A] mb-1" id="lp-stat-users">500+</div>
+              <div class="text-3xl md:text-4xl font-extrabold text-[#122D6A] mb-1" id="lp-stat-users">~1.000</div>
               <p class="text-gray-500 text-sm font-medium">Candidatos ativos</p>
             </div>
             <div class="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
@@ -2882,11 +2825,11 @@ function renderLandingPage() {
             </div>
             <div class="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
               <div class="text-3xl md:text-4xl font-extrabold text-emerald-600 mb-1">10k+</div>
-              <p class="text-gray-500 text-sm font-medium">Questoes geradas</p>
+              <p class="text-gray-500 text-sm font-medium">Questões geradas</p>
             </div>
             <div class="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
               <div class="text-3xl md:text-4xl font-extrabold text-emerald-600 mb-1">4.8</div>
-              <p class="text-gray-500 text-sm font-medium">Nota de satisfacao</p>
+              <p class="text-gray-500 text-sm font-medium">Nota de satisfação</p>
             </div>
           </div>
         </div>
@@ -2898,10 +2841,10 @@ function renderLandingPage() {
           <div class="text-center mb-12 md:mb-16">
             <span class="inline-block px-3 py-1 bg-[#122D6A]/10 text-[#122D6A] text-xs font-bold uppercase tracking-wider rounded-full mb-4">Planos</span>
             <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900">
-              Invista na sua <span class="text-[#122D6A]">aprovacao</span>
+              Invista na sua <span class="text-[#122D6A]">aprovação</span>
             </h2>
             <p class="text-gray-500 mt-3 max-w-xl mx-auto">
-              Comece gratis e faca upgrade quando quiser. Sem surpresas, sem letras miudas.
+              Comece grátis e faça upgrade quando quiser. Sem surpresas, sem letras miúdas.
             </p>
           </div>
           
@@ -2916,7 +2859,7 @@ function renderLandingPage() {
           <div class="max-w-2xl mx-auto mt-12 text-center">
             <div class="inline-flex items-center gap-3 px-6 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
               <i class="fas fa-shield-alt text-emerald-600 text-lg"></i>
-              <span class="text-emerald-800 text-sm font-medium">14 dias gratis para testar. Cancele a qualquer momento, sem burocracia.</span>
+              <span class="text-emerald-800 text-sm font-medium">14 dias grátis para testar. Cancele a qualquer momento, sem burocracia.</span>
             </div>
           </div>
         </div>
@@ -2926,7 +2869,7 @@ function renderLandingPage() {
       <section id="faq" class="py-16 md:py-24 px-4 bg-gray-50">
         <div class="max-w-3xl mx-auto">
           <div class="text-center mb-12 md:mb-16">
-            <span class="inline-block px-3 py-1 bg-[#122D6A]/10 text-[#122D6A] text-xs font-bold uppercase tracking-wider rounded-full mb-4">Duvidas</span>
+            <span class="inline-block px-3 py-1 bg-[#122D6A]/10 text-[#122D6A] text-xs font-bold uppercase tracking-wider rounded-full mb-4">Dúvidas</span>
             <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900">
               Perguntas frequentes
             </h2>
@@ -2935,29 +2878,29 @@ function renderLandingPage() {
           <div class="space-y-3" id="faq-container">
             <div class="faq-item bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
               <button onclick="toggleFaq(this)" class="w-full flex items-center justify-between p-5 text-left">
-                <span class="font-semibold text-gray-900 text-sm pr-4">Preciso pagar alguma coisa para comecar?</span>
+                <span class="font-semibold text-gray-900 text-sm pr-4">Preciso pagar alguma coisa para começar?</span>
                 <i class="fas fa-chevron-down text-gray-400 text-sm transition-transform"></i>
               </button>
               <div class="faq-answer hidden px-5 pb-5 text-gray-500 text-sm leading-relaxed">
-                Nao! Voce pode criar sua conta gratis e testar todas as funcionalidades por 14 dias. Nao pedimos cartao de credito. Apos o periodo de teste, voce escolhe se quer continuar com o plano gratuito (limitado) ou fazer upgrade.
+                Não! Você pode criar sua conta grátis e testar todas as funcionalidades por 14 dias. Não pedimos cartão de crédito. Após o período de teste, você escolhe se quer continuar com o plano gratuito (limitado) ou fazer upgrade.
               </div>
             </div>
             <div class="faq-item bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
               <button onclick="toggleFaq(this)" class="w-full flex items-center justify-between p-5 text-left">
-                <span class="font-semibold text-gray-900 text-sm pr-4">Como funciona a IA? O conteudo e confiavel?</span>
+                <span class="font-semibold text-gray-900 text-sm pr-4">Como funciona a IA? O conteúdo é confiável?</span>
                 <i class="fas fa-chevron-down text-gray-400 text-sm transition-transform"></i>
               </button>
               <div class="faq-answer hidden px-5 pb-5 text-gray-500 text-sm leading-relaxed">
-                Usamos modelos avancados de IA (GPT) treinados para gerar conteudo juridico, administrativo e tecnico com base nas disciplinas e topicos do seu edital. O conteudo e revisado por camadas de validacao e segue o formato da banca escolhida. Recomendamos sempre complementar com legislacao oficial.
+                Usamos modelos avançados de IA (GPT) treinados para gerar conteúdo jurídico, administrativo e técnico com base nas disciplinas e tópicos do seu edital. O conteúdo é revisado por camadas de validação e segue o formato da banca escolhida. Recomendamos sempre complementar com a legislação oficial.
               </div>
             </div>
             <div class="faq-item bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
               <button onclick="toggleFaq(this)" class="w-full flex items-center justify-between p-5 text-left">
-                <span class="font-semibold text-gray-900 text-sm pr-4">O IAprova substitui um cursinho preparatorio?</span>
+                <span class="font-semibold text-gray-900 text-sm pr-4">O IAprova substitui um cursinho preparatório?</span>
                 <i class="fas fa-chevron-down text-gray-400 text-sm transition-transform"></i>
               </button>
               <div class="faq-answer hidden px-5 pb-5 text-gray-500 text-sm leading-relaxed">
-                O IAprova pode ser usado como ferramenta principal ou complementar. Ele cobre organizacao, conteudo, simulados e revisao, funcionalidades que muitos cursinhos nao oferecem de forma personalizada. Muitos usuarios usam o IAprova junto com videoaulas, otimizando o tempo de estudo.
+                O IAprova pode ser usado como ferramenta principal ou complementar. Ele cobre organização, conteúdo, simulados e revisão — funcionalidades que muitos cursinhos não oferecem de forma personalizada. Muitos usuários usam o IAprova junto com videoaulas, otimizando o tempo de estudo.
               </div>
             </div>
             <div class="faq-item bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
@@ -2966,7 +2909,7 @@ function renderLandingPage() {
                 <i class="fas fa-chevron-down text-gray-400 text-sm transition-transform"></i>
               </button>
               <div class="faq-answer hidden px-5 pb-5 text-gray-500 text-sm leading-relaxed">
-                Sim! O IAprova funciona com qualquer edital. Basta enviar o PDF ou digitar manualmente as disciplinas. A IA reconhece 15 bancas organizadoras (CEBRASPE, FCC, FGV, VUNESP, etc.) e adapta simulados e questoes ao formato especifico de cada uma.
+                Sim! O IAprova funciona com qualquer edital. Basta enviar o PDF ou digitar manualmente as disciplinas. A IA reconhece 15 bancas organizadoras (CEBRASPE, FCC, FGV, VUNESP etc.) e adapta simulados e questões ao formato específico de cada uma.
               </div>
             </div>
             <div class="faq-item bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
@@ -2984,7 +2927,7 @@ function renderLandingPage() {
                 <i class="fas fa-chevron-down text-gray-400 text-sm transition-transform"></i>
               </button>
               <div class="faq-answer hidden px-5 pb-5 text-gray-500 text-sm leading-relaxed">
-                Sim, totalmente seguro. Os pagamentos sao processados pelo Mercado Pago via Pix, uma das plataformas mais seguras do Brasil. Nao armazenamos dados de pagamento. Voce pode cancelar a qualquer momento sem burocracia.
+                Sim, totalmente seguro. Os pagamentos são processados pelo Mercado Pago via Pix, uma das plataformas mais seguras do Brasil. Não armazenamos dados de pagamento. Você pode cancelar a qualquer momento, sem burocracia.
               </div>
             </div>
           </div>
@@ -2992,43 +2935,40 @@ function renderLandingPage() {
       </section>
       
       <!-- ====== CTA FINAL ====== -->
-      <section class="py-16 md:py-24 px-4 bg-gradient-to-br from-[#0A1839] via-[#122D6A] to-[#1A3A7F] relative overflow-hidden">
-        <div class="absolute inset-0 opacity-[0.06]">
-          <div class="absolute bottom-0 left-[30%] w-96 h-96 bg-emerald-400 rounded-full blur-[120px]"></div>
-        </div>
+      <section class="py-16 md:py-24 px-4 bg-gradient-to-b from-[#0D1F4D] to-[#122D6A] relative overflow-hidden">
         <div class="max-w-3xl mx-auto text-center relative z-10">
           <div class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 rounded-full text-emerald-300 text-sm font-semibold mb-6">
-            <i class="fas fa-gift"></i> 14 dias gratis para testar
+            <i class="fas fa-gift"></i> 14 dias grátis para testar
           </div>
           <h2 class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-6 leading-tight">
-            Sua aprovacao comeca<br>com o primeiro passo
+            Sua aprovação começa<br>com o primeiro passo
           </h2>
           <p class="text-lg text-blue-200/90 mb-10 max-w-xl mx-auto leading-relaxed">
-            Enquanto voce pensa, outros candidatos ja estao estudando com IA. 
-            Crie sua conta em 30 segundos e veja a diferenca.
+            Enquanto você pensa, outros candidatos já estão estudando com IA. 
+            Crie sua conta em 30 segundos e veja a diferença.
           </p>
           <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button onclick="goToLogin()" 
               class="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-lg font-bold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all transform hover:scale-[1.03] shadow-xl shadow-emerald-500/30 flex items-center justify-center gap-2">
-              <i class="fas fa-rocket"></i>Comecar Agora — E Gratis
+              <i class="fas fa-rocket"></i>Começar Agora — É Grátis
             </button>
           </div>
-          <p class="text-blue-200/50 text-sm mt-5">Sem cartao de credito. Sem compromisso. Cancele quando quiser.</p>
+          <p class="text-blue-200/50 text-sm mt-5">Sem cartão de crédito. Sem compromisso. Cancele quando quiser.</p>
         </div>
       </section>
       
       <!-- Footer -->
-      <footer class="py-10 px-4 bg-[#070F24] border-t border-white/5">
+      <footer class="py-10 px-4 bg-[#0D1F4D] border-t border-white/5">
         <div class="max-w-6xl mx-auto">
           <div class="flex flex-col md:flex-row items-center justify-between gap-6">
             <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] rounded-lg flex items-center justify-center">
+              <div class="w-8 h-8 bg-[#1A3A7F] rounded-lg flex items-center justify-center">
                 <i class="fas fa-brain text-white text-sm"></i>
               </div>
               <span class="text-lg font-extrabold text-white tracking-tight">IAprova</span>
             </div>
             <p class="text-blue-200/40 text-sm">
-              &copy; 2025 IAprova. Todos os direitos reservados.
+              &copy; 2025–2026 IAprova. Todos os direitos reservados.
             </p>
             <div class="flex items-center gap-3">
               <a href="https://www.instagram.com/iaprova.app" target="_blank" rel="noopener noreferrer" 
@@ -3056,14 +2996,12 @@ function renderLandingPage() {
   setTimeout(async () => {
     try {
       const resp = await axios.get('/api/plans/public');
-      // Usar um número dinâmico baseado na data (crescimento simulado)
-      const baseUsers = 500;
-      const daysSinceLaunch = Math.floor((Date.now() - new Date('2025-01-01').getTime()) / 86400000);
-      const estimatedUsers = baseUsers + Math.floor(daysSinceLaunch * 0.7);
+      // Usar um número fixo: "quase 1.000"
+      const estimatedUsers = 1000;
       const el = document.getElementById('lp-user-count');
-      if (el) el.textContent = estimatedUsers + '+ candidatos ja estudam com IA';
+      if (el) el.textContent = 'Quase ' + estimatedUsers.toLocaleString('pt-BR') + ' candidatos já estudam com IA';
       const statEl = document.getElementById('lp-stat-users');
-      if (statEl) statEl.textContent = estimatedUsers + '+';
+      if (statEl) statEl.textContent = '~' + estimatedUsers.toLocaleString('pt-BR');
     } catch(e) {}
   }, 500);
 }
