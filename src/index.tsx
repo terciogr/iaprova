@@ -2846,6 +2846,12 @@ async function getValidMPToken(env: any): Promise<string> {
 app.post('/api/mercadopago/create-preference', async (c) => {
   const { DB, APP_URL } = c.env as any
   
+  // ✅ v167 SEGURANÇA: Validar que o usuário autenticado é o mesmo do body
+  const authenticatedUserId = c.get('authenticatedUserId')
+  if (!authenticatedUserId) {
+    return c.json({ error: 'Autenticação obrigatória' }, 401)
+  }
+  
   // ✅ v147: Usar token com refresh automático
   let MP_ACCESS_TOKEN: string
   try {
@@ -2854,6 +2860,34 @@ app.post('/api/mercadopago/create-preference', async (c) => {
     return c.json({ error: 'Mercado Pago não configurado' }, 500)
   }
   const { user_id, plan } = await c.req.json()
+  
+  // ✅ v167 SEGURANÇA CRÍTICA: user_id do body DEVE ser igual ao do token autenticado
+  // Impede que um usuário crie preferências de pagamento para outros usuários
+  if (!user_id || user_id.toString() !== authenticatedUserId.toString()) {
+    console.warn(`🚨 SEGURANÇA v167: Usuário ${authenticatedUserId} tentou criar preferência para user_id ${user_id}`)
+    // Log de auditoria
+    try {
+      await DB.prepare(`
+        CREATE TABLE IF NOT EXISTS audit_log (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          action TEXT NOT NULL,
+          user_id INTEGER,
+          details TEXT,
+          ip_address TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+      await DB.prepare(`
+        INSERT INTO audit_log (action, user_id, details, ip_address, created_at)
+        VALUES ('payment_user_spoof_attempt', ?, ?, ?, datetime('now'))
+      `).bind(
+        parseInt(authenticatedUserId),
+        JSON.stringify({ authenticatedUserId, requestedUserId: user_id, plan }),
+        c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
+      ).run()
+    } catch (e) { /* audit não é crítico */ }
+    return c.json({ error: 'Você só pode criar pagamentos para sua própria conta' }, 403)
+  }
   
   try {
     // Buscar usuário
