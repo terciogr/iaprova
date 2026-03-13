@@ -698,6 +698,57 @@ async function extractFromXLSX(xlsxBuffer: ArrayBuffer): Promise<{ disciplinas: 
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+// ✅ Cache de inicialização de tabelas auxiliares (evitar CREATE TABLE a cada request)
+let _authTablesInitialized = false
+async function ensureAuthTables(DB: any) {
+  if (_authTablesInitialized) return
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS pending_logins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      login_code TEXT NOT NULL UNIQUE,
+      user_id INTEGER NOT NULL,
+      session_token TEXT NOT NULL,
+      user_name TEXT,
+      user_email TEXT,
+      user_picture TEXT,
+      auth_provider TEXT DEFAULT 'google',
+      expires_at DATETIME NOT NULL,
+      used INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`).run()
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_trusted_devices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      device_info TEXT NOT NULL,
+      ip_address TEXT,
+      user_agent_hash TEXT,
+      trusted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_active INTEGER DEFAULT 1
+    )`).run()
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_2fa (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      code TEXT NOT NULL,
+      token_hash TEXT NOT NULL,
+      auth_code TEXT,
+      session_token TEXT,
+      user_name TEXT,
+      user_picture TEXT,
+      ua_hash TEXT,
+      device_info TEXT,
+      expires_at DATETIME NOT NULL,
+      used INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`).run()
+    // Limpar pending_logins expirados (manutenção)
+    await DB.prepare(`DELETE FROM pending_logins WHERE expires_at < datetime('now', '-1 hour')`).run()
+    _authTablesInitialized = true
+  } catch (e) {
+    console.warn('⚠️ Erro ao inicializar tabelas auth (não fatal):', e)
+  }
+}
+
 // Middleware
 app.use('/api/*', cors())
 
@@ -6916,17 +6967,8 @@ app.get('/api/auth/google/callback', async (c) => {
       else if (/Safari/i.test(adminUA) && !/Chrome/i.test(adminUA)) adminDeviceInfo += ' - Safari'
       else if (/Edge/i.test(adminUA)) adminDeviceInfo += ' - Edge'
       
-      // Criar tabela de dispositivos confiáveis
-      await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_trusted_devices (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        device_info TEXT NOT NULL,
-        ip_address TEXT,
-        user_agent_hash TEXT,
-        trusted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        is_active INTEGER DEFAULT 1
-      )`).run()
+      // Garantir tabelas de autenticação existem
+      await ensureAuthTables(DB)
       
       // Gerar hash do user-agent para comparação
       const uaHashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(adminUA))
@@ -6949,16 +6991,7 @@ app.get('/api/auth/google/callback', async (c) => {
         crypto.getRandomValues(loginCodeArray)
         const loginCode = Array.from(loginCodeArray).map(b => b.toString(16).padStart(2, '0')).join('')
         
-        await DB.prepare(`CREATE TABLE IF NOT EXISTS pending_logins (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          login_code TEXT NOT NULL UNIQUE,
-          user_id INTEGER NOT NULL,
-          session_token TEXT NOT NULL,
-          user_name TEXT, user_email TEXT, user_picture TEXT,
-          expires_at DATETIME NOT NULL,
-          used INTEGER DEFAULT 0,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`).run()
+        await ensureAuthTables(DB)
         
         await DB.prepare(
           `INSERT INTO pending_logins (login_code, user_id, session_token, user_name, user_email, user_picture, expires_at)
@@ -6980,34 +7013,7 @@ app.get('/api/auth/google/callback', async (c) => {
       crypto.getRandomValues(authCodeArray)
       const authCode = Array.from(authCodeArray).map(b => b.toString(16).padStart(2, '0')).join('')
       
-      // Auto-criar tabela com colunas extras para sessão pendente
-      await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_2fa (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        code TEXT NOT NULL,
-        token_hash TEXT NOT NULL,
-        auth_code TEXT,
-        session_token TEXT,
-        user_name TEXT,
-        user_picture TEXT,
-        expires_at DATETIME NOT NULL,
-        used INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )`).run()
-      
-      // Garantir colunas extras existem (migração segura)
-      try { await DB.prepare('SELECT auth_code FROM admin_2fa LIMIT 1').first() } catch {
-        try { await DB.prepare('ALTER TABLE admin_2fa ADD COLUMN auth_code TEXT').run() } catch {}
-      }
-      try { await DB.prepare('SELECT session_token FROM admin_2fa LIMIT 1').first() } catch {
-        try { await DB.prepare('ALTER TABLE admin_2fa ADD COLUMN session_token TEXT').run() } catch {}
-      }
-      try { await DB.prepare('SELECT user_name FROM admin_2fa LIMIT 1').first() } catch {
-        try { await DB.prepare('ALTER TABLE admin_2fa ADD COLUMN user_name TEXT').run() } catch {}
-      }
-      try { await DB.prepare('SELECT user_picture FROM admin_2fa LIMIT 1').first() } catch {
-        try { await DB.prepare('ALTER TABLE admin_2fa ADD COLUMN user_picture TEXT').run() } catch {}
-      }
+      // Tabelas já foram criadas por ensureAuthTables
       // ✅ v163: Coluna para identificar dispositivo após 2FA
       try { await DB.prepare('SELECT ua_hash FROM admin_2fa LIMIT 1').first() } catch {
         try { await DB.prepare('ALTER TABLE admin_2fa ADD COLUMN ua_hash TEXT').run() } catch {}
@@ -7047,20 +7053,8 @@ app.get('/api/auth/google/callback', async (c) => {
     crypto.getRandomValues(loginCodeArray)
     const loginCode = Array.from(loginCodeArray).map(b => b.toString(16).padStart(2, '0')).join('')
     
-    // Salvar na tabela temporária (reutilizar admin_2fa com flag diferente)
-    await DB.prepare(`CREATE TABLE IF NOT EXISTS pending_logins (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      login_code TEXT NOT NULL UNIQUE,
-      user_id INTEGER NOT NULL,
-      session_token TEXT NOT NULL,
-      user_name TEXT,
-      user_email TEXT,
-      user_picture TEXT,
-      auth_provider TEXT DEFAULT 'google',
-      expires_at DATETIME NOT NULL,
-      used INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`).run()
+    // Salvar na tabela temporária
+    await ensureAuthTables(DB)
     
     const loginExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 min
     await DB.prepare(
@@ -7095,19 +7089,7 @@ app.post('/api/auth/exchange-login-code', async (c) => {
       return c.json({ error: 'loginCode é obrigatório' }, 400)
     }
     
-    await DB.prepare(`CREATE TABLE IF NOT EXISTS pending_logins (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      login_code TEXT NOT NULL UNIQUE,
-      user_id INTEGER NOT NULL,
-      session_token TEXT NOT NULL,
-      user_name TEXT,
-      user_email TEXT,
-      user_picture TEXT,
-      auth_provider TEXT DEFAULT 'google',
-      expires_at DATETIME NOT NULL,
-      used INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`).run()
+    await ensureAuthTables(DB)
     
     const record = await DB.prepare(
       `SELECT id, user_id, session_token, user_name, user_email, user_picture, auth_provider, expires_at, used 
@@ -7155,20 +7137,7 @@ app.get('/api/auth/2fa-info', async (c) => {
   }
   
   try {
-    // Auto-criar tabela se necessário
-    await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_2fa (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      code TEXT NOT NULL,
-      token_hash TEXT NOT NULL,
-      auth_code TEXT,
-      session_token TEXT,
-      user_name TEXT,
-      user_picture TEXT,
-      expires_at DATETIME NOT NULL,
-      used INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`).run()
+    await ensureAuthTables(DB)
     
     const record = await DB.prepare(
       `SELECT user_id, user_name, user_picture, expires_at, used FROM admin_2fa 
@@ -7210,20 +7179,7 @@ app.post('/api/auth/verify-2fa', async (c) => {
     
     console.log(`🔐 v161: Tentativa de verificação 2FA com código ${code.substring(0, 2)}****`)
     
-    // Auto-criar tabela se necessário
-    await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_2fa (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      code TEXT NOT NULL,
-      token_hash TEXT NOT NULL,
-      auth_code TEXT,
-      session_token TEXT,
-      user_name TEXT,
-      user_picture TEXT,
-      expires_at DATETIME NOT NULL,
-      used INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`).run()
+    await ensureAuthTables(DB)
     
     // Buscar sessão 2FA pendente por authCode
     const record = await DB.prepare(
@@ -7277,16 +7233,7 @@ app.post('/api/auth/verify-2fa', async (c) => {
       ).bind(authCode).first() as any
       
       if (record2fa?.ua_hash) {
-        await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_trusted_devices (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          device_info TEXT NOT NULL,
-          ip_address TEXT,
-          user_agent_hash TEXT,
-          trusted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          is_active INTEGER DEFAULT 1
-        )`).run()
+        // Tabela já garantida por ensureAuthTables chamado anteriormente
         
         // Verificar se já não existe
         const existing = await DB.prepare(
@@ -25394,13 +25341,18 @@ self.addEventListener('fetch', (event) => {
 app.post('/api/cron/reengajamento', async (c) => {
   const { DB } = c.env
   
-  // Verificar autenticação: CRON_SECRET header ou admin login
-  const cronSecret = c.req.header('X-Cron-Secret') || c.req.query('secret')
-  const expectedSecret = (c.env as any).CRON_SECRET || 'iaprova-cron-2026'
+  // ✅ v180 SEGURANÇA: Verificar autenticação — CRON_SECRET ou admin login
+  // CRON_SECRET deve ser configurado como variável de ambiente (nunca usar fallback em produção)
+  const cronSecret = c.req.header('X-Cron-Secret')
+  const expectedSecret = (c.env as any).CRON_SECRET
   const isAdminUser = await isAdmin(c)
   
-  if (cronSecret !== expectedSecret && !isAdminUser) {
-    return c.json({ error: 'Não autorizado' }, 401)
+  if (!isAdminUser) {
+    // Se não é admin, exigir CRON_SECRET válido (sem fallback inseguro)
+    if (!expectedSecret || !cronSecret || cronSecret !== expectedSecret) {
+      console.warn('🚨 v180 SEGURANÇA: Tentativa não autorizada de executar CRON reengajamento')
+      return c.json({ error: 'Não autorizado' }, 401)
+    }
   }
   
   try {
@@ -25517,13 +25469,17 @@ app.post('/api/cron/reengajamento', async (c) => {
   }
 })
 
-// ✅ v79: Envio manual individual de email de reengajamento (admin)
+// ✅ v79+v180: Envio manual individual de email de reengajamento (admin - com auditoria)
 app.post('/api/admin/reengajamento/enviar-individual', async (c) => {
   const { DB } = c.env
   
   if (!await isAdmin(c)) {
+    console.warn('🚨 v180 SEGURANÇA: Tentativa não autorizada de enviar reengajamento individual')
     return c.json({ error: 'Acesso negado' }, 403)
   }
+  
+  const adminUserId = await getAuthenticatedUserId(c)
+  console.log(`📧 v180 AUDIT: Admin (userId=${adminUserId}) enviando reengajamento individual`)
   
   try {
     const { user_id } = await c.req.json()
@@ -25591,16 +25547,21 @@ app.post('/api/admin/reengajamento/enviar-individual', async (c) => {
   }
 })
 
-// ✅ Email manual customizado pelo admin
+// ✅ v180: Email manual customizado pelo admin (com segurança reforçada)
 app.post('/api/admin/email-manual/enviar', async (c) => {
   const { DB } = c.env
   
   if (!await isAdmin(c)) {
+    console.warn('🚨 v180 SEGURANÇA: Tentativa não autorizada de enviar email manual')
     return c.json({ error: 'Acesso negado' }, 403)
   }
   
+  // ✅ v180: Log de auditoria para envio de emails
+  const adminUserId = await getAuthenticatedUserId(c)
+  console.log(`📧 v180 AUDIT: Admin (userId=${adminUserId}) iniciou envio de email manual`)
+  
   try {
-    const { destinatarios, custom_emails, assunto, corpo } = await c.req.json()
+    const { destinatarios, custom_emails, usuario_especifico, assunto, corpo } = await c.req.json()
     
     if (!assunto || !corpo) {
       return c.json({ error: 'Assunto e corpo são obrigatórios' }, 400)
@@ -25621,6 +25582,23 @@ app.post('/api/admin/email-manual/enviar', async (c) => {
       const admin = await DB.prepare('SELECT id, name, email, created_at FROM users WHERE email = ?').bind('terciogomesrabelo@gmail.com').first() as any
       if (admin) targetUsers = [admin]
       else targetUsers = [{ id: 0, name: 'Admin', email: 'terciogomesrabelo@gmail.com', created_at: new Date().toISOString() }]
+    } else if (destinatarios === 'usuario_especifico') {
+      // ✅ v180: Enviar para um usuário específico (por ID ou email)
+      if (!usuario_especifico) {
+        return c.json({ error: 'Informe o ID ou email do usuário' }, 400)
+      }
+      const input = String(usuario_especifico).trim()
+      let user: any = null
+      if (/^\d+$/.test(input)) {
+        user = await DB.prepare('SELECT id, name, email, created_at, is_premium, (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = users.id) as ultimo_acesso FROM users WHERE id = ?').bind(parseInt(input)).first()
+      } else {
+        user = await DB.prepare('SELECT id, name, email, created_at, is_premium, (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = users.id) as ultimo_acesso FROM users WHERE email = ?').bind(input.toLowerCase()).first()
+      }
+      if (!user) {
+        return c.json({ error: `Usuário não encontrado: ${input}` }, 404)
+      }
+      targetUsers = [user]
+      console.log(`📧 v180: Email manual para usuário específico: ${user.email} (id=${user.id})`)
     } else if (destinatarios === 'reengajados') {
       // Usuários que já receberam o 1o email de reengajamento
       const result = await DB.prepare(`

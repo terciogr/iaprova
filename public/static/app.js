@@ -1,6 +1,9 @@
 // Verificação inicial
 console.log('🚀 IAprova - Iniciando aplicação...');
 
+// ✅ v180: Flag para impedir que o interceptor 401 interfira durante login/troca de código
+window._loginExchangeInProgress = false;
+
 // ✅ v154 SEGURANÇA: Interceptor axios global — envia token assinado em vez de X-User-ID
 // O token é gerado pelo servidor (HMAC-SHA256) e não pode ser forjado
 axios.interceptors.request.use(function(config) {
@@ -12,10 +15,16 @@ axios.interceptors.request.use(function(config) {
   return config;
 });
 
-// ✅ v154: Interceptor de resposta — se 401, token expirou, fazer logout
+// ✅ v154+v180: Interceptor de resposta — se 401, token expirou, fazer logout
+// v180: NÃO interferir quando login/troca de código está em andamento
 axios.interceptors.response.use(
   function(response) { return response; },
   function(error) {
+    // v180: Se login está em andamento, NÃO fazer logout automático
+    if (window._loginExchangeInProgress) {
+      console.log('🔐 v180: 401 ignorado — login em andamento');
+      return Promise.reject(error);
+    }
     if (error.response && error.response.status === 401 && currentUser) {
       // Token expirado ou inválido — fazer logout
       console.warn('🔒 Token expirado ou inválido, fazendo logout...');
@@ -1447,6 +1456,7 @@ function checkUser() {
   const authCode = urlParams.get('authCode');
   if (requires2FA === 'true' && authCode) {
     console.log('🔐 v161: 2FA necessário para admin — buscando info e exibindo tela');
+    localStorage.removeItem('_googleLoginInProgress');
     window.history.replaceState({}, document.title, '/home');
     iniciar2FA(authCode);
     return;
@@ -1457,6 +1467,7 @@ function checkUser() {
   // Tratar erro do Google
   if (error) {
     console.error('❌ Erro no login Google:', error);
+    localStorage.removeItem('_googleLoginInProgress');
     // Limpar parâmetros da URL
     window.history.replaceState({}, document.title, window.location.pathname);
     showToast('Erro ao fazer login com Google. Tente novamente.', 'error');
@@ -1468,9 +1479,34 @@ function checkUser() {
   const loginCode = urlParams.get('loginCode');
   if (googleAuth === 'success' && loginCode) {
     console.log('🔐 v161: Trocando loginCode por token...');
+    // ✅ v180: Limpar URL IMEDIATAMENTE para evitar reprocessamento em caso de recarga
     window.history.replaceState({}, document.title, '/home');
     trocarLoginCode(loginCode);
     return;
+  }
+  
+  // ✅ v180: Se googleAuth=success mas sem loginCode, redirect falhou
+  if (googleAuth === 'success' && !loginCode && !userData) {
+    console.warn('⚠️ v180: googleAuth=success mas sem loginCode — redirect incompleto');
+    window.history.replaceState({}, document.title, '/home');
+    showToast('Erro no login com Google. Tente novamente.', 'error');
+    renderLogin();
+    return;
+  }
+  
+  // ✅ Se login Google está em progresso (usuário voltou do redirect Google mas sem loginCode ainda)
+  // Aguardar um pouco antes de mostrar login para evitar flash
+  const googleInProgress = localStorage.getItem('_googleLoginInProgress');
+  if (googleInProgress) {
+    const elapsed = Date.now() - parseInt(googleInProgress);
+    // Se faz menos de 2 minutos, pode ser redirect lento — NÃO mostrar login, esperar
+    if (elapsed < 120000 && !googleAuth && !error) {
+      // Provavelmente o redirect ainda está acontecendo, limpar flag
+      localStorage.removeItem('_googleLoginInProgress');
+      // Continuar normalmente (não interromper)
+    } else {
+      localStorage.removeItem('_googleLoginInProgress');
+    }
   }
   
   // Fallback: se veio googleAuth=success sem loginCode (compatibilidade)
@@ -1601,6 +1637,11 @@ async function validarSessaoEContinuar() {
     verificarEntrevista();
   } catch (error) {
     console.warn('⚠️ Erro ao validar sessão, continuando normalmente:', error);
+    // ✅ v180: Se acabou de fazer login (token é recente), não forçar logout
+    const token = localStorage.getItem('sessionToken');
+    if (token && currentUser) {
+      console.log('🔑 v180: Token presente, continuando com sessão local');
+    }
     window._serverConfirmedAdmin = false;
     if (window._atualizarBotoesAdmin) window._atualizarBotoesAdmin();
     verificarEntrevista();
@@ -1610,14 +1651,31 @@ async function validarSessaoEContinuar() {
 // Login com Google
 async function loginComGoogle() {
   try {
+    // ✅ v180: Limpar qualquer sessão antiga e dados stale antes de iniciar novo login
+    localStorage.removeItem('_googleLoginInProgress');
+    localStorage.removeItem('sessionToken');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userPicture');
+    localStorage.removeItem('authProvider');
+    currentUser = null;
+    window._loginExchangeInProgress = true; // Prevenir 401 interceptor
+    
     showToast('Redirecionando para o Google...', 'info');
+    // Marcar que login está em andamento (para evitar loop no checkUser)
+    localStorage.setItem('_googleLoginInProgress', Date.now().toString());
     const response = await axios.get('/api/auth/google');
     if (response.data.authUrl) {
       window.location.href = response.data.authUrl;
     } else {
+      localStorage.removeItem('_googleLoginInProgress');
+      window._loginExchangeInProgress = false;
       showToast('Google OAuth não está configurado', 'error');
     }
   } catch (error) {
+    localStorage.removeItem('_googleLoginInProgress');
+    window._loginExchangeInProgress = false;
     console.error('Erro ao iniciar login Google:', error);
     showToast('Erro ao conectar com Google. Tente novamente.', 'error');
   }
@@ -3486,40 +3544,85 @@ window.verificarEmailJaValidado = async function(email) {
 // ============== TROCA DE LOGIN CODE (v161) ==============
 // Para login Google de usuários normais: troca loginCode por token via API segura
 async function trocarLoginCode(loginCode) {
-  try {
-    const response = await axios.post('/api/auth/exchange-login-code', { loginCode });
-    
-    if (response.data.success) {
-      const user = response.data.user;
-      const token = response.data.token;
-      
-      console.log('✅ v161: LoginCode trocado com sucesso');
-      
-      currentUser = {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        picture: user.picture,
-        authProvider: user.authProvider || 'google'
-      };
-      
-      localStorage.setItem('sessionToken', token);
-      localStorage.setItem('userId', String(user.id));
-      localStorage.setItem('userEmail', user.email);
-      localStorage.setItem('userName', user.name || '');
-      localStorage.setItem('userPicture', user.picture || '');
-      localStorage.setItem('authProvider', user.authProvider || 'google');
-      
-      showToast('🎉 Login com Google realizado com sucesso!', 'success');
-      validarSessaoEContinuar();
-    } else {
-      throw new Error(response.data.error || 'Erro desconhecido');
-    }
-  } catch (error) {
-    console.error('❌ v161: Erro ao trocar loginCode:', error);
-    showToast('Erro ao completar login. Tente novamente.', 'error');
-    renderLogin();
+  // ✅ v180: Flag para impedir 401 interceptor de interferir durante a troca
+  window._loginExchangeInProgress = true;
+  
+  // Limpar flag de login em progresso
+  localStorage.removeItem('_googleLoginInProgress');
+  
+  // ✅ v180: Limpar sessão anterior para evitar conflitos com 401 interceptor
+  localStorage.removeItem('sessionToken');
+  localStorage.removeItem('userId');
+  localStorage.removeItem('userEmail');
+  localStorage.removeItem('userName');
+  localStorage.removeItem('userPicture');
+  localStorage.removeItem('authProvider');
+  currentUser = null;
+  
+  // Mostrar loading imediato para o usuário não ver tela de login
+  const app = document.getElementById('app');
+  if (app) {
+    app.innerHTML = `
+      <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F]">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+            <i class="fas fa-spinner fa-spin text-[#122D6A] text-2xl"></i>
+          </div>
+          <h2 class="text-xl font-bold text-gray-800 mb-2">Finalizando login...</h2>
+          <p class="text-gray-500 text-sm">Conectando sua conta Google</p>
+        </div>
+      </div>`;
   }
+  
+  // Tentar trocar o loginCode com retry
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      console.log('🔐 v161: Tentativa ' + attempt + ' de trocar loginCode...');
+      const response = await axios.post('/api/auth/exchange-login-code', { loginCode }, { timeout: 15000 });
+      
+      if (response.data.success) {
+        const user = response.data.user;
+        const token = response.data.token;
+        
+        console.log('✅ v161: LoginCode trocado com sucesso (tentativa ' + attempt + ')');
+        
+        currentUser = {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          picture: user.picture,
+          authProvider: user.authProvider || 'google'
+        };
+        
+        localStorage.setItem('sessionToken', token);
+        localStorage.setItem('userId', String(user.id));
+        localStorage.setItem('userEmail', user.email);
+        localStorage.setItem('userName', user.name || '');
+        localStorage.setItem('userPicture', user.picture || '');
+        localStorage.setItem('authProvider', user.authProvider || 'google');
+        
+        showToast('🎉 Login com Google realizado com sucesso!', 'success');
+        window._loginExchangeInProgress = false;
+        validarSessaoEContinuar();
+        return; // Sucesso - sair da função
+      } else {
+        throw new Error(response.data.error || 'Erro desconhecido');
+      }
+    } catch (error) {
+      lastError = error;
+      console.warn('⚠️ v161: Tentativa ' + attempt + ' falhou:', error.message || error);
+      if (attempt < 3) {
+        await new Promise(r => setTimeout(r, 1000 * attempt)); // Esperar 1s, 2s antes de retry
+      }
+    }
+  }
+  
+  // Todas as tentativas falharam
+  console.error('❌ v161: Todas as tentativas de trocar loginCode falharam:', lastError);
+  window._loginExchangeInProgress = false;
+  showToast('Erro ao completar login. Tente novamente.', 'error');
+  renderLogin();
 }
 
 // ============== TELA DE 2FA ADMIN (v161) ==============
@@ -3861,7 +3964,18 @@ function renderLogin() {
         if (isLoginMode) {
           // Login
           console.log('🔑 Tentando fazer login com:', email);
-          const response = await axios.post('/api/login', { email, password });
+          
+          // ✅ v180: Flag para impedir 401 interceptor de interferir durante login
+          window._loginExchangeInProgress = true;
+          
+          // Desabilitar botão para evitar cliques duplos
+          const submitBtn = document.querySelector('#authForm button[type="submit"]');
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Entrando...';
+          }
+          
+          const response = await axios.post('/api/login', { email, password }, { timeout: 15000 });
           console.log('✅ Login bem sucedido:', response.data);
           currentUser = response.data;
           
@@ -3875,13 +3989,18 @@ function renderLogin() {
           localStorage.setItem('userName', currentUser.name || '');
           localStorage.setItem('userCreatedAt', currentUser.created_at || '');
           localStorage.setItem('userPicture', currentUser.picture || '');
+          localStorage.setItem('authProvider', 'email');
           if (currentUser.picture) {
             console.log('📸 Foto do Google salva no login por email');
           }
           
-          console.log('📊 Verificando entrevista...');
-          // Acesso será contabilizado apenas se tiver plano criado
-          verificarEntrevista();
+          showToast('🎉 Login realizado com sucesso!', 'success');
+          
+          // ✅ v180: Limpar flag ANTES de validar sessão
+          window._loginExchangeInProgress = false;
+          
+          // ✅ Validar sessão no servidor e prosseguir
+          validarSessaoEContinuar();
         } else {
           // Cadastro
           const name = document.getElementById('userName').value;
@@ -3902,8 +4021,16 @@ function renderLogin() {
         }
       } catch (error) {
         console.error('❌ Erro no login/cadastro:', error);
+        window._loginExchangeInProgress = false;
         const errorData = error.response?.data;
         const errorMsg = errorData?.error || error.message || 'Erro na operação';
+        
+        // Reabilitar botão
+        const submitBtn = document.querySelector('#authForm button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = isLoginMode ? '🔓 Entrar' : '🚀 Criar Conta';
+        }
         
         // ✅ SEGURANÇA v146: Se é conta Google Only, redirecionar para login Google
         if (errorData?.googleOnly) {
@@ -20900,6 +21027,7 @@ window.verListaUsuarios = async function(page, search, filter) {
             '<button onclick="editarUsuarioAdmin(' + u.id + ',\'' + (u.name || '').replace(/'/g, "\\'") + '\',\'' + u.email + '\',' + (isPremium ? 1 : 0) + ')" class="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Editar"><i class="fas fa-edit text-xs"></i></button>' +
             premiumBtn +
             '<button onclick="enviarEmailIndividual(' + u.id + ',\'' + u.email.replace(/'/g, '') + '\')" class="p-1 text-orange-500 hover:bg-orange-50 rounded" title="' + emailTitle + '"><i class="fas ' + emailIcon + ' text-xs"></i></button>' +
+            '<button onclick="abrirEmailManualParaUsuario(' + u.id + ',\'' + u.email.replace(/'/g, '') + '\',\'' + (u.name || '').replace(/'/g, '') + '\')" class="p-1 text-purple-500 hover:bg-purple-50 rounded" title="Email manual personalizado"><i class="fas fa-envelope text-xs"></i></button>' +
             (u.email !== 'terciogomesrabelo@gmail.com' && !u.email_verified ? '<button onclick="deletarUsuarioAdmin(' + u.id + ',\'' + u.email + '\',false)" class="p-1 text-red-500 hover:bg-red-50 rounded" title="Deletar"><i class="fas fa-trash text-xs"></i></button>' : '') +
           '</div></td></tr>';
       }).join('');
@@ -21108,11 +21236,16 @@ window.abrirEmailManual = function() {
           <label class="block text-sm font-semibold text-gray-700 mb-1.5"><i class="fas fa-users mr-1 text-gray-500"></i> Destinatários</label>
           <select id="email-manual-dest" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none">
             <option value="teste">Email de Teste (admin)</option>
+            <option value="usuario_especifico">Usuário específico (por ID ou email)</option>
             <option value="reengajados">Já receberam 1o email de reengajamento</option>
             <option value="todos_free">Todos usuários Free</option>
             <option value="todos">Todos os usuários</option>
             <option value="custom">Selecionar manualmente...</option>
           </select>
+          <div id="email-manual-usuario-especifico" class="hidden mt-2">
+            <input type="text" id="email-manual-usuario-id" placeholder="ID ou email do usuário (ex: 42 ou joao@email.com)" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none">
+            <p class="text-[10px] text-gray-400 mt-1">Digite o ID numérico ou email exato do usuário</p>
+          </div>
           <div id="email-manual-custom-dest" class="hidden mt-2">
             <input type="text" id="email-manual-custom-emails" placeholder="email1@test.com, email2@test.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none">
             <p class="text-[10px] text-gray-400 mt-1">Separe múltiplos emails com vírgula</p>
@@ -21177,10 +21310,27 @@ Equipe IAprova 🎓</textarea>
   `;
   document.body.appendChild(modal);
   
-  // Mostrar/esconder campo custom
+  // Mostrar/esconder campo custom e usuário específico
   document.getElementById('email-manual-dest').addEventListener('change', function() {
     document.getElementById('email-manual-custom-dest').classList.toggle('hidden', this.value !== 'custom');
+    document.getElementById('email-manual-usuario-especifico').classList.toggle('hidden', this.value !== 'usuario_especifico');
   });
+};
+
+// ✅ v180: Abrir email manual pré-preenchido para um usuário específico
+window.abrirEmailManualParaUsuario = function(userId, email, nome) {
+  // Primeiro abrir o modal normalmente
+  window.abrirEmailManual();
+  // Depois de um tick, pré-selecionar o usuário específico
+  setTimeout(() => {
+    const destSelect = document.getElementById('email-manual-dest');
+    if (destSelect) {
+      destSelect.value = 'usuario_especifico';
+      destSelect.dispatchEvent(new Event('change'));
+    }
+    const inputUsuario = document.getElementById('email-manual-usuario-id');
+    if (inputUsuario) inputUsuario.value = email || userId;
+  }, 100);
 };
 
 window._inserirVariavel = function(variavel) {
@@ -21219,11 +21369,19 @@ window._enviarEmailManual = async function() {
   const assunto = document.getElementById('email-manual-assunto')?.value;
   const corpo = document.getElementById('email-manual-corpo')?.value;
   const customEmails = document.getElementById('email-manual-custom-emails')?.value;
+  const usuarioId = document.getElementById('email-manual-usuario-id')?.value?.trim();
   
   if (!assunto || !corpo) { showToast('Preencha assunto e corpo do email', 'warning'); return; }
   
+  // ✅ v180: Validar campo de usuário específico
+  if (dest === 'usuario_especifico' && !usuarioId) { 
+    showToast('Informe o ID ou email do usuário', 'warning'); 
+    return; 
+  }
+  
   let targetDesc = '';
   if (dest === 'teste') targetDesc = 'email de TESTE para o admin';
+  else if (dest === 'usuario_especifico') targetDesc = 'usuário: ' + usuarioId;
   else if (dest === 'reengajados') targetDesc = 'usuários que já receberam o 1° email de reengajamento';
   else if (dest === 'todos_free') targetDesc = 'TODOS os usuários Free';
   else if (dest === 'todos') targetDesc = 'TODOS os usuários';
@@ -21246,6 +21404,7 @@ window._enviarEmailManual = async function() {
     const response = await axios.post('/api/admin/email-manual/enviar', {
       destinatarios: dest,
       custom_emails: customEmails,
+      usuario_especifico: usuarioId,
       assunto: assunto,
       corpo: corpo
     }, { timeout: 60000 });
