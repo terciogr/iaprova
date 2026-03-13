@@ -11790,7 +11790,7 @@ window.toggleRevisaoTopico = async function(topicoId, marcarRevisado, disciplina
 // Função para ver materiais salvos do tópico
 window.verMateriaisTopico = async function(topicoId, topicoNome, disciplinaNome) {
   try {
-    // ✅ Guardar dados em variáveis globais para evitar problemas com escape
+    // Guardar dados para uso posterior
     window._materiaisTopicoAtual = {
       topicoId: topicoId,
       topicoNome: topicoNome,
@@ -11801,109 +11801,156 @@ window.verMateriaisTopico = async function(topicoId, topicoNome, disciplinaNome)
     const response = await axios.get(`/api/materiais/${currentUser.id}?topico_id=${topicoId}`);
     const materiais = response.data.materiais || [];
     
-    const tipoIcons = {
-      teoria: { icon: 'fa-book', color: 'blue', label: 'Teoria' },
-      exercicios: { icon: 'fa-tasks', color: 'green', label: 'Exercícios' },
-      resumo: { icon: 'fa-sticky-note', color: 'yellow', label: 'Resumo' },
-      flashcards: { icon: 'fa-clone', color: 'blue', label: 'Flashcards' },
-      upload: { icon: 'fa-file-upload', color: 'blue', label: 'Upload' },
-      anotacao: { icon: 'fa-edit', color: 'gray', label: 'Anotação' }
+    const tipoConfig = {
+      teoria:     { icon: 'fa-book',        label: 'Teoria',      bg: '#EFF6FF', accent: '#2563EB' },
+      exercicios: { icon: 'fa-pen-to-square',label: 'Questões',    bg: '#F0FDF4', accent: '#16A34A' },
+      resumo:     { icon: 'fa-align-left',   label: 'Resumo',      bg: '#FFFBEB', accent: '#D97706' },
+      flashcards: { icon: 'fa-layer-group',  label: 'Flashcards',  bg: '#F5F3FF', accent: '#7C3AED' },
+      upload:     { icon: 'fa-file-arrow-up',label: 'Upload',      bg: '#F0F9FF', accent: '#0284C7' },
+      anotacao:   { icon: 'fa-pencil',       label: 'Anotação',    bg: '#F9FAFB', accent: '#6B7280' }
     };
-    
-    const modalHtml = `
-      <div id="modal-materiais-topico" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-          <!-- Header -->
-          <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-6 flex-shrink-0">
-            <h2 class="text-xl font-bold flex items-center gap-3">
-              <i class="fas fa-folder-open"></i>
-              Materiais Salvos
-            </h2>
-            <p class="mt-1 text-sm opacity-90">${topicoNome}</p>
-            <p class="text-xs opacity-75">${disciplinaNome}</p>
-          </div>
-          
-          <!-- Conteúdo -->
-          <div class="flex-1 overflow-y-auto p-6">
-            ${materiais.length === 0 ? `
-              <div class="text-center py-12">
-                <i class="fas fa-folder-open text-6xl text-gray-300 mb-4"></i>
-                <h3 class="text-lg font-bold ${themes[currentTheme].text} mb-2">Nenhum material salvo ainda</h3>
-                <p class="${themes[currentTheme].textSecondary} mb-4">Gere conteúdo com IA para começar</p>
-                <button onclick="gerarConteudoDoMaterialModal()"
-                        class="px-6 py-3 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition">
-                  <i class="fas fa-magic mr-2"></i>Gerar Conteúdo
+
+    const materiaisHtml = materiais.length === 0 ? `
+      <div class="flex flex-col items-center justify-center py-16 px-4">
+        <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+          <i class="fas fa-folder-open text-2xl text-gray-300"></i>
+        </div>
+        <p class="text-sm font-medium ${themes[currentTheme].text} mb-1">Nenhum material ainda</p>
+        <p class="text-xs ${themes[currentTheme].textSecondary} mb-5">Gere conteúdo com IA para começar</p>
+        <button id="btn-gerar-vazio" class="px-5 py-2.5 bg-[#122D6A] text-white text-sm rounded-lg hover:bg-[#0D1F4D] active:scale-95 transition-all">
+          <i class="fas fa-sparkles mr-1.5"></i>Gerar Conteúdo
+        </button>
+      </div>
+    ` : `
+      <div class="flex flex-col gap-2 px-4 py-3">
+        ${materiais.map(material => {
+          const cfg = tipoConfig[material.tipo] || tipoConfig.anotacao;
+          const data = new Date(material.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+          const isFav = material.favorito ? 1 : 0;
+          return `
+            <div class="flex items-center gap-3 p-3 rounded-xl border ${themes[currentTheme].border} hover:shadow-sm active:scale-[0.99] transition-all cursor-pointer group"
+                 onclick="window._visualizarMaterial(${material.id}, '${material.tipo}')">
+              <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style="background:${cfg.bg}">
+                <i class="fas ${cfg.icon} text-sm" style="color:${cfg.accent}"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-semibold px-1.5 py-0.5 rounded" style="background:${cfg.bg};color:${cfg.accent}">${cfg.label}</span>
+                  <span class="text-[10px] ${themes[currentTheme].textSecondary}">${data}</span>
+                </div>
+                <p class="text-xs ${themes[currentTheme].text} mt-0.5 truncate">${material.titulo || ''}</p>
+              </div>
+              <div class="flex items-center gap-1 flex-shrink-0 opacity-70 group-hover:opacity-100">
+                <button onclick="event.stopPropagation(); window._toggleFav(this, ${material.id})"
+                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-yellow-50 transition"
+                        data-fav="${isFav}">
+                  <i class="fa-star text-sm ${isFav ? 'fas text-yellow-400' : 'far text-gray-300'}"></i>
+                </button>
+                <button onclick="event.stopPropagation(); window._deletarMat(${material.id})"
+                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 transition">
+                  <i class="fas fa-trash-can text-xs text-red-400"></i>
                 </button>
               </div>
-            ` : `
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                ${materiais.map(material => {
-                  const tipoInfo = tipoIcons[material.tipo] || tipoIcons.anotacao;
-                  const dataFormatada = new Date(material.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-                  
-                  return `
-                    <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} overflow-hidden hover:shadow-lg transition">
-                      <!-- Header do Card -->
-                      <div class="bg-${tipoInfo.color}-50 p-3 border-b ${themes[currentTheme].border}">
-                        <div class="flex items-center justify-between">
-                          <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 rounded-full bg-${tipoInfo.color}-100 flex items-center justify-center">
-                              <i class="fas ${tipoInfo.icon} text-${tipoInfo.color}-600 text-sm"></i>
-                            </div>
-                            <div>
-                              <p class="text-xs text-${tipoInfo.color}-600 font-medium">${tipoInfo.label}</p>
-                              <p class="text-xs ${themes[currentTheme].textSecondary}">${dataFormatada}</p>
-                            </div>
-                          </div>
-                          <button onclick="event.stopPropagation(); toggleFavoritoMaterial(${material.id})" 
-                                  class="text-lg ${material.favorito ? 'text-yellow-500' : 'text-gray-300'} hover:text-yellow-500 transition">
-                            <i class="fas fa-star"></i>
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <!-- Conteúdo -->
-                      <div class="p-3">
-                        <h4 class="font-semibold ${themes[currentTheme].text} text-sm mb-2 line-clamp-2">${material.titulo}</h4>
-                        ${material.conteudo ? `<p class="${themes[currentTheme].textSecondary} text-xs line-clamp-2">${material.conteudo.substring(0, 100)}...</p>` : ''}
-                      </div>
-                      
-                      <!-- Footer -->
-                      <div class="p-2 border-t ${themes[currentTheme].border} flex gap-2">
-                        <button onclick="visualizarMaterialDireto(${material.id}, '${material.tipo}')" 
-                                class="flex-1 px-3 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition text-xs">
-                          <i class="fas fa-eye mr-1"></i>Ver
-                        </button>
-                        <button onclick="deletarMaterialDireto(${material.id})" 
-                                class="px-3 py-2 border ${themes[currentTheme].border} rounded-lg hover:bg-red-50 hover:border-red-300 transition text-xs">
-                          <i class="fas fa-trash text-red-500"></i>
-                        </button>
-                      </div>
-                    </div>
-                  `;
-                }).join('')}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    const modalHtml = `
+      <div id="modal-materiais-topico" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="animation:fadeIn .15s ease">
+        <div id="mat-backdrop" class="absolute inset-0 bg-black/40"></div>
+        <div class="${themes[currentTheme].card} relative w-full sm:w-[420px] sm:max-w-[95vw] max-h-[85vh] sm:max-h-[80vh] flex flex-col rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden" style="animation:slideUp .2s ease">
+          
+          <!-- Header compacto -->
+          <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white px-4 py-3.5 flex items-center justify-between flex-shrink-0">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <i class="fas fa-folder-open text-sm opacity-80"></i>
+                <h2 class="text-sm font-bold truncate">Materiais Salvos</h2>
+                ${materiais.length > 0 ? `<span class="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full">${materiais.length}</span>` : ''}
               </div>
-            `}
+              <p class="text-xs opacity-75 mt-0.5 truncate">${topicoNome}</p>
+            </div>
+            <button id="btn-fechar-mat" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition ml-2 flex-shrink-0">
+              <i class="fas fa-xmark text-lg"></i>
+            </button>
           </div>
           
-          <!-- Footer -->
-          <div class="p-4 border-t ${themes[currentTheme].border} flex gap-3 justify-end flex-shrink-0">
-            <button onclick="gerarConteudoDoMaterialModal()"
-                    class="px-4 py-2 bg-[#122D6A] text-white rounded-lg hover:bg-[#0D1F4D] transition">
-              <i class="fas fa-magic mr-2"></i>Gerar Novo Conteúdo
-            </button>
-            <button onclick="document.getElementById('modal-materiais-topico').remove()"
-                    class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition">
-              <i class="fas fa-times mr-2"></i>Fechar
-            </button>
+          <!-- Conteúdo scrollável -->
+          <div class="flex-1 overflow-y-auto overscroll-contain">
+            ${materiaisHtml}
           </div>
+          
+          <!-- Footer compacto -->
+          ${materiais.length > 0 ? `
+            <div class="px-4 py-3 border-t ${themes[currentTheme].border} flex-shrink-0">
+              <button id="btn-gerar-footer" class="w-full py-2.5 bg-[#122D6A] text-white text-sm font-medium rounded-lg hover:bg-[#0D1F4D] active:scale-[0.98] transition-all">
+                <i class="fas fa-sparkles mr-1.5"></i>Gerar Novo Conteúdo
+              </button>
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
     
-    const modalDiv = document.createElement('div');
-    modalDiv.innerHTML = modalHtml;
-    document.body.appendChild(modalDiv.firstElementChild);
+    // Remover modal anterior se existir
+    document.getElementById('modal-materiais-topico')?.remove();
+    
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = modalHtml;
+    document.body.appendChild(wrapper.firstElementChild);
+    
+    // Adicionar CSS de animação se não existir
+    if (!document.getElementById('mat-modal-styles')) {
+      const style = document.createElement('style');
+      style.id = 'mat-modal-styles';
+      style.textContent = `
+        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    // Event listeners (evita problemas de onclick inline)
+    const modal = document.getElementById('modal-materiais-topico');
+    
+    // Fechar com backdrop
+    document.getElementById('mat-backdrop')?.addEventListener('click', () => {
+      modal?.remove();
+    });
+    
+    // Fechar com X
+    document.getElementById('btn-fechar-mat')?.addEventListener('click', () => {
+      modal?.remove();
+    });
+    
+    // Botão gerar (estado vazio)
+    document.getElementById('btn-gerar-vazio')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      modal?.remove();
+      setTimeout(() => {
+        window.gerarConteudoTopico(topicoId, topicoNome, disciplinaNome);
+      }, 100);
+    });
+    
+    // Botão gerar (footer)
+    document.getElementById('btn-gerar-footer')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      modal?.remove();
+      setTimeout(() => {
+        window.gerarConteudoTopico(topicoId, topicoNome, disciplinaNome);
+      }, 100);
+    });
+    
+    // Fechar com ESC
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        modal?.remove();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
     
   } catch (error) {
     console.error('Erro ao carregar materiais:', error);
@@ -11911,17 +11958,14 @@ window.verMateriaisTopico = async function(topicoId, topicoNome, disciplinaNome)
   }
 }
 
-// Visualizar material direto (do modal de materiais)
-window.visualizarMaterialDireto = async function(materialId, tipo) {
+// Visualizar material (chamado pelo card clicável)
+window._visualizarMaterial = async function(materialId, tipo) {
   try {
     const response = await axios.get(`/api/materiais/item/${materialId}`);
     const material = response.data.material;
     
-    // Fechar modal de materiais
     document.getElementById('modal-materiais-topico')?.remove();
     
-    // Abrir visualização específica por tipo
-    // ✅ v71: Usar material.tipo real do banco para decisão de exibição
     const tipoReal = material.tipo || tipo;
     const dadosExibicao = {
       topico_nome: material.topico_nome || material.titulo || 'Conteúdo',
@@ -11940,7 +11984,6 @@ window.visualizarMaterialDireto = async function(materialId, tipo) {
     } else if (tipoReal === 'flashcards') {
       exibirFlashcardsVisuais(dadosExibicao);
     } else if (tipoReal === 'resumo' && material.tags && material.tags.includes('subtipo:esquematizado')) {
-      // ✅ v70: Resumo esquematizado
       dadosExibicao.subtipo_resumo = 'esquematizado';
       exibirResumoEsquematizado(dadosExibicao);
     } else {
@@ -11952,9 +11995,28 @@ window.visualizarMaterialDireto = async function(materialId, tipo) {
   }
 }
 
-// Deletar material direto (do modal de materiais)
-window.deletarMaterialDireto = async function(materialId) {
-  const confirmed = await showConfirm('Deseja realmente deletar este material?\n\nEsta ação não pode ser desfeita.', {
+// Toggle favorito (com referência direta ao botão)
+window._toggleFav = async function(btn, materialId) {
+  try {
+    const response = await axios.post(`/api/materiais/${materialId}/favorito`);
+    if (response.data.success) {
+      const isFav = response.data.favorito;
+      const icon = btn.querySelector('i');
+      if (icon) {
+        icon.className = isFav ? 'fas fa-star text-sm text-yellow-400' : 'far fa-star text-sm text-gray-300';
+      }
+      btn.setAttribute('data-fav', isFav ? '1' : '0');
+      showToast(isFav ? '⭐ Favoritado' : '☆ Removido dos favoritos', 'success');
+    }
+  } catch (error) {
+    console.error('Erro ao toggle favorito:', error);
+    showToast('Erro ao atualizar favorito', 'error');
+  }
+}
+
+// Deletar material e recarregar modal
+window._deletarMat = async function(materialId) {
+  const confirmed = await showConfirm('Deseja deletar este material?', {
     title: 'Deletar Material',
     confirmText: 'Deletar',
     cancelText: 'Cancelar',
@@ -11964,62 +12026,15 @@ window.deletarMaterialDireto = async function(materialId) {
   
   try {
     await axios.delete(`/api/materiais/${materialId}`);
-    showToast('✅ Material deletado com sucesso', 'success');
-    // Recarregar modal
-    const modalElement = document.getElementById('modal-materiais-topico');
-    if (modalElement) {
-      const topicoInfo = modalElement.querySelector('p.text-sm.opacity-90');
-      if (topicoInfo) {
-        modalElement.remove();
-        // Reabrir modal atualizado - você precisaria passar os parâmetros corretos aqui
-        // Por simplicidade, vamos apenas fechar e mostrar toast
-      }
+    showToast('✅ Material deletado', 'success');
+    // Recarregar modal com dados atualizados
+    const dados = window._materiaisTopicoAtual;
+    if (dados) {
+      window.verMateriaisTopico(dados.topicoId, dados.topicoNome, dados.disciplinaNome);
     }
   } catch (error) {
     console.error('Erro ao deletar material:', error);
     showToast('Erro ao deletar material', 'error');
-  }
-}
-
-// Toggle favorito do material (do modal)
-window.toggleFavoritoMaterial = async function(materialId) {
-  try {
-    const response = await axios.post(`/api/materiais/${materialId}/favorito`);
-    if (response.data.success) {
-      showToast(response.data.favorito ? '⭐ Favoritado' : '☆ Desfavoritado', 'success');
-      // Atualizar ícone visualmente
-      const button = event.target.closest('button');
-      if (button) {
-        const icon = button.querySelector('i');
-        if (icon) {
-          if (response.data.favorito) {
-            button.classList.add('text-yellow-500');
-            button.classList.remove('text-gray-300');
-          } else {
-            button.classList.add('text-gray-300');
-            button.classList.remove('text-yellow-500');
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Erro ao toggle favorito:', error);
-    showToast('Erro ao atualizar favorito', 'error');
-  }
-}
-
-// ✅ NOVA: Função auxiliar para gerar conteúdo a partir do modal de materiais
-window.gerarConteudoDoMaterialModal = function() {
-  // Fechar modal de materiais
-  document.getElementById('modal-materiais-topico')?.remove();
-  
-  // Verificar se temos os dados guardados
-  const dados = window._materiaisTopicoAtual;
-  if (dados) {
-    console.log('🎯 Gerando conteúdo para:', dados);
-    window.gerarConteudoTopico(dados.topicoId, dados.topicoNome, dados.disciplinaNome);
-  } else {
-    showToast('Erro: dados do tópico não encontrados', 'error');
   }
 }
 
