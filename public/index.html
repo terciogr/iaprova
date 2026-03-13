@@ -18,13 +18,13 @@
     <meta name="author" content="IAprova">
     
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#6366f1">
+    <meta name="theme-color" content="#122D6A">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="IAprova">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="IAprova">
-    <meta name="msapplication-TileColor" content="#6366f1">
+    <meta name="msapplication-TileColor" content="#122D6A">
     <meta name="msapplication-config" content="/browserconfig.xml">
     
     <!-- Open Graph / Facebook -->
@@ -307,35 +307,16 @@
     <!-- App Container -->
     <div id="app">
         <!-- Initial Loading Screen -->
-        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F]">
+        <div class="min-h-screen flex items-center justify-center bg-white">
             <div class="text-center">
                 <div class="mb-6 animate-float">
-                    <!-- Logo IAprova -->
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" class="w-24 h-24 mx-auto pulse-glow rounded-3xl">
-                        <defs>
-                            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style="stop-color:#1A3A7F"/>
-                                <stop offset="100%" style="stop-color:#2A4A9F"/>
-                            </linearGradient>
-                        </defs>
-                        <rect width="192" height="192" rx="40" fill="url(#grad1)"/>
-                        <g transform="translate(40, 35) scale(0.55)">
-                            <path d="M60 30 C30 30 20 60 20 90 C20 120 35 150 60 160 C70 165 80 165 90 160" fill="none" stroke="white" stroke-width="8" stroke-linecap="round"/>
-                            <path d="M45 60 C35 65 30 80 35 95" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
-                            <path d="M40 100 C35 110 40 125 55 130" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
-                            <path d="M140 30 C170 30 180 60 180 90 C180 120 165 150 140 160 C130 165 120 165 110 160" fill="none" stroke="white" stroke-width="8" stroke-linecap="round"/>
-                            <path d="M155 60 C165 65 170 80 165 95" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
-                            <path d="M160 100 C165 110 160 125 145 130" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
-                            <path d="M90 40 L110 40 M90 80 L110 80 M90 120 L110 120" fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
-                        </g>
-                        <circle cx="145" cy="145" r="35" fill="#10B981"/>
-                        <path d="M125 145 L140 160 L170 130" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                    <!-- Logo IAprova - Novo ícone minimalista -->
+                    <img src="/icons/icon-192x192.png" alt="IAprova" class="w-24 h-24 mx-auto rounded-3xl shadow-lg">
                 </div>
-                <h1 class="text-white text-4xl font-bold mb-2">IAprova</h1>
-                <p class="text-blue-200 text-lg mb-6">Preparação Inteligente para Concursos</p>
-                <div class="spinner mx-auto mb-4"></div>
-                <p class="text-blue-100 text-sm">Carregando sistema...</p>
+                <h1 class="text-[#122D6A] text-4xl font-bold mb-2">IAprova</h1>
+                <p class="text-gray-400 text-lg mb-6">Preparação Inteligente para Concursos</p>
+                <div class="mx-auto mb-4" style="width:36px;height:36px;border:3px solid #e5e7eb;border-top-color:#122D6A;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+                <p class="text-gray-400 text-sm">Carregando sistema...</p>
             </div>
         </div>
     </div>

@@ -1585,6 +1585,17 @@ async function validarSessaoEContinuar() {
       console.warn('🚨 v158: localStorage diz admin mas servidor negou. Corrigindo.');
     }
     
+    // ✅ v170: Atualizar foto e nome do Google se o servidor retornou
+    if (response.data.picture && currentUser) {
+      currentUser.picture = response.data.picture;
+      localStorage.setItem('userPicture', response.data.picture);
+      console.log('📸 Foto do Google atualizada via validate-session');
+    }
+    if (response.data.name && currentUser) {
+      currentUser.name = response.data.name;
+      localStorage.setItem('userName', response.data.name);
+    }
+    
     // Sessão válida — continuar normalmente
     if (window._atualizarBotoesAdmin) window._atualizarBotoesAdmin();
     verificarEntrevista();
@@ -1973,8 +1984,8 @@ function renderLandingPage() {
       <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 bg-gradient-to-br from-[#122D6A] to-[#1A3A7F] rounded-xl flex items-center justify-center">
-              <i class="fas fa-brain text-white text-base"></i>
+            <div class="w-9 h-9 rounded-xl overflow-hidden">
+              <img src="/icons/icon-96x96.png" alt="IAprova" class="w-full h-full object-cover">
             </div>
             <span class="text-xl font-extrabold text-[#122D6A] tracking-tight">IAprova</span>
           </div>
@@ -2936,148 +2947,20 @@ function renderLandingPage() {
       </section>
       
       <!-- ====== QUEM SOMOS ====== -->
-      <section id="quem-somos" class="py-16 md:py-24 px-4 bg-white">
-        <div class="max-w-5xl mx-auto">
-          
-          <!-- Header -->
-          <div class="text-center mb-12 md:mb-16">
-            <span class="inline-block px-3 py-1 bg-[#122D6A]/10 text-[#122D6A] text-xs font-bold uppercase tracking-wider rounded-full mb-4">Quem Somos</span>
-            <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900">
-              Quem está por trás do <span class="text-[#122D6A]">IAprova</span>
-            </h2>
-            <p class="text-gray-500 mt-3 max-w-2xl mx-auto">Um produto criado por quem conhece a realidade dos concursos públicos por dentro.</p>
+      <section id="quem-somos" class="py-14 md:py-20 px-4 bg-gray-50/80 border-t border-gray-100">
+        <div class="max-w-2xl mx-auto">
+          <h3 class="text-lg font-semibold text-gray-400 uppercase tracking-widest mb-6 text-center">Quem está por trás</h3>
+          <div class="text-gray-500 text-[14.5px] leading-[1.85] space-y-4">
+            <p>
+              O IAprova foi criado por <span class="text-gray-700 font-medium">Tércio Gomes Rabelo</span>, servidor público concursado — Auditor de Controle Externo no TCE-PI, bacharel em Direito pela UFPI e especialista em Tecnologias de Gestão Pública. Com passagens pela Caixa Econômica Federal e Secretaria de Planejamento do Piauí, ele conhece de perto tanto a realidade dos concursos quanto o potencial da tecnologia para simplificar processos.
+            </p>
+            <p>
+              A motivação é direta: a maioria dos estudantes gasta tempo demais organizando materiais e pouco tempo de fato aprendendo. Ferramentas de qualidade costumam ser caras ou complexas. O IAprova existe para mudar isso — <span class="text-gray-700 font-medium">automatizar o planejamento, gerar conteúdo personalizado com IA e manter tudo acessível</span>, para que qualquer pessoa possa estudar de forma inteligente sem comprometer o orçamento.
+            </p>
+            <p class="text-gray-400 text-[13px]">
+              O sistema evolui continuamente com novas funcionalidades e melhorias, sempre priorizando praticidade e custo justo.
+            </p>
           </div>
-          
-          <!-- Fundador Card -->
-          <div class="max-w-4xl mx-auto">
-            <div class="bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-              <div class="md:flex">
-                
-                <!-- Foto/Avatar + Credenciais -->
-                <div class="md:w-2/5 bg-gradient-to-br from-[#0D1F4D] to-[#1A3A7F] p-8 md:p-10 flex flex-col items-center justify-center text-center">
-                  <div class="w-28 h-28 md:w-32 md:h-32 rounded-full bg-white/15 border-4 border-white/20 flex items-center justify-center mb-5">
-                    <span class="text-4xl md:text-5xl font-extrabold text-white">TG</span>
-                  </div>
-                  <h3 class="text-xl md:text-2xl font-bold text-white mb-1">Tércio Gomes Rabelo</h3>
-                  <p class="text-blue-200/80 text-sm font-medium mb-5">Fundador do IAprova</p>
-                  
-                  <!-- Credenciais Badge -->
-                  <div class="space-y-2.5 w-full">
-                    <div class="flex items-center gap-2.5 px-4 py-2.5 bg-white/10 rounded-lg">
-                      <i class="fas fa-landmark text-emerald-400 text-sm flex-shrink-0"></i>
-                      <span class="text-blue-100 text-xs text-left leading-snug">Auditor de Controle Externo — TCE-PI</span>
-                    </div>
-                    <div class="flex items-center gap-2.5 px-4 py-2.5 bg-white/10 rounded-lg">
-                      <i class="fas fa-graduation-cap text-emerald-400 text-sm flex-shrink-0"></i>
-                      <span class="text-blue-100 text-xs text-left leading-snug">Bacharel em Direito — UFPI</span>
-                    </div>
-                    <div class="flex items-center gap-2.5 px-4 py-2.5 bg-white/10 rounded-lg">
-                      <i class="fas fa-certificate text-emerald-400 text-sm flex-shrink-0"></i>
-                      <span class="text-blue-100 text-xs text-left leading-snug">Especialista em Tecnologias de Gestão Pública e Responsabilidade Fiscal</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Texto / História -->
-                <div class="md:w-3/5 p-8 md:p-10">
-                  <div class="space-y-4 text-gray-600 text-sm leading-relaxed">
-                    <p>
-                      O IAprova nasceu de um <strong class="text-gray-900">problema real</strong>: estudar para concurso público exige organização, planejamento e muito tempo para preparar materiais. A maioria das pessoas perde horas montando resumos, planejamentos e simulados em vez de focar no que realmente importa — <strong class="text-gray-900">aprender e evoluir no conteúdo</strong>.
-                    </p>
-                    <p>
-                      Ao longo da minha trajetória profissional, sempre estive ligado a gestão pública, análise de dados, tecnologia e melhoria de processos. Antes de atuar no Tribunal de Contas, trabalhei na <strong class="text-gray-900">Caixa Econômica Federal</strong> e na <strong class="text-gray-900">Secretaria de Planejamento do Estado do Piauí</strong> — experiências que reforçaram minha visão sobre eficiência, organização e uso de tecnologia para resolver problemas reais.
-                    </p>
-                    <p>
-                      Foi justamente essa combinação de <strong class="text-gray-900">experiência prática, tecnologia e estudo para concursos</strong> que motivou a criação do IAprova.
-                    </p>
-                  </div>
-                  
-                  <!-- Trajetória compacta -->
-                  <div class="mt-6 pt-6 border-t border-gray-100">
-                    <p class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">Trajetória profissional</p>
-                    <div class="flex flex-wrap gap-2">
-                      <span class="px-3 py-1.5 bg-[#122D6A]/5 rounded-full text-[#122D6A] text-xs font-medium">TCE-PI</span>
-                      <span class="px-3 py-1.5 bg-[#122D6A]/5 rounded-full text-[#122D6A] text-xs font-medium">Caixa Econômica Federal</span>
-                      <span class="px-3 py-1.5 bg-[#122D6A]/5 rounded-full text-[#122D6A] text-xs font-medium">SEPLAN-PI</span>
-                      <span class="px-3 py-1.5 bg-[#122D6A]/5 rounded-full text-[#122D6A] text-xs font-medium">UFPI — Direito</span>
-                    </div>
-                  </div>
-                </div>
-                
-              </div>
-            </div>
-          </div>
-          
-          <!-- Missão -->
-          <div class="max-w-4xl mx-auto mt-12">
-            <div class="bg-gradient-to-br from-[#0D1F4D] to-[#122D6A] rounded-2xl p-8 md:p-10 relative overflow-hidden">
-              <div class="relative z-10">
-                <div class="flex items-center gap-3 mb-5">
-                  <div class="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-bullseye text-emerald-400"></i>
-                  </div>
-                  <h3 class="text-xl font-bold text-white">A missão do IAprova</h3>
-                </div>
-                <p class="text-lg md:text-xl font-semibold text-white mb-6 leading-relaxed">
-                  Democratizar o acesso a ferramentas inteligentes de estudo para concursos públicos.
-                </p>
-                <div class="grid sm:grid-cols-2 gap-4">
-                  <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <i class="fas fa-robot text-emerald-400 text-xs"></i>
-                    </div>
-                    <div>
-                      <p class="text-white font-semibold text-sm">Automatizar o planejamento</p>
-                      <p class="text-blue-200/70 text-xs leading-relaxed mt-0.5">A IA organiza cronograma, metas e prioridades para você.</p>
-                    </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <i class="fas fa-user-cog text-emerald-400 text-xs"></i>
-                    </div>
-                    <div>
-                      <p class="text-white font-semibold text-sm">Conteúdo personalizado</p>
-                      <p class="text-blue-200/70 text-xs leading-relaxed mt-0.5">Material gerado sob medida para o seu edital e banca.</p>
-                    </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <i class="fas fa-clock text-emerald-400 text-xs"></i>
-                    </div>
-                    <div>
-                      <p class="text-white font-semibold text-sm">Menos tempo organizando</p>
-                      <p class="text-blue-200/70 text-xs leading-relaxed mt-0.5">Gaste menos tempo planejando e mais tempo estudando.</p>
-                    </div>
-                  </div>
-                  <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <i class="fas fa-hand-holding-usd text-emerald-400 text-xs"></i>
-                    </div>
-                    <div>
-                      <p class="text-white font-semibold text-sm">Custo acessível</p>
-                      <p class="text-blue-200/70 text-xs leading-relaxed mt-0.5">Ferramenta profissional a um preço que cabe no bolso de qualquer estudante.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Evolução contínua -->
-          <div class="max-w-4xl mx-auto mt-8">
-            <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 md:p-8 flex flex-col sm:flex-row items-start gap-4">
-              <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-sync-alt text-emerald-600"></i>
-              </div>
-              <div>
-                <h4 class="font-bold text-gray-900 mb-1">Produto em constante evolução</h4>
-                <p class="text-gray-600 text-sm leading-relaxed">
-                  O IAprova é continuamente aprimorado com novas funcionalidades, melhorias e ajustes, sempre com foco em oferecer uma experiência de estudo cada vez mais eficiente, prática e acessível. A sua opinião faz parte dessa evolução.
-                </p>
-              </div>
-            </div>
-          </div>
-          
         </div>
       </section>
 
@@ -3109,8 +2992,8 @@ function renderLandingPage() {
         <div class="max-w-6xl mx-auto">
           <div class="flex flex-col md:flex-row items-center justify-between gap-6">
             <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 bg-[#1A3A7F] rounded-lg flex items-center justify-center">
-                <i class="fas fa-brain text-white text-sm"></i>
+              <div class="w-8 h-8 rounded-lg overflow-hidden">
+                <img src="/icons/icon-96x96.png" alt="IAprova" class="w-full h-full object-cover">
               </div>
               <span class="text-lg font-extrabold text-white tracking-tight">IAprova</span>
             </div>
@@ -3862,8 +3745,8 @@ function renderLogin() {
         <div class="min-h-screen flex items-center justify-center px-4 py-16">
           <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
             <div class="text-center mb-8">
-              <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] rounded-2xl flex items-center justify-center shadow-lg">
-                <i class="fas fa-brain text-white text-3xl"></i>
+              <div class="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-lg overflow-hidden">
+                <img src="/icons/icon-192x192.png" alt="IAprova" class="w-full h-full object-cover">
               </div>
               <h1 class="text-3xl font-bold text-gray-800">
                 <span class="text-[#122D6A]">IA</span><span class="text-[#2A4A9F]">prova</span>
@@ -3991,6 +3874,10 @@ function renderLogin() {
           localStorage.setItem('userEmail', email);
           localStorage.setItem('userName', currentUser.name || '');
           localStorage.setItem('userCreatedAt', currentUser.created_at || '');
+          localStorage.setItem('userPicture', currentUser.picture || '');
+          if (currentUser.picture) {
+            console.log('📸 Foto do Google salva no login por email');
+          }
           
           console.log('📊 Verificando entrevista...');
           // Acesso será contabilizado apenas se tiver plano criado
@@ -11644,7 +11531,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                             
                             <!-- Info do tópico -->
                             <div class="flex-1 min-w-0">
-                              <p class="${textClass} truncate font-medium text-sm">
+                              <p class="${textClass} font-medium text-xs leading-snug">
                                 ${index + 1}. ${topico.nome}
                               </p>
                               <div class="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -11661,10 +11548,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                                     class="p-1.5 sm:p-2 text-[#2A4A9F] hover:bg-[#2A4A9F]/10 rounded-lg transition" title="Ver materiais salvos">
                               <i class="fas fa-folder-open text-xs sm:text-sm"></i>
                             </button>
-                            <button onclick="event.stopPropagation(); gerarConteudoTopico(${topico.id}, '${(topico.nome || '').replace(/'/g, "\\'")}', '${disc.nome.replace(/'/g, "\\'")}')"
-                                    class="p-1.5 sm:p-2 text-[#122D6A] hover:bg-[#6BB6FF]/10 rounded-lg transition" title="Gerar conteúdo com IA">
-                              <i class="fas fa-magic text-xs sm:text-sm"></i>
-                            </button>
+
                             <button onclick="event.stopPropagation(); editarTopicoGestao(${topico.id}, '${(topico.nome || '').replace(/'/g, "\\'")}', ${topico.peso || 1})"
                                     class="p-1.5 sm:p-2 text-blue-500 hover:bg-[#122D6A]/10 rounded-lg transition" title="Editar">
                               <i class="fas fa-edit text-xs sm:text-sm"></i>
@@ -12133,7 +12017,7 @@ window.gerarConteudoDoMaterialModal = function() {
   const dados = window._materiaisTopicoAtual;
   if (dados) {
     console.log('🎯 Gerando conteúdo para:', dados);
-    gerarConteudoTopico(dados.topicoId, dados.topicoNome, dados.disciplinaNome);
+    window.gerarConteudoTopico(dados.topicoId, dados.topicoNome, dados.disciplinaNome);
   } else {
     showToast('Erro: dados do tópico não encontrados', 'error');
   }

@@ -2194,7 +2194,7 @@ app.post('/api/login', async (c) => {
   try {
     // Login normal
     const user = await DB.prepare(
-      'SELECT id, name, email, password, created_at, email_verified FROM users WHERE email = ?'
+      'SELECT id, name, email, password, created_at, email_verified, google_picture FROM users WHERE email = ?'
     ).bind(email).first() as any
 
     if (!user) {
@@ -2228,6 +2228,7 @@ app.post('/api/login', async (c) => {
       name: user.name, 
       email: user.email,
       created_at: user.created_at,
+      picture: user.google_picture || null,
       token: sessionToken,
       message: 'Login realizado com sucesso'
     })
@@ -6216,7 +6217,7 @@ app.get('/api/auth/validate-session', async (c) => {
     }
     
     const user = await DB.prepare(
-      'SELECT id, email, auth_provider, force_logout_at FROM users WHERE id = ?'
+      'SELECT id, email, name, google_picture, auth_provider, force_logout_at FROM users WHERE id = ?'
     ).bind(userId).first() as any
     
     if (!user) {
@@ -6249,7 +6250,7 @@ app.get('/api/auth/validate-session', async (c) => {
     const isUserAdmin = user.email === ADMIN_EMAIL && 
       (user.auth_provider === 'google' || user.auth_provider === 'both')
     
-    return c.json({ valid: true, force_logout: false, isAdmin: isUserAdmin })
+    return c.json({ valid: true, force_logout: false, isAdmin: isUserAdmin, name: user.name || null, picture: user.google_picture || null })
   } catch (error: any) {
     console.error('Erro ao validar sessão:', error)
     return c.json({ valid: true, force_logout: false, isAdmin: false }) // Em caso de erro, não deslogar
@@ -24072,20 +24073,15 @@ app.get('/home', (c) => {
     <!-- App Container -->
     <div id="app">
         <!-- Initial Loading Screen -->
-        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F]">
+        <div class="min-h-screen flex items-center justify-center bg-white">
             <div class="text-center">
                 <div class="mb-6 animate-float">
-                    <div class="w-24 h-24 mx-auto pulse-glow rounded-3xl bg-gradient-to-br from-[#1A3A7F] to-[#2A4A9F] flex items-center justify-center">
-                        <svg viewBox="0 0 64 64" class="w-16 h-16">
-                            <circle cx="32" cy="32" r="20" fill="rgba(16,185,129,1)"/>
-                            <path d="M24 32 L30 38 L42 26" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
+                    <img src="/icons/icon-192x192.png" alt="IAprova" class="w-24 h-24 mx-auto rounded-3xl shadow-lg">
                 </div>
-                <h1 class="text-white text-4xl font-bold mb-2">IAprova</h1>
-                <p class="text-blue-200 text-lg mb-6">Preparação Inteligente para Concursos</p>
-                <div class="spinner mx-auto mb-4"></div>
-                <p class="text-blue-100 text-sm">Carregando sistema...</p>
+                <h1 class="text-[#122D6A] text-4xl font-bold mb-2">IAprova</h1>
+                <p class="text-gray-400 text-lg mb-6">Preparação Inteligente para Concursos</p>
+                <div class="mx-auto mb-4" style="width:36px;height:36px;border:3px solid #e5e7eb;border-top-color:#122D6A;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+                <p class="text-gray-400 text-sm">Carregando sistema...</p>
             </div>
         </div>
     </div>
@@ -26236,10 +26232,10 @@ app.get('*', (c) => {
 <body>
     <!-- App Container -->
     <div id="app">
-        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0D1F4D] via-[#122D6A] to-[#1A3A7F]">
+        <div class="min-h-screen flex items-center justify-center bg-white">
             <div class="text-center">
-                <div class="spinner mx-auto mb-4"></div>
-                <p class="text-white text-lg">Carregando IAprova...</p>
+                <div class="mx-auto mb-4" style="width:36px;height:36px;border:3px solid #e5e7eb;border-top-color:#122D6A;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+                <p class="text-gray-400 text-lg">Carregando IAprova...</p>
             </div>
         </div>
     </div>
