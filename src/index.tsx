@@ -25336,28 +25336,53 @@ app.get('/manifest.json', async (c) => {
 // Servir Service Worker
 app.get('/sw.js', async (c) => {
   const swContent = `
-const CACHE_NAME = 'iaprova-v1';
+const CACHE_NAME = 'iaprova-v${Date.now()}';
 const urlsToCache = [
   '/',
-  '/static/app.js',
   '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
-  'https://cdn.tailwindcss.com',
-  'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css',
-  'https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js'
+  '/icons/icon-512x512.png'
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(urlsToCache))
   );
 });
 
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  
+  // Nunca cachear chamadas de API ou app.js (sempre buscar do servidor)
+  if (url.pathname.startsWith('/api/') || 
+      url.pathname.includes('app.js') ||
+      url.pathname.includes('tailwindcss') ||
+      url.pathname.includes('axios')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  
+  // Para outros recursos: network-first, fallback para cache
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => response || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
 `;

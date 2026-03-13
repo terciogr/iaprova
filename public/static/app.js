@@ -294,7 +294,7 @@ function showModal(message, options = {}) {
   const container = getModalContainer();
   
   const modalHTML = `
-    <div id="${modalId}" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fadeIn">
+    <div id="${modalId}" class="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-fadeIn">
       <!-- Backdrop -->
       <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('${modalId}')"></div>
       
@@ -367,7 +367,7 @@ function showConfirm(message, options = {}) {
     const container = getModalContainer();
     
     const modalHTML = `
-      <div id="${modalId}" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fadeIn">
+      <div id="${modalId}" class="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-fadeIn">
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
         
@@ -431,7 +431,7 @@ function showPrompt(message, options = {}) {
     const container = getModalContainer();
     
     const modalHTML = `
-      <div id="${modalId}" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fadeIn">
+      <div id="${modalId}" class="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-fadeIn">
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
         
@@ -538,7 +538,7 @@ function showToast(message, type = 'info', duration = 3000) {
   const container = getModalContainer();
   
   const toastHTML = `
-    <div id="${toastId}" class="fixed top-4 right-4 z-[9999] transform translate-x-full animate-slideIn">
+    <div id="${toastId}" class="fixed top-4 right-4 z-[999999] transform translate-x-full animate-slideIn">
       <div class="${colors[type]} text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 max-w-sm">
         <i class="fas ${icons[type]}"></i>
         <span class="text-sm font-medium">${message}</span>
@@ -21229,21 +21229,28 @@ window._enviarEmailManual = async function() {
   else if (dest === 'todos') targetDesc = 'TODOS os usuários';
   else if (dest === 'custom') targetDesc = 'emails: ' + (customEmails || '').substring(0, 50) + '...';
   
-  const confirmed = await showConfirm(
-    'Enviar email manual para: ' + targetDesc + '?\n\nAssunto: ' + assunto.substring(0, 60) + '...',
-    { type: 'warning', title: 'Confirmar Envio', confirmText: 'Enviar', cancelText: 'Cancelar' }
-  );
-  if (!confirmed) return;
+  if (!confirm('Enviar email manual para: ' + targetDesc + '?\n\nAssunto: ' + assunto.substring(0, 60) + '...')) return;
+  
+  // Desabilitar botão durante envio
+  const btnEnviar = document.querySelector('#modal-email-manual button[onclick*="_enviarEmailManual"]');
+  if (btnEnviar) {
+    btnEnviar.disabled = true;
+    btnEnviar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+    btnEnviar.classList.add('opacity-60', 'cursor-not-allowed');
+  }
   
   try {
     showToast('📤 Enviando emails...', 'info');
+    console.log('📧 Enviando email manual:', { dest, assunto: assunto.substring(0, 50) });
+    
     const response = await axios.post('/api/admin/email-manual/enviar', {
       destinatarios: dest,
       custom_emails: customEmails,
       assunto: assunto,
       corpo: corpo
-    }, {});
+    }, { timeout: 60000 });
     
+    console.log('📧 Resposta email manual:', response.data);
     const result = response.data;
     const container = document.getElementById('email-manual-resultado');
     if (container) {
@@ -21257,8 +21264,22 @@ window._enviarEmailManual = async function() {
     }
     showToast(result.enviados > 0 ? '✅ ' + result.enviados + ' email(s) enviado(s)!' : '❌ Nenhum email enviado', result.enviados > 0 ? 'success' : 'error');
   } catch (error) {
-    const msg = error.response?.data?.error || 'Erro ao enviar emails';
+    console.error('📧 Erro ao enviar email manual:', error);
+    const msg = error.response?.data?.error || error.message || 'Erro ao enviar emails';
     showToast('❌ ' + msg, 'error');
+    // Mostrar erro no container de resultado
+    const container = document.getElementById('email-manual-resultado');
+    if (container) {
+      container.classList.remove('hidden');
+      container.innerHTML = '<div class="p-4 rounded-xl bg-red-50 border border-red-200"><p class="font-bold text-red-700 mb-1"><i class="fas fa-times-circle mr-1"></i>Erro ao enviar</p><p class="text-xs text-red-600">' + msg + '</p></div>';
+    }
+  } finally {
+    // Reabilitar botão
+    if (btnEnviar) {
+      btnEnviar.disabled = false;
+      btnEnviar.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar';
+      btnEnviar.classList.remove('opacity-60', 'cursor-not-allowed');
+    }
   }
 };
 
