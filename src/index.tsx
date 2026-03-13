@@ -21662,7 +21662,19 @@ async function gerarCiclosEstudo(
 // ============== CHATBOT IA ==============
 app.post('/api/chat', async (c) => {
   const { DB } = c.env
+  
+  // ✅ SEGURANÇA v157: Autenticação OBRIGATÓRIA
+  const authenticatedUserId = await getAuthenticatedUserId(c);
+  if (!authenticatedUserId) {
+    return c.json({ error: 'Não autenticado' }, 401);
+  }
+  
   const { message, user_id, history } = await c.req.json()
+  
+  // ✅ SEGURANÇA v157: Usuário só pode usar chat como ele mesmo
+  if (user_id && authenticatedUserId.toString() !== user_id.toString()) {
+    return c.json({ error: 'Acesso negado' }, 403);
+  }
   
   const GEMINI_API_KEY = c.env.GEMINI_API_KEY
   if (!GEMINI_API_KEY) {
@@ -25928,11 +25940,24 @@ app.post('/api/admin/messages', async (c) => {
 // Usuário responde ao admin
 app.post('/api/messages/reply', async (c) => {
   const { env } = c;
+  
+  // ✅ SEGURANÇA v157: Autenticação OBRIGATÓRIA via token
+  const authenticatedUserId = await getAuthenticatedUserId(c);
+  if (!authenticatedUserId) {
+    return c.json({ error: 'Não autenticado' }, 401);
+  }
+  
   const body = await c.req.json();
   const { user_id, message } = body;
   
   if (!user_id || !message) {
     return c.json({ error: 'user_id e message são obrigatórios' }, 400);
+  }
+  
+  // ✅ SEGURANÇA v157: Usuário só pode enviar mensagens como ele mesmo
+  if (authenticatedUserId.toString() !== user_id.toString()) {
+    console.warn(`🚨 SEGURANÇA v157: Tentativa de impersonação! Auth=${authenticatedUserId}, user_id=${user_id}`);
+    return c.json({ error: 'Acesso negado - não pode enviar mensagens como outro usuário' }, 403);
   }
   
   // Buscar o admin_id da última conversa
@@ -26062,13 +26087,24 @@ app.get('/api/messages/unread/:user_id', async (c) => {
   const { env } = c;
   const userId = c.req.param('user_id');
   
+  // ✅ SEGURANÇA v157: Autenticação OBRIGATÓRIA
+  const authenticatedUserId = await getAuthenticatedUserId(c);
+  if (!authenticatedUserId) {
+    return c.json({ error: 'Não autenticado' }, 401);
+  }
+  
+  // ✅ SEGURANÇA v157: Usuário só pode ver suas próprias mensagens não lidas
+  if (authenticatedUserId.toString() !== userId.toString()) {
+    return c.json({ error: 'Acesso negado' }, 403);
+  }
+  
   try {
     const unread = await env.DB.prepare(
       "SELECT COUNT(*) as count FROM admin_messages WHERE user_id = ? AND sender_type = 'admin' AND read_at IS NULL"
     ).bind(userId).first();
     
     const messages = await env.DB.prepare(
-      "SELECT * FROM admin_messages WHERE user_id = ? AND sender_type = 'admin' AND read_at IS NULL ORDER BY created_at DESC LIMIT 10"
+      "SELECT id, sender_type, message, created_at FROM admin_messages WHERE user_id = ? AND sender_type = 'admin' AND read_at IS NULL ORDER BY created_at DESC LIMIT 10"
     ).bind(userId).all();
     
     return c.json({ count: unread?.count || 0, messages: messages.results || [] });
@@ -26116,10 +26152,22 @@ app.get('/api/messages/history/:user_id', async (c) => {
 // Marcar mensagens como lidas
 app.post('/api/messages/mark-read', async (c) => {
   const { env } = c;
+  
+  // ✅ SEGURANÇA v157: Autenticação OBRIGATÓRIA
+  const authenticatedUserId = await getAuthenticatedUserId(c);
+  if (!authenticatedUserId) {
+    return c.json({ error: 'Não autenticado' }, 401);
+  }
+  
   const body = await c.req.json();
   const { user_id } = body;
   
   if (!user_id) return c.json({ error: 'user_id obrigatório' }, 400);
+  
+  // ✅ SEGURANÇA v157: Usuário só pode marcar suas próprias mensagens como lidas
+  if (authenticatedUserId.toString() !== user_id.toString()) {
+    return c.json({ error: 'Acesso negado' }, 403);
+  }
   
   await env.DB.prepare(
     "UPDATE admin_messages SET read_at = datetime('now') WHERE user_id = ? AND sender_type = 'admin' AND read_at IS NULL"
