@@ -702,6 +702,91 @@ const app = new Hono<{ Bindings: Bindings }>()
 app.use('/api/*', cors())
 
 // ════════════════════════════════════════════════════════════════════════
+// ✅ v158 SEGURANÇA: SECURITY HEADERS
+// Protege contra XSS, clickjacking, MIME sniffing, etc.
+// ════════════════════════════════════════════════════════════════════════
+app.use('*', async (c, next) => {
+  await next()
+  c.res.headers.set('X-Content-Type-Options', 'nosniff')
+  c.res.headers.set('X-Frame-Options', 'DENY')
+  c.res.headers.set('X-XSS-Protection', '1; mode=block')
+  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+})
+
+// ════════════════════════════════════════════════════════════════════════
+// ✅ v158 SEGURANÇA: RATE LIMITING POR IP (em memória, por worker instance)
+// Proteção contra brute force em login, register e endpoints de custo (IA)
+// ════════════════════════════════════════════════════════════════════════
+const rateLimitStore = new Map<string, { count: number, resetAt: number }>()
+
+function checkRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
+  const now = Date.now()
+  const entry = rateLimitStore.get(key)
+  
+  if (!entry || now > entry.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + windowMs })
+    return true
+  }
+  
+  if (entry.count >= maxRequests) return false
+  entry.count++
+  return true
+}
+
+// Limpar entradas expiradas periodicamente (a cada 1000 requests)
+let rateLimitCleanCounter = 0
+function cleanRateLimitStore() {
+  rateLimitCleanCounter++
+  if (rateLimitCleanCounter % 1000 === 0) {
+    const now = Date.now()
+    for (const [key, entry] of rateLimitStore.entries()) {
+      if (now > entry.resetAt) rateLimitStore.delete(key)
+    }
+  }
+}
+
+// Rotas com rate limit agressivo (brute force protection)
+const RATE_LIMITED_ROUTES = [
+  { path: '/api/login', method: 'POST', max: 10, windowMs: 60000 },         // 10 tentativas/min
+  { path: '/api/register', method: 'POST', max: 5, windowMs: 60000 },       // 5 registros/min
+  { path: '/api/forgot-password', method: 'POST', max: 3, windowMs: 300000 }, // 3/5min
+  { path: '/api/resend-verification', method: 'POST', max: 3, windowMs: 300000 },
+  { path: '/api/conteudo/gerar', method: 'POST', max: 20, windowMs: 60000 }, // Consome Gemini API
+  { path: '/api/simulado/gerar', method: 'POST', max: 10, windowMs: 60000 },
+  { path: '/api/simulados/gerar-questoes', method: 'POST', max: 10, windowMs: 60000 },
+  { path: '/api/topicos/gerar-conteudo', method: 'POST', max: 15, windowMs: 60000 },
+  { path: '/api/topicos/resumo-personalizado', method: 'POST', max: 15, windowMs: 60000 },
+  { path: '/api/chat', method: 'POST', max: 30, windowMs: 60000 },          // Chat com IA
+  { path: '/api/cron/reengajamento', method: 'POST', max: 2, windowMs: 60000 }, // Cron: max 2/min
+  { path: '/api/editais/upload', method: 'POST', max: 5, windowMs: 60000 },   // Upload: 5/min
+  { path: '/api/editais/pdf-para-texto', method: 'POST', max: 5, windowMs: 60000 }, // PDF parse
+  { path: '/api/editais/processar-texto', method: 'POST', max: 5, windowMs: 60000 }, // Processamento
+  { path: '/api/backup/export', method: 'GET', max: 3, windowMs: 60000 },     // Export: 3/min
+  { path: '/api/backup/import', method: 'POST', max: 3, windowMs: 60000 },    // Import: 3/min
+]
+
+app.use('/api/*', async (c, next) => {
+  cleanRateLimitStore()
+  const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
+  const path = c.req.path
+  const method = c.req.method
+
+  for (const route of RATE_LIMITED_ROUTES) {
+    if (route.method === method && (path === route.path || path.startsWith(route.path + '/'))) {
+      const key = `${ip}:${route.path}`
+      if (!checkRateLimit(key, route.max, route.windowMs)) {
+        console.warn(`🚨 RATE LIMIT v158: ${ip} excedeu limite em ${method} ${path}`)
+        return c.json({ error: 'Muitas requisições. Tente novamente em alguns minutos.' }, 429)
+      }
+      break
+    }
+  }
+
+  return next()
+})
+
+// ════════════════════════════════════════════════════════════════════════
 // ✅ v156 SEGURANÇA: MIDDLEWARE GLOBAL DE AUTENTICAÇÃO
 // Todas as rotas /api/* EXIGEM token Bearer, exceto as públicas listadas abaixo.
 // Isso impede que qualquer endpoint esquecido fique exposto.
@@ -768,6 +853,89 @@ app.use('/api/*', async (c, next) => {
   c.set('authenticatedUserId', userId)
   return next()
 })
+
+// ════════════════════════════════════════════════════════════════════════
+// ✅ v158 SEGURANÇA: MIDDLEWARE DE PROTEÇÃO IDOR (Insecure Direct Object Reference)
+// Impede que um usuário autenticado acesse dados de outro usuário
+// trocando simplesmente o :user_id na URL.
+// ════════════════════════════════════════════════════════════════════════
+const IDOR_PROTECTED_PATTERNS = [
+  /^\/api\/subscription\/(?:status|details)\/(\d+)/,
+  /^\/api\/editais\/user\/(\d+)/,
+  /^\/api\/usuarios\/(\d+)\/disciplinas/,
+  /^\/api\/user-disciplinas\/(\d+)$/,
+  /^\/api\/planos\/user\/(\d+)/,
+  /^\/api\/planos\/ativo\/(\d+)/,
+  /^\/api\/plano\/(\d+)$/,
+  /^\/api\/metas\/hoje\/(\d+)/,
+  /^\/api\/metas\/gerar\/(\d+)/,
+  /^\/api\/metas\/gerar-semana\/(\d+)/,
+  /^\/api\/metas\/sincronizar-dia\/(\d+)/,
+  /^\/api\/metas\/semanas\/(\d+)/,
+  /^\/api\/metas\/semana-ativa\/(\d+)/,
+  /^\/api\/exercicios\/historico\/(\d+)/,
+  /^\/api\/score\/(\d+)/,
+  /^\/api\/conteudos\/usuario\/(\d+)/,
+  /^\/api\/calendario\/(\d+)/,
+  /^\/api\/estatisticas\/(\d+)/,
+  /^\/api\/desempenho\/user\/(\d+)/,
+  /^\/api\/backup\/export\/(\d+)/,
+  /^\/api\/backup\/import\/(\d+)/,
+  /^\/api\/historico\/conteudos\/(\d+)/,
+  /^\/api\/materiais\/(\d+)$/,
+  /^\/api\/simulados\/historico\/(\d+)/,
+  /^\/api\/simulados\/estatisticas\/(\d+)/,
+]
+
+app.use('/api/*', async (c, next) => {
+  const authUserId = c.get('authenticatedUserId')
+  if (!authUserId) return next() // rotas públicas passam direto
+
+  const path = c.req.path
+  const method = c.req.method
+  
+  // 1. Verificar IDOR em parâmetros de URL (:user_id)
+  for (const pattern of IDOR_PROTECTED_PATTERNS) {
+    const match = path.match(pattern)
+    if (match) {
+      const urlUserId = match[1]
+      if (authUserId.toString() !== urlUserId.toString()) {
+        // Admin pode acessar dados de qualquer usuário
+        if (await isAdmin(c)) return next()
+        console.warn(`🚨 IDOR v158: user=${authUserId} tentou acessar dados de user=${urlUserId} em ${method} ${path}`)
+        return c.json({ error: 'Acesso negado' }, 403)
+      }
+      break
+    }
+  }
+  
+  // 2. Verificar IDOR em body (POST/PUT) — user_id no JSON
+  if (method === 'POST' || method === 'PUT') {
+    try {
+      const clonedReq = c.req.raw.clone()
+      const contentType = c.req.header('content-type') || ''
+      if (contentType.includes('application/json')) {
+        const body = await clonedReq.json()
+        const bodyUserId = body.user_id || body.userId
+        if (bodyUserId && authUserId.toString() !== bodyUserId.toString()) {
+          if (await isAdmin(c)) return next()
+          console.warn(`🚨 IDOR v158 BODY: user=${authUserId} enviou user_id=${bodyUserId} no body de ${method} ${path}`)
+          return c.json({ error: 'Acesso negado' }, 403)
+        }
+      }
+    } catch (e) {
+      // Se não conseguir ler body (ex: multipart), ignora
+    }
+  }
+  
+  return next()
+})
+
+// ✅ v158: Helper para validar ownership em endpoints com user_id no body
+function enforceBodyOwnership(authUserId: string, bodyUserId: any): boolean {
+  if (!bodyUserId) return true // se não tem user_id no body, não valida
+  return authUserId.toString() === bodyUserId.toString()
+}
 
 // Servir imagem Open Graph (para WhatsApp, Facebook, Twitter)
 // IMPORTANTE: Esta rota garante que a imagem seja servida corretamente para crawlers
@@ -21683,7 +21851,7 @@ app.post('/api/chat', async (c) => {
   
   try {
     // Buscar dados do usuário para contexto
-    const user = await DB.prepare('SELECT * FROM users WHERE id = ?').bind(user_id).first()
+    const user = await DB.prepare('SELECT id, name, email, is_premium, subscription_status, created_at FROM users WHERE id = ?').bind(user_id).first()
     
     const plano = await DB.prepare(`
       SELECT p.*, COUNT(DISTINCT c.disciplina_id) as total_disciplinas
