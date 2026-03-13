@@ -24503,12 +24503,12 @@ function marcarBotaoConteudoDisponivel(metaId, tipo, conteudoId) {
   const label = tipoLabels[tipo] || tipo;
   const _dk = (typeof currentTheme !== 'undefined' && currentTheme === 'dark');
   
-  // Check moderno SVG inline (pequeno, ao lado do texto)
-  const checkSvg = '<svg style="display:inline;vertical-align:middle;margin-right:2px;" width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#10B981"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  // Check moderno SVG inline (azul alinhado à paleta do sistema)
+  const checkSvg = '<svg style="display:inline;vertical-align:middle;margin-right:2px;" width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#3B82F6"/><path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   btn.innerHTML = checkSvg + label;
   
-  // Estilo discreto: mesmo fundo do botão normal, apenas cor do texto levemente verde
-  btn.style.cssText = 'font-size:11px;border-color:' + (_dk ? '#374151' : '#E5E7EB') + ';background:' + (_dk ? '#1F2937' : '#F9FAFB') + ';border-radius:8px;padding:6px 4px;text-align:center;color:' + (_dk ? '#6ee7b7' : '#047857') + ';font-weight:600;';
+  // Estilo discreto: mesmo fundo do botão normal, cor do texto azul
+  btn.style.cssText = 'font-size:11px;border-color:' + (_dk ? '#374151' : '#E5E7EB') + ';background:' + (_dk ? '#1F2937' : '#F9FAFB') + ';border-radius:8px;padding:6px 4px;text-align:center;color:' + (_dk ? '#93C5FD' : '#1D4ED8') + ';font-weight:600;';
   
   btn.setAttribute('data-conteudo-id', conteudoId || '');
   btn.setAttribute('data-tem-conteudo', 'true');
@@ -25986,13 +25986,13 @@ async function carregarPlanos() {
       const nomePlano = plano.nome || 'Sem nome';
       const nomeEscapado = nomePlano.replace(/'/g, "\\'");
       
-      // Cor da barra de progresso
-      const barColor = progresso >= 70 ? 'bg-emerald-500' : progresso >= 30 ? 'bg-[#122D6A]' : (isLight ? 'bg-emerald-400' : 'bg-emerald-500');
+      // Cor da barra de progresso (azul alinhado à paleta)
+      const barColor = progresso >= 70 ? 'bg-[#2A4A9F]' : progresso >= 30 ? 'bg-[#122D6A]' : (isLight ? 'bg-[#3B82F6]' : 'bg-[#3B82F6]');
       const barTrack = isLight ? 'bg-gray-200' : 'bg-gray-700';
       
       // Badge ATIVO/INATIVO
       const badge = isAtivo
-        ? '<span class="text-[10px] bg-emerald-700 text-white px-2.5 py-0.5 rounded font-bold uppercase tracking-wider">ATIVO</span>'
+        ? '<span class="text-[10px] bg-[#122D6A] text-white px-2.5 py-0.5 rounded font-bold uppercase tracking-wider">ATIVO</span>'
         : '<span class="text-[10px] ' + (isLight ? 'bg-[#5A6E8A] text-white' : 'bg-gray-600 text-gray-200') + ' px-2.5 py-0.5 rounded font-bold uppercase tracking-wider">INATIVO</span>';
       
       // Botões de ação - cores com contraste em ambos os temas + tamanho adequado para iPhone
@@ -28333,7 +28333,7 @@ function renderCalendarioSemanal() {
                     <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'resumo')" class="font-medium border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo" id="icon-resumo-${meta.id}">Resumo</button>
                     <button onclick="event.stopPropagation(); ${setMeta} verConteudoGerado(${meta.id}, 'flashcards')" class="font-medium border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="flashcards" id="icon-flashcards-${meta.id}">Flash</button>
                     <button onclick="event.stopPropagation(); ${setMeta} abrirModalResumoPersonalizado(${meta.id})" class="font-medium border transition-all text-center ${themes[currentTheme].textSecondary}" style="border-color:${currentTheme==='dark'?'#374151':'#E5E7EB'};background:${currentTheme==='dark'?'#1F2937':'#F9FAFB'};" data-tipo="resumo_personalizado" id="icon-resumo-personalizado-${meta.id}">Upload</button>
-                    <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="font-semibold border transition-all text-center text-emerald-600" style="border-color:#6ee7b7;background:#ecfdf5;">Concluir</button>
+                    <button onclick="event.stopPropagation(); marcarMetaConcluida(${meta.id}, '${dn}', '${tn}', ${topicoId || 'null'}, ${meta.disciplina_id || 'null'}, ${meta.plano_id || 'null'})" class="font-semibold border transition-all text-center text-[#1D4ED8]" style="border-color:#93C5FD;background:#EFF6FF;">Concluir</button>
                   </div>
                 </div>`
               }).join('')}
