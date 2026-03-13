@@ -20844,6 +20844,22 @@ window.verListaUsuarios = async function(page, search, filter) {
         const isPremium = u.is_premium_real || u.is_premium;
         const paidViaMP = !!(u.payment_id && !String(u.payment_id).startsWith('manual_'));
         
+        // Último acesso
+        const ultimoAcessoRaw = u.ultimo_acesso;
+        let ultimoAcessoLabel = '-';
+        let ultimoAcessoClass = 'bg-gray-100 text-gray-400';
+        if (ultimoAcessoRaw) {
+          const uaDate = new Date(ultimoAcessoRaw);
+          const diffHoras = Math.floor((Date.now() - uaDate.getTime()) / (1000*60*60));
+          const diffDias = Math.floor(diffHoras / 24);
+          if (diffHoras < 1) { ultimoAcessoLabel = 'Agora'; ultimoAcessoClass = 'bg-green-100 text-green-700'; }
+          else if (diffHoras < 24) { ultimoAcessoLabel = diffHoras + 'h atrás'; ultimoAcessoClass = 'bg-green-100 text-green-700'; }
+          else if (diffDias <= 3) { ultimoAcessoLabel = diffDias + 'd atrás'; ultimoAcessoClass = 'bg-blue-100 text-blue-700'; }
+          else if (diffDias <= 7) { ultimoAcessoLabel = diffDias + 'd atrás'; ultimoAcessoClass = 'bg-yellow-100 text-yellow-700'; }
+          else if (diffDias <= 30) { ultimoAcessoLabel = diffDias + 'd atrás'; ultimoAcessoClass = 'bg-orange-100 text-orange-700'; }
+          else { ultimoAcessoLabel = diffDias + 'd atrás'; ultimoAcessoClass = 'bg-red-100 text-red-600'; }
+        }
+        
         let trialLabel = '', trialClass = '';
         if (isPremium) {
           trialLabel = '<i class="fas fa-crown text-yellow-500"></i>';
@@ -20879,10 +20895,11 @@ window.verListaUsuarios = async function(page, search, filter) {
           '<td class="p-2 text-center text-xs text-gray-500"><div>' + cadastroDate + '</div><div class="text-[10px] opacity-60">' + diasCadastro + 'd</div></td>' +
           '<td class="p-2 text-center"><span class="px-2 py-0.5 ' + trialClass + ' rounded-full text-[10px] font-medium">' + trialLabel + '</span></td>' +
           '<td class="p-2 text-center"><span class="px-2 py-0.5 ' + acessosClass + ' rounded-full text-[10px] font-medium">' + totalAcessos + '</span></td>' +
+          '<td class="p-2 text-center"><span class="px-2 py-0.5 ' + ultimoAcessoClass + ' rounded-full text-[10px] font-medium whitespace-nowrap">' + ultimoAcessoLabel + '</span></td>' +
           '<td class="p-2 text-center"><div class="flex items-center justify-center gap-1">' +
             '<button onclick="editarUsuarioAdmin(' + u.id + ',\'' + (u.name || '').replace(/'/g, "\\'") + '\',\'' + u.email + '\',' + (isPremium ? 1 : 0) + ')" class="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Editar"><i class="fas fa-edit text-xs"></i></button>' +
             premiumBtn +
-            (!isPremium ? '<button onclick="enviarEmailIndividual(' + u.id + ',\'' + u.email.replace(/'/g, '') + '\')" class="p-1 text-orange-500 hover:bg-orange-50 rounded" title="' + emailTitle + '"><i class="fas ' + emailIcon + ' text-xs"></i></button>' : '') +
+            '<button onclick="enviarEmailIndividual(' + u.id + ',\'' + u.email.replace(/'/g, '') + '\')" class="p-1 text-orange-500 hover:bg-orange-50 rounded" title="' + emailTitle + '"><i class="fas ' + emailIcon + ' text-xs"></i></button>' +
             (u.email !== 'terciogomesrabelo@gmail.com' && !u.email_verified ? '<button onclick="deletarUsuarioAdmin(' + u.id + ',\'' + u.email + '\',false)" class="p-1 text-red-500 hover:bg-red-50 rounded" title="Deletar"><i class="fas fa-trash text-xs"></i></button>' : '') +
           '</div></td></tr>';
       }).join('');
@@ -20944,21 +20961,26 @@ window.verListaUsuarios = async function(page, search, filter) {
               <i class="fas fa-download text-xs"></i>
               <span class="hidden sm:inline">Exportar</span>
             </button>
+            <button onclick="abrirEmailManual()" class="px-3 py-2 bg-[#122D6A] text-white rounded-lg text-sm hover:bg-[#1A3A7F] transition flex items-center gap-1.5 flex-shrink-0" title="Email Manual">
+              <i class="fas fa-envelope text-xs"></i>
+              <span class="hidden sm:inline">Email Manual</span>
+            </button>
           </div>
         </div>
-        <div class="overflow-y-auto flex-1">
-          <table class="w-full text-sm">
+        <div class="overflow-y-auto flex-1 overflow-x-auto">
+          <table class="w-full text-sm min-w-[900px]">
             <thead class="bg-[#122D6A] text-white sticky top-0" style="z-index:1">
               <tr>
-                <th class="p-2 text-left text-xs font-semibold">ID</th>
-                <th class="p-2 text-left text-xs font-semibold">Nome</th>
-                <th class="p-2 text-left text-xs font-semibold">Email</th>
-                <th class="p-2 text-center text-xs font-semibold">Verif.</th>
-                <th class="p-2 text-center text-xs font-semibold">Plano</th>
-                <th class="p-2 text-center text-xs font-semibold">Cadastro</th>
-                <th class="p-2 text-center text-xs font-semibold">Trial</th>
-                <th class="p-2 text-center text-xs font-semibold">Acessos</th>
-                <th class="p-2 text-center text-xs font-semibold">Ações</th>
+                <th class="p-2 text-left text-xs font-semibold cursor-pointer hover:bg-[#1A3A7F] select-none whitespace-nowrap" onclick="window._sortAdminUsers('id')">ID <i class="fas fa-sort text-white/50 ml-0.5" id="sort-icon-id"></i></th>
+                <th class="p-2 text-left text-xs font-semibold cursor-pointer hover:bg-[#1A3A7F] select-none whitespace-nowrap" onclick="window._sortAdminUsers('name')">Nome <i class="fas fa-sort text-white/50 ml-0.5" id="sort-icon-name"></i></th>
+                <th class="p-2 text-left text-xs font-semibold cursor-pointer hover:bg-[#1A3A7F] select-none whitespace-nowrap" onclick="window._sortAdminUsers('email')">Email <i class="fas fa-sort text-white/50 ml-0.5" id="sort-icon-email"></i></th>
+                <th class="p-2 text-center text-xs font-semibold cursor-pointer hover:bg-[#1A3A7F] select-none whitespace-nowrap" onclick="window._sortAdminUsers('verified')">Verif. <i class="fas fa-sort text-white/50 ml-0.5" id="sort-icon-verified"></i></th>
+                <th class="p-2 text-center text-xs font-semibold cursor-pointer hover:bg-[#1A3A7F] select-none whitespace-nowrap" onclick="window._sortAdminUsers('premium')">Plano <i class="fas fa-sort text-white/50 ml-0.5" id="sort-icon-premium"></i></th>
+                <th class="p-2 text-center text-xs font-semibold cursor-pointer hover:bg-[#1A3A7F] select-none whitespace-nowrap" onclick="window._sortAdminUsers('cadastro')">Cadastro <i class="fas fa-sort text-white/50 ml-0.5" id="sort-icon-cadastro"></i></th>
+                <th class="p-2 text-center text-xs font-semibold cursor-pointer hover:bg-[#1A3A7F] select-none whitespace-nowrap" onclick="window._sortAdminUsers('trial')">Trial <i class="fas fa-sort text-white/50 ml-0.5" id="sort-icon-trial"></i></th>
+                <th class="p-2 text-center text-xs font-semibold cursor-pointer hover:bg-[#1A3A7F] select-none whitespace-nowrap" onclick="window._sortAdminUsers('acessos')">Acessos <i class="fas fa-sort text-white/50 ml-0.5" id="sort-icon-acessos"></i></th>
+                <th class="p-2 text-center text-xs font-semibold cursor-pointer hover:bg-[#1A3A7F] select-none whitespace-nowrap" onclick="window._sortAdminUsers('ultimo_acesso')">Últ. Acesso <i class="fas fa-sort text-white/50 ml-0.5" id="sort-icon-ultimo_acesso"></i></th>
+                <th class="p-2 text-center text-xs font-semibold whitespace-nowrap">Ações</th>
               </tr>
             </thead>
             <tbody id="users-tbody">
@@ -20994,6 +21016,249 @@ window.verListaUsuarios = async function(page, search, filter) {
     }
   } catch (error) {
     showToast('Erro ao carregar usuários', 'error');
+  }
+};
+
+// ✅ Ordenação de colunas no painel admin
+window._adminSortField = null;
+window._adminSortAsc = true;
+window._sortAdminUsers = function(field) {
+  if (window._adminSortField === field) {
+    window._adminSortAsc = !window._adminSortAsc;
+  } else {
+    window._adminSortField = field;
+    window._adminSortAsc = true;
+  }
+  const users = window._adminUsers || [];
+  if (!users.length) return;
+  
+  // Reset all sort icons
+  document.querySelectorAll('[id^="sort-icon-"]').forEach(el => { el.className = 'fas fa-sort text-white/50 ml-0.5'; });
+  // Set active icon
+  const activeIcon = document.getElementById('sort-icon-' + field);
+  if (activeIcon) activeIcon.className = 'fas ' + (window._adminSortAsc ? 'fa-sort-up' : 'fa-sort-down') + ' text-yellow-300 ml-0.5';
+  
+  const sorted = [...users].sort((a, b) => {
+    let valA, valB;
+    switch (field) {
+      case 'id': valA = a.id || 0; valB = b.id || 0; break;
+      case 'name': valA = (a.name || '').toLowerCase(); valB = (b.name || '').toLowerCase(); return window._adminSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      case 'email': valA = (a.email || '').toLowerCase(); valB = (b.email || '').toLowerCase(); return window._adminSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      case 'verified': valA = a.email_verified ? 1 : 0; valB = b.email_verified ? 1 : 0; break;
+      case 'premium': valA = (a.is_premium_real || a.is_premium) ? 1 : 0; valB = (b.is_premium_real || b.is_premium) ? 1 : 0; break;
+      case 'cadastro': valA = a.created_at ? new Date(a.created_at).getTime() : 0; valB = b.created_at ? new Date(b.created_at).getTime() : 0; break;
+      case 'trial':
+        const getTrialDays = (u) => {
+          if (u.is_premium_real || u.is_premium) return 9999;
+          if (u.trial_expires_at) return Math.ceil((new Date(u.trial_expires_at).getTime() - Date.now()) / (1000*60*60*24));
+          if (u.created_at) return 14 - Math.floor((Date.now() - new Date(u.created_at).getTime()) / (1000*60*60*24));
+          return -999;
+        };
+        valA = getTrialDays(a); valB = getTrialDays(b); break;
+      case 'acessos': valA = a.total_acessos || 0; valB = b.total_acessos || 0; break;
+      case 'ultimo_acesso': valA = a.ultimo_acesso ? new Date(a.ultimo_acesso).getTime() : 0; valB = b.ultimo_acesso ? new Date(b.ultimo_acesso).getTime() : 0; break;
+      default: valA = 0; valB = 0;
+    }
+    return window._adminSortAsc ? valA - valB : valB - valA;
+  });
+  
+  const tbody = document.getElementById('users-tbody');
+  if (tbody && window._renderUserRows) tbody.innerHTML = window._renderUserRows(sorted);
+};
+
+// ✅ Sistema de email manual customizável com variáveis
+window.abrirEmailManual = function() {
+  document.getElementById('modal-admin-users')?.remove();
+  
+  const existingModal = document.getElementById('modal-email-manual');
+  if (existingModal) existingModal.remove();
+  
+  const modal = document.createElement('div');
+  modal.id = 'modal-email-manual';
+  modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10001] p-4';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div class="bg-gradient-to-r from-[#0A1839] to-[#1A3A7F] text-white px-5 py-4 flex items-center justify-between flex-shrink-0">
+        <h3 class="font-bold text-lg flex items-center gap-2">
+          <i class="fas fa-envelope-open-text"></i>
+          Email Manual Customizado
+        </h3>
+        <button onclick="document.getElementById('modal-email-manual')?.remove()" class="text-white/80 hover:text-white p-1">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      
+      <div class="overflow-y-auto flex-1 p-5">
+        <!-- Variáveis disponíveis -->
+        <div class="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200">
+          <h4 class="font-semibold text-blue-800 text-sm mb-2 flex items-center gap-1.5"><i class="fas fa-code text-blue-500"></i> Variáveis disponíveis (clique para inserir):</h4>
+          <div class="flex flex-wrap gap-1.5">
+            <button onclick="window._inserirVariavel('{{nome}}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition font-mono">{{nome}}</button>
+            <button onclick="window._inserirVariavel('{{email}}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition font-mono">{{email}}</button>
+            <button onclick="window._inserirVariavel('{{dias_cadastro}}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition font-mono">{{dias_cadastro}}</button>
+            <button onclick="window._inserirVariavel('{{ultimo_acesso}}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition font-mono">{{ultimo_acesso}}</button>
+            <button onclick="window._inserirVariavel('{{plano}}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition font-mono">{{plano}}</button>
+            <button onclick="window._inserirVariavel('{{link_premium}}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition font-mono">{{link_premium}}</button>
+            <button onclick="window._inserirVariavel('{{link_app}}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition font-mono">{{link_app}}</button>
+          </div>
+        </div>
+        
+        <!-- Destinatários -->
+        <div class="mb-4">
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5"><i class="fas fa-users mr-1 text-gray-500"></i> Destinatários</label>
+          <select id="email-manual-dest" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none">
+            <option value="teste">Email de Teste (admin)</option>
+            <option value="reengajados">Já receberam 1o email de reengajamento</option>
+            <option value="todos_free">Todos usuários Free</option>
+            <option value="todos">Todos os usuários</option>
+            <option value="custom">Selecionar manualmente...</option>
+          </select>
+          <div id="email-manual-custom-dest" class="hidden mt-2">
+            <input type="text" id="email-manual-custom-emails" placeholder="email1@test.com, email2@test.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none">
+            <p class="text-[10px] text-gray-400 mt-1">Separe múltiplos emails com vírgula</p>
+          </div>
+        </div>
+
+        <!-- Assunto -->
+        <div class="mb-4">
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5"><i class="fas fa-heading mr-1 text-gray-500"></i> Assunto do Email</label>
+          <input type="text" id="email-manual-assunto" value="Oferta Exclusiva: 30% OFF no IAprova Premium — {{nome}}, não perca!" 
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none" placeholder="Assunto do email...">
+        </div>
+        
+        <!-- Corpo do email -->
+        <div class="mb-4">
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5"><i class="fas fa-align-left mr-1 text-gray-500"></i> Corpo do Email (HTML suportado)</label>
+          <textarea id="email-manual-corpo" rows="14" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-[#122D6A] focus:ring-2 focus:ring-[#122D6A]/20 outline-none font-mono leading-relaxed" placeholder="Escreva o conteúdo do email...">Olá, {{nome}}! 👋
+
+Percebemos que faz um tempo desde sua última visita ao IAprova. Temos uma oferta especial para você!
+
+🎯 DESCONTO EXCLUSIVO DE 30% no IAprova Premium!
+
+Com o Premium, você terá acesso a:
+✅ Conteúdos ilimitados gerados por IA
+✅ Simulados adaptativos por disciplina
+✅ Planos de estudo personalizados
+✅ Chat com IA para tirar dúvidas
+✅ Dashboard completo de progresso
+
+A cada dia sem estudar, os outros candidatos avançam. Com o IAprova Premium, você estuda de forma inteligente e eficiente!
+
+👉 Aproveite agora: {{link_premium}}
+
+Essa oferta é por tempo limitado. Não deixe passar!
+
+Com carinho,
+Equipe IAprova 🎓</textarea>
+        </div>
+        
+        <!-- Preview -->
+        <div class="mb-4">
+          <button onclick="window._previewEmailManual()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition flex items-center gap-1.5">
+            <i class="fas fa-eye text-xs"></i> Pré-visualizar
+          </button>
+          <div id="email-manual-preview" class="hidden mt-3 p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm text-gray-700 max-h-60 overflow-y-auto"></div>
+        </div>
+        
+        <!-- Resultado -->
+        <div id="email-manual-resultado" class="hidden mb-4"></div>
+      </div>
+      
+      <div class="p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between flex-shrink-0">
+        <p class="text-[10px] text-gray-500"><i class="fas fa-info-circle mr-1"></i> O email será enviado via Resend com o template padrão do IAprova</p>
+        <div class="flex items-center gap-2">
+          <button onclick="document.getElementById('modal-email-manual')?.remove()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition">Cancelar</button>
+          <button onclick="window._enviarEmailManual()" class="px-5 py-2 bg-[#122D6A] text-white rounded-lg text-sm hover:bg-[#1A3A7F] transition font-semibold flex items-center gap-1.5">
+            <i class="fas fa-paper-plane"></i> Enviar
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  // Mostrar/esconder campo custom
+  document.getElementById('email-manual-dest').addEventListener('change', function() {
+    document.getElementById('email-manual-custom-dest').classList.toggle('hidden', this.value !== 'custom');
+  });
+};
+
+window._inserirVariavel = function(variavel) {
+  const textarea = document.getElementById('email-manual-corpo');
+  if (!textarea) return;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+  textarea.value = text.substring(0, start) + variavel + text.substring(end);
+  textarea.selectionStart = textarea.selectionEnd = start + variavel.length;
+  textarea.focus();
+};
+
+window._previewEmailManual = function() {
+  const corpo = document.getElementById('email-manual-corpo')?.value || '';
+  const assunto = document.getElementById('email-manual-assunto')?.value || '';
+  const container = document.getElementById('email-manual-preview');
+  if (!container) return;
+  
+  const previewHtml = corpo
+    .replace(/\{\{nome\}\}/g, '<strong>João Silva</strong>')
+    .replace(/\{\{email\}\}/g, 'joao@example.com')
+    .replace(/\{\{dias_cadastro\}\}/g, '45')
+    .replace(/\{\{ultimo_acesso\}\}/g, '3 dias atrás')
+    .replace(/\{\{plano\}\}/g, 'Free')
+    .replace(/\{\{link_premium\}\}/g, '<a href="#" class="text-blue-600 underline">https://iaprova.app?upgrade=true</a>')
+    .replace(/\{\{link_app\}\}/g, '<a href="#" class="text-blue-600 underline">https://iaprova.app</a>')
+    .replace(/\n/g, '<br>');
+  
+  container.classList.remove('hidden');
+  container.innerHTML = '<div class="mb-2 pb-2 border-b border-gray-300"><strong class="text-xs text-gray-500">Assunto:</strong> <span class="text-sm">' + assunto.replace(/\{\{nome\}\}/g, 'João Silva') + '</span></div>' + previewHtml;
+};
+
+window._enviarEmailManual = async function() {
+  const dest = document.getElementById('email-manual-dest')?.value;
+  const assunto = document.getElementById('email-manual-assunto')?.value;
+  const corpo = document.getElementById('email-manual-corpo')?.value;
+  const customEmails = document.getElementById('email-manual-custom-emails')?.value;
+  
+  if (!assunto || !corpo) { showToast('Preencha assunto e corpo do email', 'warning'); return; }
+  
+  let targetDesc = '';
+  if (dest === 'teste') targetDesc = 'email de TESTE para o admin';
+  else if (dest === 'reengajados') targetDesc = 'usuários que já receberam o 1° email de reengajamento';
+  else if (dest === 'todos_free') targetDesc = 'TODOS os usuários Free';
+  else if (dest === 'todos') targetDesc = 'TODOS os usuários';
+  else if (dest === 'custom') targetDesc = 'emails: ' + (customEmails || '').substring(0, 50) + '...';
+  
+  const confirmed = await showConfirm(
+    'Enviar email manual para: ' + targetDesc + '?\n\nAssunto: ' + assunto.substring(0, 60) + '...',
+    { type: 'warning', title: 'Confirmar Envio', confirmText: 'Enviar', cancelText: 'Cancelar' }
+  );
+  if (!confirmed) return;
+  
+  try {
+    showToast('📤 Enviando emails...', 'info');
+    const response = await axios.post('/api/admin/email-manual/enviar', {
+      destinatarios: dest,
+      custom_emails: customEmails,
+      assunto: assunto,
+      corpo: corpo
+    }, {});
+    
+    const result = response.data;
+    const container = document.getElementById('email-manual-resultado');
+    if (container) {
+      container.classList.remove('hidden');
+      container.innerHTML = '<div class="p-4 rounded-xl ' + (result.enviados > 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200') + '">' +
+        '<p class="font-bold ' + (result.enviados > 0 ? 'text-green-700' : 'text-red-700') + ' mb-1"><i class="fas ' + (result.enviados > 0 ? 'fa-check-circle' : 'fa-times-circle') + ' mr-1"></i>' +
+        (result.enviados > 0 ? result.enviados + ' email(s) enviado(s) com sucesso!' : 'Nenhum email enviado') + '</p>' +
+        (result.falhas > 0 ? '<p class="text-xs text-red-600">' + result.falhas + ' falha(s)</p>' : '') +
+        (result.detalhes ? '<div class="mt-2 text-xs text-gray-600 max-h-32 overflow-y-auto">' + result.detalhes.map(function(d) { return d.email + ': ' + d.status + (d.error ? ' - ' + d.error : ''); }).join('<br>') + '</div>' : '') +
+      '</div>';
+    }
+    showToast(result.enviados > 0 ? '✅ ' + result.enviados + ' email(s) enviado(s)!' : '❌ Nenhum email enviado', result.enviados > 0 ? 'success' : 'error');
+  } catch (error) {
+    const msg = error.response?.data?.error || 'Erro ao enviar emails';
+    showToast('❌ ' + msg, 'error');
   }
 };
 

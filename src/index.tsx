@@ -25566,6 +25566,196 @@ app.post('/api/admin/reengajamento/enviar-individual', async (c) => {
   }
 })
 
+// ✅ Email manual customizado pelo admin
+app.post('/api/admin/email-manual/enviar', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    const { destinatarios, custom_emails, assunto, corpo } = await c.req.json()
+    
+    if (!assunto || !corpo) {
+      return c.json({ error: 'Assunto e corpo são obrigatórios' }, 400)
+    }
+    
+    const RESEND_API_KEY = (c.env as any).RESEND_API_KEY || 'seu_resend_api_key_aqui'
+    const FROM_EMAIL = (c.env as any).FROM_EMAIL || 'IAprova - Preparação para Concursos <noreply@iaprova.app>'
+    const APP_URL = (c.env as any).APP_URL || 'https://iaprova.app'
+    
+    if (!RESEND_API_KEY || RESEND_API_KEY === 'seu_resend_api_key_aqui') {
+      return c.json({ error: 'RESEND_API_KEY não configurada' }, 400)
+    }
+    
+    let targetUsers: any[] = []
+    
+    if (destinatarios === 'teste') {
+      // Admin test email
+      const admin = await DB.prepare('SELECT id, name, email, created_at FROM users WHERE email = ?').bind('terciogomesrabelo@gmail.com').first() as any
+      if (admin) targetUsers = [admin]
+      else targetUsers = [{ id: 0, name: 'Admin', email: 'terciogomesrabelo@gmail.com', created_at: new Date().toISOString() }]
+    } else if (destinatarios === 'reengajados') {
+      // Usuários que já receberam o 1o email de reengajamento
+      const result = await DB.prepare(`
+        SELECT DISTINCT u.id, u.name, u.email, u.created_at,
+          (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id) as ultimo_acesso,
+          CASE WHEN u.is_premium = 1 OR (u.subscription_status = 'active') THEN 1 ELSE 0 END as is_premium
+        FROM users u
+        INNER JOIN email_history eh ON eh.email_to = u.email AND eh.email_type = 'reengajamento' AND eh.status = 'sent'
+        WHERE u.email != 'terciogomesrabelo@gmail.com'
+        ORDER BY u.created_at DESC
+      `).all() as any
+      targetUsers = result.results || []
+    } else if (destinatarios === 'todos_free') {
+      const result = await DB.prepare(`
+        SELECT u.id, u.name, u.email, u.created_at,
+          (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id) as ultimo_acesso
+        FROM users u
+        WHERE u.is_premium = 0 AND (u.subscription_status IS NULL OR u.subscription_status != 'active')
+          AND u.email != 'terciogomesrabelo@gmail.com'
+        ORDER BY u.created_at DESC
+      `).all() as any
+      targetUsers = result.results || []
+    } else if (destinatarios === 'todos') {
+      const result = await DB.prepare(`
+        SELECT u.id, u.name, u.email, u.created_at,
+          (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id) as ultimo_acesso
+        FROM users u WHERE u.email != 'terciogomesrabelo@gmail.com'
+        ORDER BY u.created_at DESC
+      `).all() as any
+      targetUsers = result.results || []
+    } else if (destinatarios === 'custom') {
+      const emails = (custom_emails || '').split(',').map((e: string) => e.trim()).filter((e: string) => e)
+      for (const email of emails) {
+        const user = await DB.prepare('SELECT id, name, email, created_at FROM users WHERE email = ?').bind(email).first() as any
+        if (user) targetUsers.push(user)
+        else targetUsers.push({ id: 0, name: email.split('@')[0], email, created_at: new Date().toISOString() })
+      }
+    }
+    
+    if (targetUsers.length === 0) {
+      return c.json({ error: 'Nenhum destinatário encontrado', enviados: 0, falhas: 0 }, 400)
+    }
+    
+    let enviados = 0, falhas = 0
+    const detalhes: any[] = []
+    const premiumUrl = `${APP_URL}?upgrade=true`
+    
+    for (const user of targetUsers) {
+      try {
+        const diasCadastro = user.created_at ? Math.floor((Date.now() - new Date(user.created_at).getTime()) / (1000*60*60*24)) : 0
+        let ultimoAcessoLabel = 'Nunca'
+        if (user.ultimo_acesso) {
+          const diffH = Math.floor((Date.now() - new Date(user.ultimo_acesso).getTime()) / (1000*60*60))
+          const diffD = Math.floor(diffH / 24)
+          if (diffH < 1) ultimoAcessoLabel = 'Agora'
+          else if (diffH < 24) ultimoAcessoLabel = diffH + 'h atrás'
+          else ultimoAcessoLabel = diffD + ' dias atrás'
+        }
+        const isPremium = user.is_premium ? 'Premium' : 'Free'
+        const nome = user.name || 'Concurseiro(a)'
+        
+        // Replace variables in subject and body
+        const finalAssunto = assunto
+          .replace(/\{\{nome\}\}/g, nome)
+          .replace(/\{\{email\}\}/g, user.email)
+          .replace(/\{\{dias_cadastro\}\}/g, String(diasCadastro))
+          .replace(/\{\{ultimo_acesso\}\}/g, ultimoAcessoLabel)
+          .replace(/\{\{plano\}\}/g, isPremium)
+          .replace(/\{\{link_premium\}\}/g, premiumUrl)
+          .replace(/\{\{link_app\}\}/g, APP_URL)
+        
+        const finalCorpo = corpo
+          .replace(/\{\{nome\}\}/g, nome)
+          .replace(/\{\{email\}\}/g, user.email)
+          .replace(/\{\{dias_cadastro\}\}/g, String(diasCadastro))
+          .replace(/\{\{ultimo_acesso\}\}/g, ultimoAcessoLabel)
+          .replace(/\{\{plano\}\}/g, isPremium)
+          .replace(/\{\{link_premium\}\}/g, `<a href="${premiumUrl}" style="color:#1A3A7F;font-weight:bold;text-decoration:underline;">${premiumUrl}</a>`)
+          .replace(/\{\{link_app\}\}/g, `<a href="${APP_URL}" style="color:#1A3A7F;font-weight:bold;text-decoration:underline;">${APP_URL}</a>`)
+        
+        // Build HTML email with IAprova template
+        const emailHtml = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#E8EDF5;">
+<table cellpadding="0" cellspacing="0" width="100%" style="background-color:#E8EDF5;padding:40px 20px;">
+<tr><td align="center">
+<table cellpadding="0" cellspacing="0" width="600" style="background-color:#ffffff;border-radius:16px;box-shadow:0 4px 24px rgba(18,45,106,0.12);overflow:hidden;">
+<tr><td style="background:linear-gradient(135deg,#122D6A 0%,#1A3A7F 50%,#2A4A9F 100%);padding:40px 30px;text-align:center;">
+<h1 style="color:#ffffff;font-size:24px;margin:0 0 8px 0;font-weight:700;">IAprova</h1>
+<p style="color:#B8C5E8;font-size:14px;margin:0;">Preparação Inteligente para Concursos</p>
+</td></tr>
+<tr><td style="padding:36px 30px;">
+<div style="color:#374151;font-size:15px;line-height:1.8;white-space:pre-line;">${finalCorpo}</div>
+</td></tr>
+<tr><td style="background:#F8FAFC;padding:24px 30px;text-align:center;border-top:1px solid #E2E8F0;">
+<p style="color:#94A3B8;font-size:12px;margin:0 0 8px 0;">
+<a href="${APP_URL}" style="color:#1A3A7F;text-decoration:none;font-weight:600;">IAprova</a> — Preparação Inteligente para Concursos
+</p>
+<p style="color:#CBD5E1;font-size:11px;margin:0;">
+Você recebeu este email porque possui uma conta no IAprova.<br>
+Se não deseja mais receber nossos emails, basta responder com "cancelar".
+</p>
+</td></tr>
+</table>
+</td></tr></table>
+</body></html>`
+        
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: FROM_EMAIL,
+            to: [user.email],
+            subject: finalAssunto,
+            html: emailHtml,
+          }),
+        })
+        
+        const result = await response.json() as any
+        
+        if (result.id) {
+          enviados++
+          if (user.id > 0) {
+            await logEmailSent(DB, user.email, 'reengajamento', 
+              'MANUAL CUSTOM: ' + finalAssunto.substring(0, 100), 
+              'sent', user.id, undefined, { resend_id: result.id, source: 'admin_manual_custom' })
+          }
+          detalhes.push({ email: user.email, status: 'enviado' })
+        } else {
+          falhas++
+          const errorMsg = result.message || JSON.stringify(result)
+          if (user.id > 0) {
+            await logEmailSent(DB, user.email, 'reengajamento',
+              'MANUAL CUSTOM: ' + finalAssunto.substring(0, 100),
+              'failed', user.id, errorMsg, { source: 'admin_manual_custom' })
+          }
+          detalhes.push({ email: user.email, status: 'falha', error: errorMsg })
+        }
+      } catch (err: any) {
+        falhas++
+        detalhes.push({ email: user.email, status: 'falha', error: err.message })
+      }
+    }
+    
+    return c.json({ 
+      enviados, 
+      falhas, 
+      total_processados: targetUsers.length,
+      detalhes 
+    })
+  } catch (error: any) {
+    console.error('Erro no email manual:', error)
+    return c.json({ error: 'Erro ao enviar emails manuais' }, 500)
+  }
+})
+
 // ✅ v79: Status do CRON - ver quando foi a última execução
 app.get('/api/admin/cron/status', async (c) => {
   const { DB } = c.env
