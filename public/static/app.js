@@ -32017,17 +32017,17 @@ window.abrirModalSimulado = async function() {
           <!-- Conteúdo -->
           <div class="p-6 max-h-[60vh] overflow-y-auto">
             <!-- Quantidade de questões -->
-            <div class="mb-6 p-4 bg-[#E8EDF5] rounded-xl">
+            <div class="mb-6 p-4 ${currentTheme === 'dark' ? 'bg-gray-700/50' : 'bg-[#E8EDF5]'} rounded-xl">
               <label class="block text-sm font-semibold ${themes[currentTheme].text} mb-3">
                 <i class="fas fa-hashtag mr-2"></i>Quantidade de questões:
               </label>
               <div class="flex items-center gap-4">
                 <input type="range" id="simulado-quantidade" min="10" max="50" value="20" step="5"
-                       class="flex-1 h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
+                       class="flex-1 h-3 ${currentTheme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'} rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
                        oninput="document.getElementById('simulado-qtd-valor').textContent = this.value; simuladoConfig.quantidadeQuestoes = parseInt(this.value);">
                 <span id="simulado-qtd-valor" class="text-2xl font-bold ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'} w-12 text-center">20</span>
               </div>
-              <div class="flex justify-between text-xs text-gray-500 mt-1">
+              <div class="flex justify-between text-xs ${themes[currentTheme].textMuted} mt-1">
                 <span>10 questões</span>
                 <span>50 questões</span>
               </div>
@@ -32048,7 +32048,7 @@ window.abrirModalSimulado = async function() {
                     <div class="border-2 ${themes[currentTheme].border} rounded-xl overflow-hidden ${themes[currentTheme].card}">
                       <button onclick="toggleDisciplinaSimulado(${disc.disciplina_id}, '${disc.nome.replace(/'/g, "\\'")}')"
                               id="disc-simulado-${disc.disciplina_id}"
-                              class="w-full p-4 text-left flex items-center justify-between hover:bg-gray-50 transition">
+                              class="w-full p-4 text-left flex items-center justify-between ${currentTheme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition">
                         <div class="flex items-center gap-3">
                           <div class="w-6 h-6 rounded border-2 ${themes[currentTheme].border} flex items-center justify-center" id="check-disc-${disc.disciplina_id}">
                             <!-- Checkmark será adicionado via JS -->
@@ -32080,7 +32080,7 @@ window.abrirModalSimulado = async function() {
           <!-- Footer -->
           <div class="p-4 border-t ${themes[currentTheme].border} flex gap-3">
             <button onclick="document.getElementById('modal-simulado').remove()"
-                    class="flex-1 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition font-medium">
+                    class="flex-1 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} ${currentTheme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} transition font-medium">
               <i class="fas fa-times mr-2"></i>Cancelar
             </button>
             <button onclick="gerarSimulado()"
@@ -32131,22 +32131,27 @@ window.toggleDisciplinaSimulado = async function(disciplinaId, disciplinaNome) {
       const topicos = topicosRes.data || [];
       
       if (topicos.length === 0) {
-        topicosDiv.innerHTML = '<p class="text-sm text-gray-500">Nenhum tópico encontrado.</p>';
+        topicosDiv.innerHTML = '<p class="text-sm ' + themes[currentTheme].textMuted + '">Nenhum tópico encontrado.</p>';
       } else {
+        const isDk = currentTheme === 'dark';
+        const topBorder = isDk ? 'border-gray-500' : 'border-[#9CA3AF]';
+        const topHoverBorder = isDk ? 'hover:border-[#6BB6FF]' : 'hover:border-[#2A4A9F]';
+        const topHoverBg = isDk ? 'hover:bg-gray-600' : 'hover:bg-[#F0F4FA]';
+        const topColor = isDk ? '#e5e7eb' : '#111827';
         topicosDiv.innerHTML = `
           <div class="flex flex-col gap-2">
             ${topicos.slice(0, 20).map(t => `
               <button onclick="toggleTopicoSimulado(${t.id}, '${t.nome.replace(/'/g, "\\'")}', ${disciplinaId})"
                       id="topico-simulado-${t.id}"
-                      class="topico-sim-btn px-4 py-2.5 text-sm text-left rounded-lg border-2 border-[#9CA3AF] hover:border-[#2A4A9F] hover:bg-[#F0F4FA] transition-all duration-150 leading-snug"
-                      style="color: #111827; font-weight: 500;"
+                      class="topico-sim-btn px-4 py-2.5 text-sm text-left rounded-lg border-2 ${topBorder} ${topHoverBorder} ${topHoverBg} transition-all duration-150 leading-snug"
+                      style="color: ${topColor}; font-weight: 500;"
                       title="${t.nome}">
                 ${t.nome}
               </button>
             `).join('')}
-            ${topicos.length > 20 ? `<span class="text-xs text-gray-500 self-center">+${topicos.length - 20} mais</span>` : ''}
+            ${topicos.length > 20 ? `<span class="text-xs ${themes[currentTheme].textMuted} self-center">+${topicos.length - 20} mais</span>` : ''}
           </div>
-          <p class="text-xs text-gray-500 mt-2">Clique nos tópicos para incluí-los especificamente (opcional)</p>
+          <p class="text-xs ${themes[currentTheme].textMuted} mt-2">Clique nos tópicos para incluí-los especificamente (opcional)</p>
         `;
       }
     } catch (error) {
@@ -32181,9 +32186,9 @@ window.toggleTopicoSimulado = function(topicoId, topicoNome, disciplinaId) {
     btn.classList.add('shadow-sm');
   } else {
     simuladoConfig.topicosSelecionados.splice(index, 1);
-    btn.style.color = '#111827';
+    btn.style.color = currentTheme === 'dark' ? '#e5e7eb' : '#111827';
     btn.style.backgroundColor = '';
-    btn.style.borderColor = '#9CA3AF';
+    btn.style.borderColor = currentTheme === 'dark' ? '#6b7280' : '#9CA3AF';
     btn.style.fontWeight = '500';
     btn.classList.remove('shadow-sm');
   }
@@ -32271,7 +32276,7 @@ window.gerarSimulado = async function() {
             <span id="sim-loading-etapa-texto">Iniciando...</span>
             <span id="sim-loading-percentual">0%</span>
           </div>
-          <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+          <div class="w-full ${currentTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-3 overflow-hidden">
             <div id="sim-loading-barra" class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-cyan-500 transition-all duration-700 ease-out" style="width: 0%"></div>
           </div>
         </div>
@@ -32726,19 +32731,19 @@ window.iniciarSimulado = async function(tipo) {
         </label>
         <div class="grid grid-cols-3 gap-2">
           <button type="button" onclick="selecionarDificuldade('facil')" id="btn-dif-facil"
-            class="p-3 rounded-xl border-2 border-green-200 hover:border-green-400 hover:bg-green-50 transition-all text-center">
+            class="p-3 rounded-xl border-2 ${currentTheme === 'dark' ? 'border-green-700 hover:border-green-500 hover:bg-green-900/30' : 'border-green-200 hover:border-green-400 hover:bg-green-50'} transition-all text-center">
             <i class="fas fa-seedling text-green-500 text-xl mb-1"></i>
             <p class="font-medium ${themes[currentTheme].text} text-sm">Fácil</p>
             <p class="${themes[currentTheme].textMuted} text-xs">Conceitos básicos</p>
           </button>
           <button type="button" onclick="selecionarDificuldade('medio')" id="btn-dif-medio"
-            class="p-3 rounded-xl border-2 border-[#122D6A] bg-blue-50 transition-all text-center ring-2 ring-[#122D6A]">
-            <i class="fas fa-balance-scale text-[#122D6A] text-xl mb-1"></i>
+            class="p-3 rounded-xl border-2 border-[#122D6A] ${currentTheme === 'dark' ? 'bg-[#122D6A]/30' : 'bg-blue-50'} transition-all text-center ring-2 ring-[#122D6A]">
+            <i class="fas fa-balance-scale text-[#4A90D9] text-xl mb-1"></i>
             <p class="font-medium ${themes[currentTheme].text} text-sm">Médio</p>
             <p class="${themes[currentTheme].textMuted} text-xs">Nível de prova</p>
           </button>
           <button type="button" onclick="selecionarDificuldade('dificil')" id="btn-dif-dificil"
-            class="p-3 rounded-xl border-2 border-red-200 hover:border-red-400 hover:bg-red-50 transition-all text-center">
+            class="p-3 rounded-xl border-2 ${currentTheme === 'dark' ? 'border-red-700 hover:border-red-500 hover:bg-red-900/30' : 'border-red-200 hover:border-red-400 hover:bg-red-50'} transition-all text-center">
             <i class="fas fa-fire text-red-500 text-xl mb-1"></i>
             <p class="font-medium ${themes[currentTheme].text} text-sm">Difícil</p>
             <p class="${themes[currentTheme].textMuted} text-xs">Desafiador</p>
@@ -32753,19 +32758,19 @@ window.iniciarSimulado = async function(tipo) {
           <label class="text-sm font-semibold ${themes[currentTheme].text}">
             <i class="fas fa-book mr-2 text-[#4A90D9]"></i>Disciplinas
           </label>
-          <button type="button" onclick="toggleTodasDisciplinas()" class="text-xs text-[#122D6A] hover:underline">
+          <button type="button" onclick="toggleTodasDisciplinas()" class="text-xs ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'} hover:underline">
             Marcar/Desmarcar todas
           </button>
         </div>
         <div class="space-y-2 max-h-48 overflow-y-auto pr-2">
           ${disciplinasUsuario.map((disc, idx) => `
-            <label class="flex items-center gap-3 p-3 rounded-xl border ${themes[currentTheme].border} hover:bg-blue-50/50 cursor-pointer transition-all">
+            <label class="flex items-center gap-3 p-3 rounded-xl border ${themes[currentTheme].border} ${currentTheme === 'dark' ? 'hover:bg-gray-700/50' : 'hover:bg-blue-50/50'} cursor-pointer transition-all">
               <input type="checkbox" id="disc-${disc.id}" value="${disc.id}" data-nome="${disc.nome}" 
                 class="disc-checkbox w-5 h-5 rounded border-gray-300 text-[#122D6A] focus:ring-[#122D6A]" checked>
               <div class="flex-1">
                 <p class="font-medium ${themes[currentTheme].text} text-sm">${disc.nome}</p>
               </div>
-              <span class="text-xs ${themes[currentTheme].textMuted} bg-gray-100 px-2 py-1 rounded-full">
+              <span class="text-xs ${themes[currentTheme].textMuted} ${currentTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} px-2 py-1 rounded-full">
                 ${disc.topicos_count || '?'} tópicos
               </span>
             </label>
@@ -32780,7 +32785,7 @@ window.iniciarSimulado = async function(tipo) {
       <!-- Botões -->
       <div class="flex gap-3">
         <button onclick="fecharModalConfigSimulado()" 
-          class="flex-1 px-4 py-3 rounded-xl border ${themes[currentTheme].border} ${themes[currentTheme].text} hover:bg-gray-100 transition-all font-medium">
+          class="flex-1 px-4 py-3 rounded-xl border ${themes[currentTheme].border} ${themes[currentTheme].text} ${currentTheme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} transition-all font-medium">
           Cancelar
         </button>
         <button onclick="confirmarIniciarSimulado('${tipo}')" 
@@ -32801,19 +32806,18 @@ window.selecionarDificuldade = function(nivel) {
   // Reset visual de todos
   ['facil', 'medio', 'dificil'].forEach(n => {
     const btn = document.getElementById(`btn-dif-${n}`);
-    btn.classList.remove('ring-2', 'ring-[#122D6A]', 'ring-green-500', 'ring-red-500', 'bg-blue-50', 'bg-green-50', 'bg-red-50');
-    btn.classList.add('hover:bg-gray-50');
+    btn.classList.remove('ring-2', 'ring-[#122D6A]', 'ring-green-500', 'ring-red-500', 'bg-blue-50', 'bg-green-50', 'bg-red-50', 'bg-[#122D6A]/30', 'bg-green-900/30', 'bg-red-900/30');
   });
   
   // Ativar selecionado
   const btnAtivo = document.getElementById(`btn-dif-${nivel}`);
+  const isDk = currentTheme === 'dark';
   const cores = {
-    facil: { ring: 'ring-green-500', bg: 'bg-green-50' },
-    medio: { ring: 'ring-[#122D6A]', bg: 'bg-blue-50' },
-    dificil: { ring: 'ring-red-500', bg: 'bg-red-50' }
+    facil: { ring: 'ring-green-500', bg: isDk ? 'bg-green-900/30' : 'bg-green-50' },
+    medio: { ring: 'ring-[#122D6A]', bg: isDk ? 'bg-[#122D6A]/30' : 'bg-blue-50' },
+    dificil: { ring: 'ring-red-500', bg: isDk ? 'bg-red-900/30' : 'bg-red-50' }
   };
   btnAtivo.classList.add('ring-2', cores[nivel].ring, cores[nivel].bg);
-  btnAtivo.classList.remove('hover:bg-gray-50');
 };
 
 // Toggle todas as disciplinas
@@ -32895,7 +32899,7 @@ window.confirmarIniciarSimulado = async function(tipo) {
             <span id="sim2-loading-etapa-texto">Iniciando...</span>
             <span id="sim2-loading-percentual">0%</span>
           </div>
-          <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+          <div class="w-full ${currentTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-3 overflow-hidden">
             <div id="sim2-loading-barra" class="h-full rounded-full bg-gradient-to-r from-[#122D6A] to-cyan-500 transition-all duration-700 ease-out" style="width: 0%"></div>
           </div>
         </div>
@@ -33130,7 +33134,7 @@ function renderSimuladoQuestao() {
                     ? 'bg-[#122D6A] text-white ring-2 ring-cyan-300' 
                     : respondida 
                       ? 'bg-emerald-500 text-white' 
-                      : 'bg-white border-2 border-gray-300 text-gray-600 hover:border-[#122D6A] hover:text-[#122D6A]'}">
+                      : `${currentTheme === 'dark' ? 'bg-gray-700 border-2 border-gray-500 text-gray-200' : 'bg-white border-2 border-gray-300 text-gray-600'} hover:border-[#122D6A] hover:text-[#122D6A]`}">
                   ${realIdx + 1}
                 </button>
               `;
@@ -33267,19 +33271,19 @@ window.confirmarSairSimulado = function() {
   modal.id = 'modal-sair-simulado';
   modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4';
   modal.innerHTML = `
-    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-sm w-full p-6">
       <div class="text-center mb-5">
-        <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div class="w-16 h-16 ${currentTheme === 'dark' ? 'bg-amber-900/40' : 'bg-amber-100'} rounded-full flex items-center justify-center mx-auto mb-4">
           <i class="fas fa-exclamation-triangle text-amber-500 text-3xl"></i>
         </div>
-        <h3 class="text-xl font-bold text-gray-800 mb-2">Sair do Simulado?</h3>
-        <p class="text-gray-600">Seu progresso <strong class="text-red-500">NÃO será salvo</strong>.</p>
-        <p class="text-gray-500 text-sm mt-1">Você terá que começar novamente.</p>
+        <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-2">Sair do Simulado?</h3>
+        <p class="${themes[currentTheme].textSecondary}">Seu progresso <strong class="text-red-500">NÃO será salvo</strong>.</p>
+        <p class="${themes[currentTheme].textMuted} text-sm mt-1">Você terá que começar novamente.</p>
       </div>
       
       <div class="flex gap-3">
         <button onclick="fecharModalSairSimulado()" 
-          class="flex-1 px-4 py-3 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition">
+          class="flex-1 px-4 py-3 text-sm font-medium ${themes[currentTheme].text} ${currentTheme === 'dark' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} rounded-xl transition">
           Continuar
         </button>
         <button onclick="executarSairSimulado()" 
@@ -33328,19 +33332,19 @@ window.mostrarModalFinalizarSimulado = function(naoRespondidas) {
   modal.id = 'modal-finalizar-simulado';
   modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4';
   modal.innerHTML = `
-    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+    <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl max-w-sm w-full p-6">
       <div class="text-center mb-5">
-        <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div class="w-16 h-16 ${currentTheme === 'dark' ? 'bg-amber-900/40' : 'bg-amber-100'} rounded-full flex items-center justify-center mx-auto mb-4">
           <i class="fas fa-question-circle text-amber-500 text-3xl"></i>
         </div>
-        <h3 class="text-xl font-bold text-gray-800 mb-2">Finalizar Simulado?</h3>
-        <p class="text-gray-600">Você ainda tem <strong class="text-[#122D6A]">${naoRespondidas}</strong> questão(ões) não respondida(s).</p>
-        <p class="text-gray-500 text-sm mt-2">Questões em branco serão consideradas erradas.</p>
+        <h3 class="text-xl font-bold ${themes[currentTheme].text} mb-2">Finalizar Simulado?</h3>
+        <p class="${themes[currentTheme].textSecondary}">Você ainda tem <strong class="${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'}">${naoRespondidas}</strong> questão(ões) não respondida(s).</p>
+        <p class="${themes[currentTheme].textMuted} text-sm mt-2">Questões em branco serão consideradas erradas.</p>
       </div>
       
       <div class="flex gap-3">
         <button onclick="fecharModalFinalizarSimulado()" 
-          class="flex-1 px-4 py-3 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition">
+          class="flex-1 px-4 py-3 text-sm font-medium ${themes[currentTheme].text} ${currentTheme === 'dark' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} rounded-xl transition">
           Continuar
         </button>
         <button onclick="confirmarFinalizacaoSimulado()" 
@@ -33448,7 +33452,7 @@ function renderResultadoSimulado(acertos, total, percentual, tempo, detalhes) {
           <div class="p-6">
             <div class="grid grid-cols-3 gap-4 mb-6">
               <div class="text-center p-4 ${themes[currentTheme].bgAlt} rounded-xl">
-                <div class="text-3xl font-bold ${cor === 'green' ? 'text-[#2A4A9F]' : cor === 'yellow' ? 'text-[#4A90E2]' : 'text-red-600'}">${percentual}%</div>
+                <div class="text-3xl font-bold ${cor === 'green' ? (currentTheme === 'dark' ? 'text-green-400' : 'text-[#2A4A9F]') : cor === 'yellow' ? 'text-[#4A90E2]' : 'text-red-600'}">${percentual}%</div>
                 <div class="${themes[currentTheme].textSecondary} text-sm">Aproveitamento</div>
               </div>
               <div class="text-center p-4 ${themes[currentTheme].bgAlt} rounded-xl">
@@ -33476,7 +33480,7 @@ function renderResultadoSimulado(acertos, total, percentual, tempo, detalhes) {
                       <span class="${themes[currentTheme].text} text-sm">${disc}</span>
                       <span class="${themes[currentTheme].textSecondary} text-sm">${stats.acertos}/${stats.total} (${pct}%)</span>
                     </div>
-                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-2 ${currentTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden">
                       <div class="h-full ${barCor} transition-all" style="width: ${pct}%"></div>
                     </div>
                   </div>
@@ -33536,14 +33540,14 @@ window.verGabaritoSimulado = function() {
                       </div>
                       <div>
                         <span class="font-medium ${themes[currentTheme].text}">${questao.disciplina}</span>
-                        <span class="ml-2 px-2 py-0.5 text-xs rounded ${questao.dificuldade === 'facil' ? 'bg-[#2A4A9F]/10 text-green-700' : questao.dificuldade === 'dificil' ? 'bg-red-100 text-red-700' : 'bg-[#4A90E2]/10 text-yellow-700'}">
+                        <span class="ml-2 px-2 py-0.5 text-xs rounded ${questao.dificuldade === 'facil' ? (currentTheme === 'dark' ? 'bg-green-900/40 text-green-300' : 'bg-[#2A4A9F]/10 text-green-700') : questao.dificuldade === 'dificil' ? (currentTheme === 'dark' ? 'bg-red-900/40 text-red-300' : 'bg-red-100 text-red-700') : (currentTheme === 'dark' ? 'bg-yellow-900/40 text-yellow-300' : 'bg-[#4A90E2]/10 text-yellow-700')}">
                           ${questao.dificuldade === 'facil' ? 'Fácil' : questao.dificuldade === 'dificil' ? 'Difícil' : 'Médio'}
                         </span>
                       </div>
                     </div>
                     <div class="flex items-center gap-2">
                       ${correto 
-                        ? '<span class="text-[#2A4A9F] font-medium"><i class="fas fa-check-circle mr-1"></i>Correta</span>' 
+                        ? `<span class="${currentTheme === 'dark' ? 'text-green-400' : 'text-[#2A4A9F]'} font-medium"><i class="fas fa-check-circle mr-1"></i>Correta</span>` 
                         : '<span class="text-red-600 font-medium"><i class="fas fa-times-circle mr-1"></i>Incorreta</span>'}
                     </div>
                   </div>
@@ -33559,15 +33563,17 @@ window.verGabaritoSimulado = function() {
                       const isCorreta = letra === questao.resposta_correta;
                       const isResposta = letra === resposta;
                       let classe = themes[currentTheme].bgAlt;
-                      if (isCorreta) classe = 'bg-[#2A4A9F]/10 dark:bg-green-900/30 border-green-500';
-                      else if (isResposta && !isCorreta) classe = 'bg-red-100 dark:bg-red-900/30 border-red-500';
+                      if (isCorreta) classe = currentTheme === 'dark' ? 'bg-green-900/30 border-green-500' : 'bg-[#2A4A9F]/10 border-green-500';
+                      else if (isResposta && !isCorreta) classe = currentTheme === 'dark' ? 'bg-red-900/30 border-red-500' : 'bg-red-100 border-red-500';
+                      
+                      const corretaColor = currentTheme === 'dark' ? 'text-green-400' : 'text-[#2A4A9F]';
                       
                       return `
                         <div class="p-3 rounded-lg border ${isCorreta || isResposta ? 'border-2' : themes[currentTheme].border} ${classe}">
                           <div class="flex items-start gap-2">
-                            <span class="font-bold ${isCorreta ? 'text-[#2A4A9F]' : isResposta ? 'text-red-600' : themes[currentTheme].text}">${letra})</span>
+                            <span class="font-bold ${isCorreta ? corretaColor : isResposta ? 'text-red-600' : themes[currentTheme].text}">${letra})</span>
                             <span class="${themes[currentTheme].text}">${texto}</span>
-                            ${isCorreta ? '<i class="fas fa-check text-[#2A4A9F] ml-auto"></i>' : ''}
+                            ${isCorreta ? `<i class="fas fa-check ${corretaColor} ml-auto"></i>` : ''}
                             ${isResposta && !isCorreta ? '<i class="fas fa-times text-red-600 ml-auto"></i>' : ''}
                           </div>
                         </div>
@@ -33640,7 +33646,7 @@ window.verDetalhesSimulado = async function(simuladoId) {
           <!-- Estatísticas -->
           <div class="kpi-grid-4 mb-6">
             <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
-              <span class="kpi-value ${simulado.percentual_acerto >= 70 ? 'text-[#2A4A9F]' : simulado.percentual_acerto >= 50 ? 'text-[#4A90E2]' : 'text-red-600'}">${simulado.percentual_acerto}%</span>
+              <span class="kpi-value ${simulado.percentual_acerto >= 70 ? (currentTheme === 'dark' ? 'text-green-400' : 'text-[#2A4A9F]') : simulado.percentual_acerto >= 50 ? 'text-[#4A90E2]' : 'text-red-600'}">${simulado.percentual_acerto}%</span>
               <span class="kpi-label ${themes[currentTheme].textSecondary}">Aproveitamento</span>
             </div>
             <div class="kpi-card rounded-lg ${currentTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}">
