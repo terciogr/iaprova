@@ -11858,15 +11858,15 @@ window.verMateriaisTopico = async function(topicoId, topicoNome, disciplinaNome)
     `;
 
     const modalHtml = `
-      <div id="modal-materiais-topico" class="fixed inset-0 z-50 flex items-center justify-center" style="animation:fadeIn .15s ease">
+      <div id="modal-materiais-topico" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="animation:fadeIn .15s ease">
         <div id="mat-backdrop" class="absolute inset-0 bg-black/40"></div>
-        <div class="${themes[currentTheme].card} relative w-full sm:w-[600px] sm:max-w-[95vw] max-h-[90vh] sm:max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden" style="animation:slideUp .2s ease">
+        <div class="${themes[currentTheme].card} relative w-full sm:w-[560px] sm:max-w-[95vw] max-h-[88vh] sm:max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden" style="animation:slideUp .2s ease">
           
           <!-- Header compacto -->
-          <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white px-4 py-3.5 flex items-center justify-between flex-shrink-0">
+          <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white px-4 py-3 sm:py-3.5 flex items-center justify-between flex-shrink-0">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
-                <i class="fas fa-folder-open text-sm opacity-80"></i>
+                <i class="fas fa-folder-open text-xs sm:text-sm opacity-80"></i>
                 <h2 class="text-sm font-bold truncate">Materiais Salvos</h2>
                 ${materiais.length > 0 ? `<span class="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full">${materiais.length}</span>` : ''}
               </div>
@@ -11884,9 +11884,9 @@ window.verMateriaisTopico = async function(topicoId, topicoNome, disciplinaNome)
           
           <!-- Footer compacto -->
           ${materiais.length > 0 ? `
-            <div class="px-4 py-3 border-t ${themes[currentTheme].border} flex-shrink-0">
+            <div class="px-4 py-3 border-t ${themes[currentTheme].border} flex-shrink-0" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
               <button id="btn-gerar-footer" class="w-full py-2.5 bg-[#122D6A] text-white text-sm font-medium rounded-lg hover:bg-[#0D1F4D] active:scale-[0.98] transition-all">
-                <i class="fas fa-sparkles mr-1.5"></i>Gerar Novo Conteúdo
+                <i class="fas fa-wand-magic-sparkles mr-1.5"></i>Gerar Novo Conteúdo
               </button>
             </div>
           ` : ''}
@@ -12040,129 +12040,140 @@ window._deletarMat = async function(materialId) {
 
 // Função para gerar conteúdo do tópico com IA
 window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome, metaId = null) {
-  const app = document.getElementById('app');
   const _d = currentTheme === 'dark';
   const textMain = _d ? '#F3F4F6' : '#1E293B';
+  const cardBg = _d ? '#1E293B' : '#FFFFFF';
   
   // Remover modal anterior se existir
   document.getElementById('modal-gerar-conteudo')?.remove();
   
-  // Modal de seleção de tipo - TEMA CORRIGIDO
+  const safeTopico = topicoNome.replace(/'/g, "\\'");
+  const safeDisc = disciplinaNome.replace(/'/g, "\\'");
+  
   const modalHtml = `
-    <div id="modal-gerar-conteudo" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-        <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-6">
-          <h2 class="text-xl font-bold flex items-center gap-3">
-            <i class="fas fa-magic"></i>
-            Gerar Conteúdo com IA
-          </h2>
-          <p class="mt-1 text-sm opacity-90">${topicoNome}</p>
-          <p class="text-xs opacity-75">${disciplinaNome}</p>
+    <div id="modal-gerar-conteudo" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="animation:fadeIn .15s ease">
+      <div id="gerar-backdrop" class="absolute inset-0 bg-black/40"></div>
+      <div class="${themes[currentTheme].card} relative w-full sm:w-[480px] sm:max-w-[95vw] max-h-[92vh] sm:max-h-[88vh] flex flex-col rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden" style="animation:slideUp .2s ease">
+        
+        <!-- Header compacto mobile-friendly -->
+        <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white px-4 py-3 sm:px-5 sm:py-4 flex items-center justify-between flex-shrink-0">
+          <div class="flex-1 min-w-0 mr-2">
+            <h2 class="text-sm sm:text-base font-bold flex items-center gap-2">
+              <i class="fas fa-wand-magic-sparkles text-xs sm:text-sm"></i>
+              Gerar Conteúdo com IA
+            </h2>
+            <p class="text-[11px] sm:text-xs opacity-80 mt-0.5 truncate">${topicoNome}</p>
+            <p class="text-[10px] sm:text-[11px] opacity-60 truncate">${disciplinaNome}</p>
+          </div>
+          <button id="btn-fechar-gerar" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition flex-shrink-0">
+            <i class="fas fa-xmark text-lg"></i>
+          </button>
         </div>
         
-        <div class="p-6">
-          <p class="${themes[currentTheme].textSecondary} mb-4">Escolha o tipo de conteúdo que deseja gerar:</p>
+        <!-- Conteúdo scrollável -->
+        <div class="flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4">
+          <p class="${themes[currentTheme].textSecondary} text-xs sm:text-sm mb-3">Escolha o tipo de conteúdo:</p>
           
-          <div class="grid grid-cols-2 gap-3 mb-4">
+          <div class="grid grid-cols-2 gap-2 sm:gap-3 mb-3">
             <button onclick="selecionarTipoConteudo('teoria')"
                     id="btn-tipo-teoria"
-                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] hover:bg-[#122D6A]/5 transition text-left bg-white">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-[#122D6A]/10 flex items-center justify-center">
-                  <i class="fas fa-book text-[#122D6A]"></i>
+                    class="p-2.5 sm:p-3.5 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] active:scale-[0.97] transition-all text-left" style="background:${cardBg}">
+              <div class="flex items-center gap-2 sm:gap-3">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#122D6A]/10 flex items-center justify-center flex-shrink-0">
+                  <i class="fas fa-book text-[#122D6A] text-xs sm:text-sm"></i>
                 </div>
-                <div>
-                  <p class="font-semibold" style="color:${textMain};">Teoria</p>
-                  <p class="text-xs text-gray-500">Conteúdo completo</p>
+                <div class="min-w-0">
+                  <p class="font-semibold text-xs sm:text-sm" style="color:${textMain}">Teoria</p>
+                  <p class="text-[10px] sm:text-xs text-gray-500 leading-tight">Completo</p>
                 </div>
               </div>
             </button>
             
             <button onclick="selecionarTipoConteudo('exercicios')"
                     id="btn-tipo-exercicios"
-                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#2A4A9F] hover:bg-[#2A4A9F]/5 transition text-left bg-white">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-[#2A4A9F]/10 flex items-center justify-center">
-                  <i class="fas fa-tasks text-[#2A4A9F]"></i>
+                    class="p-2.5 sm:p-3.5 border-2 border-gray-200 rounded-xl hover:border-[#2A4A9F] active:scale-[0.97] transition-all text-left" style="background:${cardBg}">
+              <div class="flex items-center gap-2 sm:gap-3">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#2A4A9F]/10 flex items-center justify-center flex-shrink-0">
+                  <i class="fas fa-tasks text-[#2A4A9F] text-xs sm:text-sm"></i>
                 </div>
-                <div>
-                  <p class="font-semibold" style="color:${textMain};">Exercícios</p>
-                  <p class="text-xs text-gray-500">Questões de concurso</p>
+                <div class="min-w-0">
+                  <p class="font-semibold text-xs sm:text-sm" style="color:${textMain}">Exercícios</p>
+                  <p class="text-[10px] sm:text-xs text-gray-500 leading-tight">Concurso</p>
                 </div>
               </div>
             </button>
             
             <button onclick="selecionarTipoConteudo('resumo')"
                     id="btn-tipo-resumo"
-                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#3A5AB0] hover:bg-[#3A5AB0]/5 transition text-left bg-white">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#122D6A]/15 to-[#2A4A9F]/10 flex items-center justify-center">
-                  <i class="fas fa-project-diagram text-[#2A4A9F]"></i>
+                    class="p-2.5 sm:p-3.5 border-2 border-gray-200 rounded-xl hover:border-[#3A5AB0] active:scale-[0.97] transition-all text-left" style="background:${cardBg}">
+              <div class="flex items-center gap-2 sm:gap-3">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-[#122D6A]/15 to-[#2A4A9F]/10 flex items-center justify-center flex-shrink-0">
+                  <i class="fas fa-project-diagram text-[#2A4A9F] text-xs sm:text-sm"></i>
                 </div>
-                <div>
-                  <p class="font-semibold" style="color:${textMain};">Resumo Esquematizado</p>
-                  <p class="text-xs text-gray-500">Visual com cards, tabelas e hierarquias</p>
+                <div class="min-w-0">
+                  <p class="font-semibold text-xs sm:text-sm" style="color:${textMain}">Resumo</p>
+                  <p class="text-[10px] sm:text-xs text-gray-500 leading-tight">Esquematizado</p>
                 </div>
               </div>
             </button>
             
             <button onclick="selecionarTipoConteudo('flashcards')"
                     id="btn-tipo-flashcards"
-                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#4A6AC0] hover:bg-[#4A6AC0]/5 transition text-left bg-white">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-[#4A6AC0]/10 flex items-center justify-center">
-                  <i class="fas fa-clone text-[#4A6AC0]"></i>
+                    class="p-2.5 sm:p-3.5 border-2 border-gray-200 rounded-xl hover:border-[#4A6AC0] active:scale-[0.97] transition-all text-left" style="background:${cardBg}">
+              <div class="flex items-center gap-2 sm:gap-3">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#4A6AC0]/10 flex items-center justify-center flex-shrink-0">
+                  <i class="fas fa-clone text-[#4A6AC0] text-xs sm:text-sm"></i>
                 </div>
-                <div>
-                  <p class="font-semibold" style="color:${textMain};">Flashcards</p>
-                  <p class="text-xs text-gray-500">Cards de revisão</p>
-                </div>
-              </div>
-            </button>
-            
-            <!-- 5ª Opção: Resumo Personalizado -->
-            <button onclick="selecionarTipoConteudo('resumo_personalizado')"
-                    id="btn-tipo-resumo-personalizado"
-                    class="p-4 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] hover:bg-[#E8EDF5] transition text-left bg-white col-span-2">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#122D6A]/20 to-[#2A4A9F]/20 flex items-center justify-center">
-                  <i class="fas fa-file-upload text-[#122D6A]"></i>
-                </div>
-                <div class="flex-1">
-                  <p class="font-semibold" style="color:${textMain};">Resumo Personalizado</p>
-                  <p class="text-xs text-gray-500">Upload de PDF ou documento para gerar resumo com IA</p>
+                <div class="min-w-0">
+                  <p class="font-semibold text-xs sm:text-sm" style="color:${textMain}">Flashcards</p>
+                  <p class="text-[10px] sm:text-xs text-gray-500 leading-tight">Revisão</p>
                 </div>
               </div>
             </button>
           </div>
           
-          <!-- Seletor de quantidade (aparece para exercícios e flashcards) -->
-          <div id="seletor-quantidade" class="hidden mb-4 p-4 ${themes[currentTheme].bg} border ${themes[currentTheme].border} rounded-xl">
-            <label class="block text-sm font-medium ${themes[currentTheme].text} mb-2">
-              <i class="fas fa-hashtag mr-1"></i>
-              Quantidade:
+          <!-- Resumo Personalizado - full width -->
+          <button onclick="selecionarTipoConteudo('resumo_personalizado')"
+                  id="btn-tipo-resumo-personalizado"
+                  class="w-full p-2.5 sm:p-3.5 border-2 border-gray-200 rounded-xl hover:border-[#122D6A] active:scale-[0.98] transition-all text-left mb-3" style="background:${cardBg}">
+            <div class="flex items-center gap-2 sm:gap-3">
+              <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-[#122D6A]/20 to-[#2A4A9F]/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-file-upload text-[#122D6A] text-xs sm:text-sm"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-xs sm:text-sm" style="color:${textMain}">Resumo Personalizado</p>
+                <p class="text-[10px] sm:text-xs text-gray-500 leading-tight">Upload de PDF/documento</p>
+              </div>
+            </div>
+          </button>
+          
+          <!-- Seletor de quantidade -->
+          <div id="seletor-quantidade" class="hidden mb-3 p-3 sm:p-4 ${themes[currentTheme].bg} border ${themes[currentTheme].border} rounded-xl">
+            <label class="block text-xs sm:text-sm font-medium ${themes[currentTheme].text} mb-2">
+              <i class="fas fa-hashtag mr-1"></i>Quantidade:
             </label>
             <div class="flex items-center gap-3">
               <input type="range" id="quantidade-slider" min="5" max="20" value="10" 
                      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#122D6A]"
                      oninput="document.getElementById('quantidade-valor').textContent = this.value">
-              <span id="quantidade-valor" class="text-xl font-bold ${currentTheme === 'dark' ? 'text-[#7BC4FF]' : 'text-[#122D6A]'} w-8 text-center">10</span>
+              <span id="quantidade-valor" class="text-lg sm:text-xl font-bold ${_d ? 'text-[#7BC4FF]' : 'text-[#122D6A]'} w-8 text-center">10</span>
             </div>
-            <p class="text-xs ${themes[currentTheme].textSecondary} mt-2">
+            <p class="text-[10px] sm:text-xs ${themes[currentTheme].textSecondary} mt-1.5">
               Deslize para escolher entre 5 e 20 itens
             </p>
           </div>
-          
-          <!-- Botão de gerar -->
+        </div>
+        
+        <!-- Footer fixo -->
+        <div class="px-3 py-3 sm:px-5 sm:py-3.5 border-t ${themes[currentTheme].border} flex-shrink-0 space-y-2" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
           <button id="btn-gerar-conteudo" 
-                  onclick="confirmarGeracaoConteudo(${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}', ${metaId || 'null'})"
-                  class="hidden w-full py-3 bg-[#122D6A] text-white rounded-xl hover:bg-[#0D1F4D] transition font-semibold mb-3">
-            <i class="fas fa-magic mr-2"></i>Gerar Conteúdo
+                  onclick="confirmarGeracaoConteudo(${topicoId}, '${safeTopico}', '${safeDisc}', ${metaId || 'null'})"
+                  class="hidden w-full py-2.5 sm:py-3 bg-[#122D6A] text-white text-sm rounded-xl hover:bg-[#0D1F4D] active:scale-[0.98] transition-all font-semibold">
+            <i class="fas fa-wand-magic-sparkles mr-2"></i>Gerar Conteúdo
           </button>
-          
-          <button onclick="document.getElementById('modal-gerar-conteudo').remove()"
-                  class="w-full py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition">
-            <i class="fas fa-times mr-2"></i>Cancelar
+          <button id="btn-cancelar-gerar"
+                  class="w-full py-2.5 sm:py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} text-sm hover:bg-gray-100 active:scale-[0.98] transition-all">
+            <i class="fas fa-times mr-1.5"></i>Cancelar
           </button>
         </div>
       </div>
@@ -12170,9 +12181,21 @@ window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome
   `;
   
   // Adicionar modal ao DOM
-  const modalDiv = document.createElement('div');
-  modalDiv.innerHTML = modalHtml;
-  document.body.appendChild(modalDiv.firstElementChild);
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = modalHtml;
+  document.body.appendChild(wrapper.firstElementChild);
+  
+  // Event listeners (mais confiáveis que onclick inline para fechar)
+  const modal = document.getElementById('modal-gerar-conteudo');
+  document.getElementById('gerar-backdrop')?.addEventListener('click', () => modal?.remove());
+  document.getElementById('btn-fechar-gerar')?.addEventListener('click', () => modal?.remove());
+  document.getElementById('btn-cancelar-gerar')?.addEventListener('click', () => modal?.remove());
+  
+  // Fechar com ESC
+  const escHandler = (e) => {
+    if (e.key === 'Escape') { modal?.remove(); document.removeEventListener('keydown', escHandler); }
+  };
+  document.addEventListener('keydown', escHandler);
 }
 
 // Variável para armazenar tipo selecionado
@@ -12185,66 +12208,81 @@ window.abrirSubtipoResumo = function(topicoId, topicoNome, disciplinaNome, metaI
   // Fechar modal principal
   document.getElementById('modal-gerar-conteudo')?.remove();
   
+  const _d = currentTheme === 'dark';
+  const cardBg = _d ? '#1E293B' : '#FFFFFF';
+  const safeTopico = topicoNome.replace(/'/g, "\\'");
+  const safeDisc = disciplinaNome.replace(/'/g, "\\'");
+  
   const modalHtml = `
-    <div id="modal-subtipo-resumo" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div class="bg-gradient-to-r from-[#3A5AB0] to-[#2A4A9F] text-white p-6">
-          <h2 class="text-xl font-bold flex items-center gap-3">
-            <i class="fas fa-sticky-note"></i>
-            Tipo de Resumo
-          </h2>
-          <p class="mt-1 text-sm opacity-90">${topicoNome}</p>
-          <p class="text-xs opacity-75">${disciplinaNome}</p>
+    <div id="modal-subtipo-resumo" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="animation:fadeIn .15s ease">
+      <div id="subtipo-backdrop" class="absolute inset-0 bg-black/40"></div>
+      <div class="${themes[currentTheme].card} relative w-full sm:w-[440px] sm:max-w-[95vw] max-h-[85vh] sm:max-h-[80vh] flex flex-col rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden" style="animation:slideUp .2s ease">
+        
+        <div class="bg-gradient-to-r from-[#3A5AB0] to-[#2A4A9F] text-white px-4 py-3 sm:px-5 sm:py-4 flex items-center justify-between flex-shrink-0">
+          <div class="flex-1 min-w-0 mr-2">
+            <h2 class="text-sm sm:text-base font-bold flex items-center gap-2">
+              <i class="fas fa-sticky-note text-xs sm:text-sm"></i>
+              Tipo de Resumo
+            </h2>
+            <p class="text-[11px] sm:text-xs opacity-80 mt-0.5 truncate">${topicoNome}</p>
+          </div>
+          <button onclick="document.getElementById('modal-subtipo-resumo')?.remove()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition flex-shrink-0">
+            <i class="fas fa-xmark text-lg"></i>
+          </button>
         </div>
         
-        <div class="p-6">
-          <p class="${themes[currentTheme].textSecondary} mb-4">Como deseja seu resumo?</p>
-          
-          <div class="space-y-3">
-            <!-- Opção: Resumo Escrito -->
-            <button onclick="selecionarSubtipoResumo('escrito', ${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}', ${metaId || 'null'})"
-                    class="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#3A5AB0] hover:bg-[#3A5AB0]/5 transition text-left bg-white group">
-              <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center flex-shrink-0 group-hover:from-blue-200 group-hover:to-blue-100 transition">
-                  <i class="fas fa-align-left text-[#3A5AB0] text-xl"></i>
-                </div>
-                <div class="flex-1">
-                  <p class="font-bold text-gray-800 text-base">Resumo Escrito</p>
-                  <p class="text-xs text-gray-500 mt-1">Texto corrido com explicações detalhadas, pontos-chave, pegadinhas de prova e mnemônicos.</p>
-                </div>
-                <i class="fas fa-chevron-right text-gray-400 group-hover:text-[#3A5AB0] transition"></i>
+        <div class="flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4 space-y-2 sm:space-y-3">
+          <!-- Opção: Resumo Escrito -->
+          <button onclick="selecionarSubtipoResumo('escrito', ${topicoId}, '${safeTopico}', '${safeDisc}', ${metaId || 'null'})"
+                  class="w-full p-3 sm:p-4 border-2 border-gray-200 rounded-xl hover:border-[#3A5AB0] active:scale-[0.98] transition-all text-left group" style="background:${cardBg}">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-align-left text-[#3A5AB0] text-sm sm:text-base"></i>
               </div>
-            </button>
-            
-            <!-- Opção: Resumo Esquematizado -->
-            <button onclick="selecionarSubtipoResumo('esquematizado', ${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}', ${metaId || 'null'})"
-                    class="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#3A5AB0] hover:bg-[#3A5AB0]/5 transition text-left bg-white group relative overflow-hidden">
-              <div class="absolute top-0 right-0 bg-[#2A4A9F] text-white text-[10px] px-2 py-0.5 rounded-bl-lg font-bold">NOVO</div>
-              <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-[#122D6A]/15 to-[#2A4A9F]/10 flex items-center justify-center flex-shrink-0 group-hover:from-[#122D6A]/25 group-hover:to-[#2A4A9F]/20 transition">
-                  <i class="fas fa-project-diagram text-[#2A4A9F] text-xl"></i>
-                </div>
-                <div class="flex-1">
-                  <p class="font-bold text-gray-800 text-base">Resumo Esquematizado</p>
-                  <p class="text-xs text-gray-500 mt-1">Visual com mapas mentais, diagramas, hierarquias, tabelas comparativas e caixas coloridas.</p>
-                </div>
-                <i class="fas fa-chevron-right text-gray-400 group-hover:text-[#2A4A9F] transition"></i>
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-sm" style="color:${_d ? '#F3F4F6' : '#1F2937'}">Resumo Escrito</p>
+                <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5 leading-tight">Texto com explicações, pontos-chave e mnemônicos</p>
               </div>
-            </button>
-          </div>
+              <i class="fas fa-chevron-right text-gray-400 group-hover:text-[#3A5AB0] transition text-xs"></i>
+            </div>
+          </button>
           
-          <button onclick="document.getElementById('modal-subtipo-resumo').remove(); window.gerarConteudoTopico(${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}', ${metaId || 'null'})"
-                  class="w-full mt-4 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition">
-            <i class="fas fa-arrow-left mr-2"></i>Voltar
+          <!-- Opção: Resumo Esquematizado -->
+          <button onclick="selecionarSubtipoResumo('esquematizado', ${topicoId}, '${safeTopico}', '${safeDisc}', ${metaId || 'null'})"
+                  class="w-full p-3 sm:p-4 border-2 border-gray-200 rounded-xl hover:border-[#3A5AB0] active:scale-[0.98] transition-all text-left group relative overflow-hidden" style="background:${cardBg}">
+            <div class="absolute top-0 right-0 bg-[#2A4A9F] text-white text-[9px] px-1.5 py-0.5 rounded-bl-lg font-bold">NOVO</div>
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-[#122D6A]/15 to-[#2A4A9F]/10 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-project-diagram text-[#2A4A9F] text-sm sm:text-base"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-sm" style="color:${_d ? '#F3F4F6' : '#1F2937'}">Resumo Esquematizado</p>
+                <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5 leading-tight">Visual com mapas mentais, tabelas e hierarquias</p>
+              </div>
+              <i class="fas fa-chevron-right text-gray-400 group-hover:text-[#2A4A9F] transition text-xs"></i>
+            </div>
+          </button>
+        </div>
+        
+        <!-- Footer -->
+        <div class="px-3 py-3 sm:px-5 border-t ${themes[currentTheme].border} flex-shrink-0" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
+          <button onclick="document.getElementById('modal-subtipo-resumo')?.remove(); window.gerarConteudoTopico(${topicoId}, '${safeTopico}', '${safeDisc}', ${metaId || 'null'})"
+                  class="w-full py-2.5 sm:py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} text-sm hover:bg-gray-100 active:scale-[0.98] transition-all">
+            <i class="fas fa-arrow-left mr-1.5"></i>Voltar
           </button>
         </div>
       </div>
     </div>
   `;
   
-  const modalDiv = document.createElement('div');
-  modalDiv.innerHTML = modalHtml;
-  document.body.appendChild(modalDiv.firstElementChild);
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = modalHtml;
+  document.body.appendChild(wrapper.firstElementChild);
+  
+  // Fechar com backdrop
+  document.getElementById('subtipo-backdrop')?.addEventListener('click', () => {
+    document.getElementById('modal-subtipo-resumo')?.remove();
+  });
 }
 
 // ✅ v70: Selecionar subtipo e iniciar geração de resumo
@@ -12461,17 +12499,17 @@ window.executarGeracaoConteudo = async function(topicoId, topicoNome, disciplina
   }[tipo] || 'o conteúdo';
   
   const loadingHtml = `
-    <div id="loading-conteudo" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="${themes[currentTheme].card} rounded-2xl shadow-2xl p-6 max-w-md w-full">
+    <div id="loading-conteudo" class="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+      <div class="${themes[currentTheme].card} relative w-full sm:w-auto rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 sm:max-w-md" style="animation:slideUp .2s ease; padding-bottom: max(1rem, env(safe-area-inset-bottom))">
         <!-- Header com ícone animado -->
-        <div class="text-center mb-5">
-          <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center mb-4 relative">
-            <i class="fas fa-robot text-white text-3xl animate-pulse"></i>
-            <div class="absolute -top-1 -right-1 w-6 h-6 bg-green-400 rounded-full flex items-center justify-center animate-bounce">
-              <i class="fas fa-bolt text-white text-xs"></i>
+        <div class="text-center mb-4 sm:mb-5">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-gradient-to-br from-[#122D6A] to-[#2A4A9F] flex items-center justify-center mb-3 sm:mb-4 relative">
+            <i class="fas fa-robot text-white text-2xl sm:text-3xl animate-pulse"></i>
+            <div class="absolute -top-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-green-400 rounded-full flex items-center justify-center animate-bounce">
+              <i class="fas fa-bolt text-white text-[10px] sm:text-xs"></i>
             </div>
           </div>
-          <h3 class="text-xl font-bold ${themes[currentTheme].text}">Gerando ${tipoDescricao}</h3>
+          <h3 class="text-base sm:text-xl font-bold ${themes[currentTheme].text}">Gerando ${tipoDescricao}</h3>
         </div>
         
         <!-- Barra de progresso -->
