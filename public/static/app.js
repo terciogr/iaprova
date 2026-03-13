@@ -11858,9 +11858,9 @@ window.verMateriaisTopico = async function(topicoId, topicoNome, disciplinaNome)
     `;
 
     const modalHtml = `
-      <div id="modal-materiais-topico" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="animation:fadeIn .15s ease">
+      <div id="modal-materiais-topico" class="fixed inset-0 z-50 flex items-center justify-center" style="animation:fadeIn .15s ease">
         <div id="mat-backdrop" class="absolute inset-0 bg-black/40"></div>
-        <div class="${themes[currentTheme].card} relative w-full sm:w-[420px] sm:max-w-[95vw] max-h-[85vh] sm:max-h-[80vh] flex flex-col rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden" style="animation:slideUp .2s ease">
+        <div class="${themes[currentTheme].card} relative w-full sm:w-[600px] sm:max-w-[95vw] max-h-[90vh] sm:max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden" style="animation:slideUp .2s ease">
           
           <!-- Header compacto -->
           <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white px-4 py-3.5 flex items-center justify-between flex-shrink-0">
@@ -12041,6 +12041,11 @@ window._deletarMat = async function(materialId) {
 // Função para gerar conteúdo do tópico com IA
 window.gerarConteudoTopico = async function(topicoId, topicoNome, disciplinaNome, metaId = null) {
   const app = document.getElementById('app');
+  const _d = currentTheme === 'dark';
+  const textMain = _d ? '#F3F4F6' : '#1E293B';
+  
+  // Remover modal anterior se existir
+  document.getElementById('modal-gerar-conteudo')?.remove();
   
   // Modal de seleção de tipo - TEMA CORRIGIDO
   const modalHtml = `
@@ -12228,7 +12233,7 @@ window.abrirSubtipoResumo = function(topicoId, topicoNome, disciplinaNome, metaI
             </button>
           </div>
           
-          <button onclick="document.getElementById('modal-subtipo-resumo').remove(); gerarConteudoTopico(${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}', ${metaId || 'null'})"
+          <button onclick="document.getElementById('modal-subtipo-resumo').remove(); window.gerarConteudoTopico(${topicoId}, '${topicoNome.replace(/'/g, "\\'")}', '${disciplinaNome.replace(/'/g, "\\'")}', ${metaId || 'null'})"
                   class="w-full mt-4 py-3 border-2 ${themes[currentTheme].border} rounded-xl ${themes[currentTheme].text} hover:bg-gray-100 transition">
             <i class="fas fa-arrow-left mr-2"></i>Voltar
           </button>
