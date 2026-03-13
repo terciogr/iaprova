@@ -600,6 +600,16 @@ function applyTheme(theme) {
     document.documentElement.classList.remove('dark');
     document.body.classList.remove('dark');
   }
+  
+  // ✅ v181: Recriar chat Lilu com cores do novo tema
+  const chatContainer = document.getElementById('chatContainer');
+  if (chatContainer) {
+    const wasVisible = !chatContainer.classList.contains('hidden');
+    chatContainer.remove();
+    // O chat será recriado por renderChatButton() chamado em renderDashboard()
+    // Se estava visível, marcar para reabrir
+    if (wasVisible) window._chatWasOpen = true;
+  }
 }
 
 // Converter hex para RGB
@@ -11599,11 +11609,11 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
               </div>
               
               <!-- Lista de Tópicos (expandível) -->
-              <div id="topicos-${disc.disciplina_id}" class="hidden border-t border-gray-200 bg-white">
+              <div id="topicos-${disc.disciplina_id}" class="hidden border-t ${themes[currentTheme].border} ${themes[currentTheme].card}">
                 <div class="p-4">
                   <!-- Botões de ação -->
                   <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-                    <h4 class="font-semibold text-gray-900">
+                    <h4 class="font-semibold ${themes[currentTheme].text}">
                       <i class="fas fa-list mr-2"></i>Tópicos da Disciplina
                     </h4>
                     <div class="flex gap-2">
@@ -11619,7 +11629,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                   </div>
                   
                   ${disc.topicos.length === 0 ? `
-                    <div class="text-center py-8 text-gray-600">
+                    <div class="text-center py-8 ${themes[currentTheme].textSecondary}">
                       <i class="fas fa-inbox text-4xl mb-2 opacity-50"></i>
                       <p>Nenhum tópico cadastrado</p>
                       <button onclick="event.stopPropagation(); adicionarTopicoNaDisciplina(${disc.disciplina_id}, '${disc.nome.replace(/'/g, "\\'")}')"
@@ -11632,17 +11642,22 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
                       ${disc.topicos.map((topico, index) => {
                         const isConcluido = topico.nivel_dominio >= 10;
                         const isRevisado = topico.vezes_estudado > 0 && topico.nivel_dominio < 10;
-                        const bgClass = isConcluido ? 'bg-green-100 border-green-400 text-gray-800' : isRevisado ? 'bg-yellow-50 border-yellow-300 text-gray-800' : 'bg-gray-50 border-gray-200 text-gray-800';
-                        const btnClass = isConcluido ? 'bg-green-600 border-green-600 text-white' : isRevisado ? 'bg-yellow-400 border-yellow-400 text-white' : 'border-gray-300 hover:border-green-500';
-                        const btnIcon = isConcluido ? '<i class="fas fa-check text-sm"></i>' : isRevisado ? '<i class="fas fa-clock text-xs"></i>' : '';
-                        const textClass = isConcluido ? 'text-green-800 line-through' : 'text-gray-900';
-                        const statusHtml = isConcluido 
-                          ? '<span class="text-xs text-green-600 font-bold"><i class="fas fa-trophy mr-1"></i>CONCLUÍDO</span>' 
+                        const isDark = currentTheme === 'dark';
+                        const bgClass = isConcluido 
+                          ? (isDark ? 'bg-green-900/40 border-green-700 text-green-100' : 'bg-green-100 border-green-400 text-gray-800')
                           : isRevisado 
-                            ? '<span class="text-xs text-yellow-600 font-medium"><i class="fas fa-redo mr-1"></i>Em estudo (' + topico.vezes_estudado + 'x)</span>'
-                            : '<span class="text-xs text-gray-400"><i class="fas fa-clock mr-1"></i>Pendente</span>';
-                        const pesoHtml = topico.peso ? '<span class="text-xs text-gray-500">Peso: ' + topico.peso + '</span>' : '';
-                        const dataHtml = topico.ultima_vez ? '<span class="text-xs text-gray-500 hidden sm:inline">' + new Date(topico.ultima_vez).toLocaleDateString('pt-BR') + '</span>' : '';
+                            ? (isDark ? 'bg-yellow-900/30 border-yellow-700 text-yellow-100' : 'bg-yellow-50 border-yellow-300 text-gray-800')
+                            : (isDark ? 'bg-gray-800 border-gray-600 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-800');
+                        const btnClass = isConcluido ? 'bg-green-600 border-green-600 text-white' : isRevisado ? 'bg-yellow-400 border-yellow-400 text-white' : (isDark ? 'border-gray-500 hover:border-green-500' : 'border-gray-300 hover:border-green-500');
+                        const btnIcon = isConcluido ? '<i class="fas fa-check text-sm"></i>' : isRevisado ? '<i class="fas fa-clock text-xs"></i>' : '';
+                        const textClass = isConcluido ? (isDark ? 'text-green-300 line-through' : 'text-green-800 line-through') : (isDark ? 'text-gray-100' : 'text-gray-900');
+                        const statusHtml = isConcluido 
+                          ? '<span class="text-xs text-green-600 dark:text-green-400 font-bold"><i class="fas fa-trophy mr-1"></i>CONCLUÍDO</span>' 
+                          : isRevisado 
+                            ? '<span class="text-xs text-yellow-600 dark:text-yellow-400 font-medium"><i class="fas fa-redo mr-1"></i>Em estudo (' + topico.vezes_estudado + 'x)</span>'
+                            : '<span class="text-xs ' + (isDark ? 'text-gray-400' : 'text-gray-400') + '"><i class="fas fa-clock mr-1"></i>Pendente</span>';
+                        const pesoHtml = topico.peso ? '<span class="text-xs ' + (isDark ? 'text-gray-400' : 'text-gray-500') + '">Peso: ' + topico.peso + '</span>' : '';
+                        const dataHtml = topico.ultima_vez ? '<span class="text-xs ' + (isDark ? 'text-gray-400' : 'text-gray-500') + ' hidden sm:inline">' + new Date(topico.ultima_vez).toLocaleDateString('pt-BR') + '</span>' : '';
                         
                         return `
                         <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border ${bgClass} hover:shadow-sm transition"
@@ -27280,10 +27295,13 @@ function addChatMessage(role, content, id = null) {
   const messageId = id || 'msg-' + Date.now();
   
   const isUser = role === 'user';
-  // Estilos diferentes para usuário e Lilu
+  const isDark = currentTheme === 'dark';
+  // Estilos diferentes para usuário e Lilu - com suporte a tema escuro
   const bgColor = isUser 
     ? 'bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white rounded-2xl rounded-tr-sm' 
-    : 'bg-white text-gray-800 rounded-2xl rounded-tl-sm border border-blue-100';
+    : isDark
+      ? 'bg-gray-700 text-gray-100 rounded-2xl rounded-tl-sm border border-gray-600'
+      : 'bg-white text-gray-800 rounded-2xl rounded-tl-sm border border-blue-100';
   const alignment = isUser ? 'ml-auto' : 'mr-auto';
   
   // v72: Formatar markdown para HTML nas mensagens da assistente
@@ -28032,15 +28050,26 @@ function renderChartRegioes(regioes) {
 
 function renderChatButton() {
   // Não criar botão separado, usar o FAB unificado
+  const isDark = currentTheme === 'dark';
+  const chatBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const chatBorder = isDark ? 'border-gray-600' : themes[currentTheme].border;
+  const msgAreaBg = isDark ? 'bg-gradient-to-b from-gray-900 to-gray-800' : 'bg-gradient-to-b from-[#E8EDF5] to-white';
+  const welcomeBg = isDark ? 'bg-gray-700 text-gray-100 border-gray-600' : 'bg-white text-gray-800 border-blue-100';
+  const welcomeText = isDark ? 'text-gray-100' : 'text-gray-800';
+  const suggBorder = isDark ? 'border-gray-600 hover:bg-gray-600 hover:border-gray-500' : 'border-blue-100 hover:bg-blue-50 hover:border-blue-300';
+  const suggText = isDark ? 'text-gray-300' : 'text-gray-600';
+  const inputAreaBg = isDark ? 'bg-gray-800 border-gray-600' : 'bg-white border-blue-100';
+  const inputBg = isDark ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400' : 'border-blue-200 focus:border-[#122D6A]';
+  
   const chatHtml = `
     
     <!-- Container do Chat - Responsivo -->
     <div 
       id="chatContainer"
-      class="hidden fixed z-50 flex flex-col overflow-hidden border-2 ${themes[currentTheme].border}
+      class="hidden fixed z-50 flex flex-col overflow-hidden border-2 ${chatBorder}
              bottom-0 left-0 right-0 h-[70vh] rounded-t-2xl
              md:bottom-28 md:right-8 md:left-auto md:w-96 md:h-[500px] md:rounded-2xl
-             bg-white shadow-2xl">
+             ${chatBg} shadow-2xl">
       
       <!-- Header -->
       <div class="bg-gradient-to-r from-[#122D6A] to-[#2A4A9F] text-white p-4 flex items-center justify-between">
@@ -28059,37 +28088,37 @@ function renderChatButton() {
       </div>
       
       <!-- Mensagens -->
-      <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-[#E8EDF5] to-white">
+      <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 ${msgAreaBg}">
         <div class="mr-auto max-w-[85%]">
-          <div class="bg-white text-gray-800 rounded-2xl rounded-tl-sm px-4 py-3 shadow-md border border-blue-100">
-            <p class="text-sm mb-3">
+          <div class="${welcomeBg} rounded-2xl rounded-tl-sm px-4 py-3 shadow-md border">
+            <p class="text-sm mb-3 ${welcomeText}">
               Oi! Sou a <b>Lilu</b>, sua assistente de estudos aqui no IAprova! 😊
               <br><br>Veja como posso te ajudar:
             </p>
             <div class="grid grid-cols-3 gap-2">
-              <button onclick="enviarSugestaoChat('Quais disciplinas devo priorizar?')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-blue-100 hover:bg-blue-50 hover:border-blue-300 transition-all group">
-                <i class="fas fa-book text-[#122D6A] text-base group-hover:scale-110 transition-transform"></i>
-                <span class="text-[11px] text-gray-600 font-medium text-center leading-tight">Disciplinas</span>
+              <button onclick="enviarSugestaoChat('Quais disciplinas devo priorizar?')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border ${suggBorder} transition-all group">
+                <i class="fas fa-book text-[#122D6A] ${isDark ? 'text-[#6BB6FF]' : ''} text-base group-hover:scale-110 transition-transform"></i>
+                <span class="text-[11px] ${suggText} font-medium text-center leading-tight">Disciplinas</span>
               </button>
-              <button onclick="enviarSugestaoChat('Me ajude a montar um cronograma de estudos')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-blue-100 hover:bg-blue-50 hover:border-blue-300 transition-all group">
-                <i class="fas fa-calendar-alt text-[#122D6A] text-base group-hover:scale-110 transition-transform"></i>
-                <span class="text-[11px] text-gray-600 font-medium text-center leading-tight">Cronograma</span>
+              <button onclick="enviarSugestaoChat('Me ajude a montar um cronograma de estudos')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border ${suggBorder} transition-all group">
+                <i class="fas fa-calendar-alt text-[#122D6A] ${isDark ? 'text-[#6BB6FF]' : ''} text-base group-hover:scale-110 transition-transform"></i>
+                <span class="text-[11px] ${suggText} font-medium text-center leading-tight">Cronograma</span>
               </button>
-              <button onclick="enviarSugestaoChat('Me dê dicas para melhorar nos simulados')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-blue-100 hover:bg-blue-50 hover:border-blue-300 transition-all group">
-                <i class="fas fa-chart-line text-[#122D6A] text-base group-hover:scale-110 transition-transform"></i>
-                <span class="text-[11px] text-gray-600 font-medium text-center leading-tight">Simulados</span>
+              <button onclick="enviarSugestaoChat('Me dê dicas para melhorar nos simulados')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border ${suggBorder} transition-all group">
+                <i class="fas fa-chart-line text-[#122D6A] ${isDark ? 'text-[#6BB6FF]' : ''} text-base group-hover:scale-110 transition-transform"></i>
+                <span class="text-[11px] ${suggText} font-medium text-center leading-tight">Simulados</span>
               </button>
-              <button onclick="enviarSugestaoChat('Como funciona o plano de estudos?')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-blue-100 hover:bg-blue-50 hover:border-blue-300 transition-all group">
-                <i class="fas fa-info-circle text-[#122D6A] text-base group-hover:scale-110 transition-transform"></i>
-                <span class="text-[11px] text-gray-600 font-medium text-center leading-tight">Sobre</span>
+              <button onclick="enviarSugestaoChat('Como funciona o plano de estudos?')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border ${suggBorder} transition-all group">
+                <i class="fas fa-info-circle text-[#122D6A] ${isDark ? 'text-[#6BB6FF]' : ''} text-base group-hover:scale-110 transition-transform"></i>
+                <span class="text-[11px] ${suggText} font-medium text-center leading-tight">Sobre</span>
               </button>
-              <button onclick="enviarSugestaoChat('Me explique sobre técnicas de memorização')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-blue-100 hover:bg-blue-50 hover:border-blue-300 transition-all group">
-                <i class="fas fa-brain text-[#122D6A] text-base group-hover:scale-110 transition-transform"></i>
-                <span class="text-[11px] text-gray-600 font-medium text-center leading-tight">Técnicas</span>
+              <button onclick="enviarSugestaoChat('Me explique sobre técnicas de memorização')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border ${suggBorder} transition-all group">
+                <i class="fas fa-brain text-[#122D6A] ${isDark ? 'text-[#6BB6FF]' : ''} text-base group-hover:scale-110 transition-transform"></i>
+                <span class="text-[11px] ${suggText} font-medium text-center leading-tight">Técnicas</span>
               </button>
-              <button onclick="enviarSugestaoChat('Quais são as novidades do concurso mais recente?')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-blue-100 hover:bg-blue-50 hover:border-blue-300 transition-all group">
-                <i class="fas fa-newspaper text-[#122D6A] text-base group-hover:scale-110 transition-transform"></i>
-                <span class="text-[11px] text-gray-600 font-medium text-center leading-tight">Notícias</span>
+              <button onclick="enviarSugestaoChat('Quais são as novidades do concurso mais recente?')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border ${suggBorder} transition-all group">
+                <i class="fas fa-newspaper text-[#122D6A] ${isDark ? 'text-[#6BB6FF]' : ''} text-base group-hover:scale-110 transition-transform"></i>
+                <span class="text-[11px] ${suggText} font-medium text-center leading-tight">Notícias</span>
               </button>
             </div>
           </div>
@@ -28097,13 +28126,13 @@ function renderChatButton() {
       </div>
       
       <!-- Input -->
-      <div class="p-4 bg-white border-t border-blue-100">
+      <div class="p-4 ${inputAreaBg} border-t">
         <div class="flex gap-2">
           <input 
             id="chatInput"
             type="text" 
             placeholder="Pergunte algo para Lilu..."
-            class="flex-1 px-4 py-2 border border-blue-200 rounded-full focus:ring-2 focus:ring-[#122D6A] focus:outline-none focus:border-[#122D6A]"
+            class="flex-1 px-4 py-2 border rounded-full focus:ring-2 focus:ring-[#122D6A] focus:outline-none ${inputBg}"
             onkeypress="if(event.key === 'Enter') sendChatMessage()"
           />
           <button 
@@ -28119,6 +28148,13 @@ function renderChatButton() {
   // Adicionar ao body se não existir
   if (!document.getElementById('chatButton')) {
     document.body.insertAdjacentHTML('beforeend', chatHtml);
+  }
+  
+  // ✅ v181: Se chat estava aberto antes da mudança de tema, reabrir
+  if (window._chatWasOpen) {
+    window._chatWasOpen = false;
+    const container = document.getElementById('chatContainer');
+    if (container) container.classList.remove('hidden');
   }
 }
 
