@@ -9533,8 +9533,7 @@ function renderNavbar() {
         <div class="flex items-center justify-between h-14">
           <div class="flex items-center gap-3">
             <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
-              <span class="text-[#7BC4FF]">IA</span>prova
-            </button>
+              <span class="text-[#7BC4FF]">IA</span>prova</button>
           </div>
           <div class="flex items-center gap-2">
             <button onclick="renderDashboard()" class="p-2 hover:bg-white/20 rounded-lg transition" title="Dashboard">
@@ -11479,8 +11478,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
           <div class="flex items-center justify-between h-14">
             <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
               <i class="fas fa-arrow-left mr-2"></i>
-              <span class="text-[#7BC4FF]">IA</span>prova
-            </button>
+              <span class="text-[#7BC4FF]">IA</span>prova</button>
             <div class="flex items-center gap-2">
               <button onclick="adicionarDisciplinaCustomGestao()" 
                 class="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition flex items-center gap-2 text-sm font-medium">
@@ -15220,8 +15218,7 @@ async function renderDetalheDisciplina(disciplinaId, disciplinaNome, conteudos, 
           <div class="flex items-center justify-between h-14">
             <button onclick="renderPortfolioDisciplinas()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
               <i class="fas fa-arrow-left mr-2"></i>
-              <span class="text-[#7BC4FF]">IA</span>prova
-            </button>
+              <span class="text-[#7BC4FF]">IA</span>prova</button>
             <div class="flex items-center gap-2">
               <span class="text-white/80 text-sm hidden sm:inline">
                 <i class="fas fa-book mr-1"></i>${disciplinaNome}
@@ -16151,8 +16148,7 @@ async function renderMateriais(activeTab = 'todos') {
             <div class="flex items-center justify-between h-14">
               <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
                 <i class="fas fa-arrow-left mr-2"></i>
-                <span class="text-[#7BC4FF]">IA</span>prova
-              </button>
+                <span class="text-[#7BC4FF]">IA</span>prova</button>
               <div class="flex items-center gap-2">
                 <span class="text-white/80 text-sm hidden sm:inline">
                   <i class="fas fa-folder-open mr-1"></i>${totalMateriais} materiais
@@ -16565,8 +16561,7 @@ window.renderDashboardDesempenho = async function() {
             <div class="flex items-center justify-between h-14">
               <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
                 <i class="fas fa-arrow-left mr-2"></i>
-                <span class="text-[#7BC4FF]">IA</span>prova
-              </button>
+                <span class="text-[#7BC4FF]">IA</span>prova</button>
               <div class="flex items-center gap-3">
                 <div class="hidden md:flex items-center gap-0.5 px-2 py-1 rounded-full bg-white/10 backdrop-blur-sm">
                   <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full" title="Sequência de dias">
@@ -17181,8 +17176,7 @@ window.renderDashboardSimulados = async function() {
             <div class="flex items-center justify-between h-14">
               <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
                 <i class="fas fa-arrow-left mr-2"></i>
-                <span class="text-[#7BC4FF]">IA</span>prova
-              </button>
+                <span class="text-[#7BC4FF]">IA</span>prova</button>
               <div class="flex items-center gap-3">
                 <div class="hidden md:flex items-center gap-0.5 px-2 py-1 rounded-full bg-white/10 backdrop-blur-sm">
                   <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full" title="Total de simulados">
@@ -17244,13 +17238,13 @@ window.renderDashboardSimulados = async function() {
           </div>
           
           <!-- Indicador de Status -->
-          <div class="status-card-meta ${themes[currentTheme].card} border-l-4 ${dentroMeta ? 'border-green-500 bg-green-50/50' : 'border-red-500 bg-red-50/50'} mb-3">
+          <div class="status-card-meta ${themes[currentTheme].card} border-l-4 ${dentroMeta ? `border-green-500 ${currentTheme === 'dark' ? 'bg-green-900/30' : 'bg-green-50/50'}` : `border-red-500 ${currentTheme === 'dark' ? 'bg-amber-900/30' : 'bg-red-50/50'}`} mb-3">
             <div class="flex items-center gap-3">
               <div class="status-icon rounded-full ${dentroMeta ? 'bg-green-500' : 'bg-red-500'} flex items-center justify-center flex-shrink-0">
                 <i class="fas ${dentroMeta ? 'fa-check' : 'fa-exclamation'} text-white"></i>
               </div>
               <div class="flex-1 min-w-0">
-                <h3 class="font-bold ${dentroMeta ? 'text-green-700' : 'text-red-700'}">
+                <h3 class="font-bold ${dentroMeta ? (currentTheme === 'dark' ? 'text-green-400' : 'text-green-700') : (currentTheme === 'dark' ? 'text-amber-400' : 'text-red-700')}">
                   ${dentroMeta ? 'DENTRO DA META' : 'ABAIXO DA META'}
                 </h3>
                 <p class="${themes[currentTheme].textSecondary} text-xs">
@@ -17259,7 +17253,7 @@ window.renderDashboardSimulados = async function() {
                       `Média ${mediaUltimos}% acima do corte ${metaPercentual}%` :
                       `Faltam ${metaPercentual - mediaUltimos}% para a nota de corte`
                   }
-                  ${tendencia !== 0 ? ` | <span class="${tendencia > 0 ? 'text-green-600' : 'text-red-600'}"><i class="fas fa-arrow-${tendencia > 0 ? 'up' : 'down'}"></i> ${tendencia > 0 ? '+' : ''}${tendencia}%</span>` : ''}
+                  ${tendencia !== 0 ? ` | <span class="${tendencia > 0 ? (currentTheme === 'dark' ? 'text-green-400' : 'text-green-600') : (currentTheme === 'dark' ? 'text-red-400' : 'text-red-600')}"><i class="fas fa-arrow-${tendencia > 0 ? 'up' : 'down'}"></i> ${tendencia > 0 ? '+' : ''}${tendencia}%</span>` : ''}
                 </p>
               </div>
               <button onclick="configurarMetaSimulado()" class="px-2.5 py-1.5 bg-[#122D6A] text-white rounded-lg text-xs flex-shrink-0">
@@ -17302,8 +17296,8 @@ window.renderDashboardSimulados = async function() {
               <div class="md:hidden space-y-3">
                 ${simulados.map(sim => {
                   const data = new Date(sim.data_realizacao).toLocaleDateString('pt-BR');
-                  const percentualClass = sim.percentual_acerto >= 70 ? 'text-green-600' : sim.percentual_acerto >= 50 ? 'text-amber-600' : 'text-red-600';
-                  const bgClass = sim.percentual_acerto >= 70 ? 'border-green-200' : sim.percentual_acerto >= 50 ? 'border-amber-200' : 'border-red-200';
+                  const percentualClass = sim.percentual_acerto >= 70 ? (currentTheme === 'dark' ? 'text-green-400' : 'text-green-600') : sim.percentual_acerto >= 50 ? 'text-amber-600' : 'text-red-600';
+                  const bgClass = sim.percentual_acerto >= 70 ? (currentTheme === 'dark' ? 'border-green-600' : 'border-green-200') : sim.percentual_acerto >= 50 ? (currentTheme === 'dark' ? 'border-amber-600' : 'border-amber-200') : (currentTheme === 'dark' ? 'border-red-600' : 'border-red-200');
                   let discTexto = 'Múltiplas';
                   try { discTexto = JSON.parse(sim.disciplinas || '[]').join(', '); } catch(e) { discTexto = sim.disciplinas || 'Múltiplas'; }
                   
@@ -17341,7 +17335,7 @@ window.renderDashboardSimulados = async function() {
                   <tbody>
                     ${simulados.map(sim => {
                       const data = new Date(sim.data_realizacao).toLocaleDateString('pt-BR');
-                      const percentualClass = sim.percentual_acerto >= 70 ? 'text-[#2A4A9F]' : sim.percentual_acerto >= 50 ? 'text-amber-600' : 'text-red-600';
+                      const percentualClass = sim.percentual_acerto >= 70 ? (currentTheme === 'dark' ? 'text-green-400' : 'text-[#2A4A9F]') : sim.percentual_acerto >= 50 ? 'text-amber-600' : 'text-red-600';
                       
                       return `
                         <tr class="border-b ${themes[currentTheme].border} hover:bg-gray-50 dark:hover:bg-gray-800">
@@ -17352,7 +17346,7 @@ window.renderDashboardSimulados = async function() {
                           <td class="text-center py-3 px-4 font-bold ${percentualClass}">${sim.percentual_acerto}%</td>
                           <td class="text-center py-3 px-4 ${themes[currentTheme].textSecondary}">${sim.tempo_gasto || '-'}</td>
                           <td class="text-center py-3 px-4">
-                            <button onclick="verDetalhesSimulado(${sim.id})" class="text-[#122D6A] hover:text-blue-800">
+                            <button onclick="verDetalhesSimulado(${sim.id})" class="${currentTheme === 'dark' ? 'text-[#7BC4FF] hover:text-blue-300' : 'text-[#122D6A] hover:text-blue-800'}">
                               <i class="fas fa-eye"></i>
                             </button>
                           </td>
@@ -17399,6 +17393,11 @@ window.renderGraficoSimulados = function(semanas, percentuais, metaPercentual) {
   const ctx = document.getElementById('chart-simulados');
   if (!ctx) return;
   
+  const isDk = currentTheme === 'dark';
+  const tickColor = isDk ? '#d1d5db' : '#4b5563';
+  const gridColor = isDk ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+  const legendColor = isDk ? '#e5e7eb' : '#374151';
+  
   // Linha de meta (tracejada)
   const linhaMeta = semanas.map(() => metaPercentual);
   
@@ -17427,7 +17426,7 @@ window.renderGraficoSimulados = function(semanas, percentuais, metaPercentual) {
           borderColor: '#F59E0B',
           backgroundColor: 'transparent',
           borderWidth: 2,
-          borderDash: [10, 5], // Linha tracejada
+          borderDash: [10, 5],
           tension: 0,
           fill: false,
           pointRadius: 0,
@@ -17445,6 +17444,7 @@ window.renderGraficoSimulados = function(semanas, percentuais, metaPercentual) {
           labels: {
             usePointStyle: true,
             padding: 20,
+            color: legendColor,
             font: {
               size: 12,
               family: 'Inter'
@@ -17477,17 +17477,19 @@ window.renderGraficoSimulados = function(semanas, percentuais, metaPercentual) {
             callback: function(value) {
               return value + '%';
             },
+            color: tickColor,
             font: {
               size: 11,
               family: 'Inter'
             }
           },
           grid: {
-            color: 'rgba(0, 0, 0, 0.05)'
+            color: gridColor
           }
         },
         x: {
           ticks: {
+            color: tickColor,
             font: {
               size: 11,
               family: 'Inter'
@@ -17571,20 +17573,21 @@ window.renderGraficoDisciplinas = function(simulados) {
   const totalQ = disciplinas.reduce((a, d) => a + d.total, 0);
   const totalA = disciplinas.reduce((a, d) => a + d.acertos, 0);
   const pGeral = totalQ > 0 ? Math.round((totalA / totalQ) * 100) : 0;
-  const pGeralClass = pGeral >= 70 ? 'bg-green-100 text-green-700' : pGeral >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700';
+  const pGeralClass = pGeral >= 70 ? (currentTheme === 'dark' ? 'bg-green-900/40 text-green-300' : 'bg-green-100 text-green-700') : pGeral >= 50 ? (currentTheme === 'dark' ? 'bg-amber-900/40 text-amber-300' : 'bg-amber-100 text-amber-700') : (currentTheme === 'dark' ? 'bg-red-900/40 text-red-300' : 'bg-red-100 text-red-700');
   
   // Gerar cards HTML
   let cardsHtml = '';
   disciplinas.forEach(d => {
     const corClass = d.percentual >= 70 ? 'from-green-500 to-emerald-600' : d.percentual >= 50 ? 'from-amber-500 to-yellow-600' : 'from-red-500 to-rose-600';
-    const bgClass = d.percentual >= 70 ? 'bg-green-50 dark:bg-green-900/10' : d.percentual >= 50 ? 'bg-amber-50 dark:bg-amber-900/10' : 'bg-red-50 dark:bg-red-900/10';
-    const textClass = d.percentual >= 70 ? 'text-green-700' : d.percentual >= 50 ? 'text-amber-700' : 'text-red-700';
+    const bgClass = d.percentual >= 70 ? (currentTheme === 'dark' ? 'bg-green-900/20' : 'bg-green-50') : d.percentual >= 50 ? (currentTheme === 'dark' ? 'bg-amber-900/20' : 'bg-amber-50') : (currentTheme === 'dark' ? 'bg-red-900/20' : 'bg-red-50');
+    const textClass = d.percentual >= 70 ? (currentTheme === 'dark' ? 'text-green-400' : 'text-green-700') : d.percentual >= 50 ? (currentTheme === 'dark' ? 'text-amber-400' : 'text-amber-700') : (currentTheme === 'dark' ? 'text-red-400' : 'text-red-700');
+    const barBg = currentTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200';
     cardsHtml += '<div class="' + bgClass + ' rounded-xl p-3 border ' + themes[currentTheme].border + '">' +
       '<div class="flex items-center justify-between mb-2">' +
         '<p class="font-semibold ' + themes[currentTheme].text + ' text-sm truncate flex-1 mr-2">' + d.nome + '</p>' +
         '<span class="font-bold ' + textClass + ' text-lg">' + d.percentual + '%</span>' +
       '</div>' +
-      '<div class="w-full bg-gray-200 rounded-full h-2.5 mb-1.5">' +
+      '<div class="w-full ' + barBg + ' rounded-full h-2.5 mb-1.5">' +
         '<div class="h-2.5 rounded-full bg-gradient-to-r ' + corClass + '" style="width: ' + d.percentual + '%"></div>' +
       '</div>' +
       '<p class="text-xs ' + themes[currentTheme].textSecondary + '">' + d.acertos + '/' + d.total + ' questoes corretas</p>' +
@@ -17623,6 +17626,10 @@ window.renderGraficoDisciplinas = function(simulados) {
     'rgb(239, 68, 68)'
   );
   
+  const isDk2 = currentTheme === 'dark';
+  const tickColor2 = isDk2 ? '#d1d5db' : '#4b5563';
+  const gridColor2 = isDk2 ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0,0,0,0.05)';
+  
   new Chart(ctx, {
     type: 'bar',
     data: {
@@ -17660,12 +17667,13 @@ window.renderGraficoDisciplinas = function(simulados) {
           max: 100,
           ticks: {
             callback: function(v) { return v + '%'; },
+            color: tickColor2,
             font: { size: 11 }
           },
-          grid: { color: 'rgba(0,0,0,0.05)' }
+          grid: { color: gridColor2 }
         },
         y: {
-          ticks: { font: { size: 12 } },
+          ticks: { color: tickColor2, font: { size: 12 } },
           grid: { display: false }
         }
       }
@@ -24317,8 +24325,7 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
           <div class="flex items-center justify-between h-14">
             <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
               <i class="fas fa-arrow-left mr-2"></i>
-              <span class="text-[#7BC4FF]">IA</span>prova
-            </button>
+              <span class="text-[#7BC4FF]">IA</span>prova</button>
             <div class="flex items-center gap-2">
               <span class="text-white/80 text-sm hidden sm:inline">
                 <i class="fas fa-calendar-alt mr-1"></i>${mesesNomes[mes - 1]} ${ano}
