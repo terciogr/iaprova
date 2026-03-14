@@ -1266,23 +1266,71 @@ function createUnifiedFAB() {
       </button>
       
       <div id="fab-admin-panel" style="display: none;">
-        <button onclick="abrirPainelAdmin(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-          <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-            <i class="fas fa-shield-alt" style="font-size: 13px; color: ${iconColor};"></i>
+        <!-- Separador Admin -->
+        <div style="height: 1px; background: ${borderColor}; margin: 10px 12px;"></div>
+        
+        <!-- Acordeão Admin -->
+        <button id="admin-accordion-toggle" onclick="window._toggleAdminAccordion()" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 600; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+          <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #122D6A, #2A4A9F); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i class="fas fa-shield-alt" style="font-size: 13px; color: white;"></i>
           </div>
-          Painel Admin
+          <span style="flex: 1; text-align: left;">Administração</span>
+          <i id="admin-accordion-icon" class="fas fa-chevron-down" style="font-size: 10px; color: ${textSecondary}; transition: transform 0.3s;"></i>
         </button>
-      </div>
-      
-      <div id="fab-admin-chat" style="display: none;">
-        <button onclick="abrirChatAdmin(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 13px; font-weight: 500; transition: background 0.15s; position: relative;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
-          <div style="width: 32px; height: 32px; background: ${iconBg}; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative;">
-            <i class="fas fa-comments" style="font-size: 13px; color: ${iconColor};"></i>
-            <span id="sidebar-chat-badge" style="display:none; position:absolute; top:-6px; right:-6px; min-width:18px; height:18px; background:#EF4444; color:white; font-size:10px; font-weight:700; border-radius:999px; display:none; align-items:center; justify-content:center; padding:0 4px; line-height:18px; box-shadow:0 1px 3px rgba(0,0,0,0.3);"></span>
-          </div>
-          <span style="flex:1;text-align:left;">Chat com Usuarios</span>
-          <i id="sidebar-chat-notif-icon" class="fas fa-bell" style="display:none; font-size:14px; color:#EF4444; animation: bellShake 0.5s ease-in-out infinite;"></i>
-        </button>
+        
+        <!-- Conteúdo do Acordeão (contraído por padrão) -->
+        <div id="admin-accordion-content" style="display: none; padding-left: 12px; overflow: hidden;">
+          <button onclick="abrirPainelAdmin(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 12px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+            <div style="width: 28px; height: 28px; background: ${iconBg}; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fas fa-tachometer-alt" style="font-size: 11px; color: ${iconColor};"></i>
+            </div>
+            Dashboard
+          </button>
+          <button onclick="verListaUsuarios(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 12px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+            <div style="width: 28px; height: 28px; background: ${iconBg}; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fas fa-users" style="font-size: 11px; color: ${iconColor};"></i>
+            </div>
+            Usuários
+          </button>
+          <button onclick="abrirChatAdmin(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 12px; font-weight: 500; transition: background 0.15s; position: relative;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+            <div style="width: 28px; height: 28px; background: ${iconBg}; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative;">
+              <i class="fas fa-comments" style="font-size: 11px; color: ${iconColor};"></i>
+              <span id="sidebar-chat-badge" style="display:none; position:absolute; top:-4px; right:-4px; min-width:16px; height:16px; background:#EF4444; color:white; font-size:9px; font-weight:700; border-radius:999px; align-items:center; justify-content:center; padding:0 3px; line-height:16px; box-shadow:0 1px 3px rgba(0,0,0,0.3);"></span>
+            </div>
+            <span style="flex:1;text-align:left;">Chat Usuários</span>
+            <i id="sidebar-chat-notif-icon" class="fas fa-bell" style="display:none; font-size:12px; color:#EF4444; animation: bellShake 0.5s ease-in-out infinite;"></i>
+          </button>
+          <button onclick="verRelatorioFinanceiro(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 12px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+            <div style="width: 28px; height: 28px; background: ${iconBg}; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fas fa-chart-line" style="font-size: 11px; color: ${iconColor};"></i>
+            </div>
+            Financeiro
+          </button>
+          <button onclick="abrirAnalyticsAdmin(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 12px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+            <div style="width: 28px; height: 28px; background: ${iconBg}; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fas fa-chart-pie" style="font-size: 11px; color: ${iconColor};"></i>
+            </div>
+            Analytics
+          </button>
+          <button onclick="abrirReengajamento(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 12px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+            <div style="width: 28px; height: 28px; background: ${iconBg}; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fas fa-paper-plane" style="font-size: 11px; color: ${iconColor};"></i>
+            </div>
+            Reengajamento
+          </button>
+          <button onclick="gerenciarChavesAPI(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 12px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+            <div style="width: 28px; height: 28px; background: ${iconBg}; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fas fa-key" style="font-size: 11px; color: ${iconColor};"></i>
+            </div>
+            Chaves API
+          </button>
+          <button onclick="abrirGerenciadorSessoes(); toggleFabMenu();" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; color: ${textColor}; font-size: 12px; font-weight: 500; transition: background 0.15s;" onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'">
+            <div style="width: 28px; height: 28px; background: ${iconBg}; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fas fa-laptop" style="font-size: 11px; color: ${iconColor};"></i>
+            </div>
+            Dispositivos
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -1377,11 +1425,9 @@ function createUnifiedFAB() {
 // Chamada após validação da sessão e no timeout inicial
 window._atualizarBotoesAdmin = function() {
   const adminPanelBtn = document.getElementById('fab-admin-panel');
-  const adminChatBtn = document.getElementById('fab-admin-chat');
   
   if (window._serverConfirmedAdmin === true && currentUser?.email === 'terciogomesrabelo@gmail.com') {
     if (adminPanelBtn) adminPanelBtn.style.display = 'block';
-    if (adminChatBtn) adminChatBtn.style.display = 'block';
     // Verificar mensagens não lidas do admin
     checkAdminUnreadMessages();
     if (!window._adminUnreadInterval) {
@@ -1389,8 +1435,18 @@ window._atualizarBotoesAdmin = function() {
     }
   } else {
     if (adminPanelBtn) adminPanelBtn.style.display = 'none';
-    if (adminChatBtn) adminChatBtn.style.display = 'none';
   }
+};
+
+// ✅ NOVO: Toggle do acordeão admin no sidebar
+window._toggleAdminAccordion = function() {
+  const content = document.getElementById('admin-accordion-content');
+  const icon = document.getElementById('admin-accordion-icon');
+  if (!content) return;
+  
+  const isOpen = content.style.display !== 'none';
+  content.style.display = isOpen ? 'none' : 'block';
+  if (icon) icon.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
 };
 
 // Verificar mensagens não lidas para o admin (sidebar badge)
@@ -1644,6 +1700,10 @@ async function validarSessaoEContinuar() {
     
     // Sessão válida — continuar normalmente
     if (window._atualizarBotoesAdmin) window._atualizarBotoesAdmin();
+    
+    // ✅ FIX: Registrar visita APÓS confirmar sessão (currentUser disponível)
+    registrarVisita();
+    
     verificarEntrevista();
   } catch (error) {
     console.warn('⚠️ Erro ao validar sessão, continuando normalmente:', error);
@@ -19083,6 +19143,27 @@ window.abrirPainelAdmin = async function() {
             </div>
           </div>
           
+          <!-- ✅ NOVO: Gráficos de Acessos por Dia e Mês -->
+          <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5 mb-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold ${themes[currentTheme].text} flex items-center gap-2">
+                <i class="fas fa-chart-area text-[#1A3A7F]"></i>
+                Acessos ao Sistema
+              </h3>
+              <div class="flex gap-2">
+                <button id="btn-chart-dia" onclick="window._toggleChartAcessos('dia')" class="px-3 py-1 text-xs font-medium rounded-lg bg-[#122D6A] text-white transition">Por Dia</button>
+                <button id="btn-chart-mes" onclick="window._toggleChartAcessos('mes')" class="px-3 py-1 text-xs font-medium rounded-lg ${currentTheme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'} transition">Por Mês</button>
+              </div>
+            </div>
+            <div id="chart-acessos-container" style="height: 260px; position: relative;">
+              <canvas id="chart-acessos-admin"></canvas>
+            </div>
+            <div id="chart-acessos-loading" class="flex items-center justify-center py-8">
+              <i class="fas fa-spinner fa-spin text-2xl text-blue-500 mr-3"></i>
+              <span class="${themes[currentTheme].textSecondary}">Carregando dados de acessos...</span>
+            </div>
+          </div>
+          
           <!-- Ações Rápidas -->
           <div class="${themes[currentTheme].card} border ${themes[currentTheme].border} rounded-xl p-5">
             <h3 class="font-bold ${themes[currentTheme].text} mb-4 flex items-center gap-2">
@@ -19150,6 +19231,9 @@ window.abrirPainelAdmin = async function() {
     
     document.body.appendChild(modal);
     
+    // ✅ NOVO: Carregar gráficos de acessos
+    carregarGraficosAcessos();
+    
   } catch (error) {
     document.getElementById('admin-loading')?.remove();
     console.error('Erro ao carregar painel admin:', error);
@@ -19164,7 +19248,161 @@ window.abrirPainelAdmin = async function() {
 
 window.fecharPainelAdmin = function() {
   document.getElementById('modal-admin-panel')?.remove();
+  if (window._chartAcessosAdmin) { window._chartAcessosAdmin.destroy(); window._chartAcessosAdmin = null; }
 };
+
+// ✅ NOVO: Gráficos de acessos por dia e mês
+window._acessosData = null;
+window._chartAcessosAdmin = null;
+window._chartAcessosModo = 'dia';
+
+async function carregarGraficosAcessos() {
+  try {
+    const res = await axios.get('/api/admin/visits/chart', {});
+    window._acessosData = res.data;
+    document.getElementById('chart-acessos-loading')?.remove();
+    renderChartAcessos('dia');
+  } catch (e) {
+    console.warn('Erro ao carregar gráficos de acessos:', e);
+    const loading = document.getElementById('chart-acessos-loading');
+    if (loading) loading.innerHTML = '<span class="' + themes[currentTheme].textSecondary + ' text-sm">Sem dados de acessos disponíveis</span>';
+  }
+}
+
+window._toggleChartAcessos = function(modo) {
+  window._chartAcessosModo = modo;
+  const isDk = currentTheme === 'dark';
+  const btnDia = document.getElementById('btn-chart-dia');
+  const btnMes = document.getElementById('btn-chart-mes');
+  if (btnDia && btnMes) {
+    const activeClass = 'background:#122D6A;color:white;';
+    const inactiveClass = isDk ? 'background:#374151;color:#d1d5db;' : 'background:#e5e7eb;color:#4b5563;';
+    btnDia.style.cssText = (modo === 'dia' ? activeClass : inactiveClass);
+    btnMes.style.cssText = (modo === 'mes' ? activeClass : inactiveClass);
+  }
+  renderChartAcessos(modo);
+};
+
+function renderChartAcessos(modo) {
+  const data = window._acessosData;
+  if (!data) return;
+  
+  const ctx = document.getElementById('chart-acessos-admin');
+  if (!ctx) return;
+  
+  if (window._chartAcessosAdmin) {
+    window._chartAcessosAdmin.destroy();
+  }
+  
+  const isDk = currentTheme === 'dark';
+  const tickColor = isDk ? '#e5e7eb' : '#4b5563';
+  const gridColor = isDk ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+  const legendColor = isDk ? '#f3f4f6' : '#374151';
+  
+  let labels, totalVisitas, visitantesUnicos, usuariosLogados;
+  
+  if (modo === 'dia') {
+    const dados = data.por_dia || [];
+    labels = dados.map(function(d) { 
+      const parts = d.data.split('-');
+      return parts[2] + '/' + parts[1]; 
+    });
+    totalVisitas = dados.map(function(d) { return d.total_visitas; });
+    visitantesUnicos = dados.map(function(d) { return d.visitantes_unicos; });
+    usuariosLogados = dados.map(function(d) { return d.usuarios_logados; });
+  } else {
+    const dados = data.por_mes || [];
+    const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    labels = dados.map(function(d) { 
+      var parts = d.mes.split('-');
+      return meses[parseInt(parts[1]) - 1] + '/' + parts[0].slice(2);
+    });
+    totalVisitas = dados.map(function(d) { return d.total_visitas; });
+    visitantesUnicos = dados.map(function(d) { return d.visitantes_unicos; });
+    usuariosLogados = dados.map(function(d) { return d.usuarios_logados; });
+  }
+  
+  window._chartAcessosAdmin = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Total Visitas',
+          data: totalVisitas,
+          backgroundColor: 'rgba(59, 130, 246, 0.6)',
+          borderColor: 'rgba(59, 130, 246, 1)',
+          borderWidth: 1,
+          borderRadius: 4,
+          order: 2
+        },
+        {
+          label: 'Visitantes Únicos',
+          data: visitantesUnicos,
+          backgroundColor: 'rgba(34, 197, 94, 0.6)',
+          borderColor: 'rgba(34, 197, 94, 1)',
+          borderWidth: 1,
+          borderRadius: 4,
+          order: 3
+        },
+        {
+          label: 'Usuários Logados',
+          data: usuariosLogados,
+          type: 'line',
+          borderColor: '#8B5CF6',
+          backgroundColor: 'rgba(139, 92, 246, 0.1)',
+          borderWidth: 2,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 4,
+          pointBackgroundColor: '#8B5CF6',
+          pointBorderColor: isDk ? '#1f2937' : '#fff',
+          pointBorderWidth: 2,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            color: legendColor,
+            font: { size: 11 }
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          padding: 12,
+          titleFont: { size: 13 },
+          bodyFont: { size: 12 },
+          callbacks: {
+            label: function(context) {
+              return ' ' + context.dataset.label + ': ' + context.parsed.y;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: tickColor, font: { size: 10 }, maxRotation: 45 },
+          grid: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: tickColor, font: { size: 10 }, stepSize: 1 },
+          grid: { color: gridColor }
+        }
+      }
+    }
+  });
+}
 
 window.atualizarDashboardAdmin = function() {
   fecharPainelAdmin();

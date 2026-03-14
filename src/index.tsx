@@ -5391,6 +5391,66 @@ app.get('/api/admin/visits', async (c) => {
   }
 })
 
+// ✅ NOVO: Gráfico de acessos por dia e por mês (Admin)
+app.get('/api/admin/visits/chart', async (c) => {
+  const { DB } = c.env
+  
+  if (!await isAdmin(c)) {
+    return c.json({ error: 'Acesso negado' }, 403)
+  }
+  
+  try {
+    // Acessos por dia (últimos 30 dias)
+    const { results: porDia } = await DB.prepare(`
+      SELECT 
+        DATE(created_at) as data,
+        COUNT(*) as total_visitas,
+        COUNT(DISTINCT ip_address) as visitantes_unicos,
+        COUNT(DISTINCT user_id) as usuarios_logados
+      FROM site_visits
+      WHERE created_at >= DATE('now', '-30 days')
+      GROUP BY DATE(created_at)
+      ORDER BY data ASC
+    `).all()
+
+    // Acessos por mês (últimos 12 meses)
+    const { results: porMes } = await DB.prepare(`
+      SELECT 
+        strftime('%Y-%m', created_at) as mes,
+        COUNT(*) as total_visitas,
+        COUNT(DISTINCT ip_address) as visitantes_unicos,
+        COUNT(DISTINCT user_id) as usuarios_logados
+      FROM site_visits
+      GROUP BY strftime('%Y-%m', created_at)
+      ORDER BY mes ASC
+      LIMIT 12
+    `).all()
+
+    // Horários de pico (distribuição por hora do dia)
+    const { results: porHora } = await DB.prepare(`
+      SELECT 
+        CAST(strftime('%H', created_at) AS INTEGER) as hora,
+        COUNT(*) as total
+      FROM site_visits
+      WHERE created_at >= DATE('now', '-7 days')
+      GROUP BY hora
+      ORDER BY hora ASC
+    `).all()
+
+    return c.json({
+      por_dia: porDia || [],
+      por_mes: porMes || [],
+      por_hora: porHora || []
+    })
+  } catch (error: any) {
+    if (error.message?.includes('no such table')) {
+      return c.json({ por_dia: [], por_mes: [], por_hora: [], warning: 'Table not created yet' })
+    }
+    console.error('Erro ao buscar chart de visitas:', error)
+    return c.json({ error: 'Erro ao buscar dados' }, 500)
+  }
+})
+
 // Lista de usuários (paginada)
 app.get('/api/admin/users', async (c) => {
   const { DB } = c.env
@@ -5419,7 +5479,11 @@ app.get('/api/admin/users', async (c) => {
         COUNT(DISTINCT md.id) as total_metas,
         -- ✅ v78: Total de acessos ao sistema
         (SELECT COUNT(*) FROM site_visits sv WHERE sv.user_id = u.id) as total_acessos,
-        (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id) as ultimo_acesso,
+        -- ✅ FIX: COALESCE para mostrar created_at quando não há visitas registradas
+        COALESCE(
+          (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id),
+          u.created_at
+        ) as ultimo_acesso,
         -- ✅ v79: Último email de reengajamento enviado
         (SELECT MAX(eh.created_at) FROM email_history eh WHERE eh.email_to = u.email AND eh.email_type = 'reengajamento' AND eh.status = 'sent') as ultimo_email_reengajamento,
         -- ✅ Calcular is_premium_real considerando subscription ativa
@@ -25600,9 +25664,9 @@ app.post('/api/admin/email-manual/enviar', async (c) => {
       const input = String(usuario_especifico).trim()
       let user: any = null
       if (/^\d+$/.test(input)) {
-        user = await DB.prepare('SELECT id, name, email, created_at, is_premium, (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = users.id) as ultimo_acesso FROM users WHERE id = ?').bind(parseInt(input)).first()
+        user = await DB.prepare('SELECT id, name, email, created_at, is_premium, COALESCE((SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = users.id), created_at) as ultimo_acesso FROM users WHERE id = ?').bind(parseInt(input)).first()
       } else {
-        user = await DB.prepare('SELECT id, name, email, created_at, is_premium, (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = users.id) as ultimo_acesso FROM users WHERE email = ?').bind(input.toLowerCase()).first()
+        user = await DB.prepare('SELECT id, name, email, created_at, is_premium, COALESCE((SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = users.id), created_at) as ultimo_acesso FROM users WHERE email = ?').bind(input.toLowerCase()).first()
       }
       if (!user) {
         return c.json({ error: `Usuário não encontrado: ${input}` }, 404)
@@ -25613,7 +25677,7 @@ app.post('/api/admin/email-manual/enviar', async (c) => {
       // Usuários que já receberam o 1o email de reengajamento
       const result = await DB.prepare(`
         SELECT DISTINCT u.id, u.name, u.email, u.created_at,
-          (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id) as ultimo_acesso,
+          COALESCE((SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id), u.created_at) as ultimo_acesso,
           CASE WHEN u.is_premium = 1 OR (u.subscription_status = 'active') THEN 1 ELSE 0 END as is_premium
         FROM users u
         INNER JOIN email_history eh ON eh.email_to = u.email AND eh.email_type = 'reengajamento' AND eh.status = 'sent'
@@ -25624,7 +25688,7 @@ app.post('/api/admin/email-manual/enviar', async (c) => {
     } else if (destinatarios === 'todos_free') {
       const result = await DB.prepare(`
         SELECT u.id, u.name, u.email, u.created_at,
-          (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id) as ultimo_acesso
+          COALESCE((SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id), u.created_at) as ultimo_acesso
         FROM users u
         WHERE u.is_premium = 0 AND (u.subscription_status IS NULL OR u.subscription_status != 'active')
           AND u.email != 'terciogomesrabelo@gmail.com'
@@ -25634,7 +25698,7 @@ app.post('/api/admin/email-manual/enviar', async (c) => {
     } else if (destinatarios === 'todos') {
       const result = await DB.prepare(`
         SELECT u.id, u.name, u.email, u.created_at,
-          (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id) as ultimo_acesso
+          COALESCE((SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id), u.created_at) as ultimo_acesso
         FROM users u WHERE u.email != 'terciogomesrabelo@gmail.com'
         ORDER BY u.created_at DESC
       `).all() as any
@@ -26561,7 +26625,7 @@ app.get('/api/admin/chat-users', async (c) => {
       SELECT 
         u.id, u.name, u.email, u.is_premium, u.email_verified,
         u.subscription_status, u.subscription_plan,
-        (SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id) as ultimo_acesso,
+        COALESCE((SELECT MAX(sv.created_at) FROM site_visits sv WHERE sv.user_id = u.id), u.created_at) as ultimo_acesso,
         (SELECT COUNT(*) FROM site_visits sv WHERE sv.user_id = u.id) as total_acessos,
         (SELECT COUNT(*) FROM planos_estudo pe WHERE pe.user_id = u.id) as total_planos
       FROM users u
