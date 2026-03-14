@@ -9533,7 +9533,7 @@ function renderNavbar() {
         <div class="flex items-center justify-between h-14">
           <div class="flex items-center gap-3">
             <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
-              <span class="text-[#7BC4FF]">IA</span>prova</button>
+              <span><span class="text-[#7BC4FF]">IA</span>prova</span></button>
           </div>
           <div class="flex items-center gap-2">
             <button onclick="renderDashboard()" class="p-2 hover:bg-white/20 rounded-lg transition" title="Dashboard">
@@ -11478,7 +11478,7 @@ async function renderPortfolioDisciplinasUI(disciplinas, conteudos) {
           <div class="flex items-center justify-between h-14">
             <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
               <i class="fas fa-arrow-left mr-2"></i>
-              <span class="text-[#7BC4FF]">IA</span>prova</button>
+              <span><span class="text-[#7BC4FF]">IA</span>prova</span></button>
             <div class="flex items-center gap-2">
               <button onclick="adicionarDisciplinaCustomGestao()" 
                 class="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition flex items-center gap-2 text-sm font-medium">
@@ -15218,7 +15218,7 @@ async function renderDetalheDisciplina(disciplinaId, disciplinaNome, conteudos, 
           <div class="flex items-center justify-between h-14">
             <button onclick="renderPortfolioDisciplinas()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
               <i class="fas fa-arrow-left mr-2"></i>
-              <span class="text-[#7BC4FF]">IA</span>prova</button>
+              <span><span class="text-[#7BC4FF]">IA</span>prova</span></button>
             <div class="flex items-center gap-2">
               <span class="text-white/80 text-sm hidden sm:inline">
                 <i class="fas fa-book mr-1"></i>${disciplinaNome}
@@ -16148,7 +16148,7 @@ async function renderMateriais(activeTab = 'todos') {
             <div class="flex items-center justify-between h-14">
               <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
                 <i class="fas fa-arrow-left mr-2"></i>
-                <span class="text-[#7BC4FF]">IA</span>prova</button>
+                <span><span class="text-[#7BC4FF]">IA</span>prova</span></button>
               <div class="flex items-center gap-2">
                 <span class="text-white/80 text-sm hidden sm:inline">
                   <i class="fas fa-folder-open mr-1"></i>${totalMateriais} materiais
@@ -16561,7 +16561,7 @@ window.renderDashboardDesempenho = async function() {
             <div class="flex items-center justify-between h-14">
               <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
                 <i class="fas fa-arrow-left mr-2"></i>
-                <span class="text-[#7BC4FF]">IA</span>prova</button>
+                <span><span class="text-[#7BC4FF]">IA</span>prova</span></button>
               <div class="flex items-center gap-3">
                 <div class="hidden md:flex items-center gap-0.5 px-2 py-1 rounded-full bg-white/10 backdrop-blur-sm">
                   <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full" title="Sequência de dias">
@@ -16968,7 +16968,7 @@ function inicializarGraficosDesempenho(progressoGeral) {
               color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
             },
             ticks: {
-              color: isDark ? '#9CA3AF' : '#6B7280',
+              color: isDark ? '#e5e7eb' : '#6B7280',
               callback: function(value) {
                 return value + '%';
               }
@@ -16979,7 +16979,7 @@ function inicializarGraficosDesempenho(progressoGeral) {
               display: false
             },
             ticks: {
-              color: isDark ? '#E5E7EB' : '#374151',
+              color: isDark ? '#f3f4f6' : '#374151',
               font: {
                 size: 11
               }
@@ -17064,14 +17064,14 @@ function inicializarGraficosDesempenho(progressoGeral) {
             max: 10,
             ticks: {
               stepSize: 2,
-              color: isDark ? '#9CA3AF' : '#6B7280',
+              color: isDark ? '#e5e7eb' : '#6B7280',
               backdropColor: 'transparent'
             },
             grid: {
               color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
             },
             pointLabels: {
-              color: isDark ? '#E5E7EB' : '#374151',
+              color: isDark ? '#f3f4f6' : '#374151',
               font: {
                 size: 10
               }
@@ -17176,7 +17176,7 @@ window.renderDashboardSimulados = async function() {
             <div class="flex items-center justify-between h-14">
               <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
                 <i class="fas fa-arrow-left mr-2"></i>
-                <span class="text-[#7BC4FF]">IA</span>prova</button>
+                <span><span class="text-[#7BC4FF]">IA</span>prova</span></button>
               <div class="flex items-center gap-3">
                 <div class="hidden md:flex items-center gap-0.5 px-2 py-1 rounded-full bg-white/10 backdrop-blur-sm">
                   <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full" title="Total de simulados">
@@ -17238,13 +17238,13 @@ window.renderDashboardSimulados = async function() {
           </div>
           
           <!-- Indicador de Status -->
-          <div class="status-card-meta ${themes[currentTheme].card} border-l-4 ${dentroMeta ? `border-green-500 ${currentTheme === 'dark' ? 'bg-green-900/30' : 'bg-green-50/50'}` : `border-red-500 ${currentTheme === 'dark' ? 'bg-amber-900/30' : 'bg-red-50/50'}`} mb-3">
+          <div class="status-card-meta ${themes[currentTheme].card} border-l-4 ${dentroMeta ? `border-green-500 ${currentTheme === 'dark' ? 'bg-green-900/30' : 'bg-green-50/50'}` : `border-red-500 ${currentTheme === 'dark' ? 'bg-red-950/50' : 'bg-red-50/50'}`} mb-3">
             <div class="flex items-center gap-3">
               <div class="status-icon rounded-full ${dentroMeta ? 'bg-green-500' : 'bg-red-500'} flex items-center justify-center flex-shrink-0">
                 <i class="fas ${dentroMeta ? 'fa-check' : 'fa-exclamation'} text-white"></i>
               </div>
               <div class="flex-1 min-w-0">
-                <h3 class="font-bold ${dentroMeta ? (currentTheme === 'dark' ? 'text-green-400' : 'text-green-700') : (currentTheme === 'dark' ? 'text-amber-400' : 'text-red-700')}">
+                <h3 class="font-bold ${dentroMeta ? (currentTheme === 'dark' ? 'text-green-400' : 'text-green-700') : (currentTheme === 'dark' ? 'text-red-400' : 'text-red-700')}">
                   ${dentroMeta ? 'DENTRO DA META' : 'ABAIXO DA META'}
                 </h3>
                 <p class="${themes[currentTheme].textSecondary} text-xs">
@@ -17394,9 +17394,9 @@ window.renderGraficoSimulados = function(semanas, percentuais, metaPercentual) {
   if (!ctx) return;
   
   const isDk = currentTheme === 'dark';
-  const tickColor = isDk ? '#d1d5db' : '#4b5563';
-  const gridColor = isDk ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-  const legendColor = isDk ? '#e5e7eb' : '#374151';
+  const tickColor = isDk ? '#e5e7eb' : '#4b5563';
+  const gridColor = isDk ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.05)';
+  const legendColor = isDk ? '#f3f4f6' : '#374151';
   
   // Linha de meta (tracejada)
   const linhaMeta = semanas.map(() => metaPercentual);
@@ -17627,8 +17627,8 @@ window.renderGraficoDisciplinas = function(simulados) {
   );
   
   const isDk2 = currentTheme === 'dark';
-  const tickColor2 = isDk2 ? '#d1d5db' : '#4b5563';
-  const gridColor2 = isDk2 ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0,0,0,0.05)';
+  const tickColor2 = isDk2 ? '#e5e7eb' : '#4b5563';
+  const gridColor2 = isDk2 ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0,0,0,0.05)';
   
   new Chart(ctx, {
     type: 'bar',
@@ -24325,7 +24325,7 @@ function renderCalendarioUI(historico, stats, mes, ano, semanaData = null) {
           <div class="flex items-center justify-between h-14">
             <button onclick="renderDashboard()" class="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition">
               <i class="fas fa-arrow-left mr-2"></i>
-              <span class="text-[#7BC4FF]">IA</span>prova</button>
+              <span><span class="text-[#7BC4FF]">IA</span>prova</span></button>
             <div class="flex items-center gap-2">
               <span class="text-white/80 text-sm hidden sm:inline">
                 <i class="fas fa-calendar-alt mr-1"></i>${mesesNomes[mes - 1]} ${ano}
@@ -28006,9 +28006,9 @@ function renderChartRegioes(regioes) {
   const labels = Object.keys(regioes);
   const dataAbertos = labels.map(r => regioes[r].abertos);
   const dataPrevistos = labels.map(r => regioes[r].previstos);
-  const tickColor = isDark ? '#9CA3AF' : '#5A6F9A';
-  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
-  const legendColor = isDark ? '#D1D5DB' : '#0A1839';
+  const tickColor = isDark ? '#e5e7eb' : '#5A6F9A';
+  const gridColor = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.04)';
+  const legendColor = isDark ? '#f3f4f6' : '#0A1839';
   
   new Chart(ctx, {
     type: 'bar',
@@ -29069,7 +29069,8 @@ function renderGraficosProgresso() {
             position: 'bottom',
             labels: {
               boxWidth: 12,
-              font: { size: 10 }
+              font: { size: 10 },
+              color: currentTheme === 'dark' ? '#e5e7eb' : '#374151'
             }
           }
         },
@@ -29078,12 +29079,20 @@ function renderGraficosProgresso() {
             beginAtZero: true,
             ticks: {
               stepSize: 1,
-              font: { size: 10 }
+              font: { size: 10 },
+              color: currentTheme === 'dark' ? '#e5e7eb' : '#4b5563'
+            },
+            grid: {
+              color: currentTheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
             }
           },
           x: {
             ticks: {
-              font: { size: 10 }
+              font: { size: 10 },
+              color: currentTheme === 'dark' ? '#e5e7eb' : '#4b5563'
+            },
+            grid: {
+              display: false
             }
           }
         }
@@ -29137,7 +29146,7 @@ function renderGraficosProgresso() {
           data: data,
           backgroundColor: cores,
           borderWidth: 2,
-          borderColor: '#fff'
+          borderColor: currentTheme === 'dark' ? '#1f2937' : '#fff'
         }]
       },
       options: {
@@ -29150,7 +29159,8 @@ function renderGraficosProgresso() {
             labels: {
               boxWidth: 12,
               font: { size: 9 },
-              padding: 8
+              padding: 8,
+              color: currentTheme === 'dark' ? '#e5e7eb' : '#374151'
             }
           },
           tooltip: {

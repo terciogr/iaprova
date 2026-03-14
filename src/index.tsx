@@ -15490,11 +15490,19 @@ app.get('/api/planos/list/:user_id', async (c) => {
           WHERE ms.user_id = ? AND se.plano_id = ? AND ms.concluida = 1 AND ms.disciplina_id IN (${placeholders})
         `).bind(user_id, p.id, ...disciplinaIds).first() as any
         
-        // ✅ CORREÇÃO v3: Usar o maior entre tópicos estudados e metas concluídas
+        // ✅ CORREÇÃO v184: Usar APENAS topicosEstudados (nivel_dominio >= 10)
+        // para ser CONSISTENTE com /api/planos/:id/progresso-geral
+        // Antes usava Math.max(topicosEstudados, metasConcluidas) que inflava o progresso
         topicosEstudados = Math.min(
-          Math.max(topicosEstudadosResult?.total || 0, metasConcluidasResult?.total || 0),
+          topicosEstudadosResult?.total || 0,
           totalTopicos
         )
+        
+        // ✅ Fallback: Se não há tópicos registrados (topicosTeResult=0, topicosEtResult=0)
+        // mas há metas, usar metas concluídas como indicador de progresso
+        if ((topicosEstudadosResult?.total || 0) === 0 && totalTopicos > 0 && totalTopicos === (metasTotalResult?.total || 0)) {
+          topicosEstudados = Math.min(metasConcluidasResult?.total || 0, totalTopicos)
+        }
         
         console.log(`   → ${totalTopicos} tópicos (te:${topicosTeResult?.total}, et:${topicosEtResult?.total}, metas:${metasTotalResult?.total}), ${topicosEstudados} estudados (metas concluídas: ${metasConcluidasResult?.total})`)
       }
@@ -15951,17 +15959,19 @@ app.get('/api/planos/:plano_id/progresso-geral', async (c) => {
       // 2. Tópicos cadastrados para o usuário
       // 3. Metas semanais como fallback (progresso real de trabalho)
       let topicos = Math.max(disc.topicos_et || 0, disc.topicos_te || 0)
+      let usandoMetasComoBase = false
       
       // Se não há tópicos cadastrados, usar metas como base de progresso
       if (topicos === 0 && (disc.metas_total || 0) > 0) {
         topicos = disc.metas_total || 0
+        usandoMetasComoBase = true
         console.log(`   ⚠️ ${disc.disciplina_nome}: usando ${topicos} metas como base de progresso`)
       }
       
-      // ✅ CORREÇÃO v127: Priorizar estudados_te (tópicos com nivel_dominio >= 10)
-      // metas_concluidas só como fallback se não há tópicos cadastrados
+      // ✅ CORREÇÃO v184: Usar nivel_dominio >= 10 como critério principal
+      // Se a base de tópicos são metas (fallback), usar metas concluídas como estudados
       let estudados = disc.estudados_te || 0
-      if (estudados === 0 && topicos === 0 && (disc.metas_concluidas || 0) > 0) {
+      if (usandoMetasComoBase && estudados === 0 && (disc.metas_concluidas || 0) > 0) {
         estudados = disc.metas_concluidas || 0
       }
       
