@@ -26324,17 +26324,30 @@ function visualizarConteudo(conteudo, meta = null) {
             <div id="questoesContainer">
               ${secoesValidas.map((secao, secIdx) => {
                 const questoes = secao.conteudo?.questoes || [];
-                return questoes.map((q, qIdx) => `
+                return questoes.map((q, qIdx) => {
+                  // Limpar [Disciplina:] e [Tópico:] do enunciado
+                  let qEnuncLimpo = (q.enunciado || '');
+                  let qTopico = '';
+                  const qMDisc = qEnuncLimpo.match(/\[Disciplina:\s*([^\]]+)\]/i);
+                  if (qMDisc) qEnuncLimpo = qEnuncLimpo.replace(qMDisc[0], '');
+                  const qMTop = qEnuncLimpo.match(/\[T[óo]pico:\s*([^\]]+)\]/i);
+                  if (qMTop) { qTopico = qMTop[1].trim(); qEnuncLimpo = qEnuncLimpo.replace(qMTop[0], ''); }
+                  qEnuncLimpo = qEnuncLimpo.replace(/^\s+/, '').trim();
+                  
+                  return `
                   <div class="questao-card bg-gray-50 dark:bg-gray-800 rounded-lg p-6 mb-6 border-l-4 border-gray-300">
                     <div class="flex items-center gap-3 mb-4">
                       <div class="w-8 h-8 bg-[#122D6A] text-white rounded-full flex items-center justify-center font-bold">
                         ${qIdx + 1}
                       </div>
-                      <h3 class="font-bold ${themes[currentTheme].text} text-lg">
-                        Questão ${qIdx + 1}
-                      </h3>
+                      <div>
+                        <h3 class="font-bold ${themes[currentTheme].text} text-lg">
+                          Questão ${qIdx + 1}
+                        </h3>
+                        ${qTopico ? `<span class="text-xs ${themes[currentTheme].textSecondary}">${qTopico}</span>` : ''}
+                      </div>
                     </div>
-                    <p class="${themes[currentTheme].text} mb-4 leading-relaxed whitespace-pre-line">${q.enunciado}</p>
+                    <p class="${themes[currentTheme].text} mb-4 leading-relaxed whitespace-pre-line">${qEnuncLimpo}</p>
                     
                     <div class="space-y-3">
                       ${q.alternativas.map((alt, altIdx) => `
@@ -26356,7 +26369,7 @@ function visualizarConteudo(conteudo, meta = null) {
                       <p class="text-sm text-gray-700 mt-2">${q.explicacao}</p>
                     </div>
                   </div>
-                `).join('');
+                `}).join('');
               }).join('')}
             </div>
             
@@ -31030,6 +31043,8 @@ function parseQuestoes(texto) {
         .replace(/^\*{2}Questão\s*\d+\*{2}.*/im, '')
         .replace(/^Questão\s*\d+.*/im, '')
         .replace(/\[Aspecto:.*?\]/gi, '')
+        .replace(/\[Disciplina:\s*[^\]]+\]/gi, '')
+        .replace(/\[T[óo]pico:\s*[^\]]+\]/gi, '')
         .replace(/\*{0,2}Gabarito[:\s*].*/is, '')
         .replace(/\*+/g, '')
         .trim();
@@ -31073,6 +31088,8 @@ function parseQuestoes(texto) {
         .replace(/^\d+[\.\)]\s*/, '')
         .replace(/\(Nível:\s*[^)]+\)/gi, '')
         .replace(/\[Aspecto:.*?\]/gi, '')
+        .replace(/\[Disciplina:\s*[^\]]+\]/gi, '')
+        .replace(/\[T[óo]pico:\s*[^\]]+\]/gi, '')
         .replace(/\*+/g, '')
         .trim();
       
@@ -31513,7 +31530,10 @@ window.baixarExerciciosPDF = async function() {
     questoes.forEach((q, i) => {
       const correta = q.correta || q.resposta || q.gabarito || '';
       const comentario = q.comentario || q.explicacao || q.justificativa || '';
-      const enunciado = q.enunciado || q.pergunta || q.texto || '';
+      const enunciado = (q.enunciado || q.pergunta || q.texto || '')
+        .replace(/\[Disciplina:\s*[^\]]+\]/gi, '')
+        .replace(/\[T[óo]pico:\s*[^\]]+\]/gi, '')
+        .replace(/^\s+/, '').trim();
       const alts = q.alternativas || q.opcoes || [];
       
       // Estimar altura do bloco
@@ -33340,6 +33360,32 @@ function renderSimuladoQuestao() {
   const respondidas = Object.keys(simuladoAtual.respostas).length;
   const progresso = Math.round((respondidas / totalQuestoes) * 100);
   
+  // Extrair e limpar [Disciplina: X] e [Tópico: Y] do enunciado
+  let enunciadoLimpo = questao.enunciado || '';
+  let topicoExtraido = '';
+  let disciplinaExtraida = '';
+  
+  // Extrair [Disciplina: ...]
+  const matchDisc = enunciadoLimpo.match(/\[Disciplina:\s*([^\]]+)\]/i);
+  if (matchDisc) {
+    disciplinaExtraida = matchDisc[1].trim();
+    enunciadoLimpo = enunciadoLimpo.replace(matchDisc[0], '');
+  }
+  
+  // Extrair [Tópico: ...]
+  const matchTopico = enunciadoLimpo.match(/\[T[óo]pico:\s*([^\]]+)\]/i);
+  if (matchTopico) {
+    topicoExtraido = matchTopico[1].trim();
+    enunciadoLimpo = enunciadoLimpo.replace(matchTopico[0], '');
+  }
+  
+  // Limpar espaços extras resultantes
+  enunciadoLimpo = enunciadoLimpo.replace(/^\s+/, '').trim();
+  
+  // Usar disciplina do campo ou a extraída
+  const disciplinaFinal = questao.disciplina || disciplinaExtraida || '';
+  const topicoFinal = questao.topico || topicoExtraido || '';
+  
   document.getElementById('app').innerHTML = `
     <div class="min-h-screen ${themes[currentTheme].bg}">
       <!-- Header fixo responsivo -->
@@ -33373,12 +33419,16 @@ function renderSimuladoQuestao() {
       
       <!-- Conteúdo da questão - responsivo -->
       <div class="max-w-4xl mx-auto px-3 md:px-4 py-4 md:py-6">
-        <!-- Info da questão -->
-        <div class="flex items-center justify-between mb-3 md:mb-4 gap-2">
-          <span class="px-2 md:px-3 py-0.5 md:py-1 bg-[#6BB6FF]/10 dark:bg-[#0D1F4D]/30 text-[#0D1F4D] dark:text-[#7BC4FF] rounded-full text-xs md:text-sm font-medium truncate">
-            ${questao.disciplina}
+        <!-- Disciplina + Tópico + Dificuldade -->
+        <div class="flex flex-wrap items-center gap-1.5 md:gap-2 mb-3 md:mb-4">
+          <span class="px-2 md:px-3 py-0.5 md:py-1 bg-[#122D6A]/10 dark:bg-[#0D1F4D]/40 text-[#0D1F4D] dark:text-[#7BC4FF] rounded-full text-[11px] md:text-sm font-semibold truncate max-w-[60%]">
+            <i class="fas fa-book-open text-[9px] md:text-[10px] mr-1 opacity-70"></i>${disciplinaFinal}
           </span>
-          <span class="px-2 md:px-3 py-0.5 md:py-1 ${questao.dificuldade === 'facil' ? 'bg-[#2A4A9F]/10 text-green-700' : questao.dificuldade === 'dificil' ? 'bg-red-100 text-red-700' : 'bg-[#4A90E2]/10 text-yellow-700'} rounded-full text-[10px] md:text-xs flex-shrink-0">
+          ${topicoFinal ? `
+          <span class="px-2 md:px-2.5 py-0.5 md:py-1 ${currentTheme === 'dark' ? 'bg-gray-700/60 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-full text-[10px] md:text-xs truncate max-w-[50%]">
+            ${topicoFinal}
+          </span>` : ''}
+          <span class="ml-auto px-2 md:px-3 py-0.5 md:py-1 ${questao.dificuldade === 'facil' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : questao.dificuldade === 'dificil' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'} rounded-full text-[10px] md:text-xs font-medium flex-shrink-0">
             ${questao.dificuldade === 'facil' ? 'Fácil' : questao.dificuldade === 'dificil' ? 'Difícil' : 'Médio'}
           </span>
         </div>
@@ -33389,7 +33439,7 @@ function renderSimuladoQuestao() {
             <div class="w-8 h-8 md:w-10 md:h-10 bg-[#122D6A] text-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-sm md:text-base">
               ${questaoNum}
             </div>
-            <p class="${themes[currentTheme].text} text-sm md:text-lg leading-relaxed">${questao.enunciado}</p>
+            <p class="${themes[currentTheme].text} text-sm md:text-lg leading-relaxed">${enunciadoLimpo}</p>
           </div>
         </div>
         
@@ -33828,6 +33878,15 @@ window.verGabaritoSimulado = function() {
             const resposta = simuladoAtual.respostas[idx] || null;
             const correto = resposta === questao.resposta_correta;
             
+            // Limpar [Disciplina:] e [Tópico:] do enunciado
+            let enuncLimpo = (questao.enunciado || '');
+            let topicoRev = '';
+            const mDisc = enuncLimpo.match(/\[Disciplina:\s*[^\]]+\]/i);
+            if (mDisc) enuncLimpo = enuncLimpo.replace(mDisc[0], '');
+            const mTop = enuncLimpo.match(/\[T[óo]pico:\s*([^\]]+)\]/i);
+            if (mTop) { topicoRev = mTop[1].trim(); enuncLimpo = enuncLimpo.replace(mTop[0], ''); }
+            enuncLimpo = enuncLimpo.replace(/^\s+/, '').trim();
+            
             return `
               <div class="${themes[currentTheme].card} rounded-xl border ${themes[currentTheme].border} overflow-hidden">
                 <!-- Header da questão -->
@@ -33839,6 +33898,7 @@ window.verGabaritoSimulado = function() {
                       </div>
                       <div>
                         <span class="font-medium ${themes[currentTheme].text}">${questao.disciplina}</span>
+                        ${topicoRev ? `<span class="ml-1.5 text-xs ${themes[currentTheme].textSecondary}">${topicoRev}</span>` : ''}
                         <span class="ml-2 px-2 py-0.5 text-xs rounded ${questao.dificuldade === 'facil' ? (currentTheme === 'dark' ? 'bg-green-900/40 text-green-300' : 'bg-[#2A4A9F]/10 text-green-700') : questao.dificuldade === 'dificil' ? (currentTheme === 'dark' ? 'bg-red-900/40 text-red-300' : 'bg-red-100 text-red-700') : (currentTheme === 'dark' ? 'bg-yellow-900/40 text-yellow-300' : 'bg-[#4A90E2]/10 text-yellow-700')}">
                           ${questao.dificuldade === 'facil' ? 'Fácil' : questao.dificuldade === 'dificil' ? 'Difícil' : 'Médio'}
                         </span>
@@ -33854,7 +33914,7 @@ window.verGabaritoSimulado = function() {
                 
                 <!-- Enunciado -->
                 <div class="p-4">
-                  <p class="${themes[currentTheme].text} mb-4">${questao.enunciado}</p>
+                  <p class="${themes[currentTheme].text} mb-4">${enuncLimpo}</p>
                   
                   <!-- Alternativas -->
                   <div class="space-y-2 mb-4">
