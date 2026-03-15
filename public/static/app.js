@@ -31073,6 +31073,17 @@ function parseQuestoes(texto) {
     const questaoTexto = gabaritoSplit[0];
     const gabaritoEComentario = gabaritoSplit.slice(1).join(' ');
     
+    // Extrair [Disciplina: X] e [Tópico: Y] do bloco antes de limpar
+    let _discExtraida = '';
+    let _topExtraido = '';
+    let _difExtraida = '';
+    const _mDisc = bloco.match(/\[Disciplina:\s*([^\]]+)\]/i);
+    if (_mDisc) _discExtraida = _mDisc[1].trim();
+    const _mTop = bloco.match(/\[T[óo]pico:\s*([^\]]+)\]/i);
+    if (_mTop) _topExtraido = _mTop[1].trim();
+    const _mDif = bloco.match(/\(Nível:\s*([^)]+)\)/i);
+    if (_mDif) _difExtraida = _mDif[1].trim().toLowerCase();
+    
     // Extrair pergunta - tudo antes da primeira alternativa
     const linhas = questaoTexto.split('\n');
     const linhasPergunta = [];
@@ -31184,7 +31195,10 @@ function parseQuestoes(texto) {
       alternativas,
       correta: respostaCorreta,
       explicacao,
-      verificada: false
+      verificada: false,
+      disciplina: _discExtraida,
+      topico: _topExtraido,
+      dificuldade: _difExtraida
     });
     
     console.log('✅ Questão', questoes.length, 'adicionada');
@@ -31335,11 +31349,20 @@ function renderExercicioModal(questaoIndex) {
                 <i class="fas fa-file-alt text-[10px]"></i>
                 Questão ${questao.id} de ${total}
               </span>
-              ${questao.disciplina ? `<span class="text-xs px-2 py-0.5 rounded-full" 
-                style="background: ${currentTheme === 'dark' ? '#1E3A5F' : '#E8EDF5'}; color: ${currentTheme === 'dark' ? '#93C5FD' : '#1A3A7F'}">
-                ${questao.disciplina}
-              </span>` : ''}
             </div>
+            
+            ${(questao.disciplina || questao.topico) ? `
+            <!-- Disciplina / Tópico -->
+            <div class="flex flex-wrap items-center gap-1.5 mb-3">
+              ${questao.disciplina ? `<span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium"
+                style="background: ${currentTheme === 'dark' ? '#1E3A5F' : '#E8EDF5'}; color: ${currentTheme === 'dark' ? '#93C5FD' : '#1A3A7F'}">
+                <i class="fas fa-book-open text-[8px] opacity-60"></i>${questao.disciplina}
+              </span>` : ''}
+              ${questao.topico ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full"
+                style="background: ${currentTheme === 'dark' ? '#27303D' : '#F0F0F0'}; color: ${currentTheme === 'dark' ? '#9CA3AF' : '#6B7280'}">
+                ${questao.topico}
+              </span>` : ''}
+            </div>` : ''}
             
             <!-- Enunciado -->
             <div class="mb-5 md:mb-8">

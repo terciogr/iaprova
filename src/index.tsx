@@ -24606,7 +24606,8 @@ Retorne APENAS um JSON válido no formato:
     {
       "numero": 1,
       "disciplina": "Nome EXATO da Disciplina (copie da lista acima)",
-      "enunciado": "Texto completo da questão RELACIONADA À DISCIPLINA",
+      "topico": "Tópico específico abordado na questão",
+      "enunciado": "Texto completo da questão (SEM incluir nome da disciplina ou tópico no texto)",
       "alternativas": {
         "A": "Texto da alternativa A",
         "B": "Texto da alternativa B",
