@@ -43,6 +43,50 @@ axios.interceptors.response.use(
   }
 );
 
+// ===== Safe Area / Status Bar Detection =====
+// Detect if the app is running in standalone mode (PWA) on Android
+// where env(safe-area-inset-top) may return 0 but the status bar still overlaps.
+// In that case, we set a CSS variable --sat (Safe Area Top) as fallback.
+(function detectSafeAreaTop() {
+  // Check if running as standalone PWA
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                       window.navigator.standalone === true;
+  
+  // Check if Android
+  const isAndroid = /android/i.test(navigator.userAgent);
+  
+  if (isStandalone && isAndroid) {
+    // Mark HTML element for CSS targeting
+    document.documentElement.setAttribute('data-android-standalone', '');
+    
+    // Check if env(safe-area-inset-top) returns a useful value
+    const testEl = document.createElement('div');
+    testEl.style.paddingTop = 'env(safe-area-inset-top, 0px)';
+    document.body.appendChild(testEl);
+    const envValue = parseInt(getComputedStyle(testEl).paddingTop, 10) || 0;
+    document.body.removeChild(testEl);
+    
+    if (envValue === 0) {
+      // env() returned 0 — need JS fallback
+      // Android status bar is typically 24dp. At common densities:
+      // mdpi=24px, hdpi=36px, xhdpi=48px, xxhdpi=72px
+      // Use a safe default that works for most devices
+      const dpr = window.devicePixelRatio || 1;
+      const statusBarHeight = Math.round(24 * Math.min(dpr, 2) / dpr) || 28;
+      document.documentElement.style.setProperty('--sat', statusBarHeight + 'px');
+      console.log('📱 Android standalone: applied --sat fallback =', statusBarHeight + 'px');
+    } else {
+      console.log('📱 Android standalone: env(safe-area-inset-top) =', envValue + 'px');
+    }
+  } else if (isStandalone) {
+    // iOS standalone — env() handles it
+    console.log('📱 iOS standalone mode detected');
+  } else {
+    // Running in browser (not standalone) — browser handles status bar
+    document.documentElement.style.setProperty('--sat', '0px');
+  }
+})();
+
 // Estado da aplicação
 let currentUser = null;
 let currentStep = 'login';
@@ -1146,7 +1190,7 @@ function createUnifiedFAB() {
   
   sidebar.innerHTML = `
     <!-- Header do Sidebar -->
-    <div style="background: ${headerBg}; padding: 24px 20px 20px; color: white;">
+    <div style="background: ${headerBg}; padding: 24px 20px 20px; padding-top: max(24px, env(safe-area-inset-top, 24px)); color: white;">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
         <div style="display: flex; align-items: center; gap: 10px;">
           <div style="width: 36px; height: 36px; background: rgba(255,255,255,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
@@ -1170,7 +1214,7 @@ function createUnifiedFAB() {
     </div>
     
     <!-- Menu Items -->
-    <div style="padding: 12px 10px; overflow-y: auto; height: calc(100% - 140px);">
+    <div style="padding: 12px 10px; overflow-y: auto; height: calc(100% - 140px - env(safe-area-inset-top, 0px));">
       <!-- Navegação Principal -->
       <p style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: ${textSecondary}; padding: 8px 12px 6px; margin: 0;">Navegação</p>
       
