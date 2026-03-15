@@ -4344,53 +4344,92 @@ function renderEntrevistaStep1() {
             </div>
           </div>
 
-          <h3 class="text-base md:text-xl font-semibold mb-4 md:mb-6 text-center ${themes[currentTheme].text}">
+          <h3 class="text-base md:text-xl font-semibold mb-2 text-center ${themes[currentTheme].text}">
             <i class="fas fa-flag-checkered mr-2 text-[#1A3A7F]"></i>
-            Qual é seu objetivo?
+            Como deseja montar seu plano?
           </h3>
+          <p class="text-xs md:text-sm text-center ${themes[currentTheme].textSecondary} mb-5 md:mb-6">Escolha a opção que melhor se encaixa no seu momento</p>
 
           <div class="space-y-3 md:space-y-4">
+            <!-- Opção 1: Concurso Específico -->
             <button onclick="selecionarObjetivo('concurso_especifico')" 
               class="w-full p-4 md:p-6 border-2 ${themes[currentTheme].border} rounded-xl hover:border-[#122D6A] hover:bg-gradient-to-r hover:from-[#E8EDF5] hover:to-[#F3F6FA] transition-all duration-200 text-left group">
-              <div class="flex items-center">
-                <div class="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-[#E8EDF5] to-[#D0D9EB] rounded-xl flex items-center justify-center mr-3 md:mr-4 group-hover:from-[#122D6A] group-hover:to-[#1A3A7F] transition-all">
+              <div class="flex items-start">
+                <div class="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-[#E8EDF5] to-[#D0D9EB] rounded-xl flex items-center justify-center mr-3 md:mr-4 group-hover:from-[#122D6A] group-hover:to-[#1A3A7F] transition-all flex-shrink-0 mt-0.5">
                   <i class="fas fa-bullseye text-xl md:text-2xl text-[#1A3A7F] group-hover:text-white transition-all"></i>
                 </div>
-                <div class="flex-1">
-                  <h4 class="font-semibold text-base md:text-lg ${themes[currentTheme].text}">Concurso Específico</h4>
-                  <p class="text-xs md:text-sm ${themes[currentTheme].textSecondary}">Já sei qual concurso quero fazer</p>
+                <div class="flex-1 min-w-0">
+                  <h4 class="font-semibold text-base md:text-lg ${themes[currentTheme].text} mb-1">Tenho um concurso em mente</h4>
+                  <p class="text-xs md:text-sm ${themes[currentTheme].textSecondary} leading-relaxed">Informe o concurso, cargo e envie o edital (PDF, TXT ou cole o texto). A IA extrai as disciplinas automaticamente.</p>
+                  <div class="flex items-center gap-2 mt-2">
+                    <span class="inline-flex items-center gap-1 text-[10px] md:text-xs bg-blue-50 text-[#1A3A7F] px-2 py-0.5 rounded-full"><i class="fas fa-file-upload text-[8px]"></i> Aceita edital</span>
+                    <span class="inline-flex items-center gap-1 text-[10px] md:text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full"><i class="fas fa-magic text-[8px]"></i> IA extrai tudo</span>
+                  </div>
                 </div>
-                <i class="fas fa-chevron-right text-gray-300 group-hover:text-[#122D6A] hidden md:block"></i>
+                <i class="fas fa-chevron-right text-gray-300 group-hover:text-[#122D6A] hidden md:block mt-2"></i>
               </div>
             </button>
 
+            <!-- Separador visual -->
+            <div class="flex items-center gap-3 px-2">
+              <div class="flex-1 h-px bg-gray-200"></div>
+              <span class="text-xs text-gray-400 font-medium">ou</span>
+              <div class="flex-1 h-px bg-gray-200"></div>
+            </div>
+
+            <!-- Opção 2: Área Geral -->
             <button onclick="selecionarObjetivo('area_geral')" 
               class="w-full p-4 md:p-6 border-2 ${themes[currentTheme].border} rounded-xl hover:border-[#122D6A] hover:bg-gradient-to-r hover:from-[#E8EDF5] hover:to-[#F3F6FA] transition-all duration-200 text-left group">
-              <div class="flex items-center">
-                <div class="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-[#E8EDF5] to-[#D0D9EB] rounded-xl flex items-center justify-center mr-3 md:mr-4 group-hover:from-[#122D6A] group-hover:to-[#1A3A7F] transition-all">
+              <div class="flex items-start">
+                <div class="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-[#E8EDF5] to-[#D0D9EB] rounded-xl flex items-center justify-center mr-3 md:mr-4 group-hover:from-[#122D6A] group-hover:to-[#1A3A7F] transition-all flex-shrink-0 mt-0.5">
                   <i class="fas fa-th-large text-xl md:text-2xl text-[#1A3A7F] group-hover:text-white transition-all"></i>
                 </div>
-                <div class="flex-1">
-                  <h4 class="font-semibold text-base md:text-lg ${themes[currentTheme].text}">Área Geral</h4>
-                  <p class="text-xs md:text-sm ${themes[currentTheme].textSecondary}">Quero estudar para uma área específica</p>
+                <div class="flex-1 min-w-0">
+                  <h4 class="font-semibold text-base md:text-lg ${themes[currentTheme].text} mb-1">Ainda não tenho concurso definido</h4>
+                  <p class="text-xs md:text-sm ${themes[currentTheme].textSecondary} leading-relaxed">Escolha uma área de atuação (Fiscal, Policial, Bancária, etc.) e o sistema monta as disciplinas para você.</p>
+                  <div class="flex items-center gap-2 mt-2">
+                    <span class="inline-flex items-center gap-1 text-[10px] md:text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full"><i class="fas fa-layer-group text-[8px]"></i> 8 áreas</span>
+                    <span class="inline-flex items-center gap-1 text-[10px] md:text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full"><i class="fas fa-bolt text-[8px]"></i> Rápido</span>
+                  </div>
                 </div>
-                <i class="fas fa-chevron-right text-gray-300 group-hover:text-[#122D6A] hidden md:block"></i>
+                <i class="fas fa-chevron-right text-gray-300 group-hover:text-[#122D6A] hidden md:block mt-2"></i>
               </div>
             </button>
           </div>
 
-          <!-- Botão Voltar ao Login - Compacto no mobile -->
+          <!-- Botão Voltar - Inteligente (Dashboard ou Login) -->
           <div class="mt-6 md:mt-8 pt-4 md:pt-6 border-t ${themes[currentTheme].border}">
-            <button onclick="voltarAoLogin()" 
+            <button onclick="window._entrevistaVoltarAction ? window._entrevistaVoltarAction() : voltarAoLogin()" 
               class="w-full py-2.5 md:py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg font-medium transition flex items-center justify-center gap-2 text-sm md:text-base">
               <i class="fas fa-arrow-left text-xs md:text-sm"></i>
-              <span>Voltar ao Login</span>
+              <span id="entrevista-voltar-label">Voltar ao Login</span>
             </button>
           </div>
         </div>
       </div>
     </div>
   `;
+
+  // ✅ Verificar se usuário já tem planos - mostrar "Voltar ao Dashboard" em vez de "Voltar ao Login"
+  (async () => {
+    try {
+      if (currentUser && currentUser.id) {
+        const planosCheck = await axios.get(`/api/planos/count/${currentUser.id}`);
+        if (planosCheck.data && planosCheck.data.total > 0) {
+          const label = document.getElementById('entrevista-voltar-label');
+          if (label) label.textContent = 'Cancelar e voltar ao Dashboard';
+          window._entrevistaVoltarAction = function() {
+            renderDashboard();
+          };
+        } else {
+          window._entrevistaVoltarAction = null;
+        }
+      }
+    } catch (e) {
+      console.log('Não foi possível verificar planos, mantendo Voltar ao Login');
+      window._entrevistaVoltarAction = null;
+    }
+  })();
 }
 
 // Função para voltar ao login/landing (logout) - GLOBAL
@@ -4618,11 +4657,13 @@ function renderConcursoEspecifico() {
 
             <!-- Seção de Upload - Modernizada com opção de colar texto -->
             <div class="bg-gradient-to-br from-[#E8EDF5] via-[#F3F6FA] to-white p-3 md:p-5 rounded-xl border-2 border-[#C5D1E8]">
-              <label class="block text-xs md:text-sm font-semibold text-gray-800 mb-2 md:mb-3 flex items-center">
+              <label class="block text-xs md:text-sm font-semibold text-gray-800 mb-1 flex items-center">
                 <div class="w-6 h-6 md:w-8 md:h-8 bg-[#122D6A] rounded-lg flex items-center justify-center mr-2">
                   <i class="fas fa-file-upload text-white text-xs md:text-sm"></i>
                 </div>
                 Importar Disciplinas do Edital <span class="text-gray-400 font-normal ml-1">(recomendado)</span>
+              </label>
+              <p class="text-[10px] md:text-xs text-gray-500 mb-2 md:mb-3 ml-8 md:ml-10">Envie o arquivo do edital ou cole o conte\u00fado program\u00e1tico. A IA identifica as disciplinas e t\u00f3picos automaticamente.</p>
               </label>
               
               <!-- Tabs para escolher método -->
@@ -4630,13 +4671,13 @@ function renderConcursoEspecifico() {
                 <button type="button" id="tab-upload" onclick="trocarMetodoImportacao('upload')"
                   class="flex-1 py-2 px-3 text-xs md:text-sm font-medium rounded-md bg-white text-[#122D6A] shadow-sm transition">
                   <i class="fas fa-file-upload mr-1"></i>
-                  <span class="hidden md:inline">Arquivo</span>
-                  <span class="md:hidden">Upload</span>
+                  <span class="hidden md:inline">Enviar Arquivo</span>
+                  <span class="md:hidden">Arquivo</span>
                 </button>
                 <button type="button" id="tab-colar" onclick="trocarMetodoImportacao('colar')"
                   class="flex-1 py-2 px-3 text-xs md:text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 transition">
                   <i class="fas fa-paste mr-1"></i>
-                  <span class="hidden md:inline">Colar Texto</span>
+                  <span class="hidden md:inline">Colar Conte\u00fado</span>
                   <span class="md:hidden">Colar</span>
                 </button>
               </div>
@@ -4724,7 +4765,7 @@ CONHECIMENTOS ESPECÍFICOS
               <button type="button" onclick="continuarSemEdital()" 
                 class="w-full py-2 text-gray-500 hover:text-[#122D6A] transition-all text-xs md:text-sm flex items-center justify-center gap-1">
                 <i class="fas fa-forward"></i>
-                <span>Continuar sem edital (adicionar disciplinas manualmente)</span>
+                <span>Pular e montar disciplinas manualmente</span>
               </button>
             </div>
           </form>
@@ -7079,8 +7120,8 @@ function renderAreaGeral() {
                   <span class="text-white font-bold text-sm md:text-base">1</span>
                 </div>
                 <div>
-                  <h2 class="text-lg md:text-2xl font-bold ${themes[currentTheme].text}">Escolha a área</h2>
-                  <p class="text-xs md:text-sm text-gray-500">Selecione sua área de interesse</p>
+                  <h2 class="text-lg md:text-2xl font-bold ${themes[currentTheme].text}">Escolha sua \u00e1rea</h2>
+                  <p class="text-xs md:text-sm text-gray-500">Selecione a \u00e1rea e montaremos as disciplinas para voc\u00ea</p>
                 </div>
               </div>
               <span class="hidden md:block text-sm text-gray-400 bg-gray-100 px-3 py-1 rounded-full">1/4</span>
